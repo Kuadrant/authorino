@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RubyApp</title>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+
+    <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
+    <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+  </head>
+
+  <body>
+    <% flash.to_h.slice('notice', 'error').each do |flash_type, message| -%>
+      <% next unless message %>
+      <div class="flash <%= flash_type %>"><%= message %></div>
+    <% end -%>
+
+    <div class="page">
+      <div class="page-content">
+        <%= yield %>
+      </div>
+
+      <ul id="menu">
+        <li><%= link_to 'Session', session_path %></li>
+        <li><%= link_to 'Refresh token', session_path, data: { method: :patch } %></li>
+        <li><%= link_to 'Logout', session_path, data: { method: :delete, confirm: 'Are you sure?' } %></li>
+        <li class="separator"/>
+        <li><%= link_to 'List Services', api_services_path %></li>
+        <li><%= link_to 'New Service', new_api_service_path %></li>
+      </ul>
+    </div>
+  </body>
+</html>

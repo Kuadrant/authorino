@@ -1,0 +1,22 @@
+<table>
+  <thead>
+    <tr>
+      <th>Client ID</th>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <%- @services.each do |service| -%>
+    <tr>
+      <td><%= link_to service.id, api_service_path(service.id) %></td>
+      <td><%= service.name %></td>
+      <td><%= service.description %></td>
+    </tr>
+    <%- end -%>
+  </tbody>
+</table>
+
+<p>
+  The info in this page is fake, but at least you can access it, yay!
+</p>

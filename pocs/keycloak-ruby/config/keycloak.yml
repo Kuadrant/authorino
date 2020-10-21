@@ -1,0 +1,21 @@
+common: &common
+  realm: ostia
+  auth-server-url: <%= ENV['AUTH_SERVER_URL'] %>
+  ssl-required: external
+  confidential-port: 0
+
+development:
+  resource_server:
+    <<: *common
+    resource: ruby-app-resource-api
+    verify-token-audience: true
+    credentials:
+      secret: <%= ENV['AUTH_SERVER_CLIENT_SECRET'] %>
+    use-resource-role-mappings: true
+    policy-enforcer:
+      # on-deny-redirect-to: '/403.html'
+
+  client:
+    <<: *common
+    resource: ruby-app-ui
+    public-client: true
