@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authorino
+  labels:
+    app: authorino
+    svc: authorino
+spec:
+  selector:
+    matchLabels:
+      app: authorino
+      svc: authorino
+  template:
+    metadata:
+      labels:
+        app: authorino
+        svc: authorino
+    spec:
+      containers:
+      - name: opa
+        image: openpolicyagent/opa:latest
+        args:
+          - run
+          - --server
+          - --ignore=.*
+          - --log-format=json-pretty
+          - --set=decision_logs.console=true
+        ports:
+        - name: http
+          containerPort: 8181
+      - name: authorino
+        image: quay.io/3scale/authorino:latest
+        env:
+          - name: CONFIG
+            value: /usr/src/app/config/config.yml
+          - name: LOG_LEVEL
+            value: debug
+        ports:
+        - name: grpc
+          containerPort: 50051
+        volumeMounts:
+          - name: config
+            mountPath: /usr/src/app/config/
+            readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: authorino
+            items:
+            - key: config.yml
+              path: config.yml
+  replicas: 1

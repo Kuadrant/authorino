@@ -40,15 +40,21 @@ class Config::Authorization::OPA < Config::Authorization
   end
 
   def call(context)
-    return unless enabled?
+    return Config::Authorization::Response::Authorized.new unless enabled?
+    return Config::Authorization::Response::Unauthorized.new unless context.authenticated?
+
+    request, identity, metadata = context.to_h.values_at(:request, :identity, :metadata)
 
     auth_request = Net::HTTP::Post.new(data_uri, 'Content-Type' => 'application/json')
-    request, identity, metadata = context.to_h.values_at(:request, :identity, :metadata)
     auth_request.body = { input: request.merge(context: { identity: identity.values.first, metadata: metadata }) }.to_json
-    puts "[OPA] #{auth_request.body}"
+
+    GRPC.logger.debug("OPA request: #{auth_request.body}")
+
     auth_response = Net::HTTP.start(data_uri.hostname, data_uri.port) do |http|
       http.request(auth_request)
     end
+
+    GRPC.logger.debug("OPA response: #{auth_response.inspect}")
 
     case auth_response
     when Net::HTTPOK

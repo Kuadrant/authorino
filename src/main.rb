@@ -11,11 +11,11 @@ require_relative 'auth_service'
 require_relative 'response_interceptor'
 
 module RubyLogger
+  LOGGER = Logger.new(STDOUT, level: ENV.fetch('LOG_LEVEL', :info))
+
   def logger
     LOGGER
   end
-
-  LOGGER = Logger.new(STDOUT)
 end
 
 # GRPC is the general RPC module

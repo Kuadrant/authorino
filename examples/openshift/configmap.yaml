@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authorino
+  labels:
+    app: authorino
+data:
+  config.yml: |
+    echo-api.authorino.apps.dev-eng-ocp4-5.dev.3sca.net:
+      enabled: true
+      identity:
+        - oidc:
+            name: keycloak
+            endpoint: http://keycloak-discovery.redhat-sso.svc.cluster.local:8080/auth/realms/ostia
+      metadata: []
+      authorization:
+        - opa:
+            uuid: 40f5976b-edf9-42f5-8c85-010d4a9992b3
+            rego: |
+              allow {
+                http_request.method == "GET"
+                path = ["pets"]
+              }
+
+              allow {
+                http_request.method == "GET"
+                path = ["pets", "stats"]
+                is_admin
+              }
+
+              is_admin {
+                identity.realm_access.roles[_] == "admin"
+              }

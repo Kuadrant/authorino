@@ -201,7 +201,24 @@ docker run -v './path/to/config.yml:/usr/src/app/config.yml' -p '50051:50051' 3s
 
 #### Deploy Authorino on a Kubernetes cluster
 
-> TODO
+Please check the [example](examples/openshift), where Authorino is deployed with an OPA sidecar.
+
+To build your proper Authorino config file, please refer to the instructions in the next section. For deployment
+to Kubernetes, we recommend creating a `ConfigMap` (example available [here](examples/openshift/configmap.yaml)).
+Follow by creating the Authorino `Deployment` and `Service`.
+
+Usually the order of deployment goes as follows:
+1. Upstream API(s)
+2. Policy Decision service (e.g. OPA) – unless when deployed as an Authorino sidecard, such as in the example provided
+3. Authorino
+    - `ConfigMap`
+    - `Deployment`
+    - `Service`
+4. Envoy
+    - `ConfigMap`
+    - `Deployment`
+    - `Service`
+    - `Ingress` (and [ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)) or Openshift `Route`
 
 #### Configuring Authorino
 

@@ -41,7 +41,8 @@ class Config::Identity::OIDC < Config::Identity
     raise OpenIDConnect::Discovery::DiscoveryFailed unless endpoint
 
     self[:config] ||= ::OpenIDConnect::Discovery::Provider::Config.discover!(endpoint)
-  rescue OpenIDConnect::Discovery::DiscoveryFailed
+  rescue OpenIDConnect::Discovery::DiscoveryFailed => err
+    GRPC.logger.debug("OIDC discovery failed: #{err}")
     self.enabled = false
     nil
   end
@@ -69,8 +70,10 @@ class Config::Identity::OIDC < Config::Identity
   end
 
   def call(context)
-    id_token = decode_id_token(context.request)
+    request = context.request
+    id_token = decode_id_token(request)
   rescue JSON::JWK::Set::KidNotFound, JSON::JWS::VerificationFailed => err
+    GRPC.logger.debug("Failed to decode JWT: #{err}")
     false
   end
 

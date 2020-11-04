@@ -40,7 +40,7 @@ class AuthService::Context
     {
       request: request,
       service: service,
-      identity: identity.transform_keys(&:name).transform_values(&:to_h),
+      identity: identity.transform_keys(&:name).transform_values{ |value| value.try(:to_h) },
       metadata: metadata.transform_keys{ |key| key.class.to_s.demodulize.underscore }
     }.transform_values(&:to_h)
   end
