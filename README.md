@@ -97,7 +97,7 @@ user credentials, permissions, revocations, etc.
 | - Revoked access tokens                      | Planned     |
 | - Repeated requests                          | In analysis |
 
-### OpenID Connect (OIDC)
+#### OpenID Connect (OIDC)
 Authorino automatically discovers OIDC configurations for the registered issuers and verifies authorization JSON Web
 Tokens (JWTs) provided by the API consumers on every request.
 
@@ -140,7 +140,7 @@ support to easy key rotation.
      └─────────┘              └───────────┘
 ```
 
-### OPA
+#### OPA
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and
 add them as part of the configuration of your protected APIs. Authorino will keep track of changes to the policies and
 automatically register them to the OPA server.
