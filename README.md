@@ -276,18 +276,18 @@ docker-compose up --build -d
 
 You'll get the following components up and running:
 
-- **Echo API (upstream)**
+- **Echo API (upstream)**<br/>
     Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
-- **Envoy proxy**
+- **Envoy proxy**<br/>
     Configured w/ the http filters ext_authz and ratelimit.
-- **Authorino**
+- **Authorino**<br/>
     The external AuthN/AuthZ proxy with [this configuration](examples/config.yml) preloaded.
-- **OPA service**
+- **OPA service**<br/>
     An actual Policy Decision Point (PDP) configured in the architecture.
-- **Keycloak**
-    To issue OIDC access tokens.
-    Admin console: http://localhost:8080/auth/admin (admin/p)
-    Available users:
+- **Keycloak**<br/>
+    To issue OIDC access tokens.<br/>
+    Admin console: http://localhost:8080/auth/admin (admin/p)<br/>
+    Available users:<br/>
     - john/p (member)
     - jane/p (admin)
 
