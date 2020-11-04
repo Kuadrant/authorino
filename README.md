@@ -280,8 +280,8 @@ You'll get the following components up and running:
     Just a simple rack application that echos back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Envoy proxy**
     Configured w/ the http filters ext_authz and ratelimit.
-- **External AuthN/AuthZ proxy**
-    The core of this PoC. It implements Envoy's external auth gRPC protocol, verifies identities (only OIDC supported so far), fetches metadata (OIDC user info) and delegates policy evaluation to configured PDPs.
+- **Authorino**
+    The external AuthN/AuthZ proxy with [this configuration](examples/config.yml) preloaded.
 - **OPA service**
     An actual Policy Decision Point (PDP) configured in the architecture.
 - **Keycloak**
