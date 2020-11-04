@@ -1,0 +1,84 @@
+version: "3.7"
+services:
+
+  echo-api:
+    build:
+      context: echo-api
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3000
+    networks:
+      envoymesh:
+        aliases:
+          - echo-api
+    expose:
+      - "3000"
+
+  envoy:
+    build:
+      context: envoy
+      dockerfile: Dockerfile
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy.yaml
+    networks:
+      - envoymesh
+    environment:
+      LOG_LEVEL: debug
+      COMPONENT_LOG_LEVEL: filter:trace,http:debug,router:debug
+      NGINX_HTTP_PORT_NUMBER: 8000
+    expose:
+      - "8000"
+      - "8001"
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+
+  authorino:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    volumes:
+      - ./config.yml:/usr/src/app/config.yml
+    depends_on:
+      - opa
+    networks:
+      envoymesh:
+        aliases:
+          - authorino
+    expose:
+      - "50051"
+
+  opa:
+    image: openpolicyagent/opa
+    ports:
+      - "8181:8181"
+    expose:
+      - "8181"
+    command:
+      - run
+      - --server
+      - --log-level=debug
+      - --log-format=json-pretty
+      - --set=decision_logs.console=true
+    networks:
+      envoymesh:
+        aliases:
+          - opa
+
+  keycloak:
+    image: jboss/keycloak
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: p
+      KEYCLOAK_IMPORT: /tmp/import-realm.json -Dkeycloak.profile.feature.upload_scripts=enabled
+    volumes:
+      - ./keycloak-realm.json:/tmp/import-realm.json
+    ports:
+      - "8080:8080"
+    networks:
+      envoymesh:
+        aliases:
+          - keycloak
+
+networks:
+  envoymesh: {}

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authorino
+  labels:
+    app: authorino
+spec:
+  selector:
+    app: authorino
+    svc: authorino
+  ports:
+  - port: 50051
+    protocol: TCP

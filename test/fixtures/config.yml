@@ -1,0 +1,179 @@
+localhost:8000:
+  enabled: true
+
+  identity:
+    - oidc:
+        name: test
+        config:
+          issuer: http://localhost:8080/auth/realms/test
+          authorization_endpoint: http://localhost:8080/auth/realms/test/protocol/openid-connect/auth
+          token_endpoint: http://localhost:8080/auth/realms/test/protocol/openid-connect/token
+          token_introspection_endpoint: http://localhost:8080/auth/realms/test/protocol/openid-connect/token/introspect
+          userinfo_endpoint: http://localhost:8080/auth/realms/test/protocol/openid-connect/userinfo
+          end_session_endpoint: http://localhost:8080/auth/realms/test/protocol/openid-connect/logout
+          jwks_uri: http://localhost:8080/auth/realms/test/protocol/openid-connect/certs
+          check_session_iframe: http://localhost:8080/auth/realms/test/protocol/openid-connect/login-status-iframe.html
+          grant_types_supported:
+            - authorization_code
+            - implicit
+            - refresh_token
+            - password
+            - client_credentials
+          response_types_supported:
+            - code
+            - none
+            - id_token
+            - token
+            - id_token token
+            - code id_token
+            - code token
+            - code id_token token
+          subject_types_supported:
+            - public
+            - pairwise
+          id_token_signing_alg_values_supported:
+            - PS384
+            - ES384
+            - RS384
+            - HS256
+            - HS512
+            - ES256
+            - RS256
+            - HS384
+            - ES512
+            - PS256
+            - PS512
+            - RS512
+          id_token_encryption_alg_values_supported:
+            - RSA-OAEP
+            - RSA1_5
+          id_token_encryption_enc_values_supported:
+            - A128GCM
+            - A128CBC-HS256
+          userinfo_signing_alg_values_supported:
+            - PS384
+            - ES384
+            - RS384
+            - HS256
+            - HS512
+            - ES256
+            - RS256
+            - HS384
+            - ES512
+            - PS256
+            - PS512
+            - RS512
+            - none
+          request_object_signing_alg_values_supported:
+            - PS384
+            - ES384
+            - RS384
+            - HS256
+            - HS512
+            - ES256
+            - RS256
+            - HS384
+            - ES512
+            - PS256
+            - PS512
+            - RS512
+            - none
+          response_modes_supported:
+            - query
+            - fragment
+            - form_post
+          registration_endpoint: http://localhost:8080/auth/realms/test/clients-registrations/openid-connect
+          token_endpoint_auth_methods_supported:
+            - private_key_jwt
+            - client_secret_basic
+            - client_secret_post
+            - tls_client_auth
+            - client_secret_jwt
+          token_endpoint_auth_signing_alg_values_supported:
+            - PS384
+            - ES384
+            - RS384
+            - HS256
+            - HS512
+            - ES256
+            - RS256
+            - HS384
+            - ES512
+            - PS256
+            - PS512
+            - RS512
+          claims_supported:
+            - aud
+            - sub
+            - iss
+            - auth_time
+            - name
+            - given_name
+            - family_name
+            - preferred_username
+            - email
+            - acr
+          claim_types_supported:
+            - normal
+          claims_parameter_supported: false
+          scopes_supported:
+            - openid
+            - address
+            - email
+            - microprofile-jwt
+            - offline_access
+            - phone
+            - profile
+            - roles
+            - web-origins
+          request_parameter_supported: true
+          request_uri_parameter_supported: true
+          code_challenge_methods_supported:
+            - plain
+            - S256
+          tls_client_certificate_bound_access_tokens: true
+          introspection_endpoint: http://localhost:8080/auth/realms/test/protocol/openid-connect/token/introspect
+          jwks: !ruby/array:JSON::JWK::Set
+            - !ruby/hash:JSON::JWK
+              kid: PiEqHdnRIDQ1RJUd0-1vYl3TUlzzdx4RuIJVU1KpsgU
+              kty: RSA
+              alg: RS256
+              use: sig
+              n: wi5BywZK81v9A4MqYOGD5HCKk9yBjjNuWyT8f40OsmAqertm8HN02qjsTfkw-6uEEHEtUV4_Rlk4ZqprEgKzVGu1il2t4OvByL7nW3OkbKAIoRPIX9fXuL4u_X5eWpwIAgVHrosYcGu0Jnvjnjol_n7UwnMuVw7UW3dg5mfBVAi3C0M_2iiKypUk1zE1OE2fbe2CHPo7yBwbbHGwyajoMHaak6cIyCEEoFAyMGh7QNLniuy9GHy4y6rnn2cpySwxkGZPnKCwUUOEkqKJD2e2E9tIq-FGv-sXRMuavGmbSwUz-0uU-KwpBL3_Fm01EdD8onL1KpxWxSF-mBNbxDR_mQ
+              e: AQAB
+              x5c:
+                - MIIClzCCAX8CBgF1ZWe4ITANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDDAR0ZXN0MB4XDTIwMTAyNjE0NTMxN1oXDTMwMTAyNjE0NTQ1N1owDzENMAsGA1UEAwwEdGVzdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMIuQcsGSvNb/QODKmDhg+RwipPcgY4zblsk/H+NDrJgKnq7ZvBzdNqo7E35MPurhBBxLVFeP0ZZOGaqaxICs1RrtYpdreDrwci+51tzpGygCKETyF/X17i+Lv1+XlqcCAIFR66LGHBrtCZ74546Jf5+1MJzLlcO1Ft3YOZnwVQItwtDP9ooisqVJNcxNThNn23tghz6O8gcG2xxsMmo6DB2mpOnCMghBKBQMjBoe0DS54rsvRh8uMuq559nKcksMZBmT5ygsFFDhJKiiQ9nthPbSKvhRr/rF0TLmrxpm0sFM/tLlPisKQS9/xZtNRHQ/KJy9SqcVsUhfpgTW8Q0f5kCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAsrpXLow79P6hVew5ytbckx8PFqkISXWpufn5MqDU5295bAOmmgPQqtQpiSK9MAjkXstvufdFB0WpRUHL8MzcnXXig69JvRR7rL8FbbEF7E+pcVDUPJ9lGOYaFc5GJ221SA4/p0OtQegCUtImW7fBPclNyHgddGyQgpcZqiLfxWpOEXZ20vLMuj5VXYGthplWjphzRUqlSLshxDWjaVYUlaPuQbNPDw8E+qk7+NpERTLAKDVjUqqHdCGtkzkKv3n3sMijn7HuVGv/lf/JqYrFvhvmiLYa2nGlIUSEhNrPbALsW0Fi4N2H6mrpD/bgpEZae+rd5DNvW/n789AdKNDtRw==
+              x5t: 4mREF7c--JC6_9O_gAFiAFk6NUs
+              x5t#S256: tJsfWZiBJ61q1LwXV30VUNZHJkROMq5oMp8oIt4DY94
+
+  metadata:
+    - userinfo:
+        oidc: test
+        client_id: test
+        client_secret: dfab4c74-4614-4849-abe8-a009bc25a9d6
+
+  authorization:
+    - opa:
+        uuid: 8fa79d93-0f93-4e23-8c2a-666be266cad1
+        rego: |
+          allow {
+            http_request.method == "GET"
+            path = ["pets"]
+          }
+
+          allow {
+            http_request.method == "GET"
+            path = ["pets", "stats"]
+            is_admin
+          }
+
+          is_admin {
+            metadata.user_info.roles[_] == "admin"
+          }
+    - jwt:
+        enabled: false
+        match:
+          http:
+            path: '/api/*'
+        claim:
+          aud: api

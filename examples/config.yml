@@ -1,0 +1,67 @@
+echo-api:3000:
+  enabled: true
+
+  identity:
+    - oidc:
+        name: keycloak
+        endpoint: http://keycloak:8080/auth/realms/ostia
+
+  metadata:
+    - userinfo:
+        oidc: keycloak
+        client_id: authorino
+        client_secret: 2e5246f2-f4ef-4d55-8225-36e725071dee
+
+  authorization:
+    - opa:
+        uuid: 8fa79d93-0f93-4e23-8c2a-666be266cad1
+        endpoint: 'http://opa:8181'
+        rego: |
+          allow {
+            http_request.method == "GET"
+            path = ["pets"]
+          }
+
+          allow {
+            http_request.method == "POST"
+            path = ["pets"]
+          }
+
+          allow {
+            http_request.method == "GET"
+            own_resource
+          }
+
+          allow {
+            http_request.method == "PUT"
+            own_resource
+          }
+
+          allow {
+            http_request.method == "DELETE"
+            own_resource
+          }
+
+          allow {
+            http_request.method == "GET"
+            path = ["pets", "stats"]
+            is_admin
+          }
+
+          own_resource {
+            some petid
+            path = ["pets", petid]
+            subject := object.get(identity, "sub", object.get(identity, "username", ""))
+            subject == object.get(resource, "owner", "")
+          }
+
+          is_admin {
+            identity.realm_access.roles[_] == "admin"
+          }
+    - jwt:
+        enabled: false
+        match:
+          http:
+            path: '/api/*'
+        claim:
+          aud: api
