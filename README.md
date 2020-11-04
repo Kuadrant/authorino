@@ -257,28 +257,8 @@ Usually the order of deployment goes as follows:
 
 ## Check the examples and try it out
 
-Try the [example](examples) on your Docker environment.
-
-#### Requirements
-
-1. Docker
-
-#### 1. Clone the repo
-
-Start by cloning the repo:
-
-```shell
-git clone git@github.com:3scale/authorino.git
-```
-
-#### 2. Run the services
-
-```shell
-cd authorino/examples
-docker-compose up --build -d
-```
-
-You'll get the following components up and running:
+Try the [example](examples) on your Docker environment. You'll get the following components out of the box with our
+docker-compose:
 
 - **Echo API (upstream)**<br/>
     Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
@@ -294,6 +274,21 @@ You'll get the following components up and running:
     Available users:<br/>
     - john/p (member)
     - jane/p (admin)
+
+#### 1. Clone the repo
+
+Start by cloning the repo:
+
+```shell
+git clone git@github.com:3scale/authorino.git
+```
+
+#### 2. Run the services
+
+```shell
+cd authorino/examples
+docker-compose up --build -d
+```
 
 #### 3. Try out with John (member)
 ```shell
