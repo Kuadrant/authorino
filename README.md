@@ -6,6 +6,8 @@ gRPC protocol. It adds protection to your cloud-native APIs with:
 - Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
 
+Authorino complies with the [3scale Ostia architecture](https://github.com/3scale/ostia).
+
 **Current stage:** Proof of Concept
 
 ## How it works
@@ -60,7 +62,7 @@ Authorino is deployed including configuration for steps 3, 4 and 5, for one or m
 2. The Envoy proxy establishes fast gRPC connection with _Authorino_ carrying data of the HTTP request
 3. Authorino verifies the identity of the the original requestor, where at least one authentication method/provider should match
 4. Authorino integrates external sources to add metadata to the authorization payload, such as user info, attributes of the requested resource and payload-mutating web hooks
-5. Authorino dispatches authorization policy evaluation to one or more configured authorization services
+5. Authorino dispatches authorization policy evaluation to one or more configured Policy Decision Points (PDP)
 6. Authorino and Envoy settle the authorization protocol with either a `200 OK`, `403 Forbidden` or `404 Not found` response
 7. If authorized, Envoy redirects to the requested _Upstream_
 8. The Upstream serves the requested resource
@@ -95,12 +97,12 @@ user credentials, permissions, revocations, etc.
 | - Revoked access tokens                      | Planned     |
 | - Repeated requests                          | In analysis |
 
-#### OpenID Connect (OIDC)
+### OpenID Connect (OIDC)
 Authorino automatically discovers OIDC configurations for the registered issuers and verifies authorization JSON Web
 Tokens (JWTs) provided by the API consumers on every request.
 
-Authorino also automatically fetches the JSON Web Key Sets (JWKS) used to verify the JWT, matching the `kid` (easy key
-rotation).
+Authorino also automatically fetches the JSON Web Key Sets (JWKS) used to verify the JWT, matching the `kid` – i.e.
+support to easy key rotation.
 
 <!--
   Authorino -> "OIDC Issuer" : OIDC discovery
@@ -138,10 +140,10 @@ rotation).
      └─────────┘              └───────────┘
 ```
 
-#### OPA
+### OPA
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and
 add them as part of the configuration of your protected APIs. Authorino will keep track of changes to the policies and
-automatically register them the OPA server.
+automatically register them to the OPA server.
 
 <!--
 Authorino -> OPA : Register policy
@@ -186,50 +188,17 @@ access control over resources of the API management system in the same fashion t
 
 To use Authorino to protect your APIs with OIDC and OPA, please consider the following requirements and deployment options.
 
-#### Requirements
+### Requirements
 
-1. At least one upstream API (i.e., the one API you want to protect)
-2. [Envoy](https://www.envoyproxy.io) proxy managing the HTTP connections to the upstream service and with the [External Authorization Filter](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) configured pointing to Authorino (default port: 50051).
+1. At least one upstream API (i.e., the API you want to protect)
+2. [Envoy](https://www.envoyproxy.io) proxy managing the HTTP connections to the upstream API and configured with the [External Authorization Filter](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) pointing to Authorino (default port: 50051).
 3. For OpenID Connect, an authority that can issue JWTs
 4. OPA server (default port: 8181)
 
-#### Deploy Authorino on Docker
+### Configuring Authorino
 
-```
-docker run -v './path/to/config.yml:/usr/src/app/config.yml' -p '50051:50051' 3scale/authorino:latest
-```
-
-#### Deploy Authorino on a Kubernetes cluster
-
-Please check the [example](examples/openshift), where Authorino is deployed with an OPA sidecar.
-
-To build your proper Authorino config file, please refer to the instructions in the next section. For deployment
-to Kubernetes, we recommend creating a `ConfigMap` (example available [here](examples/openshift/configmap.yaml)).
-Follow by creating the Authorino `Deployment` and `Service`.
-
-Usually the order of deployment goes as follows:
-1. Upstream API(s)
-2. Policy Decision service (e.g. OPA) – unless when deployed as an Authorino sidecard, such as in the example provided
-3. Authorino
-    - `ConfigMap`
-    - `Deployment`
-    - `Service`
-4. Envoy
-    - `ConfigMap`
-    - `Deployment`
-    - `Service`
-    - `Ingress` (and [ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)) or Openshift `Route`
-
-#### Configuring Authorino
-
-Authorino configuration is one YAML file and a couple of environment variables:
-
-|          |                                                                                         |
-| -------- | --------------------------------------------------------------------------------------- |
-| `CONFIG` | Path to the Authorino YAML config                                                       |
-| `PORT`   | TCP Port that Authorino will listen for gRPC call from the Envoy proxy (default: 50051) |
-
-The structure of the YAML config is something like the following:
+Authorino configuration is one YAML file and a couple of environment variables. The structure of the YAML config is
+something like the following:
 
 ```yaml
 <upstream-host>:<port>:
@@ -242,6 +211,16 @@ The structure of the YAML config is something like the following:
   ...
 ```
 
+A more concrete example of Authorino's `config.yml` file can be found [here](examples/config.yml).
+
+And here's the list of all supported environment variables:
+
+|             |                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| `CONFIG`    | Path to the Authorino YAML config file                                                                           |
+| `PORT`      | TCP Port that Authorino will listen for gRPC call from the Envoy proxy (default: 50051)                          |
+| `LOG_LEVEL` | Ruby log level (default: info, [ref](https://ruby-doc.org/stdlib-2.7.1/libdoc/logger/rdoc/Logger/Severity.html)) |
+
 #### Inline Rego policies
 
 For the inline Rego policies in your OPA authorization config, the following objects are available in every document:
@@ -250,6 +229,31 @@ For the inline Rego policies in your OPA authorization config, the following obj
 - `metadata`
 - `resource` (soon)
 - `path` (Array)
+
+### Deploy on Docker
+
+```
+docker run -v './path/to/config.yml:/usr/src/app/config.yml' -p '50051:50051' 3scale/authorino:latest
+```
+
+### Deploy on a Kubernetes cluster
+
+For deployment to Kubernetes, we recommend storing Authorino's `config.yml` in a `ConfigMap` (see example [here](examples/openshift/configmap.yaml)).
+Follow by creating the Authorino `Deployment` and `Service`.
+
+The entire set of YAMLs exemplifying Authorino deployed to Kubernetes with an OPA PDP sidecar can be found [here](examples/openshift).
+Usually the order of deployment goes as follows:
+1. Upstream API(s)
+2. Policy Decision service (e.g. OPA) – unless when deployed as an Authorino sidecard, such as in the example provided
+3. Authorino
+    - `ConfigMap`
+    - `Deployment`
+    - `Service`
+4. Envoy
+    - `ConfigMap`
+    - `Deployment`
+    - `Service`
+    - `Ingress` (and [ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)) or Openshift `Route`
 
 ## Check the examples and try it out
 
