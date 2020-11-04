@@ -1,4 +1,4 @@
-upstream:3000:
+echo-api:3000:
   enabled: true
 
   identity:

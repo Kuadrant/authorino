@@ -77,7 +77,7 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: upstream
+                address: echo-api
                 port_value: 3000
 
 admin:

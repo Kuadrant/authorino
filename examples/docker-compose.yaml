@@ -1,16 +1,16 @@
 version: "3.7"
 services:
 
-  upstream:
+  echo-api:
     build:
-      context: upstream
+      context: echo-api
       dockerfile: Dockerfile
     environment:
       PORT: 3000
     networks:
       envoymesh:
         aliases:
-          - upstream
+          - echo-api
     expose:
       - "3000"
 

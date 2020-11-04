@@ -276,8 +276,8 @@ docker-compose up --build -d
 
 You'll get the following components up and running:
 
-- **Upstream app**
-    Just a simple rack application that echos back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
+- **Echo API (upstream)**
+    Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Envoy proxy**
     Configured w/ the http filters ext_authz and ratelimit.
 - **Authorino**
@@ -295,16 +295,16 @@ You'll get the following components up and running:
 ```shell
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: upstream:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v        # 200 OK
-curl -H 'Host: upstream:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/stats -v  # 403 Forbidden
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v        # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/stats -v  # 403 Forbidden
 ```
 
 #### 4. Try out with Jane (admin)
 ```shell
 export ACCESS_TOKEN_JANE=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: upstream:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v        # 200 OK
-curl -H 'Host: upstream:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/stats -v  # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v        # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/stats -v  # 200 OK
 ```
 
 #### 5. Shut down and clean up
