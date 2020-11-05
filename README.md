@@ -140,7 +140,7 @@ support to easy key rotation.
      └─────────┘              └───────────┘
 ```
 
-#### OPA
+#### Open Policy Agent (OPA)
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and
 add them as part of the configuration of your protected APIs. Authorino will keep track of changes to the policies and
 automatically register them to the OPA server.
@@ -238,13 +238,13 @@ docker run -v './path/to/config.yml:/usr/src/app/config.yml' -p '50051:50051' 3s
 
 ### Deploy on a Kubernetes cluster
 
-For deployment to Kubernetes, we recommend storing Authorino's `config.yml` in a `ConfigMap` (see example [here](examples/openshift/configmap.yaml)).
-Follow by creating the Authorino `Deployment` and `Service`.
+A set of YAMLs exemplifying Authorino deployed to Kubernetes with an OPA PDP sidecar can be found [here](examples/openshift).
+We recommend storing Authorino's `config.yml` in a `ConfigMap` ([example](examples/openshift/configmap.yaml)).
+Follow by creating Authorino's `Deployment` and `Service`.
 
-The entire set of YAMLs exemplifying Authorino deployed to Kubernetes with an OPA PDP sidecar can be found [here](examples/openshift).
-Usually the order of deployment goes as follows:
+Usually the entire order of deployment goes as follows:
 1. Upstream API(s)
-2. Policy Decision service (e.g. OPA) – unless when deployed as an Authorino sidecard, such as in the example provided
+2. Policy Decision Point (PDP) service (e.g. OPA server) – can be deployed as an Authorino sidecard as well, like in the example provided
 3. Authorino
     - `ConfigMap`
     - `Deployment`
