@@ -5,8 +5,9 @@ require 'pathname'
 
 root = Pathname(__dir__).expand_path.dirname
 
-$LOAD_PATH << root.join('lib/grpc')
-$LOAD_PATH << root.join('src')
+%w[lib lib/grpc src].each do |path|
+  $LOAD_PATH << root.join(path)
+end
 
 Module.new do
   def file_fixture(filename)

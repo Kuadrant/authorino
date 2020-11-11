@@ -83,7 +83,7 @@ user credentials, permissions, revocations, etc.
 | - mTLS                                       | Planned     |
 | Ad-hoc metadata                                            |
 | - OIDC user info                             | PoC         |
-| - Resource attributes                        | Planned     |
+| - UMA-protected resource attributes          | PoC         |
 | - Web hooks                                  | In analysis |
 | Authorization services                                     |
 | - OPA inline Rego policies                   | PoC         |
@@ -118,15 +118,13 @@ support to easy key rotation.
      └────┬────┘              └─────┬─────┘
           │     OIDC discovery      │
           │────────────────────────>│
-          │                         │
-          │   Well-Known config     │
-          │<────────────────────────│
+          │    Well-Known config    │
+ (cache)  │<────────────────────────│
           │                         │
           │     Req OIDC certs      │
           │────────────────────────>│
-          │                         │
           │          JWKS           │
-          │<────────────────────────│
+ (cache)  │<────────────────────────│
           │                         │
           ────┐                     │
               │ Verify JWT signature│
@@ -140,17 +138,73 @@ support to easy key rotation.
      └─────────┘              └───────────┘
 ```
 
+#### User-Managed Access (UMA)
+User-Managed Access (UMA) is an OAuth-based protocol for resource owners to allow other users to access their resources.
+Since the UMA-compliant server is expected to know about the resources, Authorino includes an client to fetch and add
+ad-hoc resource data to the authorization payload.
+
+This enables the implementation of Attribute-Based Access Control (ABAC) policies using attributes of the resources.
+These attributes can be, e.g., the owner of the resource (say, to match with the requestor identity) or any
+business-level attributes.
+
+<!--
+  Authorino -> "AuthZ server" : UMA Discovery
+  "AuthZ server" -> Authorino : Well-Known config
+  Authorino -> "AuthZ server" : Request PAT
+  "AuthZ server" -> Authorino : PAT
+  Authorino -> "AuthZ server" : Query resources (?uri=path)
+  "AuthZ server" -> Authorino : [...resources]
+  Authorino -> "AuthZ server" : GET resource
+  "AuthZ server" -> Authorino : Resource data
+-->
+```
+     ┌─────────┐                ┌────────────┐
+     │Authorino│                │AuthZ server│
+     └────┬────┘                └─────┬──────┘
+          │       UMA Discovery       │
+          │───────────────────────────>
+          │     Well-Known config     │
+ (cache)  │<───────────────────────────
+          │                           │
+          │        Request PAT        │
+          │───────────────────────────>
+          │            PAT            │
+          │<───────────────────────────
+          │                           │
+          │Query resources (?uri=path)│
+          │───────────────────────────>
+          │      [...resources]       │
+          │<───────────────────────────
+          │                           │
+          │       GET resource        │
+          │───────────────────────────>
+          │       Resource data       │
+          │<───────────────────────────
+     ┌────┴────┐                ┌─────┴──────┐
+     │Authorino│                │AuthZ server│
+     └─────────┘                └────────────┘
+```
+
+It's important to notice that Authorino does NOT manage resources in the UMA-compliant server. As shown in the flow
+above, Authorino's UMA client is only to fetch data about the requested resources from a UMA-compliant server.
+Authorino exchanges client credentials for a Protected API Token (PAT), query for resources whose URI match the path
+of the HTTP requested (as passed to Authorino by the Envoy proxy) and fecthes data of each macthing resource.
+
+The resources data is added as metadata of the authorization payload and passed in the input for the configured
+authorization services (e.g., OPA). All resources returned by the UMA-compliant server in the query by URI are passed
+along. They are available for the authorization services as `input.context.metadata.uma => Array`.
+
 #### Open Policy Agent (OPA)
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and
 add them as part of the configuration of your protected APIs. Authorino will keep track of changes to the policies and
 automatically register them to the OPA server.
 
 <!--
-Authorino -> OPA : Register policy
-OPA -> Authorino
-Authorino -> OPA : Get document with input
-OPA -> OPA : Evaluate policy
-OPA -> Authorino : 200 OK
+  Authorino -> OPA : Register policy
+  OPA -> Authorino : Well-Known config
+  Authorino -> OPA : Get document with input
+  OPA -> OPA : Evaluate policy
+  OPA -> Authorino : 200 OK
 -->
 ```
            ┌─────────┐                 ┌───┐
@@ -224,11 +278,10 @@ And here's the list of all supported environment variables:
 #### Inline Rego policies
 
 For the inline Rego policies in your OPA authorization config, the following objects are available in every document:
-- `http_request`
-- `identity`
-- `metadata`
-- `resource` (soon)
-- `path` (Array)
+- `http_request`: attributes of the HTTP request (e.g., host, path, headers, etc) as passed by Envoy to Authorino
+- `identity`: whatever is resolved from the "identity" section of Authorino config, e.g. a decoded JWT of an OIDC authentication
+- `metadata`: whatever is resolved from the "metadata" section of Authorino config, e.g. OIDC user info, resource data fetched from a UMA-compliant server
+- `path` (Array): just an array of each segment of `http_request.path` to ease writing of rules with comparisson expressions using the requested path.
 
 ### Deploy on Docker
 
@@ -294,16 +347,18 @@ docker-compose up --build -d
 ```shell
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v        # 200 OK
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/stats -v  # 403 Forbidden
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v     # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/1 -v   # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/stats -v    # 403 Forbidden
 ```
 
 #### 4. Try out with Jane (admin)
 ```shell
 export ACCESS_TOKEN_JANE=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v        # 200 OK
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/stats -v  # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v     # 200 OK
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/1 -v   # 403 Forbidden
+curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/stats -v    # 200 OK
 ```
 
 #### 5. Shut down and clean up

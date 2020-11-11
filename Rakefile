@@ -11,12 +11,12 @@ task default: %i[generate start]
 
 desc 'Runs the application'
 task :start do
-  ruby "-Ilib/grpc -Isrc src/main.rb"
+  ruby "-Ilib -Ilib/grpc -Isrc src/main.rb"
 end
 
 desc 'Loads the application source'
 task :app do
-  $LOAD_PATH << 'src' << 'lib/grpc'
+  $LOAD_PATH << 'src' << 'lib' << 'lib/grpc'
   require 'main'
 end
 
@@ -32,6 +32,6 @@ task :test do |_task, test_files|
   files = Dir['test/**/*_test.rb'] if files.empty?
   files.each do |file|
     puts "Running test #{file}"
-    ruby "-Ilib/grpc -Itest -Isrc #{file}"
+    ruby "-Ilib -Ilib/grpc -Itest -Isrc #{file}"
   end
 end

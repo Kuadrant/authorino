@@ -163,7 +163,7 @@ localhost:8000:
 
           allow {
             http_request.method == "GET"
-            path = ["pets", "stats"]
+            path = ["stats"]
             is_admin
           }
 

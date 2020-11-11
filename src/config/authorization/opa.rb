@@ -104,7 +104,6 @@ class Config::Authorization::OPA < Config::Authorization
       import input.context.identity
       import input.context.metadata
 
-      resource = object.get(input.context, "resource", {})
       path = split(trim_left(http_request.path, "/"), "/")
 
       default allow = false

@@ -5,3 +5,4 @@ class Config::Metadata < OpenStruct
 end
 
 require_relative 'metadata/user_info'
+require_relative 'metadata/uma'
