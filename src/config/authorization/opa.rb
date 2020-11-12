@@ -22,6 +22,8 @@ class Config::Authorization::OPA < Config::Authorization
   class RegisterException < StandardError; end
 
   def register!
+    return unless enabled?
+
     auth_request = Net::HTTP::Put.new(policy_uri, 'Content-Type' => 'text/plain')
     auth_request.body = rego_policy
     auth_response = Net::HTTP.start(policy_uri.hostname, policy_uri.port) do |http|
@@ -102,7 +104,6 @@ class Config::Authorization::OPA < Config::Authorization
       import input.context.identity
       import input.context.metadata
 
-      resource = object.get(input.context, "resource", {})
       path = split(trim_left(http_request.path, "/"), "/")
 
       default allow = false

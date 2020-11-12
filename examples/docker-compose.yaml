@@ -37,6 +37,8 @@ services:
     build:
       context: ../
       dockerfile: Dockerfile
+    environment:
+      LOG_LEVEL: debug
     volumes:
       - ./config.yml:/usr/src/app/config.yml
     depends_on:

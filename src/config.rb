@@ -32,12 +32,14 @@ class Config
 
     def build(object)
       name = object.keys.tap { |keys| raise AmbiguousKeysError, keys if keys.size > 1 }.first
-
       const = constants(false).find { |const| const.to_s.downcase == name.to_s.downcase }
-
       const_get(const, false).new(object.fetch(name))
     end
   end
 end
 
+require_relative 'config/discoverable'
 require_relative 'config/service'
+require_relative 'config/identity'
+require_relative 'config/authorization'
+require_relative 'config/metadata'

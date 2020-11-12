@@ -15,7 +15,3 @@ class Config::Service < OpenStruct
     !!enabled
   end
 end
-
-require_relative 'identity'
-require_relative 'authorization'
-require_relative 'metadata'

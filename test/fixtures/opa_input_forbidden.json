@@ -34,7 +34,7 @@
           "id": "8911960713991399467",
           "method": "GET",
           "headers": {
-            ":path": "/pets/stats",
+            ":path": "/stats",
             ":method": "GET",
             "x-request-id": "7a9bc5dd-1672-43ca-a99f-e209b8c725ca",
             ":authority": "localhost:8000",
@@ -43,7 +43,7 @@
             "accept": "*/*",
             "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJQaUVxSGRuUklEUTFSSlVkMC0xdllsM1RVbHp6ZHg0UnVJSlZVMUtwc2dVIn0.eyJleHAiOjE2MDM3MjQ0MzMsImlhdCI6MTYwMzcyNDEzMywianRpIjoiMDgwYTMwMTQtZjdkOC00M2RmLWFlZmMtNDc3NDcwNDE2NTQ5IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL2F1dGgvcmVhbG1zL3Rlc3QiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiODg4NTZlNWQtMGEzOS00YzE4LTljYjktMWM2NjJlYWFhMDgwIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoib3N0aWEiLCJzZXNzaW9uX3N0YXRlIjoiMjhjNTljMDUtZDBjOC00YWZjLWI4OWYtZDY5YmEyOGVhOTU5IiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJjbGllbnRJZCI6Im9zdGlhIiwiY2xpZW50SG9zdCI6IjE3Mi4xNy4wLjEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzZXJ2aWNlLWFjY291bnQtb3N0aWEiLCJjbGllbnRBZGRyZXNzIjoiMTcyLjE3LjAuMSJ9.T3CUaX1rqN1qY1wSAeaGxcvc1691cDSWDyKpTXeI1SjsZPMbzPC_pFujxBbk-FTIGlmisr7JEFXuAFsSeHfgoDFQIHoZ9vZP_fhoioLKtBOxB6VgrRT24CDqXi08AGAjPnw86J8Pu2AHwjE0Le1V6b9DXBA155vwaHQ5TbT6XOVHocz7gds3xKsaS_vGVDlFOFArr9F0CsxAilKyfvMeu077025FvB41ICXihumev87qBKhcLrx3ZpQ7A5fNQuMIRttVP_cRP23bayeBBjqq3kfvqgNALveqbH4ymcW-bWsYTEw6gkecm9XS0bOK6tKtdythnE2al0E7uXLwyOedtg"
           },
-          "path": "/pets/stats",
+          "path": "/stats",
           "host": "localhost:8000",
           "scheme": "",
           "query": "",
