@@ -83,29 +83,88 @@ Here's a list of features related to each of Authorino's 3 core steps and suppor
 - "Planned" are the features that are part of the original proposal of Authorino but not yet in PoC.
 - "In analysis" are suggested features that may require extra effort to be implemented and therefore are still being analyzed regarding viability or design.
 
-| Feature                                      | Stage       |
-| -------------------------------------------- | ----------- |
-| **Identity verification**                                  |
-| - OpenID Connect (OIDC)                      | PoC         |
-| - User/passwd                                | Planned     |
-| - mTLS                                       | Planned     |
-| **Ad-hoc authorization metadata**                          |
-| - OIDC user info                             | PoC         |
-| - UMA-protected resource attributes          | PoC         |
-| - Web hooks                                  | In analysis |
-| **Policy enforcement**                                     |
-| - OPA inline Rego policies                   | PoC         |
-| - OPA simple pattern matching                | In analysis |
-| - Keycloak (UMA-compliant Authorization API) | In analysis |
-| - JWT claims                                 | Planned     |
-| **Caching**                                                |
-| - OIDC and UMA configs                       | PoC         |
-| - JSON Web Ket Sets (JWKS)                   | PoC         |
-| - Revoked access tokens                      | Planned     |
-| - Resource data                              | Planned     |
-| - Authorization policies                     | PoC         |
-| - Repeated requests                          | In analysis |
-| **Multitenancy (multiple upstreams)**        | PoC         |
+<table>
+  <thead>
+    <tr>
+      <th colspan="2">Feature</th>
+      <th>Stage</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="3">Identity verification</td>
+      <td>OpenID Connect (OIDC)</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>User/passwd</td>
+      <td>Planned</td>
+    </tr>
+    <tr>
+      <td>mTLS</td>
+      <td>Planned</td>
+    </tr>
+    <tr>
+      <td rowspan="3">Ad-hoc authorization metadata</td>
+      <td>OIDC user info</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>UMA-protected resource attributes</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>Web hooks</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
+      <td rowspan="4">Policy enforcement</td>
+      <td>OPA inline Rego policies</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>OPA simple pattern matching</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
+      <td>Keycloak (UMA-compliant Authorization API)</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
+      <td>JWT claims</td>
+      <td>Planned</td>
+    </tr>
+    <tr>
+      <td rowspan="6">Caching</td>
+      <td>OIDC and UMA configs</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>JSON Web Ket Sets (JWKS)</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>Revoked access tokens</td>
+      <td>Planned</td>
+    </tr>
+    <tr>
+      <td>Resource data</td>
+      <td>Planned</td>
+    </tr>
+    <tr>
+      <td>Authorization policies</td>
+      <td>PoC</td>
+    </tr>
+    <tr>
+      <td>Repeated requests</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
+      <td colspan="2">Multitenancy (multiple upstreams)</td>
+      <td>PoC</td>
+    </tr>
+  </tbody>
+</table>
 
 #### OpenID Connect (OIDC)
 
