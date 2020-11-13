@@ -374,7 +374,7 @@ Try the [example](examples) on your Docker environment. You'll get the following
 - **Echo API (upstream)**<br/>
     Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Envoy proxy**<br/>
-    Configured w/ the http filters ext_authz and ratelimit.
+    Configured w/ the ext_authz http filter.
 - **Authorino**<br/>
     The external AuthN/AuthZ proxy with [this configuration](examples/config.yml) preloaded.
 - **OPA service**<br/>
