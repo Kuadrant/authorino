@@ -1,6 +1,6 @@
 # Welcome to Authorino!
 
-Authorino is an AuthN/AuthZ proxy that implements [Envoy’s external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol. It adds protection to your cloud-native APIs with:
+Authorino is an AuthN/AuthZ broker that implements [Envoy’s external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol. It adds protection to your cloud-native APIs with:
 - User authentication (OIDC, user/passwd, mTLS)
 - Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
@@ -376,7 +376,7 @@ Try the [example](examples) on your Docker environment. You'll get the following
 - **Envoy proxy**<br/>
     Configured w/ the ext_authz http filter.
 - **Authorino**<br/>
-    The external AuthN/AuthZ proxy with [this configuration](examples/config.yml) preloaded.
+    The AuthN/AuthZ broker with [this configuration](examples/config.yml) preloaded.
 - **OPA service**<br/>
     An actual Policy Decision Point (PDP) configured in the architecture.
 - **Keycloak**<br/>
