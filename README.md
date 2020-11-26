@@ -264,7 +264,7 @@ You can model authorization policies in [Rego language](https://www.openpolicyag
 
 <!--
   Authorino -> OPA : Register policy
-  OPA -> Authorino : Well-Known config
+  OPA -> Authorino
   Authorino -> OPA : Get document with input
   OPA -> OPA : Evaluate policy
   OPA -> Authorino : 200 OK
