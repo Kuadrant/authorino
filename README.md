@@ -92,17 +92,21 @@ Here's a list of features related to each of Authorino's 3 core steps and suppor
   </thead>
   <tbody>
     <tr>
-      <td rowspan="3">Identity verification</td>
+      <td rowspan="4">Identity verification</td>
       <td>OpenID Connect (OIDC)</td>
       <td>PoC</td>
     </tr>
     <tr>
-      <td>User/passwd</td>
+      <td>Basic auth (user/passwd)</td>
       <td>Planned</td>
     </tr>
     <tr>
       <td>mTLS</td>
       <td>Planned</td>
+    </tr>
+    <tr>
+      <td>HMAC</td>
+      <td>In analysis</td>
     </tr>
     <tr>
       <td rowspan="3">Ad-hoc authorization metadata</td>
@@ -264,7 +268,7 @@ You can model authorization policies in [Rego language](https://www.openpolicyag
 
 <!--
   Authorino -> OPA : Register policy
-  OPA -> Authorino : Well-Known config
+  OPA -> Authorino
   Authorino -> OPA : Get document with input
   OPA -> OPA : Evaluate policy
   OPA -> Authorino : 200 OK
