@@ -407,7 +407,7 @@ Try the [example](examples) on your Docker environment. You'll get the following
 Start by cloning the repo:
 
 ```shell
-git clone git@github.com:3scale/authorino.git
+git clone git@github.com:3scale-labs/authorino.git
 ```
 
 #### 2. Run the services

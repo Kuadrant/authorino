@@ -18,5 +18,5 @@ The embryo of Authorino as proposed for the 3scale Ostia architecture.
 **Portafly + Keycloak** · https://github.com/didierofrivia/portafly<br/>
 Demo: using Keycloak to authenticate and authorize requests between a SPA and a node.js resource server.
 
-**Envoy JWT plugin** · https://github.com/3scale/gateway-ng-controller/pull/28<br/>
+**Envoy JWT plugin** · https://github.com/3scale-labs/gateway-ng-controller/pull/28<br/>
 Envoy proxy extension to implement plug-in OIDC-based authentication with JSON Web Tokens (JWT).
