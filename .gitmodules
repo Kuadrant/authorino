@@ -1,12 +1,12 @@
 [submodule "envoy-xds-grpc/data-plane-api"]
-	path = vendor/envoy-xds-grpc/data-plane-api
+	path = legacy/vendor/envoy-xds-grpc/data-plane-api
 	url = https://github.com/envoyproxy/data-plane-api.git
 [submodule "envoy-xds-grpc/googleapis"]
-	path = vendor/envoy-xds-grpc/googleapis
+	path = legacy/vendor/envoy-xds-grpc/googleapis
 	url = https://github.com/googleapis/googleapis.git
 [submodule "envoy-xds-grpc/protoc-gen-validate"]
-	path = vendor/envoy-xds-grpc/protoc-gen-validate
+	path = legacy/vendor/envoy-xds-grpc/protoc-gen-validate
 	url = https://github.com/lyft/protoc-gen-validate.git
 [submodule "envoy-xds-grpc/udpa"]
-	path = vendor/envoy-xds-grpc/udpa
+	path = legacy/vendor/envoy-xds-grpc/udpa
 	url = https://github.com/cncf/udpa.git

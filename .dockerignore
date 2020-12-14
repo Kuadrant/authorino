@@ -1,9 +1,8 @@
 .git
 .gitignore
 .gitmodules
-.ruby-version
 .dockerignore
-tmp
 examples
+legacy
 pocs
-test
+tmp

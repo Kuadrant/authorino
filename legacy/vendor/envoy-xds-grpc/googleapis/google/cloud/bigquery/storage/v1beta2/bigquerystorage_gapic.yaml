@@ -1,0 +1,20 @@
+type: com.google.api.codegen.ConfigProto
+config_schema_version: 2.0.0
+# The settings of generated code in a specific language.
+language_settings:
+  java:
+    package_name: com.google.cloud.bigquery.storage.v1beta2
+    interface_names:
+      google.cloud.bigquery.storage.v1beta2.BigQueryRead: BaseBigQueryRead
+  python:
+    package_name: google.cloud.bigquery_storage_v1beta2.gapic
+  go:
+    package_name: cloud.google.com/go/bigquery/storage/apiv1beta2
+  csharp:
+    package_name: Google.Cloud.Bigquery.Storage.V1beta2
+  ruby:
+    package_name: Google::Cloud::Bigquery::Storage::V1beta2
+  php:
+    package_name: Google\Cloud\Bigquery\Storage\V1beta2
+  nodejs:
+    package_name: storage.v1beta2

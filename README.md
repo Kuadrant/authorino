@@ -338,7 +338,6 @@ And here's the list of supported environment variables when running Authorino:
 | ----------- | ----------------------------------------------------------------------------------------------------- |
 | `CONFIG`    | Path to the Authorino YAML config file                                                                |
 | `PORT`      | TCP Port that Authorino will listen for gRPC call from the Envoy proxy (default: 50051)               |
-| `LOG_LEVEL` | Ruby log level (default: info, [ref](https://ruby-doc.org/stdlib-2.7.1/libdoc/logger/rdoc/Logger/Severity.html)) |
 
 #### Inline Rego policies
 
@@ -381,8 +380,6 @@ Try the [example](examples) on your Docker environment. You'll get the following
     Configured w/ the ext_authz http filter.
 - **Authorino**<br/>
     The AuthN/AuthZ broker with [this configuration](examples/config.yml) preloaded.
-- **OPA service**<br/>
-    An actual Policy Decision Point (PDP) configured in the architecture.
 - **Keycloak**<br/>
     To issue OIDC access tokens and to provide ad-hoc resource data for the authorization payload.<br/>
     - Admin console: http://localhost:8080/auth/admin (admin/p)

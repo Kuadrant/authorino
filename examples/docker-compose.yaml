@@ -40,32 +40,13 @@ services:
     environment:
       LOG_LEVEL: debug
     volumes:
-      - ./config.yml:/usr/src/app/config.yml
-    depends_on:
-      - opa
+      - ./config.yml:/config.yml
     networks:
       envoymesh:
         aliases:
           - authorino
     expose:
       - "50051"
-
-  opa:
-    image: openpolicyagent/opa
-    ports:
-      - "8181:8181"
-    expose:
-      - "8181"
-    command:
-      - run
-      - --server
-      - --log-level=debug
-      - --log-format=json-pretty
-      - --set=decision_logs.console=true
-    networks:
-      envoymesh:
-        aliases:
-          - opa
 
   keycloak:
     image: jboss/keycloak
