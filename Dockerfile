@@ -1,14 +1,21 @@
-FROM ruby:2.6
+FROM golang:1.13 as build
 
-RUN gem update bundler \
- && bundle config --global frozen 1
+ENV GO111MODULE=on
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY Gemfile Gemfile.lock ./
-RUN bundle install
+COPY go.mod .
+COPY go.sum .
+
+RUN go mod download
 
 COPY . .
 
-ENTRYPOINT [ "sh", "-c" ]
-CMD ["exec rake start"]
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o authorino main.go
+
+FROM gcr.io/distroless/base
+COPY --from=build /app/authorino /
+
+EXPOSE 50051
+
+ENTRYPOINT ["/authorino"]

@@ -1,7 +1,7 @@
 # Welcome to Authorino!
 
 Authorino is an AuthN/AuthZ broker that implements [Envoy’s external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol. It adds protection to your cloud-native APIs with:
-- User authentication (OIDC, user/passwd, mTLS)
+- User authentication (OIDC, mTLS, HMAC, API key)
 - Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
 
@@ -75,7 +75,7 @@ _Identity verification_ and _Ad-hoc authorization metadata_ steps add info for t
 
 ## Features
 
-Once ready, Authorino will support at least 3 different authentication methods (i.e., OIDC, user/passwd and mTLS), plus ad-hoc additions to the authorization payload (e.g., user info, resource metadata, web hooks), and combination of multiple authorization services (JWT claims, OPA, Keycloak). Authorino will also handle caching of user credentials, permissions, revocations.
+Once ready, Authorino will support at least 4 different authentication methods (i.e., OIDC, mTLS, HMAC, and API key), plus ad-hoc additions to the authorization payload (e.g., user info, resource metadata, web hooks), and combination of multiple authorization services or built-in modules (JWT claimpattern matching, OPA, Keycloak). Authorino will also handle caching of user credentials, permissions, revocations.
 
 Here's a list of features related to each of Authorino's 3 core steps and supporting features.
 
@@ -97,16 +97,16 @@ Here's a list of features related to each of Authorino's 3 core steps and suppor
       <td>PoC</td>
     </tr>
     <tr>
-      <td>Basic auth (user/passwd)</td>
-      <td>Planned</td>
-    </tr>
-    <tr>
       <td>mTLS</td>
       <td>Planned</td>
     </tr>
     <tr>
       <td>HMAC</td>
-      <td>In analysis</td>
+      <td>Planned</td>
+    </tr>
+    <tr>
+      <td>API key</td>
+      <td>Planned</td>
     </tr>
     <tr>
       <td rowspan="3">Ad-hoc authorization metadata</td>
@@ -127,16 +127,12 @@ Here's a list of features related to each of Authorino's 3 core steps and suppor
       <td>PoC</td>
     </tr>
     <tr>
-      <td>OPA simple pattern matching</td>
-      <td>In analysis</td>
+      <td>Pattern matching rules (e.g. JWT claims)</td>
+      <td>Planned</td>
     </tr>
     <tr>
       <td>Keycloak (UMA-compliant Authorization API)</td>
       <td>In analysis</td>
-    </tr>
-    <tr>
-      <td>JWT claims</td>
-      <td>Planned</td>
     </tr>
     <tr>
       <td rowspan="6">Caching</td>
@@ -264,19 +260,19 @@ The resources data is added as metadata of the authorization payload and passed 
 
 #### Open Policy Agent (OPA)
 
-You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the configuration of your protected APIs. Authorino will keep track of changes to the policies and automatically register them to the OPA server.
+You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the configuration of your protected APIs. Authorino will keep track of changes to the policies and automatically register them to the built-in OPA module.
 
 <!--
-  Authorino -> OPA : Register policy
-  OPA -> Authorino
-  Authorino -> OPA : Get document with input
-  OPA -> OPA : Evaluate policy
-  OPA -> Authorino : 200 OK
+  Authorino -> "Built-in OPA" : Register policy
+  "Built-in OPA" -> Authorino
+  Authorino -> "Built-in OPA" : Get document with input
+  "Built-in OPA" -> "Built-in OPA" : Evaluate policy
+  "Built-in OPA" -> Authorino : OK/NOK
 -->
 ```
-           ┌─────────┐                 ┌───┐
-           │Authorino│                 │OPA│
-           └────┬────┘                 └─┬─┘
+           ┌─────────┐            ┌────────────┐
+           │Authorino│            │Built-in OPA│
+           └────┬────┘            └──────┬─────┘
                 ·                        ·
 Boot-time:      │    Register policy     │
                 │───────────────────────>│
@@ -290,11 +286,11 @@ Request-time:   │Get document with input │
                 │                            │ Evaluate policy
                 │                        <───┘
                 │                        │
-                │        200 OK          │
+                │         OK/NOK         │
                 │<───────────────────────│
-           ┌────┴────┐                 ┌─┴─┐
-           │Authorino│                 │OPA│
-           └─────────┘                 └───┘
+           ┌────┴────┐            ┌──────┴─────┐
+           │Authorino│            │Built-in OPA│
+           └─────────┘            └────────────┘
 ```
 
 ## Usage
@@ -338,7 +334,6 @@ And here's the list of supported environment variables when running Authorino:
 | ----------- | ----------------------------------------------------------------------------------------------------- |
 | `CONFIG`    | Path to the Authorino YAML config file                                                                |
 | `PORT`      | TCP Port that Authorino will listen for gRPC call from the Envoy proxy (default: 50051)               |
-| `LOG_LEVEL` | Ruby log level (default: info, [ref](https://ruby-doc.org/stdlib-2.7.1/libdoc/logger/rdoc/Logger/Severity.html)) |
 
 #### Inline Rego policies
 
@@ -381,8 +376,6 @@ Try the [example](examples) on your Docker environment. You'll get the following
     Configured w/ the ext_authz http filter.
 - **Authorino**<br/>
     The AuthN/AuthZ broker with [this configuration](examples/config.yml) preloaded.
-- **OPA service**<br/>
-    An actual Policy Decision Point (PDP) configured in the architecture.
 - **Keycloak**<br/>
     To issue OIDC access tokens and to provide ad-hoc resource data for the authorization payload.<br/>
     - Admin console: http://localhost:8080/auth/admin (admin/p)
