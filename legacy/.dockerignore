@@ -1,9 +1,0 @@
-.git
-.gitignore
-.gitmodules
-.ruby-version
-.dockerignore
-tmp
-examples
-pocs
-test
