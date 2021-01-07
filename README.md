@@ -5,7 +5,7 @@ Authorino is an AuthN/AuthZ broker that implements [Envoy’s external authoriza
 - Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
 
-Authorino complies with the [3scale Ostia architecture](https://github.com/3scale/ostia).
+Authorino complies with the [3scale Ostia architecture](https://github.com/3scale-labs/ostia).
 
 **Current stage:** Proof of Concept
 
