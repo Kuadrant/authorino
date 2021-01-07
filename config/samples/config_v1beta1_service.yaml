@@ -1,0 +1,62 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: echo-api
+  namespace: default
+spec:
+  hosts:
+    - echo-api2.svc.cluster.local
+    - echo-api.svc.cluster.local
+    - echo-api.authorino.apps.dev-eng-ocp4-5.dev.3sca.net
+  identity:
+    - name: oidc-authn
+      oidc:
+        endpoint: http://keycloak-discovery.redhat-sso.svc.cluster.local:8080/auth/realms/ostia
+  metadata:
+    - userInfo:
+        identitySource: oidc-authn
+        credentialsRef:
+          name: test
+    - uma:
+        identitySource: oidc-authn
+        credentialsRef:
+          name: test
+  authorization:
+    - OPAPolicy:
+        uuid: "cacafuti"
+        endpoint: http://opa:8181
+        inlineRego: |
+          allow {
+            http_request.method == "GET"
+            path = ["pets"]
+          }
+
+          allow {
+            http_request.method == "GET"
+            own_resource
+          }
+
+          allow {
+            http_request.method == "GET"
+            path = ["stats"]
+            is_admin
+          }
+
+          own_resource {
+            some petid
+            path = ["pets", petid]
+            resource := object.get(metadata, "uma", [])[0]
+            owner := object.get(object.get(resource, "owner", {}), "id", "")
+            subject := object.get(identity, "sub", object.get(identity, "username", ""))
+            owner == subject
+          }
+
+          is_admin {
+            identity.realm_access.roles[_] == "admin"
+          }
+    - JWTClaimSet:
+        match:
+          http:
+            path: "/api/*"
+        claim:
+          aud: "api"
