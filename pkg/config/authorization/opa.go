@@ -1,33 +1,37 @@
 package authorization
 
 import (
-	"fmt"
 	"context"
-	"log"
 	"encoding/json"
+	"fmt"
+	"log"
 
-	"github.com/3scale/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/internal"
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"github.com/open-policy-agent/opa/rego"
 )
 
 type OPA struct {
-	Enabled bool `yaml:"enabled,omitempty"`
-	UUID string `yaml:"uuid"`
-	Rego string `yaml:"rego"`
+	Enabled    bool   `yaml:"enabled,omitempty"`
+	UUID       string `yaml:"uuid"`
+	Rego       string `yaml:"rego"`
 	opaContext context.Context
-	policy *rego.PreparedEvalQuery
+	policy     *rego.PreparedEvalQuery
 }
 
 func (self *OPA) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type Alias OPA
-	a := Alias{ Enabled: true }
+	a := Alias{Enabled: true}
 	err := unmarshal(&a)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	*self = OPA(a)
 	err = self.prepare()
-	if err != nil { return fmt.Errorf("opa: failed to prepare inline Rego policy %v", self.policyName())	}
+	if err != nil {
+		return fmt.Errorf("opa: failed to prepare inline Rego policy %v", self.policyName())
+	}
 	return nil
 }
 
@@ -47,9 +51,11 @@ func (self *OPA) prepare() error {
 	self.opaContext = context.TODO()
 
 	regoQuery := rego.Query("allowed = data." + self.policyName() + ".allow")
-	regoModule := rego.Module(self.UUID + ".rego", regoPolicy)
+	regoModule := rego.Module(self.UUID+".rego", regoPolicy)
 	p, err := rego.New(regoQuery, regoModule).PrepareForEval(self.opaContext)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	self.policy = &p
 
@@ -69,12 +75,16 @@ type OPAInput struct {
 
 func (self *OPAInput) ToJSON() ([]byte, error) {
 	res, err := json.Marshal(&self)
-  if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return res, nil
 }
 
-func (self *OPA) Call(ctx internal.AuthContext) (bool, error)  {
-	if !self.Enabled { return true, nil }
+func (self *OPA) Call(ctx internal.AuthContext) (bool, error) {
+	if !self.Enabled {
+		return true, nil
+	}
 
 	contextData := make(map[string]interface{})
 	contextData["identity"] = ctx.GetIdentity()
@@ -86,13 +96,15 @@ func (self *OPA) Call(ctx internal.AuthContext) (bool, error)  {
 	}
 
 	inputJSON, err := input.ToJSON()
-	if err != nil { return false, err }
+	if err != nil {
+		return false, err
+	}
 	log.Printf("[OPA] input: %v", string(inputJSON))
 
 	results, err := self.policy.Eval(self.opaContext, rego.EvalInput(input))
 
 	if err != nil {
-    return false, err
+		return false, err
 	} else if len(results) == 0 {
 		return false, fmt.Errorf("opa: invalid response for policy %v", self.policyName())
 	} else if allowed := results[0].Bindings["allowed"].(bool); !allowed {
