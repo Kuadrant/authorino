@@ -351,7 +351,7 @@ docker run -v './path/to/config.yml:/usr/src/app/config.yml' -p '50051:50051' 3s
 
 ### Deploy on a Kubernetes cluster
 
-A set of YAMLs exemplifying Authorino deployed to Kubernetes with an OPA PDP sidecar can be found [here](examples/openshift). We recommend storing Authorino's `config.yml` in a `ConfigMap` ([example](examples/openshift/configmap.yaml)). Follow by creating Authorino's `Deployment` and `Service`.
+A set of YAMLs exemplifying Authorino deployed to Kubernetes can be found [here](examples/openshift). We recommend storing Authorino's `config.yml` in a `ConfigMap` ([example](examples/openshift/configmap.yaml)). Follow by creating Authorino's `Deployment` and `Service`.
 
 Usually the entire order of deployment goes as follows:
 1. Upstream API(s)

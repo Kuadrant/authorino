@@ -64,7 +64,6 @@ echo-api:3000:
   authorization:
     - opa:
         uuid: 8fa79d93-0f93-4e23-8c2a-666be266cad1
-        endpoint: 'http://opa:8181'
         rego: |
           allow {
             http_request.method == "GET"
