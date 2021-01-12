@@ -141,7 +141,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 				// Solve the secret reference.
 				translatedMetadata = config.MetadataConfig{
-					UMA: authorinoMetadata.UMA{
+					UMA: &authorinoMetadata.UMA{
 						ClientID:     string(secret.Data["clientID"]),
 						ClientSecret: string(secret.Data["clientSecret"]),
 					},
@@ -166,16 +166,11 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 				}
 
 				translatedMetadata = config.MetadataConfig{
-					UserInfo: authorinoMetadata.UserInfo{
+					UserInfo: &authorinoMetadata.UserInfo{
+						OIDC:         metadata.UserInfo.IdentitySource,
 						ClientID:     string(secret.Data["clientID"]),
 						ClientSecret: string(secret.Data["clientSecret"]),
 					},
-				}
-			}
-
-			for _, identity := range identityConfigs {
-				if identity.OIDC != nil && identity.OIDC.Name == metadata.UserInfo.IdentitySource {
-					translatedMetadata.UserInfo.OIDC = identity.OIDC.Endpoint
 				}
 			}
 
@@ -196,12 +191,13 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 		case configv1beta1.AuthorizationOPAPolicy:
 			translatedAuthorization = config.AuthorizationConfig{
-				OPA: authorinoAuthorization.OPA{
+				OPA: &authorinoAuthorization.OPA{
 					Enabled: true,
 					UUID:    authorization.OPAPolicy.UUID,
 					Rego:    authorization.OPAPolicy.InlineRego,
 				},
 			}
+			translatedAuthorization.OPA.Prepare()
 
 		case configv1beta1.AuthorizationJWTClaimSet:
 
@@ -224,7 +220,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			}
 
 			translatedAuthorization = config.AuthorizationConfig{
-				JWT: authorinoAuthorization.JWTClaims{
+				JWT: &authorinoAuthorization.JWTClaims{
 					Enabled: true,
 					// TODO: Try to map the CRD to this or the other way around.
 					Match:  match,
@@ -234,7 +230,6 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", authorization)
-
 		}
 
 		authorizationConfigs = append(authorizationConfigs, translatedAuthorization)
