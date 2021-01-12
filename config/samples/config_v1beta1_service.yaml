@@ -2,28 +2,25 @@ apiVersion: config.authorino.3scale.net/v1beta1
 kind: Service
 metadata:
   name: echo-api
-  namespace: default
 spec:
   hosts:
-    - echo-api2.svc.cluster.local
-    - echo-api.svc.cluster.local
-    - echo-api.authorino.apps.dev-eng-ocp4-5.dev.3sca.net
+    - echo-api
   identity:
-    - name: oidc-authn
+    - name: keycloak
       oidc:
-        endpoint: http://keycloak-discovery.redhat-sso.svc.cluster.local:8080/auth/realms/ostia
+        endpoint: http://keycloak:8080/auth/realms/ostia
   metadata:
     - userInfo:
-        identitySource: oidc-authn
+        identitySource: keycloak
         credentialsRef:
-          name: test
+          name: userinfosecret
     - uma:
-        identitySource: oidc-authn
+        identitySource: keycloak
         credentialsRef:
-          name: test
+          name: umacredentialssecret
   authorization:
     - OPAPolicy:
-        uuid: "cacafuti"
+        uuid: 8fa79d93-0f93-4e23-8c2a-666be266cad1
         endpoint: http://opa:8181
         inlineRego: |
           allow {

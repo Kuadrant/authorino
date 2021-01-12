@@ -5,6 +5,20 @@ metadata:
     control-plane: controller-manager
   name: system
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authorization
+  labels:
+    app: authorino
+spec:
+  selector:
+    app: authorino
+    control-plane: controller-manager
+  ports:
+    - port: 50051
+      protocol: TCP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
