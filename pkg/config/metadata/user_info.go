@@ -18,7 +18,7 @@ type UserInfo struct {
 func (self *UserInfo) Call(ctx internal.AuthContext) (interface{}, error) {
 	// find oidc config and the userinfo endpoint
 	idConfig, _ := ctx.FindIdentityByName(self.OIDC)
-	idConfigStruct := idConfig.(identity.OIDC)
+	idConfigStruct := idConfig.(*identity.OIDC)
 	provider, _ := idConfigStruct.NewProvider(ctx)
 	var providerClaims map[string]interface{}
 	_ = provider.Claims(&providerClaims)

@@ -8,8 +8,8 @@ import (
 )
 
 type MetadataConfig struct {
-	UserInfo metadata.UserInfo `yaml:"userinfo,omitempty"`
-	UMA      metadata.UMA      `yaml:"uma,omitempty"`
+	UserInfo *metadata.UserInfo `yaml:"userinfo,omitempty"`
+	UMA      *metadata.UMA      `yaml:"uma,omitempty"`
 }
 
 func (self *MetadataConfig) Call(ctx internal.AuthContext) (interface{}, error) {
@@ -26,9 +26,9 @@ func (self *MetadataConfig) Call(ctx internal.AuthContext) (interface{}, error) 
 
 func (self *MetadataConfig) GetType() (string, error) {
 	switch {
-	case self.UserInfo != metadata.UserInfo{}:
+	case self.UserInfo != nil:
 		return "userinfo", nil
-	case self.UMA != metadata.UMA{}:
+	case self.UMA != nil:
 		return "uma", nil
 	default:
 		return "", fmt.Errorf("Invalid metadata config")

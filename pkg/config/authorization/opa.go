@@ -28,7 +28,7 @@ func (self *OPA) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	*self = OPA(a)
-	err = self.prepare()
+	err = self.Prepare()
 	if err != nil {
 		return fmt.Errorf("opa: failed to prepare inline Rego policy %v", self.policyName())
 	}
@@ -45,7 +45,7 @@ default allow = false
 %s`
 )
 
-func (self *OPA) prepare() error {
+func (self *OPA) Prepare() error {
 	regoPolicy := fmt.Sprintf(policyTemplate, self.policyName(), self.Rego)
 
 	self.opaContext = context.TODO()
@@ -101,7 +101,8 @@ func (self *OPA) Call(ctx internal.AuthContext) (bool, error) {
 	}
 	log.Printf("[OPA] input: %v", string(inputJSON))
 
-	results, err := self.policy.Eval(self.opaContext, rego.EvalInput(input))
+	evalOption := rego.EvalInput(input)
+	results, err := self.policy.Eval(self.opaContext, evalOption)
 
 	if err != nil {
 		return false, err
