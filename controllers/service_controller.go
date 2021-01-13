@@ -136,6 +136,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 					Name: metadata.UMA.Credentials.Name},
 					secret)
 
+				// TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 				if err != nil {
 					return nil, err
 				}
