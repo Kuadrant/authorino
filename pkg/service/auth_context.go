@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/3scale-labs/authorino/pkg/config"
+	"github.com/3scale/authorino/pkg/config"
+	"github.com/3scale/authorino/pkg/config/internal"
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"golang.org/x/net/context"
@@ -23,50 +24,53 @@ type AuthContext struct {
 	Authorization map[*config.AuthorizationConfig]interface{}
 }
 
+// AuthObjectConfig provides an interface for APIConfig objects that implements a Call method
+type AuthObjectConfig interface {
+	Call(ctx internal.AuthContext) (interface{}, error)
+}
+
+func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, ch chan bool) (interface{}, error) {
+	if ret, err := authObjConfig.Call(authContext); err != nil {
+		return nil, err
+	} else {
+		ch <- true
+		return ret, nil
+	}
+}
+
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (self *AuthContext) Evaluate() error {
-	self.Identity = make(map[*config.IdentityConfig]interface{})
-	self.Metadata = make(map[*config.MetadataConfig]interface{})
-	self.Authorization = make(map[*config.AuthorizationConfig]interface{})
-
 	identityCh, metadataCh, authCh := make(chan bool), make(chan bool), make(chan bool)
 
 	// identity
-
-	for _, c := range self.API.IdentityConfigs {
-		go func() error {
-			if ret, err := c.Call(self); err != nil {
-				return err
-			} else {
-				self.Identity[&c] = ret
-				identityCh <- true
-				return nil
+	for _, config := range self.API.IdentityConfigs {
+		var idAuthObjCfg AuthObjectConfig = &config
+		go func() {
+			if authObj, err := self.getAuthObject(idAuthObjCfg, identityCh); err == nil {
+				self.Identity[&config] = authObj
 			}
 		}()
 	}
 	<-identityCh
 
 	// metadata
-	for _, c := range self.API.MetadataConfigs {
-		go func() error {
-			if ret, err := c.Call(self); err != nil {
-				return err
-			} else {
-				self.Metadata[&c] = ret
-				metadataCh <- true
-				return nil
+	for _, config := range self.API.MetadataConfigs {
+		var idAuthObjCfg AuthObjectConfig = &config
+		go func() {
+			if authObj, err := self.getAuthObject(idAuthObjCfg, identityCh); err == nil {
+				self.Metadata[&config] = authObj
 			}
 		}()
 	}
 	<-metadataCh
 
 	// policy enforcement (authorization)
-	for _, c := range self.API.AuthorizationConfigs {
+	for _, config := range self.API.AuthorizationConfigs {
 		go func() error {
-			if ret, err := c.Call(self); err != nil {
+			if ret, err := config.Call(self); err != nil {
 				return err
 			} else {
-				self.Authorization[&c] = ret
+				self.Authorization[&config] = ret
 				metadataCh <- true
 				return nil
 			}
