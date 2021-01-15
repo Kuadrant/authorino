@@ -66,16 +66,14 @@ func (self *AuthContext) Evaluate() error {
 
 	// policy enforcement (authorization)
 	for _, config := range self.API.AuthorizationConfigs {
-		go func() error {
-			if ret, err := config.Call(self); err != nil {
-				return err
-			} else {
-				self.Authorization[&config] = ret
-				metadataCh <- true
-				return nil
+		var idAuthObjCfg AuthObjectConfig = &config
+		go func() {
+			if authObj, err := self.getAuthObject(idAuthObjCfg, identityCh); err == nil {
+				self.Authorization[&config] = authObj
 			}
 		}()
 	}
+
 	<-authCh
 
 	return nil
