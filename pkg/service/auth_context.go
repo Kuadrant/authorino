@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/3scale/authorino/pkg/config"
 	"github.com/3scale/authorino/pkg/config/internal"
@@ -29,52 +30,56 @@ type AuthObjectConfig interface {
 	Call(ctx internal.AuthContext) (interface{}, error)
 }
 
-func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, ch chan bool) (interface{}, error) {
+func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, wg *sync.WaitGroup) (interface{}, error) {
 	if ret, err := authObjConfig.Call(authContext); err != nil {
 		return nil, err
 	} else {
-		ch <- true
+		wg.Done()
 		return ret, nil
 	}
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (self *AuthContext) Evaluate() error {
-	identityCh, metadataCh, authCh := make(chan bool), make(chan bool), make(chan bool)
 
 	// identity
+	var identityWg sync.WaitGroup
 	for _, config := range self.API.IdentityConfigs {
+		identityWg.Add(1)
 		var idAuthObjCfg AuthObjectConfig = &config
 		go func() {
-			if authObj, err := self.getAuthObject(idAuthObjCfg, identityCh); err == nil {
+			if authObj, err := self.getAuthObject(idAuthObjCfg, &identityWg); err == nil {
 				self.Identity[&config] = authObj
 			}
 		}()
 	}
-	<-identityCh
+	identityWg.Wait()
 
 	// metadata
+	var metadataWg sync.WaitGroup
 	for _, config := range self.API.MetadataConfigs {
+		metadataWg.Add(1)
 		var idAuthObjCfg AuthObjectConfig = &config
 		go func() {
-			if authObj, err := self.getAuthObject(idAuthObjCfg, identityCh); err == nil {
+			if authObj, err := self.getAuthObject(idAuthObjCfg, &metadataWg); err == nil {
 				self.Metadata[&config] = authObj
 			}
 		}()
 	}
-	<-metadataCh
+	metadataWg.Wait()
 
 	// policy enforcement (authorization)
+	var authWg sync.WaitGroup
 	for _, config := range self.API.AuthorizationConfigs {
+		authWg.Add(1)
 		var idAuthObjCfg AuthObjectConfig = &config
 		go func() {
-			if authObj, err := self.getAuthObject(idAuthObjCfg, identityCh); err == nil {
+			if authObj, err := self.getAuthObject(idAuthObjCfg, &authWg); err == nil {
 				self.Authorization[&config] = authObj
 			}
 		}()
 	}
-
-	<-authCh
+	authWg.Wait()
 
 	return nil
 }
