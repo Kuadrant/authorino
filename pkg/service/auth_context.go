@@ -15,43 +15,64 @@ import (
 // authorization policies, and their corresponding results after evaluated
 type AuthContext struct {
 	ParentContext *context.Context
-	Request *auth.CheckRequest
-	API *APIConfig
+	Request       *auth.CheckRequest
+	API           *APIConfig
 
-	Identity map[*config.IdentityConfig] interface{}
-	Metadata map[*config.MetadataConfig] interface{}
-	Authorization map[*config.AuthorizationConfig] interface{}
+	Identity      map[*config.IdentityConfig]interface{}
+	Metadata      map[*config.MetadataConfig]interface{}
+	Authorization map[*config.AuthorizationConfig]interface{}
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (self *AuthContext) Evaluate() error {
-	self.Identity = make(map[*config.IdentityConfig] interface{})
-	self.Metadata = make(map[*config.MetadataConfig] interface{})
-	self.Authorization = make(map[*config.AuthorizationConfig] interface{})
+	self.Identity = make(map[*config.IdentityConfig]interface{})
+	self.Metadata = make(map[*config.MetadataConfig]interface{})
+	self.Authorization = make(map[*config.AuthorizationConfig]interface{})
 
-	// identity (authentication)
-	identityConfigs := self.API.IdentityConfigs
-	for i := range identityConfigs {
-		c := identityConfigs[i]
-		if ret, err := c.Call(self); err != nil { return err } else {
-			self.Identity[&c] = ret
-			break;
-		}
+	identityCh, metadataCh, authCh := make(chan bool), make(chan bool), make(chan bool)
+
+	// identity
+
+	for _, c := range self.API.IdentityConfigs {
+		go func() error {
+			if ret, err := c.Call(self); err != nil {
+				return err
+			} else {
+				self.Identity[&c] = ret
+				identityCh <- true
+				return nil
+			}
+		}()
 	}
+	<-identityCh
 
 	// metadata
-	metadataConfigs := self.API.MetadataConfigs
-	for i := range metadataConfigs {
-		c := metadataConfigs[i]
-		if ret, err := c.Call(self); err != nil { return err } else { self.Metadata[&c] = ret }
+	for _, c := range self.API.MetadataConfigs {
+		go func() error {
+			if ret, err := c.Call(self); err != nil {
+				return err
+			} else {
+				self.Metadata[&c] = ret
+				metadataCh <- true
+				return nil
+			}
+		}()
 	}
+	<-metadataCh
 
 	// policy enforcement (authorization)
-	authorizationConfigs := self.API.AuthorizationConfigs
-	for i := range metadataConfigs {
-		c := authorizationConfigs[i]
-		if ret, err := c.Call(self); err != nil { return err } else { self.Authorization[&c] = ret }
+	for _, c := range self.API.AuthorizationConfigs {
+		go func() error {
+			if ret, err := c.Call(self); err != nil {
+				return err
+			} else {
+				self.Authorization[&c] = ret
+				metadataCh <- true
+				return nil
+			}
+		}()
 	}
+	<-authCh
 
 	return nil
 }
