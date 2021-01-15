@@ -6,8 +6,8 @@ import (
 
 	"github.com/3scale/authorino/pkg/config"
 
-	"golang.org/x/net/context"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
+	"golang.org/x/net/context"
 )
 
 // AuthContext holds the context of each auth request, including the request itself (sent by the client),
@@ -70,13 +70,16 @@ func (self *AuthContext) GetAPI() interface{} {
 
 func (self *AuthContext) GetIdentity() interface{} { // FIXME: it should return the entire map, not only the first value
 	var id interface{}
-	for _, v := range(self.Identity) { id = v; break }
+	for _, v := range self.Identity {
+		id = v
+		break
+	}
 	return id
 }
 
 func (self *AuthContext) GetMetadata() map[string]interface{} {
 	m := make(map[string]interface{})
-	for key, value := range(self.Metadata) {
+	for key, value := range self.Metadata {
 		t, _ := key.GetType()
 		m[t] = value // FIXME: It will override instead of including all the metadata values of the same type
 	}
@@ -84,8 +87,10 @@ func (self *AuthContext) GetMetadata() map[string]interface{} {
 }
 
 func (self *AuthContext) FindIdentityByName(name string) (interface{}, error) {
-  for id := range(self.Identity) {
-		if id.OIDC.Name == name { return id.OIDC, nil }
+	for id := range self.Identity {
+		if id.OIDC.Name == name {
+			return id.OIDC, nil
+		}
 	}
 	return nil, fmt.Errorf("Cannot find OIDC token")
 }
@@ -95,8 +100,12 @@ func (self *AuthContext) AuthorizationToken() (string, error) {
 
 	var splitToken []string
 
-	if authHeaderOK { splitToken = strings.Split(authHeader, "Bearer ") }
-	if !authHeaderOK || len(splitToken) != 2 { return "", fmt.Errorf("Authorization header malformed or not provided") }
+	if authHeaderOK {
+		splitToken = strings.Split(authHeader, "Bearer ")
+	}
+	if !authHeaderOK || len(splitToken) != 2 {
+		return "", fmt.Errorf("Authorization header malformed or not provided")
+	}
 
 	return splitToken[1], nil
 }
