@@ -12,7 +12,7 @@ type AuthorizationConfig struct {
 	JWT *authorization.JWTClaims `yaml:"jwt"`
 }
 
-func (self *AuthorizationConfig) Call(ctx common.AuthContext) (bool, error) {
+func (self *AuthorizationConfig) Call(ctx common.AuthContext) (interface{}, error) {
 	switch {
 	case self.OPA != nil:
 		return self.OPA.Call(ctx)
