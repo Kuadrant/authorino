@@ -122,7 +122,21 @@ bundle: manifests kustomize
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
+kind:
+ifeq (, $(shell which kind))
+	@{ \
+	set -e ;\
+	KIND_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$KIND_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GO111MODULE="on" go get sigs.k8s.io/kind@v0.9.0 ;\
+	rm -rf $$KIND_GEN_TMP_DIR ;\
+	}
+KIND=$(GOBIN)/kind
+else
+KIND=$(shell which kind)
+endif
 
 .PHONY: local-setup
-local-setup:
+local-setup: kind
 	utils/local-setup.sh
