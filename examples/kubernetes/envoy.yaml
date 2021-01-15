@@ -25,9 +25,6 @@ spec:
             - --service-cluster front-proxy
             - --log-level info
             - --component-log-level filter:trace,http:debug,router:debug
-          env:
-            - name: NGINX_HTTP_PORT_NUMBER
-              value: "8000"
           ports:
             - name: web
               containerPort: 8000
