@@ -32,6 +32,7 @@ type AuthObjectConfig interface {
 
 func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, wg *sync.WaitGroup) (interface{}, error) {
 	if ret, err := authObjConfig.Call(authContext); err != nil {
+		wg.Done()
 		return nil, err
 	} else {
 		wg.Done()
@@ -39,47 +40,67 @@ func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, wg
 	}
 }
 
-// Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
-func (self *AuthContext) Evaluate() error {
-
-	// identity
-	var identityWg sync.WaitGroup
-	for _, config := range self.API.IdentityConfigs {
-		identityWg.Add(1)
-		var idAuthObjCfg AuthObjectConfig = &config
+// GetIDObject gets an Identity auth object given an Identity config.
+func (authContext *AuthContext) GetIDObject() {
+	var wg sync.WaitGroup
+	for _, config := range authContext.API.IdentityConfigs {
+		wg.Add(1)
+		var authObjCfg AuthObjectConfig = &config
 		go func() {
-			if authObj, err := self.getAuthObject(idAuthObjCfg, &identityWg); err == nil {
-				self.Identity[&config] = authObj
+			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+				fmt.Errorf("Invalid identity config", err)
+			} else {
+				authContext.Identity[&config] = authObj
 			}
 		}()
 	}
-	identityWg.Wait()
+	wg.Wait()
+}
+
+// GetMDObject gets a Metadata auth object given a Metadata config.
+func (authContext *AuthContext) GetMDObject() {
+	var wg sync.WaitGroup
+	for _, config := range authContext.API.MetadataConfigs {
+		var authObjCfg AuthObjectConfig = &config
+		wg.Add(1)
+		go func() {
+			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+				fmt.Errorf("Invalid metadata config", err)
+			} else {
+				authContext.Metadata[&config] = authObj
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+// GetAuthObject gets an Authorization object given an Authorization config.
+func (authContext *AuthContext) GetAuthObject() {
+	var wg sync.WaitGroup
+	for _, config := range authContext.API.AuthorizationConfigs {
+		var authObjCfg AuthObjectConfig = &config
+		wg.Add(1)
+		go func() {
+			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+				fmt.Errorf("Invalid authentication config", err)
+			} else {
+				authContext.Authorization[&config] = authObj
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+// Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
+func (authContext *AuthContext) Evaluate() error {
+	// identity
+	authContext.GetIDObject()
 
 	// metadata
-	var metadataWg sync.WaitGroup
-	for _, config := range self.API.MetadataConfigs {
-		metadataWg.Add(1)
-		var idAuthObjCfg AuthObjectConfig = &config
-		go func() {
-			if authObj, err := self.getAuthObject(idAuthObjCfg, &metadataWg); err == nil {
-				self.Metadata[&config] = authObj
-			}
-		}()
-	}
-	metadataWg.Wait()
+	authContext.GetMDObject()
 
 	// policy enforcement (authorization)
-	var authWg sync.WaitGroup
-	for _, config := range self.API.AuthorizationConfigs {
-		authWg.Add(1)
-		var idAuthObjCfg AuthObjectConfig = &config
-		go func() {
-			if authObj, err := self.getAuthObject(idAuthObjCfg, &authWg); err == nil {
-				self.Authorization[&config] = authObj
-			}
-		}()
-	}
-	authWg.Wait()
+	authContext.GetAuthObject()
 
 	return nil
 }
