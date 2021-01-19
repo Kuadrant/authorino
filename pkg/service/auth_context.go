@@ -30,12 +30,10 @@ type AuthObjectConfig interface {
 	Call(ctx internal.AuthContext) (interface{}, error)
 }
 
-func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, wg *sync.WaitGroup) (interface{}, error) {
+func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig) (interface{}, error) {
 	if ret, err := authObjConfig.Call(authContext); err != nil {
-		wg.Done()
 		return nil, err
 	} else {
-		wg.Done()
 		return ret, nil
 	}
 }
@@ -48,7 +46,8 @@ func (authContext *AuthContext) GetIDObject() error {
 		wg.Add(1)
 		var authObjCfg AuthObjectConfig = &config
 		go func() {
-			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+			defer wg.Done()
+			if authObj, err := authContext.getAuthObject(authObjCfg); err != nil {
 				authObjError = err
 				fmt.Errorf("Invalid identity config", err)
 			} else {
@@ -68,7 +67,8 @@ func (authContext *AuthContext) GetMDObject() error {
 		var authObjCfg AuthObjectConfig = &config
 		wg.Add(1)
 		go func() {
-			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+			defer wg.Done()
+			if authObj, err := authContext.getAuthObject(authObjCfg); err != nil {
 				authObjError = err
 				fmt.Errorf("Invalid metadata config", err)
 			} else {
@@ -88,7 +88,8 @@ func (authContext *AuthContext) GetAuthObject() error {
 		var authObjCfg AuthObjectConfig = &config
 		wg.Add(1)
 		go func() {
-			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+			defer wg.Done()
+			if authObj, err := authContext.getAuthObject(authObjCfg); err != nil {
 				authObjError = err
 				fmt.Errorf("Invalid authentication config", err)
 			} else {
