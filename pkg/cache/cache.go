@@ -20,14 +20,13 @@ func NewCache() Cache {
 		keyMapping: make(map[string][]string),
 		apiConfigs: make(map[string]config.APIConfig),
 	}
-
 }
 
-func (c *Cache) Get(key string) config.APIConfig {
+func (c *Cache) Get(serviceHost string) config.APIConfig {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.apiConfigs[key]
+	return c.apiConfigs[serviceHost]
 }
 
 func (c *Cache) Set(key string, serviceHost string, config config.APIConfig, override bool) error {
