@@ -41,13 +41,15 @@ func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig, wg
 }
 
 // GetIDObject gets an Identity auth object given an Identity config.
-func (authContext *AuthContext) GetIDObject() {
+func (authContext *AuthContext) GetIDObject() error {
 	var wg sync.WaitGroup
+	var authObjError error
 	for _, config := range authContext.API.IdentityConfigs {
 		wg.Add(1)
 		var authObjCfg AuthObjectConfig = &config
 		go func() {
 			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+				authObjError = err
 				fmt.Errorf("Invalid identity config", err)
 			} else {
 				authContext.Identity[&config] = authObj
@@ -55,16 +57,19 @@ func (authContext *AuthContext) GetIDObject() {
 		}()
 	}
 	wg.Wait()
+	return authObjError
 }
 
 // GetMDObject gets a Metadata auth object given a Metadata config.
-func (authContext *AuthContext) GetMDObject() {
+func (authContext *AuthContext) GetMDObject() error {
 	var wg sync.WaitGroup
+	var authObjError error
 	for _, config := range authContext.API.MetadataConfigs {
 		var authObjCfg AuthObjectConfig = &config
 		wg.Add(1)
 		go func() {
 			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+				authObjError = err
 				fmt.Errorf("Invalid metadata config", err)
 			} else {
 				authContext.Metadata[&config] = authObj
@@ -72,16 +77,19 @@ func (authContext *AuthContext) GetMDObject() {
 		}()
 	}
 	wg.Wait()
+	return authObjError
 }
 
 // GetAuthObject gets an Authorization object given an Authorization config.
-func (authContext *AuthContext) GetAuthObject() {
+func (authContext *AuthContext) GetAuthObject() error {
 	var wg sync.WaitGroup
+	var authObjError error
 	for _, config := range authContext.API.AuthorizationConfigs {
 		var authObjCfg AuthObjectConfig = &config
 		wg.Add(1)
 		go func() {
 			if authObj, err := authContext.getAuthObject(authObjCfg, &wg); err != nil {
+				authObjError = err
 				fmt.Errorf("Invalid authentication config", err)
 			} else {
 				authContext.Authorization[&config] = authObj
@@ -89,18 +97,25 @@ func (authContext *AuthContext) GetAuthObject() {
 		}()
 	}
 	wg.Wait()
+	return authObjError
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (authContext *AuthContext) Evaluate() error {
 	// identity
-	authContext.GetIDObject()
+	if err := authContext.GetIDObject(); err != nil {
+		return err
+	}
 
 	// metadata
-	authContext.GetMDObject()
+	if err := authContext.GetMDObject(); err != nil {
+		return err
+	}
 
 	// policy enforcement (authorization)
-	authContext.GetAuthObject()
+	if err := authContext.GetAuthObject(); err != nil {
+		return err
+	}
 
 	return nil
 }
