@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/3scale/authorino/pkg/common"
 	"github.com/3scale/authorino/pkg/config/authorization"
-	"github.com/3scale/authorino/pkg/config/internal"
 )
 
 type AuthorizationConfig struct {
@@ -13,7 +13,7 @@ type AuthorizationConfig struct {
 	JWT authorization.JWTClaims `yaml:"jwt"`
 }
 
-func (self *AuthorizationConfig) Call(ctx internal.AuthContext) (interface{}, error) {
+func (self *AuthorizationConfig) Call(ctx common.AuthContext) (interface{}, error) {
 	switch {
 	case self.OPA != authorization.OPA{}:
 		return self.OPA.Call(ctx)

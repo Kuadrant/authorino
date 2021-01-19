@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/3scale/authorino/pkg/common"
 	"github.com/3scale/authorino/pkg/config"
-	"github.com/3scale/authorino/pkg/config/internal"
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"golang.org/x/net/context"
@@ -27,78 +27,76 @@ type AuthContext struct {
 
 // AuthObjectConfig provides an interface for APIConfig objects that implements a Call method
 type AuthObjectConfig interface {
-	Call(ctx internal.AuthContext) (interface{}, error)
+	Call(ctx common.AuthContext) (interface{}, error)
 }
 
-func (authContext *AuthContext) getAuthObject(authObjConfig AuthObjectConfig) (interface{}, error) {
-	if ret, err := authObjConfig.Call(authContext); err != nil {
-		return nil, err
-	} else {
-		return ret, nil
+type configCallback = func(config AuthObjectConfig, obj interface{})
+
+func (authContext *AuthContext) getAuthObject(configs []AuthObjectConfig, cb configCallback) error {
+	var wg sync.WaitGroup
+	var authObjError error
+	for _, config := range configs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if authObj, err := config.Call(authContext); err != nil {
+				authObjError = err
+				fmt.Errorf("Invalid identity config", err)
+			} else {
+				cb(config, authObj)
+			}
+		}()
 	}
+	wg.Wait()
+	return authObjError
 }
 
 // GetIDObject gets an Identity auth object given an Identity config.
 func (authContext *AuthContext) GetIDObject() error {
-	var wg sync.WaitGroup
-	var authObjError error
-	for _, config := range authContext.API.IdentityConfigs {
-		wg.Add(1)
-		var authObjCfg AuthObjectConfig = &config
-		go func() {
-			defer wg.Done()
-			if authObj, err := authContext.getAuthObject(authObjCfg); err != nil {
-				authObjError = err
-				fmt.Errorf("Invalid identity config", err)
-			} else {
-				authContext.Identity[&config] = authObj
-			}
-		}()
+	configs := make([]AuthObjectConfig, len(authContext.API.IdentityConfigs))
+	// Convert []SpecificType to []interfaceType
+	for i, conf := range authContext.API.IdentityConfigs {
+		cpConf := conf
+		configs[i] = &cpConf
 	}
-	wg.Wait()
-	return authObjError
+	return authContext.getAuthObject(configs,
+		func(conf AuthObjectConfig, authObj interface{}) {
+			// Caution: type assertion not checked
+			v, _ := conf.(*config.IdentityConfig)
+			authContext.Identity[v] = authObj
+		})
 }
 
 // GetMDObject gets a Metadata auth object given a Metadata config.
 func (authContext *AuthContext) GetMDObject() error {
-	var wg sync.WaitGroup
-	var authObjError error
-	for _, config := range authContext.API.MetadataConfigs {
-		var authObjCfg AuthObjectConfig = &config
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if authObj, err := authContext.getAuthObject(authObjCfg); err != nil {
-				authObjError = err
-				fmt.Errorf("Invalid metadata config", err)
-			} else {
-				authContext.Metadata[&config] = authObj
-			}
-		}()
+	configs := make([]AuthObjectConfig, len(authContext.API.MetadataConfigs))
+	// Convert []SpecificType to []interfaceType
+	for i, conf := range authContext.API.MetadataConfigs {
+		cpConf := conf
+		configs[i] = &cpConf
 	}
-	wg.Wait()
-	return authObjError
+	return authContext.getAuthObject(configs,
+		func(conf AuthObjectConfig, authObj interface{}) {
+			// Caution: type assertion not checked
+			v, _ := conf.(*config.MetadataConfig)
+			authContext.Metadata[v] = authObj
+		})
 }
 
 // GetAuthObject gets an Authorization object given an Authorization config.
 func (authContext *AuthContext) GetAuthObject() error {
-	var wg sync.WaitGroup
-	var authObjError error
-	for _, config := range authContext.API.AuthorizationConfigs {
-		var authObjCfg AuthObjectConfig = &config
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if authObj, err := authContext.getAuthObject(authObjCfg); err != nil {
-				authObjError = err
-				fmt.Errorf("Invalid authentication config", err)
-			} else {
-				authContext.Authorization[&config] = authObj
-			}
-		}()
+	configs := make([]AuthObjectConfig, len(authContext.API.AuthorizationConfigs))
+	// Convert []SpecificType to []interfaceType
+	for i, conf := range authContext.API.AuthorizationConfigs {
+		cpConf := conf
+		configs[i] = &cpConf
 	}
-	wg.Wait()
-	return authObjError
+	return authContext.getAuthObject(configs,
+		func(conf AuthObjectConfig, authObj interface{}) {
+			// Caution: type assertion not checked
+			v, _ := conf.(*config.AuthorizationConfig)
+			authContext.Authorization[v] = authObj
+		})
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)

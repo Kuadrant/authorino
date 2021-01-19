@@ -1,8 +1,8 @@
-package internal
+package common
 
 import (
-	"golang.org/x/net/context"
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
+	"golang.org/x/net/context"
 )
 
 type AuthContext interface {
