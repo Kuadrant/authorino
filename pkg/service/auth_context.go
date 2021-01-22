@@ -3,7 +3,8 @@ package service
 import (
 	"fmt"
 	"strings"
-	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/3scale/authorino/pkg/config"
 	"github.com/3scale/authorino/pkg/config/internal"
@@ -32,27 +33,29 @@ type AuthObjectConfig interface {
 
 type configCallback = func(config AuthObjectConfig, obj interface{})
 
-func (authContext *AuthContext) getAuthObjects(configs []AuthObjectConfig, cb configCallback) []error {
-	var wg sync.WaitGroup
-	var authObjError []error
+func (authContext *AuthContext) getAuthObjects(configs []AuthObjectConfig, cb configCallback) error {
+	var errGroup errgroup.Group
+
 	for _, config := range configs {
-		wg.Add(1)
-		go func(objConfig AuthObjectConfig) {
-			defer wg.Done()
+		errGroup.Go(func(objConfig AuthObjectConfig) error {
 			if authObj, err := objConfig.Call(authContext); err != nil {
-				authObjError = append(authObjError, err) // FIXME: Make error reporting better, fail as soon as we encounter maybe (?)
-				fmt.Errorf("Invalid auth object config %v", err)
+				return fmt.Errorf("Invalid auth object config", err)
 			} else {
 				cb(objConfig, authObj)
+				return nil
 			}
-		}(config)
+		}(config))
 	}
-	wg.Wait()
-	return authObjError
+	if err := errGroup.Wait(); err != nil {
+		return err
+	} else {
+		fmt.Println("Successfully fetched all auth objects.")
+		return nil
+	}
 }
 
 // GetIDObject gets an Identity auth object given an Identity config.
-func (authContext *AuthContext) GetIDObject() []error {
+func (authContext *AuthContext) GetIDObject() error {
 	configs := make([]AuthObjectConfig, len(authContext.API.IdentityConfigs))
 	// Convert []SpecificType to []interfaceType
 	for i, conf := range authContext.API.IdentityConfigs {
@@ -68,7 +71,7 @@ func (authContext *AuthContext) GetIDObject() []error {
 }
 
 // GetMDObject gets a Metadata auth object given a Metadata config.
-func (authContext *AuthContext) GetMDObject() []error {
+func (authContext *AuthContext) GetMDObject() error {
 	configs := make([]AuthObjectConfig, len(authContext.API.MetadataConfigs))
 	// Convert []SpecificType to []interfaceType
 	for i, conf := range authContext.API.MetadataConfigs {
@@ -84,7 +87,7 @@ func (authContext *AuthContext) GetMDObject() []error {
 }
 
 // GetAuthObject gets an Authorization object given an Authorization config.
-func (authContext *AuthContext) GetAuthObject() []error {
+func (authContext *AuthContext) GetAuthObject() error {
 	configs := make([]AuthObjectConfig, len(authContext.API.AuthorizationConfigs))
 	// Convert []SpecificType to []interfaceType
 	for i, conf := range authContext.API.AuthorizationConfigs {
@@ -102,18 +105,18 @@ func (authContext *AuthContext) GetAuthObject() []error {
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (authContext *AuthContext) Evaluate() error {
 	// identity
-	if errors := authContext.GetIDObject(); len(errors) > 0 {
-		return errors[0] // FIXME: Make error reporting better, fail earlier? return all errors?
+	if err := authContext.GetIDObject(); err != nil {
+		return err
 	}
 
 	// metadata
-	if errors := authContext.GetMDObject(); len(errors) > 0 {
-		return errors[0] // FIXME: Make error reporting better, fail earlier? return all errors?
+	if err := authContext.GetMDObject(); err != nil {
+		return err
 	}
 
 	// policy enforcement (authorization)
-	if errors := authContext.GetAuthObject(); len(errors) > 0 {
-		return errors[0] // FIXME: Make error reporting better, fail earlier? return all errors?
+	if err := authContext.GetAuthObject(); err != nil {
+		return err
 	}
 
 	return nil
