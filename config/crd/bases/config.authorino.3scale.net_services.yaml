@@ -1,0 +1,159 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: services.config.authorino.3scale.net
+spec:
+  group: config.authorino.3scale.net
+  names:
+    kind: Service
+    listKind: ServiceList
+    plural: services
+    singular: service
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Service is the Schema for the services API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ServiceSpec defines the desired state of Service
+          properties:
+            authorization:
+              items:
+                properties:
+                  JWTClaimSet:
+                    properties:
+                      claim:
+                        properties:
+                          aud:
+                            type: string
+                        type: object
+                      match:
+                        properties:
+                          http:
+                            properties:
+                              path:
+                                type: string
+                            type: object
+                        type: object
+                    type: object
+                  OPAPolicy:
+                    properties:
+                      endpoint:
+                        type: string
+                      inlineRego:
+                        type: string
+                      uuid:
+                        type: string
+                    required:
+                    - endpoint
+                    - uuid
+                    type: object
+                type: object
+              type: array
+            hosts:
+              items:
+                type: string
+              type: array
+            identity:
+              items:
+                properties:
+                  name:
+                    description: Adding a Name as we need to reference it from the
+                      metadata section.
+                    type: string
+                  oidc:
+                    properties:
+                      endpoint:
+                        type: string
+                    required:
+                    - endpoint
+                    type: object
+                required:
+                - name
+                type: object
+              type: array
+            metadata:
+              items:
+                properties:
+                  uma:
+                    properties:
+                      credentialsRef:
+                        description: LocalObjectReference contains enough information
+                          to let you locate the referenced object inside the same
+                          namespace.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                      identitySource:
+                        type: string
+                    required:
+                    - identitySource
+                    type: object
+                  userInfo:
+                    description: Metadata_UserInfo & Metadata_UMA are the same right
+                      now, I'm keeping them split just in case I'm missing something,
+                      but we can merge them into a single type if they don't really
+                      require any extra field...
+                    properties:
+                      credentialsRef:
+                        description: LocalObjectReference contains enough information
+                          to let you locate the referenced object inside the same
+                          namespace.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                      identitySource:
+                        type: string
+                    required:
+                    - identitySource
+                    type: object
+                type: object
+              type: array
+          required:
+          - hosts
+          type: object
+        status:
+          description: ServiceStatus defines the observed state of Service
+          properties:
+            ready:
+              type: boolean
+          required:
+          - ready
+          type: object
+      type: object
+  version: v1beta1
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

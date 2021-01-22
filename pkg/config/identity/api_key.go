@@ -1,7 +1,7 @@
 package identity
 
 import (
-	"github.com/3scale/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/internal"
 )
 
 type APIKey struct {

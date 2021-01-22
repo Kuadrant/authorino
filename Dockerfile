@@ -1,21 +1,17 @@
-FROM golang:1.13 as build
+# Build the authorino binary
+FROM golang:1.13 as builder
 
-ENV GO111MODULE=on
+WORKDIR /workspace
+COPY ./ ./
 
-WORKDIR /app
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
-COPY go.mod .
-COPY go.sum .
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/manager .
+USER nonroot:nonroot
 
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o authorino main.go
-
-FROM gcr.io/distroless/base
-COPY --from=build /app/authorino /
-
-EXPOSE 50051
-
-ENTRYPOINT ["/authorino"]
+ENTRYPOINT ["/manager"]

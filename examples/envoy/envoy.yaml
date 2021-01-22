@@ -38,20 +38,6 @@ static_resources:
           - name: envoy.filters.http.router
             typed_config: {}
   clusters:
-  - name: docker_host
-    connect_timeout: 0.25s
-    type: strict_dns
-    lb_policy: round_robin
-    load_assignment:
-      cluster_name: docker_host
-      endpoints:
-      - lb_endpoints:
-        - endpoint:
-            address:
-              socket_address:
-                address: host.docker.internal
-                port_value: 9292
-
   - name: external_auth
     connect_timeout: 0.25s
     type: strict_dns
@@ -64,7 +50,7 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: authorino
+                address: localhost
                 port_value: 50051
   - name: upstream
     connect_timeout: 0.25s
@@ -77,7 +63,7 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: echo-api
+                address: localhost
                 port_value: 3000
 
 admin:

@@ -5,7 +5,7 @@ Authorino is an AuthN/AuthZ broker that implements [Envoy’s external authoriza
 - Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
 
-Authorino complies with the [3scale Ostia architecture](https://github.com/3scale/ostia).
+Authorino complies with the [3scale Ostia architecture](https://github.com/3scale-labs/ostia).
 
 **Current stage:** Proof of Concept
 
@@ -368,14 +368,14 @@ Usually the entire order of deployment goes as follows:
 
 ## Check the examples and try it out
 
-Try the [example](examples) on your Docker environment. You'll get the following components out of the box with our docker-compose:
+The development/testing environment contains: 
 
-- **Echo API (upstream)**<br/>
+- **Echo API**<br/>
     Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Envoy proxy**<br/>
     Configured w/ the ext_authz http filter.
 - **Authorino**<br/>
-    The AuthN/AuthZ broker with [this configuration](examples/config.yml) preloaded.
+    The AuthN/AuthZ broker that will look for Authorino Service CR's in the kubernetes server
 - **Keycloak**<br/>
     To issue OIDC access tokens and to provide ad-hoc resource data for the authorization payload.<br/>
     - Admin console: http://localhost:8080/auth/admin (admin/p)
@@ -403,11 +403,38 @@ Start by cloning the repo:
 git clone git@github.com:3scale-labs/authorino.git
 ```
 
-#### 2. Run the services
+#### 2. Start the local kubernetes environment
+
+In order to deploy the testing/development environment you will need to install [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation).
+Once you have Kind installed, use the Makefile target to start the deployment.
 
 ```shell
-cd authorino/examples
-docker-compose up --build -d
+cd authorino
+make local-setup
+```
+
+Once the setup of the local kubernetes cluster and deployment of components finishes, you can expose the Envoy service using:
+
+```shell
+kubectl port-forward --namespace authorino deployment/envoy 8000:8000 &
+kubectl port-forward --namespace authorino deployment/keycloak 8080:8080 &
+```
+
+Let's create the secrets that we require on `./config/samples/config_v1beta1_service.yaml`:
+
+```shell
+kubectl -n authorino create secret generic userinfosecret \
+--from-literal=clientID=authorino \
+--from-literal=clientSecret='2e5246f2-f4ef-4d55-8225-36e725071dee'
+
+kubectl -n authorino create secret generic umacredentialssecret \
+--from-literal=clientID=pets-api \
+--from-literal=clientSecret='523b92b6-625d-4e1e-a313-77e7a8ae4e88'
+```
+
+Now you can deploy the Authorino Service file:
+```shell
+kubectl apply -f ./config/samples/config_v1beta1_service.yaml -n authorino
 ```
 
 #### 3. Try out with John (member)
@@ -417,9 +444,9 @@ John is a member user of the `ostia` realm in Keycloak. He owns a resource hoste
 ```shell
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v     # 200 OK
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/1 -v   # 200 OK
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/stats -v    # 403 Forbidden
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v     # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/1 -v   # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/stats -v    # 403 Forbidden
 ```
 
 #### 4. Try out with Jane (admin)
@@ -429,12 +456,12 @@ Jane is an admin user of the `ostia` realm in Keycloak. She does not own any res
 ```shell
 export ACCESS_TOKEN_JANE=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v     # 200 OK
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/1 -v   # 403 Forbidden
-curl -H 'Host: echo-api:3000' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/stats -v    # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v     # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/1 -v   # 403 Forbidden
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/stats -v    # 200 OK
 ```
 
 #### 5. Shut down and clean up
 ```
-docker-compose down
+kind delete clusters authorino-integration
 ```
