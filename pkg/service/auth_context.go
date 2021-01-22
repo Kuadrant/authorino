@@ -33,18 +33,29 @@ type AuthObjectConfig interface {
 
 type configCallback = func(config AuthObjectConfig, obj interface{})
 
+func (authContext *AuthContext) getAuthObject(ctx context.Context, objConfig AuthObjectConfig, cb configCallback) error {
+	select {
+	case <-ctx.Done():
+		fmt.Printf("context cancelled objConfig %v terminting\n", objConfig)
+		return nil
+	default:
+		if authObj, err := objConfig.Call(authContext); err != nil {
+			return fmt.Errorf("Invalid auth object config %v ", err)
+		} else {
+			cb(objConfig, authObj)
+			return nil
+		}
+	}
+}
+
 func (authContext *AuthContext) getAuthObjects(configs []AuthObjectConfig, cb configCallback) error {
-	var errGroup errgroup.Group
+	errGroup, ctx := errgroup.WithContext(context.Background())
 
 	for _, config := range configs {
-		errGroup.Go(func(objConfig AuthObjectConfig) error {
-			if authObj, err := objConfig.Call(authContext); err != nil {
-				return fmt.Errorf("Invalid auth object config", err)
-			} else {
-				cb(objConfig, authObj)
-				return nil
-			}
-		}(config))
+		objConfig := config
+		errGroup.Go(func() error {
+			return authContext.getAuthObject(ctx, objConfig, cb)
+		})
 	}
 	if err := errGroup.Wait(); err != nil {
 		return err
