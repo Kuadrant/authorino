@@ -1,9 +1,10 @@
 package cache
 
 import (
+	"testing"
+
 	"github.com/3scale-labs/authorino/pkg/config"
 	"gotest.tools/assert"
-	"testing"
 )
 
 func TestCache(t *testing.T) {

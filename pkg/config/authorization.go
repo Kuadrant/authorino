@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/3scale-labs/authorino/pkg/config/authorization"
 	"github.com/3scale-labs/authorino/pkg/config/internal"
 )
