@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/3scale-labs/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 )
 
 type UMA struct {
@@ -18,7 +18,7 @@ type UMA struct {
 	ClientSecret string `yaml:"client_secret"`
 }
 
-func (self *UMA) Call(ctx internal.AuthContext) (interface{}, error) {
+func (self *UMA) Call(ctx common.AuthContext) (interface{}, error) {
 	// discover uma config
 	provider, err := self.NewProvider(ctx)
 	if err != nil {
@@ -61,7 +61,7 @@ func (self *UMA) Call(ctx internal.AuthContext) (interface{}, error) {
 	return resourceData, nil
 }
 
-func (self *UMA) NewProvider(ctx internal.AuthContext) (*Provider, error) {
+func (self *UMA) NewProvider(ctx common.AuthContext) (*Provider, error) {
 	// discover uma config
 	wellKnown := strings.TrimSuffix(self.Endpoint, "/") + "/.well-known/uma2-configuration"
 	resp, err := http.Get(wellKnown)

@@ -1,4 +1,4 @@
-package internal
+package common
 
 import (
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"

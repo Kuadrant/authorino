@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/3scale-labs/authorino/pkg/config/common"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
-	"github.com/3scale-labs/authorino/pkg/config/internal"
 )
 
 type UserInfo struct {
@@ -15,7 +15,7 @@ type UserInfo struct {
 	ClientSecret string `yaml:"client_secret"`
 }
 
-func (self *UserInfo) Call(ctx internal.AuthContext) (interface{}, error) {
+func (self *UserInfo) Call(ctx common.AuthContext) (interface{}, error) {
 	// find oidc config and the userinfo endpoint
 	idConfig, _ := ctx.FindIdentityByName(self.OIDC)
 	idConfigStruct := idConfig.(*identity.OIDC)

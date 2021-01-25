@@ -3,8 +3,8 @@ package config
 import (
 	"fmt"
 
+	"github.com/3scale-labs/authorino/pkg/config/common"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
-	"github.com/3scale-labs/authorino/pkg/config/internal"
 )
 
 type IdentityConfig struct {
@@ -14,7 +14,7 @@ type IdentityConfig struct {
 	APIKey *identity.APIKey `yaml:"api_key,omitempty"`
 }
 
-func (self *IdentityConfig) Call(ctx internal.AuthContext) (interface{}, error) {
+func (self *IdentityConfig) Call(ctx common.AuthContext) (interface{}, error) {
 	switch {
 	case self.OIDC != nil:
 		return self.OIDC.Call(ctx)

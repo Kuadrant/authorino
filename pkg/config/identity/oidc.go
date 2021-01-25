@@ -3,7 +3,7 @@ package identity
 import (
 	"context"
 
-	"github.com/3scale-labs/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 
 	oidc "github.com/coreos/go-oidc"
 )
@@ -13,7 +13,7 @@ type OIDC struct {
 	Endpoint string `yaml:"endpoint"`
 }
 
-func (self *OIDC) Call(ctx internal.AuthContext) (interface{}, error) {
+func (self *OIDC) Call(ctx common.AuthContext) (interface{}, error) {
 	// extract access token
 	accessToken, err := ctx.AuthorizationToken()
 	if err != nil {
@@ -41,7 +41,7 @@ func (self *OIDC) Call(ctx internal.AuthContext) (interface{}, error) {
 	return claims, nil
 }
 
-func (self *OIDC) NewProvider(ctx internal.AuthContext) (*oidc.Provider, error) {
+func (self *OIDC) NewProvider(ctx common.AuthContext) (*oidc.Provider, error) {
 	provider, err := oidc.NewProvider(context.TODO(), self.Endpoint)
 	if err != nil {
 		return nil, err
