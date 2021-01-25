@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/3scale-labs/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"github.com/open-policy-agent/opa/rego"
@@ -81,7 +81,7 @@ func (self *OPAInput) ToJSON() ([]byte, error) {
 	return res, nil
 }
 
-func (self *OPA) Call(ctx internal.AuthContext) (bool, error) {
+func (self *OPA) Call(ctx common.AuthContext) (bool, error) {
 	if !self.Enabled {
 		return true, nil
 	}

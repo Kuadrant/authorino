@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/3scale-labs/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 	"github.com/3scale-labs/authorino/pkg/config/metadata"
 )
 
@@ -12,7 +12,7 @@ type MetadataConfig struct {
 	UMA      *metadata.UMA      `yaml:"uma,omitempty"`
 }
 
-func (self *MetadataConfig) Call(ctx internal.AuthContext) (interface{}, error) {
+func (self *MetadataConfig) Call(ctx common.AuthContext) (interface{}, error) {
 	t, _ := self.GetType()
 	switch t {
 	case "userinfo":

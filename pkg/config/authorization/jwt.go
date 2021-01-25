@@ -1,7 +1,7 @@
 package authorization
 
 import (
-	"github.com/3scale-labs/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 )
 
 type JWTClaims struct {
@@ -21,7 +21,7 @@ func (self *JWTClaims) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (self *JWTClaims) Call(ctx internal.AuthContext) (bool, error) {
+func (self *JWTClaims) Call(ctx common.AuthContext) (bool, error) {
 	if !self.Enabled {
 		return true, nil
 	}
