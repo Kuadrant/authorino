@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/3scale-labs/authorino/api/v1beta1"
 	"github.com/3scale-labs/authorino/pkg/cache"
 	"gotest.tools/assert"
@@ -14,7 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 var (
