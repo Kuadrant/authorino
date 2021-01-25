@@ -6,8 +6,8 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/3scale/authorino/pkg/config"
-	"github.com/3scale/authorino/pkg/config/internal"
+	"github.com/3scale-labs/authorino/pkg/config"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"golang.org/x/net/context"
@@ -28,7 +28,7 @@ type AuthContext struct {
 
 // AuthObjectConfig provides an interface for APIConfig objects that implements a Call method
 type AuthObjectConfig interface {
-	Call(ctx internal.AuthContext) (interface{}, error)
+	Call(ctx common.AuthContext) (interface{}, error)
 }
 
 type configCallback = func(config AuthObjectConfig, obj interface{})
