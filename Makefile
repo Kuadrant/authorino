@@ -141,5 +141,5 @@ KIND=$(shell which kind)
 endif
 
 .PHONY: local-setup
-local-setup: kind
+local-setup: kustomize kind
 	utils/local-setup.sh
