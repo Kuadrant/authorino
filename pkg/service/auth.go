@@ -38,11 +38,7 @@ func (self *AuthService) Check(ctx context.Context, req *auth.CheckRequest) (*au
 		return self.deniedResponse(rpc.NOT_FOUND, "Service not found"), nil
 	}
 
-	authContext := AuthContext{
-		ParentContext: &ctx,
-		Request:       req,
-		API:           &apiConfig,
-	}
+	authContext := NewAuthContext(ctx, req, apiConfig)
 
 	err = authContext.Evaluate()
 	if err != nil {

@@ -33,6 +33,19 @@ type AuthObjectConfig interface {
 
 type configCallback = func(config AuthObjectConfig, obj interface{})
 
+func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
+
+	return AuthContext{
+		ParentContext: &parentCtx,
+		Request:       req,
+		API:           &apiConfig,
+		Identity:      make(map[*config.IdentityConfig]interface{}),
+		Metadata:      make(map[*config.MetadataConfig]interface{}),
+		Authorization: make(map[*config.AuthorizationConfig]interface{}),
+	}
+
+}
+
 func (authContext *AuthContext) getAuthObject(ctx context.Context, objConfig AuthObjectConfig, cb configCallback) error {
 	select {
 	case <-ctx.Done():
