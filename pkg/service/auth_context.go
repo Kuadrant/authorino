@@ -11,6 +11,11 @@ import (
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"golang.org/x/net/context"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+var (
+	authCxtLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
 )
 
 // AuthContext holds the context of each auth request, including the request itself (sent by the client),
@@ -33,6 +38,7 @@ type AuthObjectConfig interface {
 
 type configCallback = func(config AuthObjectConfig, obj interface{})
 
+// NewAuthContext creates an AuthContext instance
 func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
 
 	return AuthContext{
@@ -49,11 +55,12 @@ func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig
 func (authContext *AuthContext) getAuthObject(ctx context.Context, objConfig AuthObjectConfig, cb configCallback) error {
 	select {
 	case <-ctx.Done():
-		fmt.Printf("context cancelled objConfig %v terminting\n", objConfig)
+		authCxtLog.Info("Context cancelled objConfig terminating", "config", objConfig)
 		return nil
 	default:
 		if authObj, err := objConfig.Call(authContext); err != nil {
-			return fmt.Errorf("Invalid auth object config %v ", err)
+			authCxtLog.Error(err, "Invalid auth object config")
+			return err
 		} else {
 			cb(objConfig, authObj)
 			return nil
@@ -73,7 +80,7 @@ func (authContext *AuthContext) getAuthObjects(configs []AuthObjectConfig, cb co
 	if err := errGroup.Wait(); err != nil {
 		return err
 	} else {
-		fmt.Println("Successfully fetched all auth objects.")
+		authCxtLog.Info("Successfully fetched all auth objects.", "configs", configs)
 		return nil
 	}
 }
