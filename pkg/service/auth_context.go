@@ -31,12 +31,7 @@ type AuthContext struct {
 	Authorization map[*config.AuthorizationConfig]interface{}
 }
 
-// AuthObjectConfig provides an interface for APIConfig objects that implements a Call method
-type AuthObjectConfig interface {
-	Call(ctx common.AuthContext) (interface{}, error)
-}
-
-type configCallback = func(config AuthObjectConfig, obj interface{})
+type configCallback = func(config common.AuthConfigEvaluator, obj interface{})
 
 // NewAuthContext creates an AuthContext instance
 func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
@@ -52,148 +47,118 @@ func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig
 
 }
 
-func (authContext *AuthContext) getAuthObject(ctx context.Context, objConfig AuthObjectConfig, cb configCallback) error {
+func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config common.AuthConfigEvaluator, cb configCallback) error {
 	select {
 	case <-ctx.Done():
-		authCxtLog.Info("Context cancelled objConfig terminating", "config", objConfig)
+		authCxtLog.Info("Context cancelled objConfig terminating", "config", config)
 		return nil
 	default:
-		if authObj, err := objConfig.Call(authContext); err != nil {
+		if authObj, err := config.Call(authContext); err != nil {
 			authCxtLog.Error(err, "Invalid auth object config")
 			return err
 		} else {
-			cb(objConfig, authObj)
+			cb(config, authObj)
 			return nil
 		}
 	}
 }
 
-func (authContext *AuthContext) getAuthObjects(configs []AuthObjectConfig, cb configCallback) error {
+func (authContext *AuthContext) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, cb configCallback) error {
 	errGroup, ctx := errgroup.WithContext(context.Background())
 
-	for _, config := range configs {
-		objConfig := config
+	for _, authConfig := range authConfigs {
+		objConfig := authConfig
 		errGroup.Go(func() error {
-			return authContext.getAuthObject(ctx, objConfig, cb)
+			return authContext.evaluateAuthConfig(ctx, objConfig, cb)
 		})
 	}
 	if err := errGroup.Wait(); err != nil {
 		return err
 	} else {
-		authCxtLog.Info("Successfully fetched all auth objects.", "configs", configs)
+		authCxtLog.Info("Successfully fetched all auth objects.", "authConfigs", authConfigs)
 		return nil
 	}
-}
-
-// GetIDObject gets an Identity auth object given an Identity config.
-func (authContext *AuthContext) GetIDObject() error {
-	configs := make([]AuthObjectConfig, len(authContext.API.IdentityConfigs))
-	// Convert []SpecificType to []interfaceType
-	for i, conf := range authContext.API.IdentityConfigs {
-		cpConf := conf
-		configs[i] = &cpConf
-	}
-	return authContext.getAuthObjects(configs,
-		func(conf AuthObjectConfig, authObj interface{}) {
-			// Caution: type assertion not checked
-			v, _ := conf.(*config.IdentityConfig)
-			authContext.Identity[v] = authObj
-		})
-}
-
-// GetMDObject gets a Metadata auth object given a Metadata config.
-func (authContext *AuthContext) GetMDObject() error {
-	configs := make([]AuthObjectConfig, len(authContext.API.MetadataConfigs))
-	// Convert []SpecificType to []interfaceType
-	for i, conf := range authContext.API.MetadataConfigs {
-		cpConf := conf
-		configs[i] = &cpConf
-	}
-	return authContext.getAuthObjects(configs,
-		func(conf AuthObjectConfig, authObj interface{}) {
-			// Caution: type assertion not checked
-			v, _ := conf.(*config.MetadataConfig)
-			authContext.Metadata[v] = authObj
-		})
-}
-
-// GetAuthObject gets an Authorization object given an Authorization config.
-func (authContext *AuthContext) GetAuthObject() error {
-	configs := make([]AuthObjectConfig, len(authContext.API.AuthorizationConfigs))
-	// Convert []SpecificType to []interfaceType
-	for i, conf := range authContext.API.AuthorizationConfigs {
-		cpConf := conf
-		configs[i] = &cpConf
-	}
-	return authContext.getAuthObjects(configs,
-		func(conf AuthObjectConfig, authObj interface{}) {
-			// Caution: type assertion not checked
-			v, _ := conf.(*config.AuthorizationConfig)
-			authContext.Authorization[v] = authObj
-		})
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (authContext *AuthContext) Evaluate() error {
 	// identity
-	if err := authContext.GetIDObject(); err != nil {
+	if err := authContext.evaluateAuthConfigs(authContext.API.IdentityConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.IdentityConfig)
+			authCxtLog.Info("Identity", "Config", conf, "AuthObj", authObj)
+			authContext.Identity[v] = authObj
+		}); err != nil {
 		return err
 	}
 
 	// metadata
-	if err := authContext.GetMDObject(); err != nil {
+	if err := authContext.evaluateAuthConfigs(authContext.API.MetadataConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.MetadataConfig)
+			authCxtLog.Info("Metadata", "Config", conf, "AuthObj", authObj)
+			authContext.Metadata[v] = authObj
+		}); err != nil {
 		return err
 	}
 
 	// policy enforcement (authorization)
-	if err := authContext.GetAuthObject(); err != nil {
+	if err := authContext.evaluateAuthConfigs(authContext.API.AuthorizationConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.AuthorizationConfig)
+			authCxtLog.Info("Authorization", "Config", conf, "AuthObj", authObj)
+			authContext.Authorization[v] = authObj
+		}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (self *AuthContext) GetParentContext() *context.Context {
-	return self.ParentContext
+func (authContext *AuthContext) GetParentContext() *context.Context {
+	return authContext.ParentContext
 }
 
-func (self *AuthContext) GetRequest() *auth.CheckRequest {
-	return self.Request
+func (authContext *AuthContext) GetRequest() *auth.CheckRequest {
+	return authContext.Request
 }
 
-func (self *AuthContext) GetAPI() interface{} {
-	return self.API
+func (authContext *AuthContext) GetAPI() interface{} {
+	return authContext.API
 }
 
-func (self *AuthContext) GetIdentity() interface{} { // FIXME: it should return the entire map, not only the first value
+func (authContext *AuthContext) GetIdentity() interface{} { // FIXME: it should return the entire map, not only the first value
 	var id interface{}
-	for _, v := range self.Identity {
+	for _, v := range authContext.Identity {
 		id = v
 		break
 	}
 	return id
 }
 
-func (self *AuthContext) GetMetadata() map[string]interface{} {
+func (authContext *AuthContext) GetMetadata() map[string]interface{} {
 	m := make(map[string]interface{})
-	for key, value := range self.Metadata {
-		t, _ := key.GetType()
-		m[t] = value // FIXME: It will override instead of including all the metadata values of the same type
+	for metadataCfg, metadataObj := range authContext.Metadata {
+		t, _ := metadataCfg.GetType()
+		m[t] = metadataObj // FIXME: It will override instead of including all the metadata values of the same type
 	}
 	return m
 }
 
-func (self *AuthContext) FindIdentityByName(name string) (interface{}, error) {
-	for id := range self.Identity {
-		if id.OIDC.Name == name {
-			return id.OIDC, nil
+func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) {
+	for identityConfig := range authContext.Identity {
+		if identityConfig.OIDC.Name == name {
+			return identityConfig.OIDC, nil
 		}
 	}
-	return nil, fmt.Errorf("Cannot find OIDC token")
+	return nil, fmt.Errorf("cannot find OIDC token")
 }
 
-func (self *AuthContext) AuthorizationToken() (string, error) {
-	authHeader, authHeaderOK := self.Request.Attributes.Request.Http.Headers["authorization"]
+func (authContext *AuthContext) AuthorizationToken() (string, error) {
+	authHeader, authHeaderOK := authContext.Request.Attributes.Request.Http.Headers["authorization"]
 
 	var splitToken []string
 
@@ -201,8 +166,8 @@ func (self *AuthContext) AuthorizationToken() (string, error) {
 		splitToken = strings.Split(authHeader, "Bearer ")
 	}
 	if !authHeaderOK || len(splitToken) != 2 {
-		return "", fmt.Errorf("Authorization header malformed or not provided")
+		return "", fmt.Errorf("authorization header malformed or not provided")
 	}
 
-	return splitToken[1], nil
+	return splitToken[1], nil // FIXME: Indexing may panic because because of 'nil' slice
 }

@@ -7,30 +7,39 @@ import (
 	"github.com/3scale-labs/authorino/pkg/config/metadata"
 )
 
+var (
+	// MetadataEvaluator represents the metadataStruct implementing its Call method
+	MetadataEvaluator common.AuthConfigEvaluator
+)
+
 type MetadataConfig struct {
 	UserInfo *metadata.UserInfo `yaml:"userinfo,omitempty"`
 	UMA      *metadata.UMA      `yaml:"uma,omitempty"`
 }
 
-func (self *MetadataConfig) Call(ctx common.AuthContext) (interface{}, error) {
-	t, _ := self.GetType()
+func init() {
+	MetadataEvaluator = &MetadataConfig{}
+}
+
+func (config *MetadataConfig) Call(ctx common.AuthContext) (interface{}, error) {
+	t, _ := config.GetType()
 	switch t {
 	case "userinfo":
-		return self.UserInfo.Call(ctx)
+		return config.UserInfo.Call(ctx)
 	case "uma":
-		return self.UMA.Call(ctx)
+		return config.UMA.Call(ctx)
 	default:
-		return "", fmt.Errorf("Invalid metadata config")
+		return "", fmt.Errorf("invalid metadata config")
 	}
 }
 
-func (self *MetadataConfig) GetType() (string, error) {
+func (config *MetadataConfig) GetType() (string, error) {
 	switch {
-	case self.UserInfo != nil:
+	case config.UserInfo != nil:
 		return "userinfo", nil
-	case self.UMA != nil:
+	case config.UMA != nil:
 		return "uma", nil
 	default:
-		return "", fmt.Errorf("Invalid metadata config")
+		return "", fmt.Errorf("invalid metadata config")
 	}
 }
