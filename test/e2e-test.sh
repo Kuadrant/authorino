@@ -47,19 +47,17 @@ launch_as keycloack_logs kubectl logs -n authorino deployments/keycloak &
 # TODO: This should actually wait for the status of the created Service to be set to ready
 kubectl port-forward --namespace authorino deployment/envoy 8000:8000 &
 kubectl port-forward --namespace authorino deployment/keycloak 8080:8080 &
-sleep 60
 
-curl --version
+# Keycloak takes forever to start
+sleep 120
 
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
-
 
 echo "TOKEN"
 echo $ACCESS_TOKEN_JONE
 echo "TOKEN"
-curl -v -H 'Host: echo-api' -H "Authorization: $ACCESS_TOKEN_JOHN" http://localhost:8000/pets
 
-echo "FIN"
+
 
 [ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets) -eq 200 ];
 [ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/1) -eq 200 ];
@@ -68,5 +66,5 @@ echo "FIN"
 export ACCESS_TOKEN_JANE=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
 [ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets) -eq 200 ];
-[ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/1) -eq 403 ];
+[ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/1) -eq 401 ];
 [ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/stats) -eq 200 ];
