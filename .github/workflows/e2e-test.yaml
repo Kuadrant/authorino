@@ -24,6 +24,8 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
         id: go
+      - name: Install jq
+        run: sudo apt-get install jq
       - name: Check out code
         uses: actions/checkout@v2
       - run: |
