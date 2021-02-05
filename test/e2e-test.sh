@@ -17,6 +17,7 @@ function handle_error {
     echo "Dumping logs"
     cat envoy_logs.txt
     cat authorino_logs.txt
+    cat keycloack_logs.txt
 
     exit $retval
 }
@@ -41,12 +42,14 @@ kubectl get pods -n authorino
 
 launch_as envoy_logs kubectl logs -n authorino deployments/envoy &
 launch_as authorino_logs kubectl logs -n authorino deployments/authorino-controller-manager -c manager &
+launch_as keycloack_logs kubectl logs -n authorino deployments/keycloak &
 
 # TODO: This should actually wait for the status of the created Service to be set to ready
 kubectl port-forward --namespace authorino deployment/envoy 8000:8000 &
 kubectl port-forward --namespace authorino deployment/keycloak 8080:8080 &
-
 sleep 60
+
+curl --version
 
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
