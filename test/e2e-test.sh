@@ -34,9 +34,6 @@ kubectl -n authorino create secret generic umacredentialssecret \
 --from-literal=clientID=pets-api \
 --from-literal=clientSecret='523b92b6-625d-4e1e-a313-77e7a8ae4e88'
 
-
-jq --version
-
 kubectl apply -f ./config/samples/config_v1beta1_service.yaml -n authorino
 
 # List the current pods
@@ -53,9 +50,13 @@ sleep 60
 
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
+
+echo "TOKEN"
+echo $ACCESS_TOKEN_JONE
+echo "TOKEN"
 curl -v -H 'Host: echo-api' -H "Authorization: $ACCESS_TOKEN_JOHN" http://localhost:8000/pets
 
-echo $ACCESS_TOKEN_JONE
+echo "FIN"
 
 [ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets) -eq 200 ];
 [ $(curl -o /dev/null -L -s -w "%{http_code}" -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/1) -eq 200 ];
