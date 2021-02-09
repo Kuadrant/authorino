@@ -12,6 +12,7 @@ require (
 	github.com/open-policy-agent/opa v0.25.2
 	github.com/pquerna/cachecontrol v0.0.0-20201205024021-ac21108117ac // indirect
 	golang.org/x/net v0.0.0-20200927032502-5d4f70055728
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	google.golang.org/genproto v0.0.0-20191108220845-16a3f7862a1a
 	google.golang.org/grpc v1.26.0
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect

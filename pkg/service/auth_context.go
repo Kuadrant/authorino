@@ -4,10 +4,18 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/3scale-labs/authorino/pkg/config"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 
 	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"golang.org/x/net/context"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+var (
+	authCxtLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
 )
 
 // AuthContext holds the context of each auth request, including the request itself (sent by the client),
@@ -23,90 +31,134 @@ type AuthContext struct {
 	Authorization map[*config.AuthorizationConfig]interface{}
 }
 
-// Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
-func (self *AuthContext) Evaluate() error {
-	self.Identity = make(map[*config.IdentityConfig]interface{})
-	self.Metadata = make(map[*config.MetadataConfig]interface{})
-	self.Authorization = make(map[*config.AuthorizationConfig]interface{})
+type configCallback = func(config common.AuthConfigEvaluator, obj interface{})
 
-	// identity (authentication)
-	identityConfigs := self.API.IdentityConfigs
-	for i := range identityConfigs {
-		c := identityConfigs[i]
-		if ret, err := c.Call(self); err != nil {
+// NewAuthContext creates an AuthContext instance
+func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
+
+	return AuthContext{
+		ParentContext: &parentCtx,
+		Request:       req,
+		API:           &apiConfig,
+		Identity:      make(map[*config.IdentityConfig]interface{}),
+		Metadata:      make(map[*config.MetadataConfig]interface{}),
+		Authorization: make(map[*config.AuthorizationConfig]interface{}),
+	}
+
+}
+
+func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config common.AuthConfigEvaluator, cb configCallback) error {
+	select {
+	case <-ctx.Done():
+		authCxtLog.Info("Context cancelled objConfig terminating", "config", config)
+		return nil
+	default:
+		if authObj, err := config.Call(authContext); err != nil {
+			authCxtLog.Error(err, "Invalid auth object config")
 			return err
 		} else {
-			self.Identity[&c] = ret
-			break
+			cb(config, authObj)
+			return nil
 		}
+	}
+}
+
+func (authContext *AuthContext) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, cb configCallback) error {
+	errGroup, ctx := errgroup.WithContext(context.Background())
+
+	for _, authConfig := range authConfigs {
+		objConfig := authConfig
+		errGroup.Go(func() error {
+			return authContext.evaluateAuthConfig(ctx, objConfig, cb)
+		})
+	}
+	if err := errGroup.Wait(); err != nil {
+		return err
+	} else {
+		authCxtLog.Info("Successfully fetched all auth objects.", "authConfigs", authConfigs)
+		return nil
+	}
+}
+
+// Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
+func (authContext *AuthContext) Evaluate() error {
+	// identity
+	if err := authContext.evaluateAuthConfigs(authContext.API.IdentityConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.IdentityConfig)
+			authCxtLog.Info("Identity", "Config", conf, "AuthObj", authObj)
+			authContext.Identity[v] = authObj
+		}); err != nil {
+		return err
 	}
 
 	// metadata
-	metadataConfigs := self.API.MetadataConfigs
-	for i := range metadataConfigs {
-		c := metadataConfigs[i]
-		if ret, err := c.Call(self); err != nil {
-			return err
-		} else {
-			self.Metadata[&c] = ret
-		}
+	if err := authContext.evaluateAuthConfigs(authContext.API.MetadataConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.MetadataConfig)
+			authCxtLog.Info("Metadata", "Config", conf, "AuthObj", authObj)
+			authContext.Metadata[v] = authObj
+		}); err != nil {
+		return err
 	}
 
 	// policy enforcement (authorization)
-	authorizationConfigs := self.API.AuthorizationConfigs
-	for i := range metadataConfigs {
-		c := authorizationConfigs[i]
-		if ret, err := c.Call(self); err != nil {
-			return err
-		} else {
-			self.Authorization[&c] = ret
-		}
+	if err := authContext.evaluateAuthConfigs(authContext.API.AuthorizationConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.AuthorizationConfig)
+			authCxtLog.Info("Authorization", "Config", conf, "AuthObj", authObj)
+			authContext.Authorization[v] = authObj
+		}); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (self *AuthContext) GetParentContext() *context.Context {
-	return self.ParentContext
+func (authContext *AuthContext) GetParentContext() *context.Context {
+	return authContext.ParentContext
 }
 
-func (self *AuthContext) GetRequest() *auth.CheckRequest {
-	return self.Request
+func (authContext *AuthContext) GetRequest() *auth.CheckRequest {
+	return authContext.Request
 }
 
-func (self *AuthContext) GetAPI() interface{} {
-	return self.API
+func (authContext *AuthContext) GetAPI() interface{} {
+	return authContext.API
 }
 
-func (self *AuthContext) GetIdentity() interface{} { // FIXME: it should return the entire map, not only the first value
+func (authContext *AuthContext) GetIdentity() interface{} { // FIXME: it should return the entire map, not only the first value
 	var id interface{}
-	for _, v := range self.Identity {
+	for _, v := range authContext.Identity {
 		id = v
 		break
 	}
 	return id
 }
 
-func (self *AuthContext) GetMetadata() map[string]interface{} {
+func (authContext *AuthContext) GetMetadata() map[string]interface{} {
 	m := make(map[string]interface{})
-	for key, value := range self.Metadata {
-		t, _ := key.GetType()
-		m[t] = value // FIXME: It will override instead of including all the metadata values of the same type
+	for metadataCfg, metadataObj := range authContext.Metadata {
+		t, _ := metadataCfg.GetType()
+		m[t] = metadataObj // FIXME: It will override instead of including all the metadata values of the same type
 	}
 	return m
 }
 
-func (self *AuthContext) FindIdentityByName(name string) (interface{}, error) {
-	for id := range self.Identity {
-		if id.OIDC.Name == name {
-			return id.OIDC, nil
+func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) {
+	for identityConfig := range authContext.Identity {
+		if identityConfig.OIDC.Name == name {
+			return identityConfig.OIDC, nil
 		}
 	}
-	return nil, fmt.Errorf("Cannot find OIDC token")
+	return nil, fmt.Errorf("cannot find OIDC token")
 }
 
-func (self *AuthContext) AuthorizationToken() (string, error) {
-	authHeader, authHeaderOK := self.Request.Attributes.Request.Http.Headers["authorization"]
+func (authContext *AuthContext) AuthorizationToken() (string, error) {
+	authHeader, authHeaderOK := authContext.Request.Attributes.Request.Http.Headers["authorization"]
 
 	var splitToken []string
 
@@ -114,8 +166,8 @@ func (self *AuthContext) AuthorizationToken() (string, error) {
 		splitToken = strings.Split(authHeader, "Bearer ")
 	}
 	if !authHeaderOK || len(splitToken) != 2 {
-		return "", fmt.Errorf("Authorization header malformed or not provided")
+		return "", fmt.Errorf("authorization header malformed or not provided")
 	}
 
-	return splitToken[1], nil
+	return splitToken[1], nil // FIXME: Indexing may panic because because of 'nil' slice
 }

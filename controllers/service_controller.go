@@ -25,6 +25,7 @@ import (
 	"github.com/3scale-labs/authorino/pkg/config"
 	authorinoService "github.com/3scale-labs/authorino/pkg/config"
 	authorinoAuthorization "github.com/3scale-labs/authorino/pkg/config/authorization"
+	"github.com/3scale-labs/authorino/pkg/config/common"
 	authorinoIdentity "github.com/3scale-labs/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/3scale-labs/authorino/pkg/config/metadata"
 	"github.com/go-logr/logr"
@@ -98,6 +99,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
 
 	identityConfigs := make([]config.IdentityConfig, 0)
+	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, identity := range service.Spec.Identity {
 
@@ -118,9 +120,11 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		}
 
 		identityConfigs = append(identityConfigs, translatedIdentity)
+		interfacedIdentityConfigs = append(interfacedIdentityConfigs, &translatedIdentity)
 	}
 
 	metadataConfigs := make([]config.MetadataConfig, 0)
+	interfacedMetadataConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, metadata := range service.Spec.Metadata {
 
@@ -181,9 +185,11 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		}
 
 		metadataConfigs = append(metadataConfigs, translatedMetadata)
+		interfacedMetadataConfigs = append(interfacedMetadataConfigs, &translatedMetadata)
 	}
 
 	authorizationConfigs := make([]config.AuthorizationConfig, 0)
+	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, authorization := range service.Spec.Authorization {
 
@@ -235,16 +241,16 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		}
 
 		authorizationConfigs = append(authorizationConfigs, translatedAuthorization)
-
+		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, &translatedAuthorization)
 	}
 
 	config := make(map[string]authorinoService.APIConfig, 0)
 
 	authorinoService := authorinoService.APIConfig{
 		Enabled:              true,
-		IdentityConfigs:      identityConfigs,
-		MetadataConfigs:      metadataConfigs,
-		AuthorizationConfigs: authorizationConfigs,
+		IdentityConfigs:      interfacedIdentityConfigs,
+		MetadataConfigs:      interfacedMetadataConfigs,
+		AuthorizationConfigs: interfacedAuthorizationConfigs,
 	}
 
 	for _, host := range service.Spec.Hosts {

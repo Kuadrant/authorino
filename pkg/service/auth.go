@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/3scale-labs/authorino/pkg/cache"
 	"golang.org/x/net/context"
@@ -12,6 +11,11 @@ import (
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type"
 	"github.com/gogo/googleapis/google/rpc"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+var (
+	authServiceLog = ctrl.Log.WithName("Authorino").WithName("AuthService")
 )
 
 // AuthService is the server API for the authorization service.
@@ -26,7 +30,7 @@ func (self *AuthService) Check(ctx context.Context, req *auth.CheckRequest) (*au
 	if err != nil {
 		return self.deniedResponse(rpc.FAILED_PRECONDITION, "Invalid request"), nil
 	}
-	log.Println("[AuthService] Check()\n", string(reqJSON))
+	authServiceLog.Info("Check()", "reqJSON", string(reqJSON))
 
 	// service config
 	host := req.Attributes.Request.Http.Host
@@ -38,11 +42,7 @@ func (self *AuthService) Check(ctx context.Context, req *auth.CheckRequest) (*au
 		return self.deniedResponse(rpc.NOT_FOUND, "Service not found"), nil
 	}
 
-	authContext := AuthContext{
-		ParentContext: &ctx,
-		Request:       req,
-		API:           &apiConfig,
-	}
+	authContext := NewAuthContext(ctx, req, apiConfig)
 
 	err = authContext.Evaluate()
 	if err != nil {
