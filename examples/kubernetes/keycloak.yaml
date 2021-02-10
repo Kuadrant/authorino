@@ -19,6 +19,10 @@ spec:
       containers:
         - name: keycloak
           image: jboss/keycloak
+          resources:
+            requests:
+              memory: "4Gi"
+              cpu: "1000m"          
           env:
             - name: KEYCLOAK_USER
               value: admin
