@@ -22,7 +22,7 @@ spec:
           resources:
             requests:
               memory: "3Gi"
-              cpu: "750m"          
+              cpu: "1000m"
           env:
             - name: KEYCLOAK_USER
               value: admin
