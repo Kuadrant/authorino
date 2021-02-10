@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	// IdentityEvaluator represents the identityConfig struct implementing its Call method
-	IdentityEvaluator common.AuthConfigEvaluator
+	// IdentityConfigEvaluator represents the identityConfig struct implementing its Call method
+	IdentityConfigEvaluator common.AuthConfigEvaluator
 )
 
 type IdentityConfig struct {
@@ -20,7 +20,7 @@ type IdentityConfig struct {
 }
 
 func init() {
-	IdentityEvaluator = &IdentityConfig{}
+	IdentityConfigEvaluator = &IdentityConfig{}
 }
 
 // Call method will execute the specific Identity implementation's method

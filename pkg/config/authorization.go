@@ -8,13 +8,17 @@ import (
 )
 
 var (
-	// AuthorizationEvaluator represents the authorizationConfig struct implementing its Call method
-	AuthorizationEvaluator common.AuthConfigEvaluator
+	// AuthorizationConfigEvaluator represents the authorizationConfig struct implementing its Call method
+	AuthorizationConfigEvaluator common.AuthConfigEvaluator
 )
 
 type AuthorizationConfig struct {
 	OPA *authorization.OPA       `yaml:"opa"`
 	JWT *authorization.JWTClaims `yaml:"jwt"`
+}
+
+func init() {
+	AuthorizationConfigEvaluator = &AuthorizationConfig{}
 }
 
 func (config *AuthorizationConfig) Call(ctx common.AuthContext) (interface{}, error) {

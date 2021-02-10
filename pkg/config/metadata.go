@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	// MetadataEvaluator represents the metadataStruct implementing its Call method
-	MetadataEvaluator common.AuthConfigEvaluator
+	// MetadataConfigEvaluator represents the metadataStruct implementing its Call method
+	MetadataConfigEvaluator common.AuthConfigEvaluator
 )
 
 type MetadataConfig struct {
@@ -18,7 +18,7 @@ type MetadataConfig struct {
 }
 
 func init() {
-	MetadataEvaluator = &MetadataConfig{}
+	MetadataConfigEvaluator = &MetadataConfig{}
 }
 
 func (config *MetadataConfig) Call(ctx common.AuthContext) (interface{}, error) {
