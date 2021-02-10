@@ -23,7 +23,7 @@ spec:
           args:
             - --config-path /usr/local/etc/envoy/envoy.yaml
             - --service-cluster front-proxy
-            - --log-level info
+            - --log-level trace
             - --component-log-level filter:trace,http:debug,router:debug
           ports:
             - name: web

@@ -1,4 +1,5 @@
-name: Unit Tests
+name: e2e tests
+
 on:
   push:
     branches: [ 'main', 'master' ]
@@ -7,8 +8,8 @@ on:
     branches: [ 'main', 'master' ]
 
 jobs:
-  unit-tests:
-    name: Unit Tests
+  e2etest:
+    name: e2e tests
     strategy:
       matrix:
         go-version: [1.15.x]
@@ -25,6 +26,7 @@ jobs:
         id: go
       - name: Check out code
         uses: actions/checkout@v2
-      - name: Run make test
-        run: |
-          make test
+      - run: |
+          set -x
+          make e2e
+

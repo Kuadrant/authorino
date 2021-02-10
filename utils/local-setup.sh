@@ -8,8 +8,8 @@ kind delete cluster
 kind create cluster
 
 echo "Building Authorino"
-docker build -t authorino:devel ./
-kind load docker-image authorino:devel --name ${KIND_CLUSTER_NAME}
+docker build -t controller:latest ./
+kind load docker-image controller:latest --name ${KIND_CLUSTER_NAME}
 
 echo "Creating namespace"
 kubectl create namespace "${AUTHORINO_NAMESPACE}"
@@ -25,7 +25,7 @@ kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/kubernetes/echo-api.yaml
 
 echo "Deploying Authorino"
 kustomize build config/default | kubectl -n "${AUTHORINO_NAMESPACE}" apply -f -
-kubectl -n "${AUTHORINO_NAMESPACE}" patch deployment authorino-controller-manager -p '{"spec": {"template": {"spec":{"containers":[{"name": "manager","image":"authorino:devel", "imagePullPolicy":"IfNotPresent"}]}}}}'
+#kubectl -n "${AUTHORINO_NAMESPACE}" patch deployment authorino-controller-manager -p '{"spec": {"template": {"spec":{"containers":[{"name": "manager","image":"authorino:devel", "imagePullPolicy":"IfNotPresent"}]}}}}'
 
 echo "Wait for all deployments to be up"
 kubectl -n "${AUTHORINO_NAMESPACE}" wait --timeout=300s --for=condition=Available deployments --all

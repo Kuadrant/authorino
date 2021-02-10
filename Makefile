@@ -24,6 +24,7 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+SHELL = /bin/bash
 
 all: manager
 
@@ -145,3 +146,7 @@ endif
 .PHONY: local-setup
 local-setup: kustomize kind
 	utils/local-setup.sh
+
+.PHONY: e2e
+e2e: local-setup
+	test/e2e-test.sh
