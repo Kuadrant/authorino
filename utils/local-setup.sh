@@ -15,13 +15,13 @@ echo "Creating namespace"
 kubectl create namespace "${AUTHORINO_NAMESPACE}"
 
 echo "Deploying Keycloak"
-kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/kubernetes/keycloak.yaml
+kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/keycloak.yaml
 
 echo "Deploying Envoy"
-kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/kubernetes/envoy.yaml
+kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/envoy.yaml
 
 echo "Deploying echo-api app"
-kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/kubernetes/echo-api.yaml
+kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/echo-api.yaml
 
 echo "Deploying Authorino"
 kustomize build config/default | kubectl -n "${AUTHORINO_NAMESPACE}" apply -f -

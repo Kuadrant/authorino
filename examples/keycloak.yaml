@@ -23,7 +23,7 @@ spec:
             - name: KEYCLOAK_USER
               value: admin
             - name: KEYCLOAK_PASSWORD
-              value: thisisnotsafe
+              value: p
             - name: KEYCLOAK_IMPORT
               value: /tmp/import-realm.json -Dkeycloak.profile.feature.upload_scripts=enabled
           ports:
@@ -357,7 +357,7 @@ data:
               "attributes": {}
             }
           ],
-          "pets-api": [
+          "echo-api": [
             {
               "id": "d10431c3-9485-4180-b5df-a6bebb0e8922",
               "name": "uma_protection",
@@ -502,11 +502,11 @@ data:
         {
           "id": "8c29ebc1-3eb4-4269-9f0f-6516df6904c2",
           "createdTimestamp": 1605106744655,
-          "username": "service-account-pets-api",
+          "username": "service-account-echo-api",
           "enabled": true,
           "totp": false,
           "emailVerified": false,
-          "serviceAccountClientId": "pets-api",
+          "serviceAccountClientId": "echo-api",
           "disableableCredentialTypes": [],
           "requiredActions": [],
           "realmRoles": [
@@ -515,7 +515,7 @@ data:
             "offline_access"
           ],
           "clientRoles": {
-            "pets-api": [
+            "echo-api": [
               "uma_protection"
             ],
             "account": [
@@ -870,7 +870,7 @@ data:
         },
         {
           "id": "57a645a5-fb67-438b-8be5-dfb971666dbc",
-          "clientId": "pets-api",
+          "clientId": "echo-api",
           "surrogateAuthRequired": false,
           "enabled": true,
           "alwaysDisplayInConsole": false,
@@ -969,48 +969,71 @@ data:
             "policyEnforcementMode": "ENFORCING",
             "resources": [
               {
-                "name": "pets",
+                "name": "hello",
                 "ownerManagedAccess": false,
-                "displayName": "pets",
+                "displayName": "hello",
                 "attributes": {},
                 "_id": "e20d194c-274c-4845-8c02-0ca413c9bf18",
                 "uris": [
-                  "/pets"
+                  "/hello"
                 ]
               },
               {
-                "name": "stats",
+                "name": "bye",
                 "ownerManagedAccess": false,
-                "displayName": "stats",
+                "displayName": "bye",
                 "attributes": {},
                 "_id": "e1641b93-fdbe-47cc-88be-d8bdcbd19589",
                 "uris": [
-                  "/stats"
+                  "/bye"
                 ]
               },
               {
-                "name": "pet-1",
+                "name": "greeting-1",
                 "owner": {
                   "name": "john"
                 },
                 "ownerManagedAccess": true,
                 "attributes": {
-                  "name": [
-                    "Rufus"
+                  "phrase": [
+                    "Hello, mate!"
                   ],
-                  "size": [
-                    "large"
+                  "when": [
+                    "morning",
+                    "afternoon",
+                    "evening"
                   ],
-                  "type": [
-                    "dog"
-                  ],
-                  "breed": [
-                    "labrador"
+                  "to": [
+                    "friends"
                   ]
                 },
                 "_id": "44f93c94-a8d0-4b33-8188-8173e86844d2",
                 "uris": [
-                  "/pets/1"
+                  "/greetings/1"
+                ]
+              },
+              {
+                "name": "greeting-2",
+                "owner": {
+                  "name": "john"
+                },
+                "ownerManagedAccess": true,
+                "attributes": {
+                  "phrase": [
+                    "Good morning!"
+                  ],
+                  "when": [
+                    "morning"
+                  ],
+                  "to": [
+                    "friends",
+                    "family",
+                    "strangers"
+                  ]
+                },
+                "_id": "14676f2e-709a-420f-9bc9-c1b01e29f18f",
+                "uris": [
+                  "/greetings/2"
                 ]
               }
             ],

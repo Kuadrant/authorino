@@ -59,11 +59,11 @@ var (
 			Authorization: []*v1beta1.Authorization{
 				{
 					OPAPolicy: &v1beta1.Authorization_OPAPolicy{
-						Endpoint: "http://opa:8181",
+						Endpoint: "null",
 						UUID:     "8fa79d93-0f93-4e23-8c2a-666be266cad1",
 						InlineRego: `allow {
             http_request.method == "GET"
-            path = ["pets"]
+            path = ["hello"]
           }
 
           allow {
@@ -73,13 +73,13 @@ var (
 
           allow {
             http_request.method == "GET"
-            path = ["stats"]
+            path = ["bye"]
             is_admin
           }
 
           own_resource {
-            some petid
-            path = ["pets", petid]
+            some greetingid
+            path = ["greetings", greetingid]
             resource := object.get(metadata, "uma", [])[0]
             owner := object.get(object.get(resource, "owner", {}), "id", "")
             subject := object.get(identity, "sub", object.get(identity, "username", ""))
