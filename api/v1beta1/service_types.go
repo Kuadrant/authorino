@@ -85,7 +85,6 @@ type Authorization struct {
 }
 
 type Authorization_OPAPolicy struct {
-	Endpoint   string `json:"endpoint"`
 	UUID       string `json:"uuid"`
 	InlineRego string `json:"inlineRego,omitempty"`
 }

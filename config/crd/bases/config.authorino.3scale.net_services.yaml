@@ -57,14 +57,11 @@ spec:
                     type: object
                   OPAPolicy:
                     properties:
-                      endpoint:
-                        type: string
                       inlineRego:
                         type: string
                       uuid:
                         type: string
                     required:
-                    - endpoint
                     - uuid
                     type: object
                 type: object
