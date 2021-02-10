@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.15.x]
-        platform: [ubuntu-latest]
+        platform: [ubuntu-20.04]
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
@@ -29,6 +29,5 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - run: |
-          set -x
           make e2e
 
