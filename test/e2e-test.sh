@@ -49,7 +49,7 @@ kubectl port-forward --namespace authorino deployment/envoy 8000:8000 &
 kubectl port-forward --namespace authorino deployment/keycloak 8080:8080 &
 
 # Keycloak takes forever to start
-sleep 240
+sleep 300
 
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
