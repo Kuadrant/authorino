@@ -21,7 +21,7 @@ spec:
           image: jboss/keycloak
           resources:
             requests:
-              memory: "4Gi"
+              memory: "3Gi"
               cpu: "750m"
           env:
             - name: KEYCLOAK_USER
