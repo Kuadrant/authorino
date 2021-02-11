@@ -16,6 +16,12 @@ import (
 
 var (
 	authServiceLog = ctrl.Log.WithName("Authorino").WithName("AuthService")
+
+	statusCodeMapping = map[rpc.Code]envoy_type.StatusCode{
+		rpc.FAILED_PRECONDITION: envoy_type.StatusCode_BadRequest,
+		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
+		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
+	}
 )
 
 // AuthService is the server API for the authorization service.
@@ -71,17 +77,16 @@ func (self *AuthService) deniedResponse(code rpc.Code, message string) *auth.Che
 		HttpResponse: &auth.CheckResponse_DeniedResponse{
 			DeniedResponse: &auth.DeniedHttpResponse{
 				Status: &envoy_type.HttpStatus{
-					Code: envoy_type.StatusCode_Unauthorized,
+					Code: statusCodeMapping[code],
 				},
 				Headers: []*core.HeaderValueOption{
 					{
 						Header: &core.HeaderValue{
 							Key:   "x-ext-auth-reason",
-							Value: "forbidden",
+							Value: message,
 						},
 					},
 				},
-				Body: message,
 			},
 		},
 	}
