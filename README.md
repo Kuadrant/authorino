@@ -1,6 +1,8 @@
 # Welcome to Authorino!
 
-Authorino is an AuthN/AuthZ broker that implements [Envoy’s external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol. It adds protection to your cloud-native APIs with:
+Authorino is a Cloud Native AuthN/AuthZ broker that implements [Envoy’s external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol.
+
+It adds protection to your APIs including:
 - User authentication (OIDC, mTLS, HMAC, API key)
 - Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
@@ -295,87 +297,74 @@ Request-time:   │Get document with input │
 
 ## Usage
 
-There are 2 main use cases for Authorino:
-- A. protecting APIs
-- B. protecting resources and scopes of the APIM system
+Authorino is a Cloud Native application, so you will need a [Kubernetes](https://kubernetes.io) cluster. You may also need typical tools to work with Kubernetes such as [kubectl](https://kubernetes.io/docs/reference/kubectl/overview) and [Kustomize](https://kustomize.io).
 
-We are currently working on the features to support use case A and, at the same time, planning for soon having Authorino configured and deployed with Red Hat 3scale to support use case B. The latter will allow API providers to configure access control over resources of the API management system in the same fashion they do for their managed APIs.
+Assuming you have the cluster up and running, and hold proper permissions to be able to do things such as create [Custom Resource Definitions (CRDs)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources) in the cluster, follow the steps below to prepare the environment and add protection to your upstream APIs with Authorino:
 
-To use Authorino to protect your APIs with OIDC and OPA, please consider the following requirements and deployment options.
+### Preparation
 
-### Requirements
+1. Create a namespace.
+2. Deploy [Envoy](https://www.envoyproxy.io) proxy. Ultimately, Envoy virtual hosts will be associated to the upstream APIs you want to protect, and the [External Authorization Filter](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) pointing to Authorino. Check [this example](examples/envoy.yaml) if you need to.
+3. For OpenID Connect, make sure you have access to an identity provider (IdP) and an authority that can issue ID tokens (JWTs). You may want to check out [Keycloak](https://www.keycloak.org) which can solve both and connect to external identity sources and user federation like LDAP.
+4. For UMA-protected resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more tipically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you. Read more about it [here](#user-managed-access-uma).
+5. Create the Authorino CRDs and deploy
+    ```
+    git clone git@github.com:3scale-labs/authorino.git && cd authorino
+    kustomize build config/default | kubectl -n "${AUTHORINO_NAMESPACE}" apply -f -
+    ```
 
-1. At least one upstream API (i.e., the API you want to protect)
-2. [Envoy](https://www.envoyproxy.io) proxy managing the HTTP connections to the upstream API and configured with the [External Authorization Filter](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) pointing to Authorino (default port: 50051).
-3. For OpenID Connect, an authority that can issue JWTs
-4. For UMA-protected resource data, a UMA-compliant server
-5. OPA server (default port: 8181)
+Authorino has really only one setting option that can be changed when deploying. The `PORT` environment variable defines the TCP port that Authorino will listen to for the gRPC calls sent by the Envoy proxy. It defaults to port 50051. In case you want to change that, make sure to do the proper adjusments in steps 2 and 5 above.
 
-### Configuring Authorino
+### Add protection to a upstream API
+1. Have your upstream API running. Typically, upstream APIs are deployed to the same cluster and namespace where you have Envoy and Authorino running but not necessarily.
+2. Make sure the Envoy config includes a virtual host to the upstream API. You may need to rollout the `envoy` deployment for the changes to take effect.
+3. Create an `Ingress` resource exposing the `envoy` service on a host that resolves to the Kubernetes cluster and identifies your API for external users.
+4. Write an Authorino `Service` Custom Resource (CR) specifying the auth config to proctect your upstream API. The scheme for the CR is described in [The Authorino Service CR](#the-authorino-service-custom-resource) and you may also want to check [this](examples/echo-api-protection.yaml) more concrete example.
+5. Apply the CR with `kubectl -n "${AUTHORINO_NAMESPACE}" apply -f path/to/authorino/auth-config-cr.yaml`
 
-Authorino configuration is one YAML file and a couple of environment variables. The structure of the YAML config is something like the following:
+### The Authorino Service Custom Resource
+
+An Authorino `Service` Custom Resource specifies the authN/authZ configuration for a given upstream API. It has the following general structure:
 
 ```yaml
-<upstream-host>:<port>:
-  enabled: true/false
-  identity: [] # -- list of authentication modes and settings (e.g. `oidc`)
-  metadata: [] # -- list of metadata sources (e.g. `userinfo`, `uma`)
-  authorization: [] # -- list of PDPs/authorization services and settings (e.g. `opa`)
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: my-upstream-api
+spec:
+  # List of hostnames to match the upstream API → Authorino gets the host from the Envoy input and looks up for the corresponding config in its cache
+  host: []
 
-<other-upstream>:<port>:
-  ...
+  # List of identity sources → Authorino ensures the requestor's credentials (i.e. an access token, a TLS client certificate, etc) are verified with at least one of the sources from this list, implementing the corresponding protocol (e.g. `oidc`, `mtls`, `hmac`)
+  identity: []
+
+  # List of sources of additional metadata for the authorization step (e.g. OIDC `userinfo`, `uma`-protected resource attributes) → Authorino fetches the additional metadata according the each protocol and passes it along with the request info and identity info to the Policy Decision Points (PDPs)/authorization services
+  metadata: []
+
+  # List of Policy Decision Points (PDPs)/authorization services and corresponding settings (e.g. `opa`, `jwt`)
+  authorization: []
 ```
 
-A more concrete example of Authorino's `config.yml` file can be found [here](examples/config.yml).
-
-And here's the list of supported environment variables when running Authorino:
-
-|             |                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
-| `CONFIG`    | Path to the Authorino YAML config file                                                                |
-| `PORT`      | TCP Port that Authorino will listen for gRPC call from the Envoy proxy (default: 50051)               |
+A more concrete example can be found [here](examples/echo-api-protection.yaml).
 
 #### Inline Rego policies
 
-For the inline Rego policies in your OPA authorization config, the following objects are available in every document:
+For inline Rego policies (with the `opa` authorization type), the following objects are available in every document and can be used in the body of any user-defined policy:
 - `http_request`: attributes of the HTTP request (e.g., host, path, headers, etc) as passed by Envoy to Authorino
 - `identity`: whatever is resolved from the "identity" section of Authorino config, e.g. a decoded JWT of an OIDC authentication
 - `metadata`: whatever is resolved from the "metadata" section of Authorino config, e.g. OIDC user info, resource data fetched from a UMA-compliant server
 - `path` (Array): just an array of each segment of `http_request.path` to ease writing of rules with comparisson expressions using the requested path.
 
-### Deploy on Docker
+## Try it out with the example
 
-```
-docker run -v './path/to/config.yml:/usr/src/app/config.yml' -p '50051:50051' 3scale/authorino:latest
-```
-
-### Deploy on a Kubernetes cluster
-
-A set of YAMLs exemplifying Authorino deployed to Kubernetes with an OPA PDP sidecar can be found [here](examples/openshift). We recommend storing Authorino's `config.yml` in a `ConfigMap` ([example](examples/openshift/configmap.yaml)). Follow by creating Authorino's `Deployment` and `Service`.
-
-Usually the entire order of deployment goes as follows:
-1. Upstream API(s)
-2. Policy Decision Point (PDP) service (e.g. OPA server) – can be deployed as an Authorino sidecard as well, like in the example provided
-3. Authorino
-    - `ConfigMap`
-    - `Deployment`
-    - `Service`
-4. Envoy
-    - `ConfigMap`
-    - `Deployment`
-    - `Service`
-    - `Ingress` (and [ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)) or Openshift `Route`
-
-## Check the examples and try it out
-
-The development/testing environment contains: 
+The only requirements to try out the example are [Golang](https://golang.org) and a [Docker](https://docker.com) daemon running. The development/testing environment consists of a Kubernetes server with the following components:
 
 - **Echo API**<br/>
     Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Envoy proxy**<br/>
     Configured w/ the ext_authz http filter.
 - **Authorino**<br/>
-    The AuthN/AuthZ broker that will look for Authorino Service CR's in the kubernetes server
+    The AuthN/AuthZ broker that will look for all Authorino `Service` CRs in the Kubernetes server
 - **Keycloak**<br/>
     To issue OIDC access tokens and to provide ad-hoc resource data for the authorization payload.<br/>
     - Admin console: http://localhost:8080/auth/admin (admin/p)
@@ -383,11 +372,12 @@ The development/testing environment contains:
     - Preloaded clients:
       - **demo**: to which API consumers delegate access and therefore the one which access tokens are issued to
       - **authorino**: used by Authorino to fetch additional user info with `client_credentials` grant type
-      - **pets-api**: used by Authorino to fetch UMA-protected resource data following typical UMA flow
+      - **echo-api**: used by Authorino to fetch UMA-protected resource data associated with the Echo API
     - Preloaded resources:
-      - `/pets`
-      - `/pets/1` (owned by user jonh)
-      - `/stats`
+      - `/hello`
+      - `/greetings/1` (owned by user jonh)
+      - `/greetings/2` (owned by user jonh)
+      - `/bye`
     - Realm roles:
       - member (default to all users)
       - admin
@@ -397,71 +387,81 @@ The development/testing environment contains:
 
 #### 1. Clone the repo
 
-Start by cloning the repo:
-
 ```shell
 git clone git@github.com:3scale-labs/authorino.git
 ```
 
-#### 2. Start the local kubernetes environment
-
-In order to deploy the testing/development environment you will need to install [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation).
-Once you have Kind installed, use the Makefile target to start the deployment.
+#### 2. Launch the local Kubernetes environment
 
 ```shell
 cd authorino
 make local-setup
 ```
 
-Once the setup of the local kubernetes cluster and deployment of components finishes, you can expose the Envoy service using:
+In the process of setting up your local environment, Authorino's `Makefile` may try to install the following required tools in case they are not already available in your system:
+- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
+- [Kustomize](https://kustomize.io)
+
+Once the setup finishes and all deployments are ready, expose the Envoy and Keycloak services to the local host by running:
 
 ```shell
-kubectl port-forward --namespace authorino deployment/envoy 8000:8000 &
-kubectl port-forward --namespace authorino deployment/keycloak 8080:8080 &
+kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
 ```
 
-Let's create the secrets that we require on `./config/samples/config_v1beta1_service.yaml`:
+Create the secrets that required in the example config:
 
 ```shell
 kubectl -n authorino create secret generic userinfosecret \
---from-literal=clientID=authorino \
---from-literal=clientSecret='2e5246f2-f4ef-4d55-8225-36e725071dee'
+        --from-literal=clientID=authorino \
+        --from-literal=clientSecret='2e5246f2-f4ef-4d55-8225-36e725071dee'
 
 kubectl -n authorino create secret generic umacredentialssecret \
---from-literal=clientID=pets-api \
---from-literal=clientSecret='523b92b6-625d-4e1e-a313-77e7a8ae4e88'
+        --from-literal=clientID=echo-api \
+        --from-literal=clientSecret='523b92b6-625d-4e1e-a313-77e7a8ae4e88'
 ```
 
-Now you can deploy the Authorino Service file:
+Finally, deploy Authorino auth config with:
 ```shell
-kubectl apply -f ./config/samples/config_v1beta1_service.yaml -n authorino
+kubectl -n authorino apply -f ./examples/echo-api-protection.yaml
 ```
 
 #### 3. Try out with John (member)
 
-John is a member user of the `ostia` realm in Keycloak. He owns a resource hosted at `/pets/1` and has no access to `/stats`.
+John is a member user of the `ostia` realm in Keycloak. He owns the resources hosted at `/greetings/1` and `/greetings/2` and has no access to `/bye`.
 
 ```shell
 export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets -v     # 200 OK
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/pets/1 -v   # 200 OK
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/stats -v    # 403 Forbidden
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/hello -v        # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/greetings/1 -v  # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/bye -v          # 401 Unauthorized
 ```
 
 #### 4. Try out with Jane (admin)
 
-Jane is an admin user of the `ostia` realm in Keycloak. She does not own any resource and has access to `/stats`.
+Jane is an admin user of the `ostia` realm in Keycloak. She does not own any resource and has access to `/bye`.
 
 ```shell
 export ACCESS_TOKEN_JANE=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets -v     # 200 OK
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/pets/1 -v   # 403 Forbidden
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/stats -v    # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/hello -v        # 200 OK
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/greetings/1 -v  # 401 Unauthorized
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/bye -v          # 200 OK
 ```
 
 #### 5. Shut down and clean up
 ```
 kind delete clusters authorino-integration
 ```
+
+## Contributing
+
+- Check the list of issues in GitHub
+- Make sure you have installed
+    - [Docker](https://docker.com)
+    - [Golang](https://golang.org)
+    - [Operator SDK](https://sdk.operatorframework.io/)
+- Fork the repo
+- Start your local changes
+- Push a PR
