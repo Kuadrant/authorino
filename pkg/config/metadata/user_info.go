@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -18,6 +19,11 @@ type UserInfo struct {
 func (self *UserInfo) Call(ctx common.AuthContext) (interface{}, error) {
 	// find oidc config and the userinfo endpoint
 	idConfig, _ := ctx.FindIdentityByName(self.OIDC)
+
+	if idConfig == nil {
+		return nil, fmt.Errorf("Null OIDC object for config %v. Skipping related UserInfo metadata.", self.OIDC)
+	}
+
 	idConfigStruct := idConfig.(*identity.OIDC)
 	provider, _ := idConfigStruct.NewProvider(ctx)
 	var providerClaims map[string]interface{}

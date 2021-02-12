@@ -3,8 +3,7 @@ package service
 import (
 	"fmt"
 	"strings"
-
-	"golang.org/x/sync/errgroup"
+	"sync"
 
 	"github.com/3scale-labs/authorino/pkg/config"
 	"github.com/3scale-labs/authorino/pkg/config/common"
@@ -15,7 +14,7 @@ import (
 )
 
 var (
-	authCxtLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
+	authCtxLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
 )
 
 // AuthContext holds the context of each auth request, including the request itself (sent by the client),
@@ -31,7 +30,7 @@ type AuthContext struct {
 	Authorization map[*config.AuthorizationConfig]interface{}
 }
 
-type configCallback = func(config common.AuthConfigEvaluator, obj interface{})
+type evaluateCallback = func(config common.AuthConfigEvaluator, obj interface{})
 
 // NewAuthContext creates an AuthContext instance
 func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
@@ -47,14 +46,14 @@ func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig
 
 }
 
-func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config common.AuthConfigEvaluator, cb configCallback) error {
+func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config common.AuthConfigEvaluator, cb evaluateCallback) error {
 	select {
 	case <-ctx.Done():
-		authCxtLog.Info("Context cancelled objConfig terminating", "config", config)
+		authCtxLog.Info("Context aborted", "config", config)
 		return nil
 	default:
 		if authObj, err := config.Call(authContext); err != nil {
-			authCxtLog.Error(err, "Invalid auth object config")
+			authCtxLog.Info("Failed to evaluate auth object", "config", config, "error", err)
 			return err
 		} else {
 			cb(config, authObj)
@@ -63,53 +62,119 @@ func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config c
 	}
 }
 
-func (authContext *AuthContext) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, cb configCallback) error {
-	errGroup, ctx := errgroup.WithContext(context.Background())
+func (authContext *AuthContext) evaluateOneAuthConfig(authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	waitGroup := new(sync.WaitGroup)
+	size := len(authConfigs)
+	errorChannel := make(chan error, size)
+	successChannel := make(chan bool, size)
+
+	waitGroup.Add(size)
+
+	go func() {
+		waitGroup.Wait()
+		close(errorChannel)
+		close(successChannel)
+	}()
 
 	for _, authConfig := range authConfigs {
 		objConfig := authConfig
-		errGroup.Go(func() error {
-			return authContext.evaluateAuthConfig(ctx, objConfig, cb)
-		})
+		go func() {
+			defer waitGroup.Done()
+
+			err := authContext.evaluateAuthConfig(ctx, objConfig, cb)
+			if err != nil {
+				errorChannel <- err
+			} else {
+				successChannel <- true
+				cancel() // cancels the context if at least one thread succeeds
+			}
+		}()
 	}
-	if err := errGroup.Wait(); err != nil {
-		return err
-	} else {
-		authCxtLog.Info("Successfully fetched all auth objects.", "authConfigs", authConfigs)
+
+	success := <-successChannel
+	err := <-errorChannel
+
+	if success {
 		return nil
+	} else {
+		return err
 	}
+}
+
+func (authContext *AuthContext) evaluateAllAuthConfigs(authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	waitGroup := new(sync.WaitGroup)
+	size := len(authConfigs)
+	errorChannel := make(chan error, size)
+
+	waitGroup.Add(size)
+
+	go func() {
+		waitGroup.Wait()
+		close(errorChannel)
+	}()
+
+	for _, authConfig := range authConfigs {
+		objConfig := authConfig
+		go func() {
+			defer waitGroup.Done()
+
+			err := authContext.evaluateAuthConfig(ctx, objConfig, cb)
+			if err != nil {
+				errorChannel <- err
+				cancel() // cancels the context if at least one thread fails
+			}
+		}()
+	}
+
+	err := <-errorChannel
+	return err
+}
+
+func (authContext *AuthContext) evaluateAnyAuthConfig(authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) {
+	ctx := context.Background()
+	size := len(authConfigs)
+	waitGroup := new(sync.WaitGroup)
+	waitGroup.Add(size)
+
+	for _, authConfig := range authConfigs {
+		objConfig := authConfig
+		go func() {
+			defer waitGroup.Done()
+
+			_ = authContext.evaluateAuthConfig(ctx, objConfig, cb)
+		}()
+	}
+
+	waitGroup.Wait()
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (authContext *AuthContext) Evaluate() error {
 	// identity
-	if err := authContext.evaluateAuthConfigs(authContext.API.IdentityConfigs,
+	if err := authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs,
 		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			// Convert from interfaceType to SpecificType
 			v, _ := conf.(*config.IdentityConfig)
-			authCxtLog.Info("Identity", "Config", conf, "AuthObj", authObj)
+			authCtxLog.Info("Identity", "config", conf, "authObj", authObj)
 			authContext.Identity[v] = authObj
 		}); err != nil {
 		return err
 	}
 
 	// metadata
-	if err := authContext.evaluateAuthConfigs(authContext.API.MetadataConfigs,
+	authContext.evaluateAnyAuthConfig(authContext.API.MetadataConfigs,
 		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			// Convert from interfaceType to SpecificType
 			v, _ := conf.(*config.MetadataConfig)
-			authCxtLog.Info("Metadata", "Config", conf, "AuthObj", authObj)
+			authCtxLog.Info("Metadata", "config", conf, "authObj", authObj)
 			authContext.Metadata[v] = authObj
-		}); err != nil {
-		return err
-	}
+		})
 
 	// policy enforcement (authorization)
-	if err := authContext.evaluateAuthConfigs(authContext.API.AuthorizationConfigs,
+	if err := authContext.evaluateAllAuthConfigs(authContext.API.AuthorizationConfigs,
 		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			// Convert from interfaceType to SpecificType
 			v, _ := conf.(*config.AuthorizationConfig)
-			authCxtLog.Info("Authorization", "Config", conf, "AuthObj", authObj)
+			authCtxLog.Info("Authorization", "config", conf, "authObj", authObj)
 			authContext.Authorization[v] = authObj
 		}); err != nil {
 		return err
@@ -130,11 +195,13 @@ func (authContext *AuthContext) GetAPI() interface{} {
 	return authContext.API
 }
 
-func (authContext *AuthContext) GetIdentity() interface{} { // FIXME: it should return the entire map, not only the first value
+func (authContext *AuthContext) GetIdentity() interface{} {
 	var id interface{}
 	for _, v := range authContext.Identity {
-		id = v
-		break
+		if v != nil {
+			id = v
+			break
+		}
 	}
 	return id
 }
