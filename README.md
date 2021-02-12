@@ -61,7 +61,7 @@ Authorino complies with the [3scale Ostia architecture](https://github.com/3scal
 3. **Identity verification step** - Authorino verifies the identity of the the original requestor, where at least one authentication method/identity provider should answer
 4. **Ad-hoc authorization metadata step** - Authorino integrates external sources to add metadata to the authorization payload, such as user info, attributes of the requested resource and payload-mutating web hooks
 5. **Policy enforcement step** - Authorino dispatches authorization policy evaluation to one or more configured Policy Decision Points (PDP)
-6. Authorino and Envoy settle the authorization protocol with either a `200 OK`, `403 Forbidden` or `404 Not found` response
+6. Authorino and Envoy settle the authorization protocol with either a `200 OK`, `403 Forbidden` or `404 Not found` response (_Tip:_ with extra details available in the `x-ext-auth-reason` header if NOK)
 7. If authorized, Envoy redirects to the requested _Upstream_
 8. The Upstream serves the requested resource
 
@@ -435,7 +435,7 @@ export ACCESS_TOKEN_JOHN=$(curl -k -d 'grant_type=password' -d 'client_id=demo' 
 
 curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/hello -v        # 200 OK
 curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/greetings/1 -v  # 200 OK
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/bye -v          # 401 Unauthorized
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JOHN" http://localhost:8000/bye -v          # 403 Forbidden
 ```
 
 #### 4. Try out with Jane (admin)
@@ -446,7 +446,7 @@ Jane is an admin user of the `ostia` realm in Keycloak. She does not own any res
 export ACCESS_TOKEN_JANE=$(curl -k -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://localhost:8080/auth/realms/ostia/protocol/openid-connect/token" | jq -r '.access_token')
 
 curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/hello -v        # 200 OK
-curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/greetings/1 -v  # 401 Unauthorized
+curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/greetings/1 -v  # 403 Forbidden
 curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/bye -v          # 200 OK
 ```
 
