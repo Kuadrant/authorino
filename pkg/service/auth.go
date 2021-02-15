@@ -3,15 +3,16 @@ package service
 import (
 	"encoding/json"
 
-	"github.com/3scale-labs/authorino/pkg/cache"
 	"golang.org/x/net/context"
+	ctrl "sigs.k8s.io/controller-runtime"
 
-	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
-	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type"
+	"github.com/3scale-labs/authorino/pkg/cache"
+
+	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var (
@@ -31,7 +32,7 @@ type AuthService struct {
 
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
-func (self *AuthService) Check(ctx context.Context, req *auth.CheckRequest) (*auth.CheckResponse, error) {
+func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	reqJSON, err := json.MarshalIndent(req, "", "  ")
 	if err != nil {
 		return self.deniedResponse(rpc.FAILED_PRECONDITION, "Invalid request"), nil
@@ -58,30 +59,30 @@ func (self *AuthService) Check(ctx context.Context, req *auth.CheckRequest) (*au
 	return self.successResponse(), nil
 }
 
-func (self *AuthService) successResponse() *auth.CheckResponse {
-	return &auth.CheckResponse{
+func (self *AuthService) successResponse() *envoy_auth.CheckResponse {
+	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
 			Code: int32(rpc.OK),
 		},
-		HttpResponse: &auth.CheckResponse_OkResponse{
-			OkResponse: &auth.OkHttpResponse{},
+		HttpResponse: &envoy_auth.CheckResponse_OkResponse{
+			OkResponse: &envoy_auth.OkHttpResponse{},
 		},
 	}
 }
 
-func (self *AuthService) deniedResponse(code rpc.Code, message string) *auth.CheckResponse {
-	return &auth.CheckResponse{
+func (self *AuthService) deniedResponse(code rpc.Code, message string) *envoy_auth.CheckResponse {
+	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
 			Code: int32(code),
 		},
-		HttpResponse: &auth.CheckResponse_DeniedResponse{
-			DeniedResponse: &auth.DeniedHttpResponse{
+		HttpResponse: &envoy_auth.CheckResponse_DeniedResponse{
+			DeniedResponse: &envoy_auth.DeniedHttpResponse{
 				Status: &envoy_type.HttpStatus{
 					Code: statusCodeMapping[code],
 				},
-				Headers: []*core.HeaderValueOption{
+				Headers: []*envoy_core.HeaderValueOption{
 					{
-						Header: &core.HeaderValue{
+						Header: &envoy_core.HeaderValue{
 							Key:   "x-ext-auth-reason",
 							Value: message,
 						},

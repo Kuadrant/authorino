@@ -7,9 +7,9 @@ import (
 
 	"github.com/3scale-labs/authorino/pkg/cache"
 
-	envoy_core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
-	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type"
+	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 )
 
@@ -19,7 +19,7 @@ func TestDeniedResponse(t *testing.T) {
 		Cache: &c,
 	}
 
-	var resp *auth.DeniedHttpResponse
+	var resp *envoy_auth.DeniedHttpResponse
 
 	findAuthReason := func(headers []*envoy_core.HeaderValueOption) string {
 		for i := range headers {

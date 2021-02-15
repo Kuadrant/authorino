@@ -8,7 +8,8 @@ import (
 
 	"github.com/3scale-labs/authorino/pkg/config/common"
 
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+
 	"github.com/open-policy-agent/opa/rego"
 )
 
@@ -69,8 +70,8 @@ func (self *OPA) policyName() string {
 }
 
 type OPAInput struct {
-	Request *auth.AttributeContext `json:"attributes"`
-	Context map[string]interface{} `json:"context"`
+	Request *envoy_auth.AttributeContext `json:"attributes"`
+	Context map[string]interface{}       `json:"context"`
 }
 
 func (self *OPAInput) ToJSON() ([]byte, error) {

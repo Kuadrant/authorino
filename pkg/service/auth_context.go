@@ -5,12 +5,13 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/net/context"
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/3scale-labs/authorino/pkg/config"
 	"github.com/3scale-labs/authorino/pkg/config/common"
 
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
-	"golang.org/x/net/context"
-	ctrl "sigs.k8s.io/controller-runtime"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
 
 var (
@@ -22,7 +23,7 @@ var (
 // authorization policies, and their corresponding results after evaluated
 type AuthContext struct {
 	ParentContext *context.Context
-	Request       *auth.CheckRequest
+	Request       *envoy_auth.CheckRequest
 	API           *config.APIConfig
 
 	Identity      map[*config.IdentityConfig]interface{}
@@ -33,7 +34,7 @@ type AuthContext struct {
 type evaluateCallback = func(config common.AuthConfigEvaluator, obj interface{})
 
 // NewAuthContext creates an AuthContext instance
-func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
+func NewAuthContext(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
 
 	return AuthContext{
 		ParentContext: &parentCtx,
@@ -187,7 +188,7 @@ func (authContext *AuthContext) GetParentContext() *context.Context {
 	return authContext.ParentContext
 }
 
-func (authContext *AuthContext) GetRequest() *auth.CheckRequest {
+func (authContext *AuthContext) GetRequest() *envoy_auth.CheckRequest {
 	return authContext.Request
 }
 

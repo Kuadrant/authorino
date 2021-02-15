@@ -8,16 +8,21 @@ github.com/OneOfOne/xxhash
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
+# github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403
+github.com/cncf/udpa/go/udpa/annotations
+github.com/cncf/udpa/go/xds/core/v3
 # github.com/coreos/go-oidc v2.2.1+incompatible
 ## explicit
 github.com/coreos/go-oidc
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473
+# github.com/envoyproxy/go-control-plane v0.9.8
 ## explicit
-github.com/envoyproxy/go-control-plane/envoy/api/v2/core
-github.com/envoyproxy/go-control-plane/envoy/service/auth/v2
-github.com/envoyproxy/go-control-plane/envoy/type
+github.com/envoyproxy/go-control-plane/envoy/annotations
+github.com/envoyproxy/go-control-plane/envoy/config/core/v3
+github.com/envoyproxy/go-control-plane/envoy/service/auth/v3
+github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3
+github.com/envoyproxy/go-control-plane/envoy/type/v3
 # github.com/envoyproxy/protoc-gen-validate v0.1.0
 github.com/envoyproxy/protoc-gen-validate/validate
 # github.com/evanphx/json-patch v4.9.0+incompatible
@@ -317,7 +322,7 @@ google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20191108220845-16a3f7862a1a
 ## explicit
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.26.0
+# google.golang.org/grpc v1.27.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
