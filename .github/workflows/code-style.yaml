@@ -59,12 +59,11 @@ jobs:
         shell: bash
         run: >
           ${{ matrix.tool }} ${{ matrix.options }} -w
-          $(find .
-          -path './vendor' -prune
+          $(find . -path './vendor' -prune
           -o -path './third_party' -prune
           -o -name '*.pb.go' -prune
           -o -name 'wire_gen.go' -prune
-          -o -type f -name '*.go' -print)
+          -o -type f -name '*.go' -print | grep -v "_generated.")
 
       - name: Verify ${{ matrix.tool }}
         shell: bash
