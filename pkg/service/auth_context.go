@@ -18,6 +18,29 @@ var (
 	authCtxLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
 )
 
+type EvaluationResponse struct {
+	Evaluator common.AuthConfigEvaluator
+	Success bool
+	Object interface{}
+	Error error
+}
+
+func newEvaluationResponseSuccess(evaluator common.AuthConfigEvaluator, obj interface{}) EvaluationResponse {
+	return EvaluationResponse{
+		Evaluator: evaluator,
+		Success: true,
+		Object: obj,
+	}
+}
+
+func newEvaluationResponseFailure(evaluator common.AuthConfigEvaluator, err error) EvaluationResponse {
+	return EvaluationResponse{
+		Evaluator: evaluator,
+		Success: false,
+		Error: err,
+	}
+}
+
 // AuthContext holds the context of each auth request, including the request itself (sent by the client),
 // the auth config of the requested API and the lists of identity verifications, metadata add-ons and
 // authorization policies, and their corresponding results after evaluated
@@ -63,121 +86,178 @@ func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config c
 	}
 }
 
-func (authContext *AuthContext) evaluateOneAuthConfig(authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) error {
+func (authContext *AuthContext) evaluateOneAuthConfig(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
 	ctx, cancel := context.WithCancel(context.Background())
 	waitGroup := new(sync.WaitGroup)
-	size := len(authConfigs)
-	errorChannel := make(chan error, size)
-	successChannel := make(chan bool, size)
+	waitGroup.Add(len(authConfigs))
 
-	waitGroup.Add(size)
+	successCallback := func(conf common.AuthConfigEvaluator, authObj interface{}) {
+		*respChannel <-newEvaluationResponseSuccess(conf, authObj)
+	}
 
-	go func() {
-		waitGroup.Wait()
-		close(errorChannel)
-		close(successChannel)
-	}()
+	failureCallback := func(conf common.AuthConfigEvaluator, err error) {
+		*respChannel <-newEvaluationResponseFailure(conf, err)
+	}
 
 	for _, authConfig := range authConfigs {
 		objConfig := authConfig
 		go func() {
 			defer waitGroup.Done()
 
-			err := authContext.evaluateAuthConfig(ctx, objConfig, cb)
-			if err != nil {
-				errorChannel <- err
+			if err := authContext.evaluateAuthConfig(ctx, objConfig, successCallback); err != nil {
+				failureCallback(objConfig, err)
 			} else {
-				successChannel <- true
 				cancel() // cancels the context if at least one thread succeeds
 			}
-		}()
-	}
-
-	success := <-successChannel
-	err := <-errorChannel
-
-	if success {
-		return nil
-	} else {
-		return err
-	}
-}
-
-func (authContext *AuthContext) evaluateAllAuthConfigs(authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	waitGroup := new(sync.WaitGroup)
-	size := len(authConfigs)
-	errorChannel := make(chan error, size)
-
-	waitGroup.Add(size)
-
-	go func() {
-		waitGroup.Wait()
-		close(errorChannel)
-	}()
-
-	for _, authConfig := range authConfigs {
-		objConfig := authConfig
-		go func() {
-			defer waitGroup.Done()
-
-			err := authContext.evaluateAuthConfig(ctx, objConfig, cb)
-			if err != nil {
-				errorChannel <- err
-				cancel() // cancels the context if at least one thread fails
-			}
-		}()
-	}
-
-	err := <-errorChannel
-	return err
-}
-
-func (authContext *AuthContext) evaluateAnyAuthConfig(authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) {
-	ctx := context.Background()
-	size := len(authConfigs)
-	waitGroup := new(sync.WaitGroup)
-	waitGroup.Add(size)
-
-	for _, authConfig := range authConfigs {
-		objConfig := authConfig
-		go func() {
-			defer waitGroup.Done()
-
-			_ = authContext.evaluateAuthConfig(ctx, objConfig, cb)
 		}()
 	}
 
 	waitGroup.Wait()
 }
 
+func (authContext *AuthContext) evaluateAllAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
+	ctx, cancel := context.WithCancel(context.Background())
+	waitGroup := new(sync.WaitGroup)
+	waitGroup.Add(len(authConfigs))
+
+	successCallback := func(conf common.AuthConfigEvaluator, authObj interface{}) {
+		*respChannel <-newEvaluationResponseSuccess(conf, authObj)
+	}
+
+	failureCallback := func(conf common.AuthConfigEvaluator, err error) {
+		*respChannel <-newEvaluationResponseFailure(conf, err)
+	}
+
+	for _, authConfig := range authConfigs {
+		objConfig := authConfig
+		go func() {
+			defer waitGroup.Done()
+
+			if err := authContext.evaluateAuthConfig(ctx, objConfig, successCallback); err != nil {
+				failureCallback(objConfig, err)
+				cancel() // cancels the context if at least one thread fails
+			}
+		}()
+	}
+
+	waitGroup.Wait()
+}
+
+func (authContext *AuthContext) evaluateAnyAuthConfig(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
+	ctx := context.Background()
+	waitGroup := new(sync.WaitGroup)
+	waitGroup.Add(len(authConfigs))
+
+	successCallback := func(conf common.AuthConfigEvaluator, authObj interface{}) {
+		*respChannel <-newEvaluationResponseSuccess(conf, authObj)
+	}
+
+	failureCallback := func(conf common.AuthConfigEvaluator, err error) {
+		*respChannel <-newEvaluationResponseFailure(conf, err)
+	}
+
+	for _, authConfig := range authConfigs {
+		objConfig := authConfig
+		go func() {
+			defer waitGroup.Done()
+
+			if err := authContext.evaluateAuthConfig(ctx, objConfig, successCallback); err != nil {
+				failureCallback(objConfig, err)
+			}
+		}()
+	}
+
+	waitGroup.Wait()
+}
+
+func (authContext *AuthContext) evaluateIdentityConfigs() error {
+	configs := authContext.API.IdentityConfigs
+	respChannel := make(chan EvaluationResponse, len(configs))
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateOneAuthConfig(configs, &respChannel)
+	}()
+
+	var lastError error
+
+	for resp := range respChannel {
+		conf, _ := resp.Evaluator.(*config.IdentityConfig)
+		obj := resp.Object
+
+		if resp.Success {
+			authContext.Identity[conf] = obj
+			authCtxLog.Info("Identity", "config", conf, "authObj", obj)
+			return nil
+		} else {
+			lastError = resp.Error
+			authCtxLog.Info("Identity", "config", conf, "error", lastError)
+		}
+	}
+
+	return lastError
+}
+
+func (authContext *AuthContext) evaluateMetadataConfigs() {
+	configs := authContext.API.MetadataConfigs
+	respChannel := make(chan EvaluationResponse, len(configs))
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAnyAuthConfig(configs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		conf, _ := resp.Evaluator.(*config.MetadataConfig)
+		obj := resp.Object
+
+		if resp.Success {
+			authContext.Metadata[conf] = obj
+			authCtxLog.Info("Metadata", "config", conf, "authObj", obj)
+		} else {
+			authCtxLog.Info("Metadata", "config", conf, "error", resp.Error)
+		}
+	}
+}
+
+func (authContext *AuthContext) evaluateAuthorizationConfigs() error {
+	configs := authContext.API.AuthorizationConfigs
+	respChannel := make(chan EvaluationResponse, len(configs))
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAllAuthConfigs(configs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		conf, _ := resp.Evaluator.(*config.AuthorizationConfig)
+		obj := resp.Object
+
+		if resp.Success {
+			authContext.Authorization[conf] = obj
+			authCtxLog.Info("Authorization", "config", conf, "authObj", obj)
+		} else {
+			err := resp.Error
+			authCtxLog.Info("Authorization", "config", conf, "error", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (authContext *AuthContext) Evaluate() error {
 	// identity
-	if err := authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			v, _ := conf.(*config.IdentityConfig)
-			authCtxLog.Info("Identity", "config", conf, "authObj", authObj)
-			authContext.Identity[v] = authObj
-		}); err != nil {
+	if err := authContext.evaluateIdentityConfigs(); err != nil {
 		return err
 	}
 
 	// metadata
-	authContext.evaluateAnyAuthConfig(authContext.API.MetadataConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			v, _ := conf.(*config.MetadataConfig)
-			authCtxLog.Info("Metadata", "config", conf, "authObj", authObj)
-			authContext.Metadata[v] = authObj
-		})
+	authContext.evaluateMetadataConfigs()
 
 	// policy enforcement (authorization)
-	if err := authContext.evaluateAllAuthConfigs(authContext.API.AuthorizationConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			v, _ := conf.(*config.AuthorizationConfig)
-			authCtxLog.Info("Authorization", "config", conf, "authObj", authObj)
-			authContext.Authorization[v] = authObj
-		}); err != nil {
+	if err := authContext.evaluateAuthorizationConfigs(); err != nil {
 		return err
 	}
 

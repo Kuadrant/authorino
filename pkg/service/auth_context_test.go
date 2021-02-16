@@ -36,15 +36,21 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	err := authContext.evaluateOneAuthConfig(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
-	assert.NilError(t, err)
+		}
+	}
+
 	assert.Check(t, swap)
 }
 
@@ -52,92 +58,206 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	err := authContext.evaluateOneAuthConfig(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
-	assert.Error(t, err, "Failed")
+		} else {
+			err = resp.Error
+		}
+	}
+
 	assert.Check(t, !swap)
+	assert.Error(t, err, "Failed")
 }
 
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	err := authContext.evaluateOneAuthConfig(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
-	assert.NilError(t, err)
+		} else {
+			err = resp.Error
+		}
+	}
+
 	assert.Check(t, swap)
+	assert.NilError(t, err)
 }
 
 func TestEvaluateAllAuthConfigs(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	err := authContext.evaluateAllAuthConfigs(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
-	assert.NilError(t, err)
+		} else {
+			err = resp.Error
+		}
+	}
+
 	assert.Check(t, swap)
+	assert.NilError(t, err)
 }
 
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	err := authContext.evaluateAllAuthConfigs(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
+		} else {
+			err = resp.Error
+		}
+	}
+
+	assert.Check(t, swap)
 	assert.Error(t, err, "Failed")
+}
+
+func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
+	var identityConfigs []common.AuthConfigEvaluator
+	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
+	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
+
+	swap := false
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
+			swap = true
+		} else {
+			err = resp.Error
+		}
+	}
+
 	assert.Check(t, !swap)
+	assert.Error(t, err, "Failed")
 }
 
 func TestEvaluateAnyAuthConfig(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
-	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
+	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	authContext.evaluateAnyAuthConfig(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
+		} else {
+			err = resp.Error
+		}
+	}
+
 	assert.Check(t, swap)
+	assert.Error(t, err, "Failed")
 }
 
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
 	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
-	authContext.evaluateAnyAuthConfig(
-		authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
 			swap = true
-		},
-	)
+		} else {
+			err = resp.Error
+		}
+	}
+
 	assert.Check(t, !swap)
+	assert.Error(t, err, "Failed")
+}
+
+func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
+	var identityConfigs []common.AuthConfigEvaluator
+	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
+	authContext := newAuthContext(identityConfigs)
+	respChannel := make(chan EvaluationResponse, 2)
+
+	swap := false
+	var err error
+
+	go func(){
+		defer close(respChannel)
+		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+	}()
+
+	for resp := range respChannel {
+		if resp.Success {
+			swap = true
+		} else {
+			err = resp.Error
+		}
+	}
+
+	assert.Check(t, swap)
+	assert.NilError(t, err)
 }
