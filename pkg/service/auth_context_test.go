@@ -40,7 +40,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 
 	swap := false
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -63,7 +63,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -89,7 +89,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -115,7 +115,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -138,23 +138,19 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	authContext := newAuthContext(identityConfigs)
 	respChannel := make(chan EvaluationResponse, 2)
 
-	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
-			swap = true
-		} else {
+		if !resp.Success {
 			err = resp.Error
 		}
 	}
 
-	assert.Check(t, swap)
 	assert.Error(t, err, "Failed")
 }
 
@@ -167,7 +163,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -193,7 +189,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -219,7 +215,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
 	}()
@@ -245,7 +241,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	swap := false
 	var err error
 
-	go func(){
+	go func() {
 		defer close(respChannel)
 		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
 	}()
