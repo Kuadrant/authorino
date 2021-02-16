@@ -82,17 +82,17 @@ func (self *OPAInput) ToJSON() ([]byte, error) {
 	return res, nil
 }
 
-func (self *OPA) Call(ctx common.AuthContext) (bool, error) {
+func (self *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
 	if !self.Enabled {
 		return true, nil
 	}
 
 	contextData := make(map[string]interface{})
-	contextData["identity"] = ctx.GetIdentity()
-	contextData["metadata"] = ctx.GetMetadata()
+	contextData["identity"] = authContext.GetIdentity()
+	contextData["metadata"] = authContext.GetMetadata()
 
 	input := OPAInput{
-		Request: ctx.GetRequest().Attributes,
+		Request: authContext.GetRequest().Attributes,
 		Context: contextData,
 	}
 

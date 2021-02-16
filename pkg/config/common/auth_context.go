@@ -19,5 +19,5 @@ type AuthContext interface {
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
 type AuthConfigEvaluator interface {
-	Call(AuthContext) (interface{}, error)
+	Call(AuthContext, context.Context) (interface{}, error)
 }

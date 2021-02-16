@@ -1,11 +1,15 @@
 package identity
 
-import "github.com/3scale-labs/authorino/pkg/config/common"
+import (
+	"context"
+
+	"github.com/3scale-labs/authorino/pkg/config/common"
+)
 
 type HMAC struct {
 	Secret string `yaml:"secret"`
 }
 
-func (self *HMAC) Call(ctx common.AuthContext) (interface{}, error) {
+func (self *HMAC) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	return "Authenticated with HMAC", nil // TODO: implement
 }

@@ -1,6 +1,8 @@
 package metadata
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -18,7 +20,7 @@ type UMA struct {
 	ClientSecret string `yaml:"client_secret"`
 }
 
-func (self *UMA) Call(ctx common.AuthContext) (interface{}, error) {
+func (self *UMA) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	// discover uma config
 	provider, err := self.NewProvider(ctx)
 	if err != nil {
@@ -27,7 +29,14 @@ func (self *UMA) Call(ctx common.AuthContext) (interface{}, error) {
 
 	// get the protection API token (PAT)
 	tokenURL, _ := self.clientAuthenticatedURL(provider.GetTokenURL())
-	resp, err := http.PostForm(tokenURL.String(), url.Values{"grant_type": {"client_credentials"}})
+	formData := url.Values{"grant_type": {"client_credentials"}}
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL.String(), bytes.NewBufferString(formData.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -40,9 +49,9 @@ func (self *UMA) Call(ctx common.AuthContext) (interface{}, error) {
 	// query resources by URI
 	resourceRegistrationURL, _ := url.Parse(provider.GetResourceRegistrationURL())
 	queryResourcesURL := resourceRegistrationURL
-	queryResourcesURL.RawQuery = "uri=" + ctx.GetRequest().Attributes.Request.Http.GetPath()
+	queryResourcesURL.RawQuery = "uri=" + authContext.GetRequest().Attributes.Request.Http.GetPath()
 	var resourceIDs []string
-	err = getPATAuthenticatedJSON(queryResourcesURL.String(), pat, &resourceIDs)
+	err = getPATAuthenticatedJSON(queryResourcesURL.String(), pat, ctx, &resourceIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -54,17 +63,22 @@ func (self *UMA) Call(ctx common.AuthContext) (interface{}, error) {
 		resourceURL := resourceRegistrationURL
 		resourceURL.Path += "/" + resourceId
 		var d interface{}
-		_ = getPATAuthenticatedJSON(resourceURL.String(), pat, &d)
+		_ = getPATAuthenticatedJSON(resourceURL.String(), pat, ctx, &d)
 		resourceData[i] = d
 	}
 
 	return resourceData, nil
 }
 
-func (self *UMA) NewProvider(ctx common.AuthContext) (*Provider, error) {
+func (self *UMA) NewProvider(ctx context.Context) (*Provider, error) {
 	// discover uma config
-	wellKnown := strings.TrimSuffix(self.Endpoint, "/") + "/.well-known/uma2-configuration"
-	resp, err := http.Get(wellKnown)
+	wellKnownURL := strings.TrimSuffix(self.Endpoint, "/") + "/.well-known/uma2-configuration"
+	req, err := http.NewRequestWithContext(ctx, "GET", wellKnownURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +112,9 @@ func (self *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
-func getPATAuthenticatedJSON(rawurl string, pat PAT, v interface{}) error {
+func getPATAuthenticatedJSON(rawurl string, pat PAT, ctx context.Context, v interface{}) error {
 	// build the request
-	req, err := http.NewRequest("GET", rawurl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", rawurl, nil)
 	if err != nil {
 		return err
 	}
@@ -108,8 +122,7 @@ func getPATAuthenticatedJSON(rawurl string, pat PAT, v interface{}) error {
 	req.Header.Set("Authorization", "Bearer "+pat.String())
 
 	// get the response
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}

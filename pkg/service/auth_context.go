@@ -73,7 +73,7 @@ func (authContext *AuthContext) evaluateAuthConfig(config common.AuthConfigEvalu
 	case <-ctx.Done():
 		authCtxLog.Info("Context aborted", "config", config)
 	default:
-		if authObj, err := config.Call(authContext); err != nil {
+		if authObj, err := config.Call(authContext, ctx); err != nil {
 			*respChannel <- newEvaluationResponseFailure(config, err)
 
 			authCtxLog.Info("Failed to evaluate auth object", "config", config, "error", err)

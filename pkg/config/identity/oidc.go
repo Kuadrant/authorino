@@ -13,9 +13,9 @@ type OIDC struct {
 	Endpoint string `yaml:"endpoint"`
 }
 
-func (self *OIDC) Call(ctx common.AuthContext) (interface{}, error) {
+func (self *OIDC) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	// extract access token
-	accessToken, err := ctx.AuthorizationToken()
+	accessToken, err := authContext.AuthorizationToken()
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (self *OIDC) Call(ctx common.AuthContext) (interface{}, error) {
 	}
 	oidcConfig := &oidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
 	verifier := provider.Verifier(oidcConfig)
-	idToken, err := verifier.Verify(context.TODO(), accessToken)
+	idToken, err := verifier.Verify(ctx, accessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +41,8 @@ func (self *OIDC) Call(ctx common.AuthContext) (interface{}, error) {
 	return claims, nil
 }
 
-func (self *OIDC) NewProvider(ctx common.AuthContext) (*oidc.Provider, error) {
-	provider, err := oidc.NewProvider(context.TODO(), self.Endpoint)
+func (self *OIDC) NewProvider(ctx context.Context) (*oidc.Provider, error) {
+	provider, err := oidc.NewProvider(ctx, self.Endpoint)
 	if err != nil {
 		return nil, err
 	}

@@ -13,11 +13,11 @@ import (
 type successConfig struct{}
 type failConfig struct{}
 
-func (c *successConfig) Call(ctx common.AuthContext) (interface{}, error) {
+func (c *successConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	return nil, nil
 }
 
-func (c *failConfig) Call(ctx common.AuthContext) (interface{}, error) {
+func (c *failConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	return nil, fmt.Errorf("Failed")
 }
 
