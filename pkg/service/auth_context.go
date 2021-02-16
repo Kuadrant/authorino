@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -15,7 +16,7 @@ import (
 )
 
 var (
-	authCxtLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
+	authCtxLog = ctrl.Log.WithName("Authorino").WithName("AuthContext")
 )
 
 // AuthContext holds the context of each auth request, including the request itself (sent by the client),
@@ -31,7 +32,7 @@ type AuthContext struct {
 	Authorization map[*config.AuthorizationConfig]interface{}
 }
 
-type configCallback = func(config common.AuthConfigEvaluator, obj interface{})
+type evaluateCallback = func(config common.AuthConfigEvaluator, obj interface{}, err error) error
 
 // NewAuthContext creates an AuthContext instance
 func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig config.APIConfig) AuthContext {
@@ -47,71 +48,122 @@ func NewAuthContext(parentCtx context.Context, req *auth.CheckRequest, apiConfig
 
 }
 
-func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config common.AuthConfigEvaluator, cb configCallback) error {
+func (authContext *AuthContext) evaluateAuthConfig(ctx context.Context, config common.AuthConfigEvaluator, cb evaluateCallback) error {
 	select {
 	case <-ctx.Done():
-		authCxtLog.Info("Context cancelled objConfig terminating", "config", config)
+		authCtxLog.Info("Context aborted", "config", config)
 		return nil
 	default:
-		if authObj, err := config.Call(authContext); err != nil {
-			authCxtLog.Error(err, "Invalid auth object config")
-			return err
-		} else {
-			cb(config, authObj)
-			return nil
-		}
+		authObj, err := config.Call(authContext)
+		return cb(config, authObj, err)
 	}
 }
 
-func (authContext *AuthContext) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, cb configCallback) error {
-	errGroup, ctx := errgroup.WithContext(context.Background())
+func (authContext *AuthContext) evaluateAuthConfigs(ctx context.Context, authConfigs []common.AuthConfigEvaluator, cb evaluateCallback) error {
+	errGroup, errCtx := errgroup.WithContext(ctx)
 
 	for _, authConfig := range authConfigs {
 		objConfig := authConfig
 		errGroup.Go(func() error {
-			return authContext.evaluateAuthConfig(ctx, objConfig, cb)
+			return authContext.evaluateAuthConfig(errCtx, objConfig, cb)
 		})
 	}
 	if err := errGroup.Wait(); err != nil {
 		return err
 	} else {
-		authCxtLog.Info("Successfully fetched all auth objects.", "authConfigs", authConfigs)
+		authCtxLog.Info("Successfully evaluated all auth objects.", "authConfigs", authConfigs)
 		return nil
 	}
+}
+
+// EvaluateIdentity evaluates given identity configs and retrieves the first valid identity object.
+func (authContext *AuthContext) EvaluateIdentity() error {
+	identityConfigs := authContext.API.IdentityConfigs
+	if len(identityConfigs) <= 0 {
+		return errors.New("no identity configs found")
+	}
+
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	successChannel := make(chan bool)
+
+	go func() {
+		defer close(successChannel)
+		authContext.evaluateAuthConfigs(ctx, identityConfigs,
+			func(conf common.AuthConfigEvaluator, authObj interface{}, err error) error {
+				if err != nil {
+					authCtxLog.Error(err, "error evaluating identity config", "config", conf)
+					return nil // Non blocking error
+				}
+				// Convert from interfaceType to SpecificType
+				v, _ := conf.(*config.IdentityConfig)
+				authCtxLog.Info("Identity", "Config", conf, "AuthObj", authObj)
+				authContext.Identity[v] = authObj
+				cancelCtx()
+				successChannel <- true
+				return nil
+			})
+	}()
+	success := <-successChannel
+	if !success {
+		return errors.New("error evaluating identity configs")
+	}
+	return nil
+}
+
+// EvaluateMetadata checks evaluates the given metadata configs and retrieve possible info.
+func (authContext *AuthContext) EvaluateMetadata() {
+	metadataConfigs := authContext.API.MetadataConfigs
+	if len(metadataConfigs) <= 0 {
+		authCtxLog.Info("No metadata configs found", "Configs", metadataConfigs)
+		return
+	}
+	authContext.evaluateAuthConfigs(context.Background(), metadataConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}, err error) error {
+			if err != nil {
+				authCtxLog.Error(err, "error evaluating metadata config", "config", conf)
+				return nil // Non blocking error
+			}
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.MetadataConfig)
+			authCtxLog.Info("Metadata", "Config", conf, "AuthObj", authObj)
+			authContext.Metadata[v] = authObj
+			return nil
+		})
+}
+
+// EvaluateAuthorization evaluates the authorization config, along with any metadata and identity and authorizes it.
+func (authContext *AuthContext) EvaluateAuthorization() error {
+	authorizationConfigs := authContext.API.AuthorizationConfigs
+	if len(authorizationConfigs) <= 0 {
+		return errors.New("no authorization configs found")
+	}
+	return authContext.evaluateAuthConfigs(context.Background(), authContext.API.AuthorizationConfigs,
+		func(conf common.AuthConfigEvaluator, authObj interface{}, err error) error {
+			if err != nil {
+				authCtxLog.Error(err, "error evaluating authorization config", "config", conf)
+				return err
+			}
+			// Convert from interfaceType to SpecificType
+			v, _ := conf.(*config.AuthorizationConfig)
+			authCtxLog.Info("Authorization", "Config", conf, "AuthObj", authObj)
+			authContext.Authorization[v] = authObj
+			return nil
+		})
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (authContext *AuthContext) Evaluate() error {
 	// identity
-	if err := authContext.evaluateAuthConfigs(authContext.API.IdentityConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			// Convert from interfaceType to SpecificType
-			v, _ := conf.(*config.IdentityConfig)
-			authCxtLog.Info("Identity", "Config", conf, "AuthObj", authObj)
-			authContext.Identity[v] = authObj
-		}); err != nil {
+	if err := authContext.EvaluateIdentity(); err != nil {
 		return err
 	}
 
 	// metadata
-	if err := authContext.evaluateAuthConfigs(authContext.API.MetadataConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			// Convert from interfaceType to SpecificType
-			v, _ := conf.(*config.MetadataConfig)
-			authCxtLog.Info("Metadata", "Config", conf, "AuthObj", authObj)
-			authContext.Metadata[v] = authObj
-		}); err != nil {
-		return err
-	}
+	authContext.EvaluateMetadata()
 
 	// policy enforcement (authorization)
-	if err := authContext.evaluateAuthConfigs(authContext.API.AuthorizationConfigs,
-		func(conf common.AuthConfigEvaluator, authObj interface{}) {
-			// Convert from interfaceType to SpecificType
-			v, _ := conf.(*config.AuthorizationConfig)
-			authCxtLog.Info("Authorization", "Config", conf, "AuthObj", authObj)
-			authContext.Authorization[v] = authObj
-		}); err != nil {
+	if err := authContext.EvaluateAuthorization(); err != nil {
 		return err
 	}
 
