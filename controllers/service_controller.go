@@ -30,6 +30,7 @@ import (
 	authorinoAuthorization "github.com/3scale-labs/authorino/pkg/config/authorization"
 	authorinoIdentity "github.com/3scale-labs/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/3scale-labs/authorino/pkg/config/metadata"
+
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -102,119 +103,99 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, identity := range service.Spec.Identity {
+		authCred := &auth_credentials.AuthCredential{
+			KeySelector: identity.Credentials.KeySelector,
+			In:          identity.Credentials.In,
+		} // TODO: prepare for when missing credentials field
 
-		var translatedIdentity config.IdentityConfig
+		translatedIdentity := &config.IdentityConfig{
+			Name: identity.Name,
+		}
 
 		switch identity.GetType() {
-
+		// oidc
 		case configv1beta1.IdentityOidc:
-			authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, identity.Credentials.In)
-			translatedIdentity = config.IdentityConfig{
-				OIDC: authorinoIdentity.NewOIDCIdentity(identity.Name, identity.Oidc.Endpoint, authCred),
+			translatedIdentity.OIDC = &authorinoIdentity.OIDC{
+				Endpoint:    identity.Oidc.Endpoint,
+				Credentials: authCred,
 			}
 
+		// api_key
 		case configv1beta1.IdentityApiKey:
-			authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, identity.Credentials.In)
-			translatedIdentity = config.IdentityConfig{
-				APIKey: authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client),
-			}
+			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client)
 
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", identity)
 		}
 
-		identityConfigs = append(identityConfigs, translatedIdentity)
-		interfacedIdentityConfigs = append(interfacedIdentityConfigs, &translatedIdentity)
+		identityConfigs = append(identityConfigs, *translatedIdentity)
+		interfacedIdentityConfigs = append(interfacedIdentityConfigs, translatedIdentity)
 	}
 
-	metadataConfigs := make([]config.MetadataConfig, 0)
 	interfacedMetadataConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, metadata := range service.Spec.Metadata {
-
-		var translatedMetadata config.MetadataConfig
+		translatedMetadata := &config.MetadataConfig{
+			Name: metadata.Name,
+		}
 
 		switch metadata.GetType() {
+		// uma
 		case configv1beta1.MetadataUma:
-
 			// TODO: validate the object on creating to make sure the secret exist? or just retry?
 			if metadata.UMA.Credentials != nil {
 				secret := &v1.Secret{}
-				err := r.Client.Get(ctx, types.NamespacedName{Namespace: service.Namespace,
-					Name: metadata.UMA.Credentials.Name},
-					secret)
-
-				// TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
-				if err != nil {
-					return nil, err
+				if err := r.Client.Get(ctx, types.NamespacedName{
+					Namespace: service.Namespace,
+					Name:      metadata.UMA.Credentials.Name},
+					secret); err != nil {
+					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 				}
 
 				// Solve the secret reference.
-				translatedMetadata = config.MetadataConfig{
-					UMA: &authorinoMetadata.UMA{
-						ClientID:     string(secret.Data["clientID"]),
-						ClientSecret: string(secret.Data["clientSecret"]),
-					},
+				translatedMetadata.UMA = &authorinoMetadata.UMA{
+					ClientID:     string(secret.Data["clientID"]),
+					ClientSecret: string(secret.Data["clientSecret"]),
 				}
 			}
 			// Find the actual name for the Identity Source and use that information for the translated object.
 			for _, identity := range identityConfigs {
-				if identity.OIDC != nil && identity.OIDC.Name == metadata.UMA.IdentitySource {
+				if identity.Name == metadata.UMA.IdentitySource {
 					translatedMetadata.UMA.Endpoint = identity.OIDC.Endpoint
 				}
 			}
 
+		// user_info
 		case configv1beta1.MetadataUserinfo:
-
-			if metadata.UserInfo.Credentials != nil {
-				secret := &v1.Secret{}
-				err := r.Client.Get(ctx, types.NamespacedName{Namespace: service.Namespace,
-					Name: metadata.UserInfo.Credentials.Name}, secret)
-
-				if err != nil {
-					return nil, err
-				}
-
-				translatedMetadata = config.MetadataConfig{
-					UserInfo: &authorinoMetadata.UserInfo{
-						OIDC:         metadata.UserInfo.IdentitySource,
-						ClientID:     string(secret.Data["clientID"]),
-						ClientSecret: string(secret.Data["clientSecret"]),
-					},
-				}
+			translatedMetadata.UserInfo = &authorinoMetadata.UserInfo{
+				OIDC: metadata.UserInfo.IdentitySource,
 			}
 
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", metadata)
 		}
 
-		metadataConfigs = append(metadataConfigs, translatedMetadata)
-		interfacedMetadataConfigs = append(interfacedMetadataConfigs, &translatedMetadata)
+		interfacedMetadataConfigs = append(interfacedMetadataConfigs, translatedMetadata)
 	}
 
-	authorizationConfigs := make([]config.AuthorizationConfig, 0)
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, authorization := range service.Spec.Authorization {
-
-		var translatedAuthorization config.AuthorizationConfig
+		translatedAuthorization := &config.AuthorizationConfig{}
 
 		switch authorization.GetType() {
-
+		// opa
 		case configv1beta1.AuthorizationOPAPolicy:
-			translatedAuthorization = config.AuthorizationConfig{
-				OPA: &authorinoAuthorization.OPA{
-					Enabled: true,
-					UUID:    authorization.OPAPolicy.UUID,
-					Rego:    authorization.OPAPolicy.InlineRego,
-				},
+			translatedAuthorization.OPA = &authorinoAuthorization.OPA{
+				Enabled: true,
+				UUID:    authorization.OPAPolicy.UUID,
+				Rego:    authorization.OPAPolicy.InlineRego,
 			}
-			translatedAuthorization.OPA.Prepare()
+			_ = translatedAuthorization.OPA.Prepare()
 
+		// jwt
 		case configv1beta1.AuthorizationJWTClaimSet:
-
 			// TODO: Ugly, revisit and fix this.
-
 			match := make(map[string]interface{})
 			matchByte, _ := json.Marshal(authorization.JWTClaimSet.Claim)
 			//TODO: Handle this error properly
@@ -231,24 +212,21 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 				panic(err)
 			}
 
-			translatedAuthorization = config.AuthorizationConfig{
-				JWT: &authorinoAuthorization.JWTClaims{
-					Enabled: true,
-					// TODO: Try to map the CRD to this or the other way around.
-					Match:  match,
-					Claims: claims,
-				},
+			translatedAuthorization.JWT = &authorinoAuthorization.JWTClaims{
+				Enabled: true,
+				// TODO: Try to map the CRD to this or the other way around.
+				Match:  match,
+				Claims: claims,
 			}
 
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", authorization)
 		}
 
-		authorizationConfigs = append(authorizationConfigs, translatedAuthorization)
-		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, &translatedAuthorization)
+		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, translatedAuthorization)
 	}
 
-	config := make(map[string]authorinoService.APIConfig, 0)
+	config := make(map[string]authorinoService.APIConfig)
 
 	authorinoService := authorinoService.APIConfig{
 		Enabled:              true,

@@ -68,6 +68,7 @@ type Identity_APIKey struct {
 }
 
 type Metadata struct {
+	Name     string             `json:"name"`
 	UserInfo *Metadata_UserInfo `json:"userInfo,omitempty"`
 	UMA      *Metadata_UMA      `json:"uma,omitempty"`
 }
@@ -85,8 +86,7 @@ func (m *Metadata) GetType() string {
 // just in case I'm missing something, but we can merge them into a single type if they don't
 // really require any extra field...
 type Metadata_UserInfo struct {
-	IdentitySource string                   `json:"identitySource"`
-	Credentials    *v1.LocalObjectReference `json:"credentialsRef,omitempty"`
+	IdentitySource string `json:"identitySource"`
 }
 type Metadata_UMA struct {
 	IdentitySource string                   `json:"identitySource"`

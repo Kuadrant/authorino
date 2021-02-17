@@ -14,6 +14,7 @@ var (
 )
 
 type MetadataConfig struct {
+	Name     string             `yaml:"name"`
 	UserInfo *metadata.UserInfo `yaml:"userinfo,omitempty"`
 	UMA      *metadata.UMA      `yaml:"uma,omitempty"`
 }

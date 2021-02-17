@@ -9,23 +9,9 @@ import (
 	goidc "github.com/coreos/go-oidc"
 )
 
-type oidcDetails struct {
-	Name     string `yaml:"name"`
-	Endpoint string `yaml:"endpoint"`
-}
 type OIDC struct {
-	auth_credentials.AuthCredentials
-	oidcDetails
-}
-
-func NewOIDCIdentity(name string, endpoint string, authCred auth_credentials.AuthCredentials) *OIDC {
-	return &OIDC{
-		authCred,
-		oidcDetails{
-			name,
-			endpoint,
-		},
-	}
+	Endpoint    string `yaml:"endpoint"`
+	Credentials auth_credentials.AuthCredentials
 }
 
 func (oidc *OIDC) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
@@ -37,7 +23,7 @@ func (oidc *OIDC) Call(authContext common.AuthContext, ctx context.Context) (int
 	}
 
 	// retrieve access token
-	accessToken, err := oidc.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
+	accessToken, err := oidc.Credentials.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
 		return nil, err
 	}

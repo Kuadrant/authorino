@@ -1,7 +1,6 @@
 package metadata
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,39 +9,65 @@ import (
 
 	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
+
+	goidc "github.com/coreos/go-oidc"
 )
 
 type UserInfo struct {
-	OIDC         string `yaml:"oidc,omitempty"`
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
+	OIDC string `yaml:"oidc,omitempty"`
 }
 
-func (userInfo *UserInfo) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
-	// find oidc config and the userinfo endpoint
-	idConfig, _ := authContext.FindIdentityByName(userInfo.OIDC)
+func (userinfo *UserInfo) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+	// find associated oidc identity config
+	var oidcIdentityConfig *identity.OIDC
 
-	if idConfig == nil {
-		return nil, fmt.Errorf("Null OIDC object for config %v. Skipping related UserInfo metadata.", userInfo.OIDC)
+	identityConfig, err := authContext.FindIdentityConfigByName(userinfo.OIDC)
+	if err != nil {
+		return nil, fmt.Errorf("Null OIDC object for config %v. Skipping related UserInfo metadata.", userinfo.OIDC)
+	} else {
+		ev, _ := identityConfig.(common.IdentityConfigEvaluator)
+		oidcIdentityConfig, _ = ev.GetOIDC().(*identity.OIDC)
 	}
 
-	idConfigStruct := idConfig.(*identity.OIDC)
-	provider, _ := idConfigStruct.NewProvider(ctx)
-	var providerClaims map[string]interface{}
-	_ = provider.Claims(&providerClaims)
-	userInfoURL, _ := url.Parse(providerClaims["introspection_endpoint"].(string))
-	userInfoURL.User = url.UserPassword(userInfo.ClientID, userInfo.ClientSecret)
+	// discover oidc config
+	// TODO: Move to a 'prepare' step and cache it (like in pkg/config/authorization/opa.go)
+	provider, err := oidcIdentityConfig.NewProvider(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	// extract access token
-	accessToken, _ := idConfigStruct.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
+	// get access token from input
+	accessToken, err := oidcIdentityConfig.Credentials.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
+	if err != nil {
+		return nil, err
+	}
 
 	// fetch user info
-	formData := url.Values{
-		"token":           {accessToken},
-		"token_type_hint": {"requesting_party_token"},
+	if userInfoURL, err := userinfo.clientAuthenticatedUserInfoEndpoint(provider); err != nil {
+		return nil, err
+	} else {
+		return fetchUserInfo(userInfoURL.String(), accessToken, ctx)
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", userInfoURL.String(), bytes.NewBufferString(formData.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+}
+
+func (userinfo *UserInfo) clientAuthenticatedUserInfoEndpoint(provider *goidc.Provider) (*url.URL, error) {
+	var providerClaims map[string]interface{}
+	_ = provider.Claims(&providerClaims)
+
+	if userInfoURL, err := url.Parse(providerClaims["userinfo_endpoint"].(string)); err != nil {
+		return nil, err
+	} else {
+		return userInfoURL, nil
+	}
+}
+
+func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context) (interface{}, error) {
+	if err := common.CheckContext(ctx); err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	if err != nil {
 		return nil, err
 	}

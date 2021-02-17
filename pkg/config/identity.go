@@ -14,6 +14,8 @@ var (
 )
 
 type IdentityConfig struct {
+	Name string `yaml:"name"`
+
 	OIDC   *identity.OIDC   `yaml:"oidc,omitempty"`
 	MTLS   *identity.MTLS   `yaml:"mtls,omitempty"`
 	HMAC   *identity.HMAC   `yaml:"hmac,omitempty"`
@@ -38,4 +40,8 @@ func (config *IdentityConfig) Call(authContext common.AuthContext, ctx context.C
 	default:
 		return "", fmt.Errorf("invalid identity config")
 	}
+}
+
+func (config *IdentityConfig) GetOIDC() interface{} {
+	return config.OIDC
 }

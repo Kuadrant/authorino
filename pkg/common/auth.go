@@ -13,11 +13,15 @@ type AuthContext interface {
 	GetAPI() interface{}
 	GetIdentity() interface{} // FIXME: it should return the entire map
 	GetMetadata() map[string]interface{}
-
-	FindIdentityByName(name string) (interface{}, error)
+	FindIdentityConfigByName(name string) (interface{}, error)
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
 type AuthConfigEvaluator interface {
 	Call(AuthContext, context.Context) (interface{}, error)
+}
+
+type IdentityConfigEvaluator interface {
+	AuthConfigEvaluator
+	GetOIDC() interface{}
 }

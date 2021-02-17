@@ -232,9 +232,9 @@ func (authContext *AuthContext) GetAPI() interface{} {
 
 func (authContext *AuthContext) GetIdentity() interface{} {
 	var id interface{}
-	for _, v := range authContext.Identity {
-		if v != nil {
-			id = v
+	for _, identityObj := range authContext.Identity {
+		if identityObj != nil {
+			id = identityObj
 			break
 		}
 	}
@@ -244,17 +244,18 @@ func (authContext *AuthContext) GetIdentity() interface{} {
 func (authContext *AuthContext) GetMetadata() map[string]interface{} {
 	m := make(map[string]interface{})
 	for metadataCfg, metadataObj := range authContext.Metadata {
-		t, _ := metadataCfg.GetType()
-		m[t] = metadataObj // FIXME: It will override instead of including all the metadata values of the same type
+		if metadataObj != nil {
+			m[metadataCfg.Name] = metadataObj
+		}
 	}
 	return m
 }
 
-func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) { //TODO: Assign the identity when creating the UserInfo struct and remove this func
+func (authContext *AuthContext) FindIdentityConfigByName(name string) (interface{}, error) { //TODO: Assign the identity when creating the UserInfo struct and remove this func
 	for identityConfig := range authContext.Identity {
-		if identityConfig.OIDC != nil && identityConfig.OIDC.Name == name {
-			return identityConfig.OIDC, nil
+		if identityConfig.Name == name {
+			return identityConfig, nil
 		}
 	}
-	return nil, fmt.Errorf("cannot find OIDC token")
+	return nil, fmt.Errorf("cannot find evaluated identity config %v", name)
 }

@@ -40,14 +40,13 @@ var (
 			},
 			Metadata: []*v1beta1.Metadata{
 				{
+					Name: "userinfo",
 					UserInfo: &v1beta1.Metadata_UserInfo{
 						IdentitySource: "keycloak",
-						Credentials: &v1.LocalObjectReference{
-							Name: "secret",
-						},
 					},
 				},
 				{
+					Name: "resource-data",
 					UMA: &v1beta1.Metadata_UMA{
 						IdentitySource: "keycloak",
 						Credentials: &v1.LocalObjectReference{
@@ -79,7 +78,7 @@ var (
           own_resource {
             some greetingid
             path = ["greetings", greetingid]
-            resource := object.get(metadata, "uma", [])[0]
+            resource := object.get(metadata, "resource-data", [])[0]
             owner := object.get(object.get(resource, "owner", {}), "id", "")
             subject := object.get(identity, "sub", object.get(identity, "username", ""))
             owner == subject
