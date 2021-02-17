@@ -15,7 +15,7 @@ spec:
         app: dex
     spec:
       containers:
-      - image: quay.io/dexidp/dex:v2.10.0
+      - image: quay.io/dexidp/dex:v2.26.0
         name: dex
         command: ["/usr/local/bin/dex", "serve", "/etc/dex/cfg/config.yaml"]
 
@@ -37,9 +37,7 @@ spec:
           - key: config.yaml
             path: config.yaml
       - name: db
-        hostPath:
-          path: /tmp/dex
-          type: DirectoryOrCreate
+        emptyDir: {} # obviously not good for production
 ---
 kind: ConfigMap
 apiVersion: v1
