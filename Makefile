@@ -62,6 +62,10 @@ deploy: manifests kustomize
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
+# Download vendor dependencies
+vendor:
+	go mod vendor -v
+
 # Run go fmt against code
 fmt:
 	go fmt ./...
@@ -71,7 +75,7 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: controller-gen
+generate: vendor controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
@@ -143,5 +147,5 @@ KIND=$(shell which kind)
 endif
 
 .PHONY: local-setup
-local-setup: kustomize kind
+local-setup: vendor kustomize kind
 	utils/local-setup.sh
