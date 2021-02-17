@@ -385,6 +385,8 @@ The only requirements to try out the example are [Golang](https://golang.org) an
       - john/p (member)
       - jane/p (admin)
 
+> In case you are interested in using [dex](https://dexidp.io) identity service, check also [this](examples/dex) other example.
+
 #### 1. Clone the repo
 
 ```shell
