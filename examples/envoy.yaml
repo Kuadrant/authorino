@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: envoy
-          image: envoyproxy/envoy:v1.14-latest
+          image: envoyproxy/envoy:v1.17-latest
           command: ["/usr/local/bin/envoy"]
           args:
             - --config-path /usr/local/etc/envoy/envoy.yaml
@@ -114,11 +114,13 @@ data:
               - name: envoy.filters.http.ext_authz
                 typed_config:
                   "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                  transport_api_version: V3
                   failure_mode_allow: false
                   include_peer_certificate: true
                   grpc_service:
                     envoy_grpc:
                       cluster_name: external_auth
+                    timeout: 1s
               - name: envoy.filters.http.router
                 typed_config: {}
       clusters:

@@ -1,13 +1,14 @@
 package common
 
 import (
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
 	"golang.org/x/net/context"
+
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
 
 type AuthContext interface {
 	GetParentContext() *context.Context
-	GetRequest() *auth.CheckRequest
+	GetRequest() *envoy_auth.CheckRequest
 	GetAPI() interface{}
 	GetIdentity() interface{} // FIXME: it should return the entire map
 	GetMetadata() map[string]interface{}

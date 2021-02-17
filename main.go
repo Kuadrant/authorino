@@ -21,15 +21,15 @@ import (
 	"net"
 	"os"
 
-	"github.com/3scale-labs/authorino/pkg/cache"
-
-	"github.com/3scale-labs/authorino/pkg/service"
-	auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v2"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
 	"github.com/3scale-labs/authorino/controllers"
+	"github.com/3scale-labs/authorino/pkg/cache"
+	"github.com/3scale-labs/authorino/pkg/service"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -103,7 +103,7 @@ func main() {
 	opts := []grpc.ServerOption{grpc.MaxConcurrentStreams(GRPCMaxConcurrentStreams)}
 	s := grpc.NewServer(opts...)
 
-	auth.RegisterAuthorizationServer(s, &service.AuthService{Cache: &cache})
+	envoy_auth.RegisterAuthorizationServer(s, &service.AuthService{Cache: &cache})
 	healthpb.RegisterHealthServer(s, &service.HealthService{})
 
 	log.Info("Starting grpc service", "port", grpcPort)
