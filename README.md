@@ -465,5 +465,7 @@ kind delete clusters authorino-integration
     - [Golang](https://golang.org)
     - [Operator SDK](https://sdk.operatorframework.io/)
 - Fork the repo
+- Download dependencies
+  `make vendor`
 - Start your local changes
 - Push a PR
