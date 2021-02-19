@@ -1,12 +1,16 @@
 # Try Authorino with [dex](https://dexidp.io)
 
-This example is built on top of Authorino's [Try it out](README.md#try-it-out-with-the-example) example, which deploys a Kubernetes local environment containing
+The instructions here are based on the Authorino's [Try it out](README.md#try-it-out-with-the-example) example, which already deploys a Kubernetes local environment containing:
 - an example API (the Echo API)
 - the Envoy proxy
 - a pre-configured instance of Keycloak, and
 - Authorino
 
-The steps below add [dex](https://dexidp.io) as additional (yet independent) identity source.
+We will then add [dex](https://dexidp.io) as additional (yet independent) identity source on top of this stack.
+
+| Add dex to the server             | Add dex to the auth pipeline         | Get an access token and start sending requests |
+|-----------------------------------|--------------------------------------|--------------------------------------|
+|![](images/add-dex-to-server.gif)  | ![](images/add-dex-to-echo-api.gif)  | ![](images/authn-and-request.gif)    |
 
 ### 1. Start with the original _Try it out_ example
 
@@ -40,7 +44,7 @@ kubectl -n authorino apply -f ./examples/echo-api-protection.yaml
 
 Add dex to the cluster:
 ```shell
-kubectl -n authorino create -f examples/dex.yaml
+kubectl -n authorino apply -f examples/dex.yaml
 ```
 
 Expose the dex service port to the local host:
@@ -57,7 +61,7 @@ The above will add dex as alternative identity source without removing Keycloak.
 
 After patching the auth service config, the Authorino Kubernetes controller will automatically reconcile and make sure the Echo API is ready to be consumed under the new auth configs, without requiring redeploying any component.
 
-### 3. Start a bounce service locally to help you complete the OAuth code flow with dex
+### 3. (Optional) Start a bounce service locally to help you complete the OAuth code flow with dex
 
 Dex is pre-configured to accept by default only OAuth 2 [Authorization Code Grant](https://tools.ietf.org/html/rfc6749#section-1.3.1) flow. Therefore you will need a way to receive the code to be exchanged for an actual access token. We can use the same Echo API from the example as a bounce service to retrieve the authorization code.
 
