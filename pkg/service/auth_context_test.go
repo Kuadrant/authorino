@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
-	"github.com/3scale-labs/authorino/pkg/config/common"
 	"gotest.tools/assert"
 )
 

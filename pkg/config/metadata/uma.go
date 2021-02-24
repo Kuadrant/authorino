@@ -3,16 +3,13 @@ package metadata
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"mime"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 
-	"github.com/3scale-labs/authorino/pkg/config/common"
+	"github.com/3scale-labs/authorino/pkg/common"
 )
 
 type providerJSON struct {
@@ -35,7 +32,7 @@ func (provider *Provider) GetTokenURL() string {
 }
 
 func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Context) ([]interface{}, error) {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -47,7 +44,7 @@ func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Con
 }
 
 func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.Context) ([]string, error) {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -61,7 +58,7 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 }
 
 func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context) ([]interface{}, error) {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -91,7 +88,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx c
 }
 
 func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx context.Context) (interface{}, error) {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +117,7 @@ type UMA struct {
 
 // NewProvider discovers the uma config and returns a Provider struct with its claims
 func (uma *UMA) NewProvider(ctx context.Context) (*Provider, error) {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -138,7 +135,7 @@ func (uma *UMA) NewProvider(ctx context.Context) (*Provider, error) {
 	defer resp.Body.Close()
 	var p providerJSON
 	var rawClaims []byte
-	err = unmashalJSONResponse(resp, &p, &rawClaims)
+	err = common.UnmashalJSONResponse(resp, &p, &rawClaims)
 	if err != nil {
 		return nil, fmt.Errorf("uma: failed to decode provider discovery object: %v", err)
 	}
@@ -190,7 +187,7 @@ func (uma *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
 }
 
 func (uma *UMA) requestPAT(ctx context.Context, provider *Provider, pat *PAT) error {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return err
 	}
 
@@ -211,7 +208,7 @@ func (uma *UMA) requestPAT(ctx context.Context, provider *Provider, pat *PAT) er
 	}
 
 	// parse the pat
-	err = unmashalJSONResponse(resp, pat, nil)
+	err = common.UnmashalJSONResponse(resp, pat, nil)
 	if err != nil {
 		return fmt.Errorf("uma: failed to decode PAT: %v", err)
 	}
@@ -220,7 +217,7 @@ func (uma *UMA) requestPAT(ctx context.Context, provider *Provider, pat *PAT) er
 }
 
 func sendRequestWithPAT(rawurl string, pat PAT, ctx context.Context, v interface{}) error {
-	if err := checkContext(ctx); err != nil {
+	if err := common.CheckContext(ctx); err != nil {
 		return err
 	}
 
@@ -239,48 +236,5 @@ func sendRequestWithPAT(rawurl string, pat PAT, ctx context.Context, v interface
 	}
 	defer resp.Body.Close()
 
-	return unmashalJSONResponse(resp, &v, nil)
-}
-
-// unmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure
-// TODO: move it to a 'utils' package
-func unmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {
-	// read response body
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("unable to read response body: %v", err)
-	}
-
-	if b != nil {
-		*b = body
-	}
-
-	// check http status ok
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s", resp.Status, body)
-	}
-
-	// decode as json and return if ok
-	err = json.Unmarshal(body, v)
-	if err == nil {
-		return nil
-	}
-
-	// check json response content type
-	ct := resp.Header.Get("Content-Type")
-	mediaType, _, err := mime.ParseMediaType(ct)
-	if err == nil && mediaType == "application/json" {
-		return fmt.Errorf("got Content-Type = application/json, but could not unmarshal as JSON: %v", err)
-	}
-	return fmt.Errorf("expected Content-Type = application/json, got %q: %v", ct, err)
-}
-
-// TODO: move it to a 'utils' package
-func checkContext(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("Context aborted")
-	default:
-		return nil
-	}
+	return common.UnmashalJSONResponse(resp, &v, nil)
 }

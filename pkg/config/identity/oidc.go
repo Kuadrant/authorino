@@ -3,7 +3,7 @@ package identity
 import (
 	"context"
 
-	"github.com/3scale-labs/authorino/pkg/config/common"
+	"github.com/3scale-labs/authorino/pkg/common"
 
 	oidc "github.com/coreos/go-oidc"
 )

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/3scale-labs/authorino/pkg/config/common"
+	"github.com/3scale-labs/authorino/pkg/common"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 

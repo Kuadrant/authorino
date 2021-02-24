@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/3scale-labs/authorino/pkg/config/common"
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config/metadata"
 )
 

@@ -8,8 +8,8 @@ import (
 	"golang.org/x/net/context"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
-	"github.com/3scale-labs/authorino/pkg/config/common"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
