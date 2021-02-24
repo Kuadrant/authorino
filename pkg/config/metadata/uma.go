@@ -35,6 +35,10 @@ func (provider *Provider) GetTokenURL() string {
 }
 
 func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Context) ([]interface{}, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx)
 	if err != nil {
 		return nil, err
@@ -43,6 +47,10 @@ func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Con
 }
 
 func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.Context) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	queryResourcesURL, _ := url.Parse(provider.resourceRegistrationURL)
 	queryResourcesURL.RawQuery = "uri=" + uri
 	var resourceIDs []string
@@ -53,6 +61,10 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 }
 
 func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context) ([]interface{}, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	waitGroup := new(sync.WaitGroup)
 	size := len(resourceIDs)
 	buf := make(chan interface{}, size)
@@ -79,6 +91,10 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx c
 }
 
 func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx context.Context) (interface{}, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	resourceURL, _ := url.Parse(provider.resourceRegistrationURL)
 	resourceURL.Path += "/" + resourceID
 	var data interface{}
@@ -104,6 +120,10 @@ type UMA struct {
 
 // NewProvider discovers the uma config and returns a Provider struct with its claims
 func (uma *UMA) NewProvider(ctx context.Context) (*Provider, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	// discover uma config
 	wellKnownURL := strings.TrimSuffix(uma.Endpoint, "/") + "/.well-known/uma2-configuration"
 	req, err := http.NewRequestWithContext(ctx, "GET", wellKnownURL, nil)
@@ -170,6 +190,10 @@ func (uma *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
 }
 
 func (uma *UMA) requestPAT(ctx context.Context, provider *Provider, pat *PAT) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+
 	// build the request
 	tokenURL, _ := uma.clientAuthenticatedURL(provider.GetTokenURL())
 	data := url.Values{"grant_type": {"client_credentials"}}
@@ -196,6 +220,10 @@ func (uma *UMA) requestPAT(ctx context.Context, provider *Provider, pat *PAT) er
 }
 
 func sendRequestWithPAT(rawurl string, pat PAT, ctx context.Context, v interface{}) error {
+	if err := checkContext(ctx); err != nil {
+		return err
+	}
+
 	// build the request
 	req, err := http.NewRequestWithContext(ctx, "GET", rawurl, nil)
 	if err != nil {
@@ -245,4 +273,14 @@ func unmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {
 		return fmt.Errorf("got Content-Type = application/json, but could not unmarshal as JSON: %v", err)
 	}
 	return fmt.Errorf("expected Content-Type = application/json, got %q: %v", ct, err)
+}
+
+// TODO: move it to a 'utils' package
+func checkContext(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("Context aborted")
+	default:
+		return nil
+	}
 }
