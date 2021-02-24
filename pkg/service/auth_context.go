@@ -94,7 +94,7 @@ func (authContext *AuthContext) evaluateAuthConfig(config common.AuthConfigEvalu
 type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
 
 func (authContext *AuthContext) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse, es authConfigEvaluationStrategy) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(*authContext.ParentContext)
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
 
