@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/3scale-labs/authorino/pkg/config/common"
 )
@@ -52,17 +53,28 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 }
 
 func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context) ([]interface{}, error) {
-	resourceData := make([]interface{}, 0)
+	waitGroup := new(sync.WaitGroup)
+	size := len(resourceIDs)
+	buf := make(chan interface{}, size)
 
-	// TODO: Parallelize
+	waitGroup.Add(size)
 	for _, resourceID := range resourceIDs {
-		if data, err := provider.getResourceByID(resourceID, pat, ctx); err != nil {
-			return nil, err
-		} else {
-			resourceData = append(resourceData, data)
-		}
+		go func(id string) {
+			defer waitGroup.Done()
+
+			if data, err := provider.getResourceByID(id, pat, ctx); err == nil {
+				buf <- data
+			}
+		}(resourceID)
 	}
 
+	waitGroup.Wait()
+	close(buf)
+
+	resourceData := make([]interface{}, 0)
+	for resource := range buf {
+		resourceData = append(resourceData, resource)
+	}
 	return resourceData, nil
 }
 
