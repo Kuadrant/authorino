@@ -1,32 +1,12 @@
 package common
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"mime"
 	"net/http"
 )
-
-// CheckContext checks if a go context is still active or done
-// When it's done, returns a generic error
-//
-// func myFunc(ctx context.Context) error {
-//   if err := common.CheckContext(ctx); err != nil {
-//   	 return err
-//   } else {
-//     doSomething()
-//   }
-// }
-func CheckContext(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("Context aborted")
-	default:
-		return nil
-	}
-}
 
 // UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure
 // Pass optionally a pointer to a byte array to get the raw body of the response object written back
