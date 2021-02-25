@@ -20,23 +20,18 @@ var (
 
 type EvaluationResponse struct {
 	Evaluator common.AuthConfigEvaluator
-	Success   bool
 	Object    interface{}
 	Error     error
 }
 
-func newEvaluationResponseSuccess(evaluator common.AuthConfigEvaluator, obj interface{}) EvaluationResponse {
-	return EvaluationResponse{
-		Evaluator: evaluator,
-		Success:   true,
-		Object:    obj,
-	}
+func (evresp *EvaluationResponse) Success() bool {
+	return evresp.Error == nil
 }
 
-func newEvaluationResponseFailure(evaluator common.AuthConfigEvaluator, err error) EvaluationResponse {
+func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}, err error) EvaluationResponse {
 	return EvaluationResponse{
 		Evaluator: evaluator,
-		Success:   false,
+		Object:    obj,
 		Error:     err,
 	}
 }
@@ -74,7 +69,7 @@ func (authContext *AuthContext) evaluateAuthConfig(config common.AuthConfigEvalu
 		authCtxLog.Info("Context aborted", "config", config)
 	default:
 		if authObj, err := config.Call(authContext, ctx); err != nil {
-			*respChannel <- newEvaluationResponseFailure(config, err)
+			*respChannel <- newEvaluationResponse(config, nil, err)
 
 			authCtxLog.Info("Failed to evaluate auth object", "config", config, "error", err)
 
@@ -82,7 +77,7 @@ func (authContext *AuthContext) evaluateAuthConfig(config common.AuthConfigEvalu
 				failureCallback()
 			}
 		} else {
-			*respChannel <- newEvaluationResponseSuccess(config, authObj)
+			*respChannel <- newEvaluationResponse(config, authObj, nil)
 
 			if successCallback != nil {
 				successCallback()
@@ -143,7 +138,7 @@ func (authContext *AuthContext) evaluateIdentityConfigs() error {
 		conf, _ := resp.Evaluator.(*config.IdentityConfig)
 		obj := resp.Object
 
-		if resp.Success {
+		if resp.Success() {
 			authContext.Identity[conf] = obj
 			authCtxLog.Info("Identity", "config", conf, "authObj", obj)
 			return nil
@@ -169,7 +164,7 @@ func (authContext *AuthContext) evaluateMetadataConfigs() {
 		conf, _ := resp.Evaluator.(*config.MetadataConfig)
 		obj := resp.Object
 
-		if resp.Success {
+		if resp.Success() {
 			authContext.Metadata[conf] = obj
 			authCtxLog.Info("Metadata", "config", conf, "authObj", obj)
 		} else {
@@ -191,7 +186,7 @@ func (authContext *AuthContext) evaluateAuthorizationConfigs() error {
 		conf, _ := resp.Evaluator.(*config.AuthorizationConfig)
 		obj := resp.Object
 
-		if resp.Success {
+		if resp.Success() {
 			authContext.Authorization[conf] = obj
 			authCtxLog.Info("Authorization", "config", conf, "authObj", obj)
 		} else {

@@ -46,7 +46,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		}
 	}
@@ -69,7 +69,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
@@ -95,7 +95,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
@@ -121,7 +121,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
@@ -146,7 +146,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if !resp.Success {
+		if !resp.Success() {
 			err = resp.Error
 		}
 	}
@@ -169,7 +169,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
@@ -195,7 +195,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
@@ -221,7 +221,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
@@ -247,7 +247,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	}()
 
 	for resp := range respChannel {
-		if resp.Success {
+		if resp.Success() {
 			swap = true
 		} else {
 			err = resp.Error
