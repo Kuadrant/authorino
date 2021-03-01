@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 )
 
 // CheckContext checks if a go context is still active or done
@@ -18,7 +17,7 @@ import (
 func CheckContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("Context aborted")
+		return ctx.Err()
 	default:
 		return nil
 	}

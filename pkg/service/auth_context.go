@@ -64,24 +64,24 @@ func NewAuthContext(parentCtx context.Context, req *envoy_auth.CheckRequest, api
 }
 
 func (authContext *AuthContext) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
-	select {
-	case <-ctx.Done():
-		authCtxLog.Info("Context aborted", "config", config)
-	default:
-		if authObj, err := config.Call(authContext, ctx); err != nil {
-			*respChannel <- newEvaluationResponse(config, nil, err)
+	if err := common.CheckContext(ctx); err != nil {
+		authCtxLog.Info("Skipping auth config", "config", config, "reason", err)
+		return
+	}
 
-			authCtxLog.Info("Failed to evaluate auth object", "config", config, "error", err)
+	if authObj, err := config.Call(authContext, ctx); err != nil {
+		*respChannel <- newEvaluationResponse(config, nil, err)
 
-			if failureCallback != nil {
-				failureCallback()
-			}
-		} else {
-			*respChannel <- newEvaluationResponse(config, authObj, nil)
+		authCtxLog.Info("Failed to evaluate auth object", "config", config, "error", err)
 
-			if successCallback != nil {
-				successCallback()
-			}
+		if failureCallback != nil {
+			failureCallback()
+		}
+	} else {
+		*respChannel <- newEvaluationResponse(config, authObj, nil)
+
+		if successCallback != nil {
+			successCallback()
 		}
 	}
 }
