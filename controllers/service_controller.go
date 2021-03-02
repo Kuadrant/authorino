@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	"github.com/3scale-labs/authorino/pkg/cache"
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
 	authorinoService "github.com/3scale-labs/authorino/pkg/config"
 	authorinoAuthorization "github.com/3scale-labs/authorino/pkg/config/authorization"
-	"github.com/3scale-labs/authorino/pkg/config/common"
 	authorinoIdentity "github.com/3scale-labs/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/3scale-labs/authorino/pkg/config/metadata"
 	"github.com/go-logr/logr"

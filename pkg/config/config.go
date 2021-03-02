@@ -1,6 +1,6 @@
 package config
 
-import "github.com/3scale-labs/authorino/pkg/config/common"
+import "github.com/3scale-labs/authorino/pkg/common"
 
 // APIConfig holds the configuration of each protected API
 type APIConfig struct {

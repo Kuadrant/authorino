@@ -1,10 +1,11 @@
 package config
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config/authorization"
-	"github.com/3scale-labs/authorino/pkg/config/common"
 )
 
 var (
@@ -17,12 +18,12 @@ type AuthorizationConfig struct {
 	JWT *authorization.JWTClaims `yaml:"jwt"`
 }
 
-func (config *AuthorizationConfig) Call(ctx common.AuthContext) (interface{}, error) {
+func (config *AuthorizationConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	switch {
 	case config.OPA != nil:
-		return config.OPA.Call(ctx)
+		return config.OPA.Call(authContext, ctx)
 	case config.JWT != nil:
-		return config.JWT.Call(ctx)
+		return config.JWT.Call(authContext, ctx)
 	default:
 		return false, fmt.Errorf("invalid authorization configs")
 	}

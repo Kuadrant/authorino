@@ -1,9 +1,10 @@
 package config
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/3scale-labs/authorino/pkg/config/common"
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
 )
 
@@ -24,16 +25,16 @@ func init() {
 }
 
 // Call method will execute the specific Identity implementation's method
-func (config *IdentityConfig) Call(ctx common.AuthContext) (interface{}, error) {
+func (config *IdentityConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	switch {
 	case config.OIDC != nil:
-		return config.OIDC.Call(ctx)
+		return config.OIDC.Call(authContext, ctx)
 	case config.MTLS != nil:
-		return config.MTLS.Call(ctx)
+		return config.MTLS.Call(authContext, ctx)
 	case config.HMAC != nil:
-		return config.HMAC.Call(ctx)
+		return config.HMAC.Call(authContext, ctx)
 	case config.APIKey != nil:
-		return config.APIKey.Call(ctx)
+		return config.APIKey.Call(authContext, ctx)
 	default:
 		return "", fmt.Errorf("invalid identity config")
 	}
