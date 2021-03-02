@@ -1,0 +1,23 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: echo-api
+spec:
+  hosts:
+    - echo-api
+  identity:
+    - name: friends # user defined
+      credentials:
+        in: custom_header # options include: custom_header, authorization_header and query
+        key_selector: X-API-KEY # user defined
+      api_key:
+        label_selectors:
+          target: echo-api # user defined
+  metadata: []
+  authorization:
+    - JWTClaimSet:
+        match:
+          http:
+            path: "/api/*"
+        claim:
+          aud: "api"
