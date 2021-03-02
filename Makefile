@@ -149,3 +149,8 @@ endif
 .PHONY: local-setup
 local-setup: vendor kustomize kind
 	utils/local-setup.sh
+
+# Rebuild and push the docker image and redeploy authorino to the local k8s cluster
+.PHONY: local-deploy
+local-deploy: kind
+	utils/local-deploy.sh
