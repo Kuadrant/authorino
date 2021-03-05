@@ -5,13 +5,11 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/net/context"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
-
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	"golang.org/x/net/context"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var (
