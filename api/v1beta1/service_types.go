@@ -43,10 +43,16 @@ type ServiceSpec struct {
 	Authorization []*Authorization `json:"authorization,omitempty"`
 }
 
+type Credentials struct {
+	In          string `json:"in"`
+	KeySelector string `json:"key_selector"`
+}
+
 type Identity struct {
 	// Adding a Name as we need to reference it from the metadata section.
-	Name string               `json:"name"`
-	Oidc *Identity_OidcConfig `json:"oidc,omitempty"`
+	Name        string               `json:"name"`
+	Oidc        *Identity_OidcConfig `json:"oidc,omitempty"`
+	Credentials Credentials          `json:"credentials,omitempty"`
 }
 
 type Identity_OidcConfig struct {
