@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/3scale-labs/authorino/pkg/common"
@@ -247,26 +246,11 @@ func (authContext *AuthContext) GetMetadata() map[string]interface{} {
 	return m
 }
 
-func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) {
+func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) { //TODO: Assign the identity when creating the UserInfo struct and remove this func
 	for identityConfig := range authContext.Identity {
 		if identityConfig.OIDC.Name == name {
 			return identityConfig.OIDC, nil
 		}
 	}
 	return nil, fmt.Errorf("cannot find OIDC token")
-}
-
-func (authContext *AuthContext) AuthorizationToken() (string, error) {
-	authHeader, authHeaderOK := authContext.Request.Attributes.Request.Http.Headers["authorization"]
-
-	var splitToken []string
-
-	if authHeaderOK {
-		splitToken = strings.Split(authHeader, "Bearer ")
-	}
-	if !authHeaderOK || len(splitToken) != 2 {
-		return "", fmt.Errorf("authorization header malformed or not provided")
-	}
-
-	return splitToken[1], nil // FIXME: Indexing may panic because because of 'nil' slice
 }
