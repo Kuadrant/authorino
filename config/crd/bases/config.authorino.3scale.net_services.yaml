@@ -73,6 +73,16 @@ spec:
             identity:
               items:
                 properties:
+                  credentials:
+                    properties:
+                      in:
+                        type: string
+                      key_selector:
+                        type: string
+                    required:
+                    - in
+                    - key_selector
+                    type: object
                   name:
                     description: Adding a Name as we need to reference it from the
                       metadata section.
