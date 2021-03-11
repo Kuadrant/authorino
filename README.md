@@ -4,7 +4,7 @@ Authorino is a Cloud Native AuthN/AuthZ broker that implements [Envoy’s extern
 
 It adds protection to your APIs including:
 - User authentication (OIDC, mTLS, HMAC, API key)
-- Ad-hoc metadata addition to the authorization payload (user info, resource metadata, web hooks)
+- Ad-hoc metadata addition to the authorization payload (user info, resource metadata, generic HTTP GET)
 - Authorization policy enforcement (built-in and external authorization services, JWT claims, OPA, Keycloak)
 
 Authorino complies with the [3scale Ostia architecture](https://github.com/3scale-labs/ostia).
@@ -59,7 +59,7 @@ Authorino complies with the [3scale Ostia architecture](https://github.com/3scal
 1. An _API consumer_ sends a request to the _Envoy_ endpoint, including the `Authorization` and `Host` HTTP headers
 2. The Envoy proxy establishes fast gRPC connection with _Authorino_, carrying data of the HTTP request
 3. **Identity verification step** - Authorino verifies the identity of the the original requestor, where at least one authentication method/identity provider should answer
-4. **Ad-hoc authorization metadata step** - Authorino integrates external sources to add metadata to the authorization payload, such as user info, attributes of the requested resource and payload-mutating web hooks
+4. **Ad-hoc authorization metadata step** - Authorino integrates external sources to add metadata to the authorization payload, such as user info, attributes of the requested resource and external HTTP GET responses
 5. **Policy enforcement step** - Authorino dispatches authorization policy evaluation to one or more configured Policy Decision Points (PDP)
 6. Authorino and Envoy settle the authorization protocol with either a `200 OK`, `403 Forbidden` or `404 Not found` response (_Tip:_ with extra details available in the `x-ext-auth-reason` header if NOK)
 7. If authorized, Envoy redirects to the requested _Upstream_
@@ -77,13 +77,7 @@ _Identity verification_ and _Ad-hoc authorization metadata_ steps add info for t
 
 ## Features
 
-Once ready, Authorino will support at least 4 different authentication methods (i.e., OIDC, mTLS, HMAC, and API key), plus ad-hoc additions to the authorization payload (e.g., user info, resource metadata, web hooks), and combination of multiple authorization services or built-in modules (JWT claimpattern matching, OPA, Keycloak). Authorino will also handle caching of user credentials, permissions, revocations.
-
-Here's a list of features related to each of Authorino's 3 core steps and supporting features.
-
-- Features listed as "PoC" mean they are already implemented and ready to use in the current stage of Authorino, which is still in proof of concept.
-- "Planned" are the features that are part of the original proposal of Authorino but not yet in PoC.
-- "In analysis" are suggested features that may require extra effort to be implemented and therefore are still being analyzed regarding viability or design.
+Please check the [open issues](https://github.com/3scale-labs/authorino/issues) for a full list of features and most up-to-date statuses. Here's a summary of Authorino's main highlight features and corresponding stages of development:
 
 <table>
   <thead>
@@ -94,43 +88,51 @@ Here's a list of features related to each of Authorino's 3 core steps and suppor
   </thead>
   <tbody>
     <tr>
-      <td rowspan="4">Identity verification</td>
+      <td rowspan="6">Identity verification</td>
       <td>OpenID Connect (OIDC)</td>
-      <td>PoC</td>
-    </tr>
-    <tr>
-      <td>mTLS</td>
-      <td>Planned</td>
-    </tr>
-    <tr>
-      <td>HMAC</td>
-      <td>Planned</td>
+      <td>Available</td>
     </tr>
     <tr>
       <td>API key</td>
-      <td>Planned</td>
+      <td>WIP (<a href="https://github.com/3scale-labs/authorino/issues/7">#7</a>)</td>
+    </tr>
+    <tr>
+      <td>mTLS</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/8">#8</a>)</td>
+    </tr>
+    <tr>
+      <td>HMAC</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/9">#9</a>)</td>
+    </tr>
+    <tr>
+      <td>OAuth2</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
+      <td>OpenShift OAuth (built-in auth server)</td>
+      <td>In analysis</td>
     </tr>
     <tr>
       <td rowspan="3">Ad-hoc authorization metadata</td>
       <td>OIDC user info</td>
-      <td>PoC</td>
+      <td>Available</td>
     </tr>
     <tr>
       <td>UMA-protected resource attributes</td>
-      <td>PoC</td>
+      <td>Available</td>
     </tr>
     <tr>
-      <td>Web hooks</td>
-      <td>In analysis</td>
+      <td>Generic HTTP GET</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/10">#10</a>)</td>
     </tr>
     <tr>
-      <td rowspan="4">Policy enforcement</td>
+      <td rowspan="3">Policy enforcement</td>
       <td>OPA inline Rego policies</td>
-      <td>PoC</td>
+      <td>Available</td>
     </tr>
     <tr>
       <td>Pattern matching rules (e.g. JWT claims)</td>
-      <td>Planned</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/11">#11</a>)</td>
     </tr>
     <tr>
       <td>Keycloak (UMA-compliant Authorization API)</td>
@@ -139,31 +141,47 @@ Here's a list of features related to each of Authorino's 3 core steps and suppor
     <tr>
       <td rowspan="6">Caching</td>
       <td>OIDC and UMA configs</td>
-      <td>PoC</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/2">#2</a>)</td>
     </tr>
     <tr>
       <td>JSON Web Ket Sets (JWKS)</td>
-      <td>PoC</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/2">#2</a>)</td>
     </tr>
     <tr>
       <td>Revoked access tokens</td>
-      <td>Planned</td>
+      <td>Planned  (<a href="https://github.com/3scale-labs/authorino/issues/19">#19</a>)</td>
     </tr>
     <tr>
       <td>Resource data</td>
-      <td>Planned</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/21">#21</a>)</td>
     </tr>
     <tr>
       <td>Authorization policies</td>
-      <td>PoC</td>
+      <td>Available</td>
     </tr>
     <tr>
       <td>Repeated requests</td>
-      <td>In analysis</td>
+      <td>In analysis (<a href="https://github.com/3scale-labs/authorino/issues/20">#20</a>)</td>
     </tr>
     <tr>
-      <td colspan="2">Multitenancy (multiple upstreams)</td>
-      <td>PoC</td>
+      <td colspan="2">Mutate request with auth data</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/22">#22</a>)</td>
+    </tr>
+    <tr>
+      <td colspan="2">Token normalization (Edge Auth)</td>
+      <td>In analysis (<a href="https://github.com/3scale-labs/authorino/issues/24">#24</a>)</td>
+    </tr>
+    <tr>
+      <td colspan="2">Multitenancy (multiple upstreams and hosts)</td>
+      <td>Available</td>
+    </tr>
+    <tr>
+      <td colspan="2">HTTP External Authorization</td>
+      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/6">#6</a>)</td>
+    </tr>
+    <tr>
+      <td colspan="2">External policy registry</td>
+      <td>In analysis</td>
     </tr>
   </tbody>
 </table>
