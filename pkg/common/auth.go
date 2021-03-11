@@ -14,7 +14,6 @@ type AuthContext interface {
 	GetMetadata() map[string]interface{}
 
 	FindIdentityByName(name string) (interface{}, error)
-	AuthorizationToken() (string, error)
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization

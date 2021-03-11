@@ -4,13 +4,28 @@ import (
 	"context"
 
 	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
 
 	goidc "github.com/coreos/go-oidc"
 )
 
-type OIDC struct {
+type oidcDetails struct {
 	Name     string `yaml:"name"`
 	Endpoint string `yaml:"endpoint"`
+}
+type OIDC struct {
+	auth_credentials.AuthCredentials
+	oidcDetails
+}
+
+func NewOIDCIdentity(name string, endpoint string, authCred auth_credentials.AuthCredentials) *OIDC {
+	return &OIDC{
+		authCred,
+		oidcDetails{
+			name,
+			endpoint,
+		},
+	}
 }
 
 func (oidc *OIDC) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
@@ -22,7 +37,7 @@ func (oidc *OIDC) Call(authContext common.AuthContext, ctx context.Context) (int
 	}
 
 	// retrieve access token
-	accessToken, err := authContext.AuthorizationToken()
+	accessToken, err := oidc.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
 		return nil, err
 	}

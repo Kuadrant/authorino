@@ -9,6 +9,10 @@ spec:
     - name: keycloak
       oidc:
         endpoint: http://keycloak:8080/auth/realms/ostia
+      credentials:
+        in: authorization_header
+        key_selector: Bearer
+
   metadata:
     - userInfo:
         identitySource: keycloak

@@ -18,12 +18,12 @@ type UserInfo struct {
 	ClientSecret string `yaml:"client_secret"`
 }
 
-func (self *UserInfo) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (userInfo *UserInfo) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	// find oidc config and the userinfo endpoint
-	idConfig, _ := authContext.FindIdentityByName(self.OIDC)
+	idConfig, _ := authContext.FindIdentityByName(userInfo.OIDC)
 
 	if idConfig == nil {
-		return nil, fmt.Errorf("Null OIDC object for config %v. Skipping related UserInfo metadata.", self.OIDC)
+		return nil, fmt.Errorf("Null OIDC object for config %v. Skipping related UserInfo metadata.", userInfo.OIDC)
 	}
 
 	idConfigStruct := idConfig.(*identity.OIDC)
@@ -31,10 +31,10 @@ func (self *UserInfo) Call(authContext common.AuthContext, ctx context.Context) 
 	var providerClaims map[string]interface{}
 	_ = provider.Claims(&providerClaims)
 	userInfoURL, _ := url.Parse(providerClaims["introspection_endpoint"].(string))
-	userInfoURL.User = url.UserPassword(self.ClientID, self.ClientSecret)
+	userInfoURL.User = url.UserPassword(userInfo.ClientID, userInfo.ClientSecret)
 
 	// extract access token
-	accessToken, _ := authContext.AuthorizationToken()
+	accessToken, _ := idConfigStruct.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
 
 	// fetch user info
 	formData := url.Values{

@@ -21,8 +21,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
 	"github.com/3scale-labs/authorino/pkg/cache"
 	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
 	"github.com/3scale-labs/authorino/pkg/config"
 	authorinoService "github.com/3scale-labs/authorino/pkg/config"
 	authorinoAuthorization "github.com/3scale-labs/authorino/pkg/config/authorization"
@@ -35,8 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
 )
 
 // ServiceReconciler reconciles a Service object
@@ -108,11 +108,12 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		switch identity.GetType() {
 
 		case configv1beta1.IdentityOidc:
+			authCred := &auth_credentials.AuthCredential{
+				KeySelector: identity.Credentials.KeySelector,
+				In:          identity.Credentials.In,
+			}
 			translatedIdentity = config.IdentityConfig{
-				OIDC: &authorinoIdentity.OIDC{
-					Name:     identity.Name,
-					Endpoint: identity.Oidc.Endpoint,
-				},
+				OIDC: authorinoIdentity.NewOIDCIdentity(identity.Name, identity.Oidc.Endpoint, authCred),
 			}
 
 		case configv1beta1.TypeUnknown:
