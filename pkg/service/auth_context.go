@@ -222,6 +222,10 @@ func (authContext *AuthContext) GetRequest() *envoy_auth.CheckRequest {
 	return authContext.Request
 }
 
+func (authContext *AuthContext) GetHttp() *envoy_auth.AttributeContext_HttpRequest {
+	return authContext.Request.Attributes.Request.Http
+}
+
 func (authContext *AuthContext) GetAPI() interface{} {
 	return authContext.API
 }

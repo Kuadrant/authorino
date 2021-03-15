@@ -9,6 +9,7 @@ import (
 type AuthContext interface {
 	GetParentContext() *context.Context
 	GetRequest() *envoy_auth.CheckRequest
+	GetHttp() *envoy_auth.AttributeContext_HttpRequest
 	GetAPI() interface{}
 	GetIdentity() interface{} // FIXME: it should return the entire map
 	GetMetadata() map[string]interface{}
