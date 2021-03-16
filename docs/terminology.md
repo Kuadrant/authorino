@@ -2,7 +2,7 @@
 Here we define some terms that are used in the project, with the goal of avoiding confusion and facilitating more
 accurate conversations related to `Authorino`.
 
-If you see terms used that are not here (or are used in place of terms here) please considre contributing a definition
+If you see terms used that are not here (or are used in place of terms here) please consider contributing a definition
 to this doc with a PR, or modifying the use elsewhere to align with these terms.
 
 ## Terms
