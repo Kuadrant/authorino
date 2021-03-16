@@ -5,59 +5,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
-
-	goidc "github.com/coreos/go-oidc"
 )
 
 type UserInfo struct {
-	OIDC string `yaml:"oidc,omitempty"`
+	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
 func (userinfo *UserInfo) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
-	// find associated oidc identity config
-	var oidcIdentityConfig *identity.OIDC
+	oidc := userinfo.OIDC
 
-	identityConfig, err := authContext.FindIdentityConfigByName(userinfo.OIDC)
-	if err != nil {
-		return nil, fmt.Errorf("Null OIDC object for config %v. Skipping related UserInfo metadata.", userinfo.OIDC)
-	} else {
-		ev, _ := identityConfig.(common.IdentityConfigEvaluator)
-		oidcIdentityConfig, _ = ev.GetOIDC().(*identity.OIDC)
-	}
-
-	// discover oidc config
-	// TODO: Move to a 'prepare' step and cache it (like in pkg/config/authorization/opa.go)
-	provider, err := oidcIdentityConfig.NewProvider(ctx)
-	if err != nil {
-		return nil, err
+	// check if corresponding oidc identity was resolved
+	resolvedIdentity, _ := authContext.GetResolvedIdentity()
+	identityEvaluator, _ := resolvedIdentity.(common.IdentityConfigEvaluator)
+	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC == nil || resolvedOIDC.Endpoint != oidc.Endpoint {
+		return nil, fmt.Errorf("Missing identity for OIDC issuer %v. Skipping related UserInfo metadata.", oidc.Endpoint)
 	}
 
 	// get access token from input
-	accessToken, err := oidcIdentityConfig.Credentials.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
+	accessToken, err := oidc.Credentials.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
 		return nil, err
 	}
 
 	// fetch user info
-	if userInfoURL, err := userinfo.clientAuthenticatedUserInfoEndpoint(provider); err != nil {
+	if userInfoURL, err := oidc.GetURL("userinfo_endpoint"); err != nil {
 		return nil, err
 	} else {
 		return fetchUserInfo(userInfoURL.String(), accessToken, ctx)
-	}
-}
-
-func (userinfo *UserInfo) clientAuthenticatedUserInfoEndpoint(provider *goidc.Provider) (*url.URL, error) {
-	var providerClaims map[string]interface{}
-	_ = provider.Claims(&providerClaims)
-
-	if userInfoURL, err := url.Parse(providerClaims["userinfo_endpoint"].(string)); err != nil {
-		return nil, err
-	} else {
-		return userInfoURL, nil
 	}
 }
 

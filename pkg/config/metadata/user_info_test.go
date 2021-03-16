@@ -69,19 +69,30 @@ type __Identity struct {
 }
 
 func (i *__Identity) Call(a common.AuthContext, c context.Context) (interface{}, error) {
-	return nil, nil
+	return "Success", nil
 }
 
 func (i *__Identity) GetOIDC() interface{} {
-	return &identity.OIDC{
-		Endpoint:    i.OIDC.Endpoint,
-		Credentials: &i.Credentials,
-	}
+	config, _ := identity.NewOIDC(i.OIDC.Endpoint, &i.Credentials)
+	return config
 }
 
 type __Metadata struct {
 	Name     string    `yaml:"name"`
 	UserInfo *UserInfo `yaml:"userinfo"`
+}
+
+func (m *__Metadata) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var tmp struct {
+		Name string `yaml:"name"`
+	}
+	if err := unmarshal(&tmp); err != nil {
+		return err
+	} else {
+		u := &UserInfo{}
+		m.UserInfo = u
+		return nil
+	}
 }
 
 type __AuthContext struct {
@@ -108,26 +119,18 @@ func (a *__AuthContext) GetAPI() interface{} {
 	return nil
 }
 
-func (a *__AuthContext) GetIdentity() interface{} {
-	return a.Identity[0]
-}
-
-func (a *__AuthContext) GetMetadata() map[string]interface{} {
-	m := make(map[string]interface{})
-	m[a.Metadata[0].Name] = a.Metadata[0].UserInfo
-	return m
-}
-
-func (a *__AuthContext) FindIdentityConfigByName(name string) (interface{}, error) {
+func (a *__AuthContext) GetResolvedIdentity() (interface{}, interface{}) {
 	id := a.Identity[0]
-	if id.Name == name {
-		return &id, nil
-	} else {
-		return nil, fmt.Errorf("cannot find config")
-	}
+	return &id, nil
+}
+
+func (a *__AuthContext) GetResolvedMetadata() map[interface{}]interface{} {
+	return nil
 }
 
 func TestMain(m *testing.M) {
+	authServer := mockHTTPServer()
+	defer authServer.Close()
 	setup()
 	os.Exit(m.Run())
 }
@@ -136,6 +139,9 @@ func setup() {
 	if err := yaml.Unmarshal([]byte(rawAPIConfig), &authContext); err != nil {
 		panic(err)
 	}
+	idConfig := authContext.Identity[0]
+	newOIDC, _ := identity.NewOIDC(idConfig.OIDC.Endpoint, &idConfig.Credentials)
+	authContext.Metadata[0].UserInfo.OIDC = newOIDC
 	userInfo = *authContext.Metadata[0].UserInfo
 	ctx, cancel = context.WithCancel(context.TODO())
 }
@@ -163,9 +169,6 @@ func mockHTTPServer() *httptest.Server {
 }
 
 func TestCall(t *testing.T) {
-	authServer := mockHTTPServer()
-	defer authServer.Close()
-
 	obj, err := userInfo.Call(authContext, ctx)
 	assert.NilError(t, err)
 
@@ -180,7 +183,7 @@ func TestCanceledContext(t *testing.T) {
 }
 
 func TestMissingOIDCConfig(t *testing.T) {
-	authContext.Identity[0].Name = "other" // tricking the auth context not to find the right config
+	authContext.Identity[0].OIDC.Endpoint = "other" // tricking the userinfo into thinking it's a different identity config
 	_, err := userInfo.Call(authContext, ctx)
-	assert.Error(t, err, "Null OIDC object for config auth-server. Skipping related UserInfo metadata.")
+	assert.Error(t, err, "Missing identity for OIDC issuer http://127.0.0.1:9001. Skipping related UserInfo metadata.")
 }

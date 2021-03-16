@@ -103,21 +103,22 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, identity := range service.Spec.Identity {
+		translatedIdentity := &config.IdentityConfig{
+			Name: identity.Name,
+		}
+
 		authCred := &auth_credentials.AuthCredential{
 			KeySelector: identity.Credentials.KeySelector,
 			In:          identity.Credentials.In,
 		} // TODO: prepare for when missing credentials field
 
-		translatedIdentity := &config.IdentityConfig{
-			Name: identity.Name,
-		}
-
 		switch identity.GetType() {
 		// oidc
 		case configv1beta1.IdentityOidc:
-			translatedIdentity.OIDC = &authorinoIdentity.OIDC{
-				Endpoint:    identity.Oidc.Endpoint,
-				Credentials: authCred,
+			if oidcConfig, err := authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred); err != nil {
+				return nil, err
+			} else {
+				translatedIdentity.OIDC = oidcConfig
 			}
 
 		// api_key
@@ -142,6 +143,8 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		switch metadata.GetType() {
 		// uma
 		case configv1beta1.MetadataUma:
+			translatedMetadata.UMA = &authorinoMetadata.UMA{}
+
 			// TODO: validate the object on creating to make sure the secret exist? or just retry?
 			if metadata.UMA.Credentials != nil {
 				secret := &v1.Secret{}
@@ -152,23 +155,24 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 				}
 
-				// Solve the secret reference.
-				translatedMetadata.UMA = &authorinoMetadata.UMA{
-					ClientID:     string(secret.Data["clientID"]),
-					ClientSecret: string(secret.Data["clientSecret"]),
-				}
+				translatedMetadata.UMA.ClientID = string(secret.Data["clientID"])
+				translatedMetadata.UMA.ClientSecret = string(secret.Data["clientSecret"])
 			}
 			// Find the actual name for the Identity Source and use that information for the translated object.
-			for _, identity := range identityConfigs {
-				if identity.Name == metadata.UMA.IdentitySource {
-					translatedMetadata.UMA.Endpoint = identity.OIDC.Endpoint
-				}
+			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UMA.IdentitySource); err != nil {
+				return nil, err
+			} else {
+				translatedMetadata.UMA.Endpoint = idConfig.OIDC.Endpoint
 			}
 
 		// user_info
 		case configv1beta1.MetadataUserinfo:
-			translatedMetadata.UserInfo = &authorinoMetadata.UserInfo{
-				OIDC: metadata.UserInfo.IdentitySource,
+			translatedMetadata.UserInfo = &authorinoMetadata.UserInfo{}
+
+			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource); err != nil {
+				return nil, err
+			} else {
+				translatedMetadata.UserInfo.OIDC = idConfig.OIDC
 			}
 
 		case configv1beta1.TypeUnknown:
@@ -245,4 +249,13 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&configv1beta1.Service{}).
 		Complete(r)
+}
+
+func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name string) (*config.IdentityConfig, error) {
+	for _, id := range identityConfigs {
+		if id.Name == name {
+			return &id, nil
+		}
+	}
+	return nil, fmt.Errorf("missing identity config %v", name)
 }

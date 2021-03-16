@@ -31,19 +31,15 @@ var (
 // TODO: Replace for a Mock Factory these kind of interfaces.
 type AuthContextMock struct{}
 
-func (_m *AuthContextMock) FindIdentityByName(_ string) (interface{}, error) {
-	return nil, nil
-}
-
 func (_m *AuthContextMock) GetAPI() interface{} {
 	return nil
 }
 
-func (_m *AuthContextMock) GetIdentity() interface{} {
-	return nil
+func (_m *AuthContextMock) GetResolvedIdentity() (interface{}, interface{}) {
+	return nil, nil
 }
 
-func (_m *AuthContextMock) GetMetadata() map[string]interface{} {
+func (_m *AuthContextMock) GetResolvedMetadata() map[interface{}]interface{} {
 	return nil
 }
 

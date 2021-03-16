@@ -45,3 +45,7 @@ func (config *MetadataConfig) GetType() (string, error) {
 		return "", fmt.Errorf("invalid metadata config")
 	}
 }
+
+func (config *MetadataConfig) GetName() string {
+	return config.Name
+}

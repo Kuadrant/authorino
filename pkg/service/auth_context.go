@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/3scale-labs/authorino/pkg/common"
@@ -230,32 +229,23 @@ func (authContext *AuthContext) GetAPI() interface{} {
 	return authContext.API
 }
 
-func (authContext *AuthContext) GetIdentity() interface{} {
-	var id interface{}
-	for _, identityObj := range authContext.Identity {
+func (authContext *AuthContext) GetResolvedIdentity() (interface{}, interface{}) {
+	for identityConfig, identityObj := range authContext.Identity {
 		if identityObj != nil {
-			id = identityObj
-			break
+			id := identityConfig
+			obj := identityObj
+			return id, obj
 		}
 	}
-	return id
+	return nil, nil
 }
 
-func (authContext *AuthContext) GetMetadata() map[string]interface{} {
-	m := make(map[string]interface{})
+func (authContext *AuthContext) GetResolvedMetadata() map[interface{}]interface{} {
+	m := make(map[interface{}]interface{})
 	for metadataCfg, metadataObj := range authContext.Metadata {
 		if metadataObj != nil {
-			m[metadataCfg.Name] = metadataObj
+			m[metadataCfg] = metadataObj
 		}
 	}
 	return m
-}
-
-func (authContext *AuthContext) FindIdentityConfigByName(name string) (interface{}, error) { //TODO: Assign the identity when creating the UserInfo struct and remove this func
-	for identityConfig := range authContext.Identity {
-		if identityConfig.Name == name {
-			return identityConfig, nil
-		}
-	}
-	return nil, fmt.Errorf("cannot find evaluated identity config %v", name)
 }

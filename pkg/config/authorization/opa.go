@@ -88,8 +88,14 @@ func (self *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool
 	}
 
 	contextData := make(map[string]interface{})
-	contextData["identity"] = authContext.GetIdentity()
-	contextData["metadata"] = authContext.GetMetadata()
+	_, contextData["identity"] = authContext.GetResolvedIdentity()
+
+	resolvedMetadata := make(map[string]interface{})
+	for config, obj := range authContext.GetResolvedMetadata() {
+		metadataConfig, _ := config.(common.NamedConfigEvaluator)
+		resolvedMetadata[metadataConfig.GetName()] = obj
+	}
+	contextData["metadata"] = resolvedMetadata
 
 	input := OPAInput{
 		Request: authContext.GetRequest().Attributes,
