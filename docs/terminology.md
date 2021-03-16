@@ -30,16 +30,20 @@ to this doc with a PR, or modifying the use elsewhere to align with these terms.
 * **Identity**:
 * **Identity Provider (IdP)**:
 * **ID token**:
-* **JSON Web Token (JWT)**:
-* **Keycloak**: open source auth server to allow single sign-on with identity and access management.
-* **Lightweight Directory Access Protocol (LDAP)**: open standard for distributed directory information services for 
+* **[JSON Web Token (JWT)](https://jwt.io/)**: JSON Web Tokens are an open, industry standard RFC 7519 method for 
+  representing claims securely between two parties.
+* **[Keycloak](https://www.keycloak.org/)**: An open source auth server to allow single sign-on with identity 
+  and access management.
+* **Lightweight Directory Access Protocol (LDAP)**: An open standard for distributed directory information services for 
   sharing of information about users, systems, networks, services and applications.
 * **Mutual Transport Layer Security (mTLS)**: protocol for the mutual authentication of client-server communication, 
   i.e., the client authenticates the server and the server authenticates the client, based on the acceptance of 
   the X.509 certificates of each party.
-* **OAuth2**:
-* **OpenID Connect (OIDC)**:
-* **Open Policy Agent (OPA)**:
+* **[OAuth2](https://oauth.net/2/)**: OAuth 2.0 is an industry-standard protocol for authorization.
+* **[OpenID Connect (OIDC)](https://openid.net/connect/)**: OpenID Connect 1.0 is a simple identity layer on top of 
+  the OAuth 2.0 protocol.
+* **[Open Policy Agent (OPA)](https://www.openpolicyagent.org/)**: A policy agent using declarative policy declarations
+  in the `Rego` language.
 * **Party Token (RPT)**:
 * **Permission**:
 * **Policy**:
@@ -47,10 +51,10 @@ to this doc with a PR, or modifying the use elsewhere to align with these terms.
   and permissions; it is where the auth system is configured.
 * **Policy Decision Point (PDP)**: where the authorization requests are sent and policies are evaluated accordingly with 
   the permissions being requested.
-* **Policy Enforcement Point (PEP)**: where the authorization is effectively enforced, usually at the resource server side, 
-  based on a response provided by the Policy Decision Point (PDP).
+* **Policy Enforcement Point (PEP)**: where the authorization is effectively enforced, usually at the resource server 
+  side, based on a response provided by the Policy Decision Point (PDP).
 * **Policy Storage**: where policies are stored and from where they can be fetched, perhaps to be cached.
-* **Red Hat SSO**: auth server; downstream version of Keycloak.
+* **Red Hat SSO**: auth server; downstream Product created from the Keycloak Open Source project.
 * **Refresh token**:
 * **Resource**:
 * **Resource server**:
@@ -60,6 +64,9 @@ to this doc with a PR, or modifying the use elsewhere to align with these terms.
   can request on an identity’s behalf. When an app requests permission to access a resource through an auth server, 
   it uses the scope parameter to specify what access it needs, and the auth server uses the scope parameter to respond 
   with the access that was actually granted.
-* **Single Page Application (SPA)**:
-* **Single Sign-on (SSO)**:
-* **User-Managed-Access (UMA)**:
+* **[Single Page Application (SPA)](https://en.wikipedia.org/wiki/Single-page_application)**: is a web application or 
+  website that interacts with the user by dynamically rewriting the current web page with new data from the web server.
+* **[Single Sign-on (SSO)](https://en.wikipedia.org/wiki/Single_sign-on)**: Single sign-on (SSO) is an authentication 
+  scheme that allows a user to log in with a single ID and password to any of several related, yet independent, software systems.
+* **[User-Managed-Access (UMA)](https://en.wikipedia.org/wiki/User-Managed_Access)**: User-Managed Access (UMA) is an 
+  OAuth-based access management protocol standard.
