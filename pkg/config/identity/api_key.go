@@ -30,7 +30,7 @@ type apiKeyDetails struct {
 	Name                  string            `yaml:"name"`
 	LabelSelectors        map[string]string `yaml:"label_selectors"`
 	k8sClient             client.Reader
-	authorizedCredentials []string
+	authorizedCredentials map[string]v1.Secret
 }
 
 // APIKey struct implements the APIKeyIdentityEvaluator interface
@@ -67,10 +67,10 @@ func (apiKey *APIKey) GetCredentialsFromCluster(ctx context.Context) error {
 	if err := apiKey.k8sClient.List(ctx, secretList, matchingLabels); err != nil {
 		return err
 	}
-	var parsedSecrets []string
+	var parsedSecrets = make(map[string]v1.Secret)
 
 	for _, secret := range secretList.Items {
-		parsedSecrets = append(parsedSecrets, string(secret.Data[apiKeySelector]))
+		parsedSecrets[string(secret.Data[apiKeySelector])] = secret
 	}
 	apiKey.authorizedCredentials = parsedSecrets
 	return nil
@@ -82,9 +82,10 @@ func (apiKey *APIKey) Call(authCtx common.AuthContext, _ context.Context) (inter
 		apiKeyLog.Error(err, noApiKeysFoundMsg)
 		return nil, err
 	} else {
-		for _, secret := range apiKey.authorizedCredentials {
-			if secret == reqKey {
-				return authSuccessfulMsg, nil
+		for key, secret := range apiKey.authorizedCredentials {
+			if key == reqKey {
+				apiKeyLog.Info(authSuccessfulMsg, "secret", secret)
+				return secret, nil
 			}
 		}
 	}

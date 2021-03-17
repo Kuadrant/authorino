@@ -16,13 +16,13 @@ import (
 
 var (
 	getCredentialsFromReq func() (string, error)
-	listSecretsFunc       = func(list *v1.SecretList) error {
+
+	clusterSecret1 = v1.Secret{Data: map[string][]byte{"api_key": []byte("ObiWanKenobiLightSaber")}}
+	clusterSecret2 = v1.Secret{Data: map[string][]byte{"api_key": []byte("MasterYodaLightSaber")}}
+
+	listSecretsFunc = func(list *v1.SecretList) error {
 		var secrets []v1.Secret
-		secrets = append(
-			secrets,
-			v1.Secret{Data: map[string][]byte{"api_key": []byte("ObiWanKenobiLightSaber")}},
-			v1.Secret{Data: map[string][]byte{"api_key": []byte("MasterYodaLightSaber")}},
-		)
+		secrets = append(secrets, clusterSecret1, clusterSecret2)
 		list.Items = append(list.Items, secrets...)
 		return nil
 	}
@@ -88,8 +88,10 @@ func TestNewApiKeyIdentity(t *testing.T) {
 	assert.Check(t, apiKey.Name == "jedi")
 	assert.Check(t, apiKey.LabelSelectors["planet"] == "tatooine")
 	assert.Check(t, len(apiKey.authorizedCredentials) == 2)
-	assert.Check(t, apiKey.authorizedCredentials[0] == "ObiWanKenobiLightSaber")
-	assert.Check(t, apiKey.authorizedCredentials[1] == "MasterYodaLightSaber")
+	_, exists := apiKey.authorizedCredentials["ObiWanKenobiLightSaber"]
+	assert.Check(t, exists)
+	_, exists = apiKey.authorizedCredentials["MasterYodaLightSaber"]
+	assert.Check(t, exists)
 }
 
 func TestCallSuccess(t *testing.T) {
@@ -101,7 +103,7 @@ func TestCallSuccess(t *testing.T) {
 	auth, err := apiKey.Call(&AuthContextMock{}, context.TODO())
 
 	assert.NilError(t, err)
-	assert.Check(t, auth == "Successfully authenticated with the provided API key")
+	assert.Check(t, string(auth.(v1.Secret).Data["api_key"]) == "ObiWanKenobiLightSaber")
 }
 
 func TestCallNoApiKeyFail(t *testing.T) {
@@ -134,8 +136,14 @@ func TestGetCredentialsFromClusterSuccess(t *testing.T) {
 
 	assert.NilError(t, err)
 	assert.Check(t, len(apiKey.authorizedCredentials) == 2)
-	assert.Check(t, apiKey.authorizedCredentials[0] == "ObiWanKenobiLightSaber")
-	assert.Check(t, apiKey.authorizedCredentials[1] == "MasterYodaLightSaber")
+
+	secret1, exists := apiKey.authorizedCredentials["ObiWanKenobiLightSaber"]
+	assert.Check(t, exists)
+	assert.Check(t, secret1.String() == clusterSecret1.String())
+
+	secret2, exists := apiKey.authorizedCredentials["MasterYodaLightSaber"]
+	assert.Check(t, exists)
+	assert.Check(t, secret2.String() == clusterSecret2.String())
 }
 
 func TestGetCredentialsFromClusterFail(t *testing.T) {
