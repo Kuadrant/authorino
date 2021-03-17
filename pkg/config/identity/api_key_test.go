@@ -5,14 +5,27 @@ import (
 	"fmt"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 
 	"gotest.tools/assert"
 )
 
 var (
-	getCredentialsFromReq     func() (string, error)
-	getCredentialsFromCluster func() ([]string, error)
+	getCredentialsFromReq func() (string, error)
+	listSecretsFunc       = func(list *v1.SecretList) error {
+		var secrets []v1.Secret
+		secrets = append(
+			secrets,
+			v1.Secret{Data: map[string][]byte{"api_key": []byte("ObiWanKenobiLightSaber")}},
+			v1.Secret{Data: map[string][]byte{"api_key": []byte("MasterYodaLightSaber")}},
+		)
+		list.Items = append(list.Items, secrets...)
+		return nil
+	}
 )
 
 // TODO: Replace for a Mock Factory these kind of interfaces.
@@ -51,87 +64,86 @@ type authCredMock struct{}
 func (a *authCredMock) GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error) {
 	return getCredentialsFromReq()
 }
-func (a *authCredMock) GetCredentialsFromCluster(context.Context, map[string]string) ([]string, error) {
-	return getCredentialsFromCluster()
+
+type MockK8sClient struct{}
+
+func (k *MockK8sClient) Get(_ context.Context, _ client.ObjectKey, _ runtime.Object) error {
+	return nil
+}
+
+func (k *MockK8sClient) List(_ context.Context, list runtime.Object, _ ...client.ListOption) error {
+	return listSecretsFunc(list.(*v1.SecretList))
 }
 
 func TestConstants(t *testing.T) {
+	assert.Check(t, "api_key" == apiKeySelector)
 	assert.Check(t, "the API Key provided is invalid" == invalidApiKeyMsg)
 	assert.Check(t, "no API Keys were found on the request" == noApiKeysFoundMsg)
 	assert.Check(t, "Successfully authenticated with the provided API key" == authSuccessfulMsg)
 }
 
-func TestNewApiKeyIdentitySuccess(t *testing.T) {
-	getCredentialsFromCluster = func() ([]string, error) {
-		return []string{"ObiWanKenobiLightSaber", "R2D2Probe"}, nil
-	}
-	apiKey, err := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{})
-	assert.NilError(t, err)
+func TestNewApiKeyIdentity(t *testing.T) {
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+
 	assert.Check(t, apiKey.Name == "jedi")
 	assert.Check(t, apiKey.LabelSelectors["planet"] == "tatooine")
 	assert.Check(t, len(apiKey.authorizedCredentials) == 2)
 	assert.Check(t, apiKey.authorizedCredentials[0] == "ObiWanKenobiLightSaber")
-	assert.Check(t, apiKey.authorizedCredentials[1] == "R2D2Probe")
-}
-
-func TestNewApiKeyIdentityFail(t *testing.T) {
-	getCredentialsFromCluster = func() ([]string, error) {
-		return nil, fmt.Errorf("the empire strikes back")
-	}
-	_, err := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{})
-	assert.Error(t, err, "the empire strikes back")
+	assert.Check(t, apiKey.authorizedCredentials[1] == "MasterYodaLightSaber")
 }
 
 func TestCallSuccess(t *testing.T) {
-	getCredentialsFromCluster = func() ([]string, error) {
-		return []string{"ObiWanKenobiLightSaber", "R2D2Probe"}, nil
-	}
-
 	getCredentialsFromReq = func() (string, error) {
 		return "ObiWanKenobiLightSaber", nil
 	}
 
-	apiKey, err := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{})
-	if err == nil {
-		auth, err := apiKey.Call(&AuthContextMock{}, context.TODO())
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	auth, err := apiKey.Call(&AuthContextMock{}, context.TODO())
 
-		assert.NilError(t, err)
-		assert.Check(t, auth == "Successfully authenticated with the provided API key")
-	}
+	assert.NilError(t, err)
+	assert.Check(t, auth == "Successfully authenticated with the provided API key")
 }
 
 func TestCallNoApiKeyFail(t *testing.T) {
-	getCredentialsFromCluster = func() ([]string, error) {
-		return []string{"ObiWanKenobiLightSaber", "R2D2Probe"}, nil
-	}
-
 	getCredentialsFromReq = func() (string, error) {
 		return "", fmt.Errorf("something went wrong getting the API Key")
 	}
 
-	apiKey, err := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{})
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
 
-	if err == nil {
-		_, err := apiKey.Call(&AuthContextMock{}, context.TODO())
+	_, err := apiKey.Call(&AuthContextMock{}, context.TODO())
 
-		assert.Error(t, err, "something went wrong getting the API Key")
-	}
+	assert.Error(t, err, "something went wrong getting the API Key")
+
 }
 
 func TestCallInvalidApiKeyFail(t *testing.T) {
-	getCredentialsFromCluster = func() ([]string, error) {
-		return []string{"ObiWanKenobiLightSaber", "R2D2Probe"}, nil
-	}
-
 	getCredentialsFromReq = func() (string, error) {
 		return "ASithLightSaber", nil
 	}
 
-	apiKey, err := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{})
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	_, err := apiKey.Call(&AuthContextMock{}, context.TODO())
 
-	if err == nil {
-		_, err := apiKey.Call(&AuthContextMock{}, context.TODO())
+	assert.Error(t, err, "the API Key provided is invalid")
+}
 
-		assert.Error(t, err, "the API Key provided is invalid")
+func TestGetCredentialsFromClusterSuccess(t *testing.T) {
+	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	err := apiKey.GetCredentialsFromCluster(context.TODO())
+
+	assert.NilError(t, err)
+	assert.Check(t, len(apiKey.authorizedCredentials) == 2)
+	assert.Check(t, apiKey.authorizedCredentials[0] == "ObiWanKenobiLightSaber")
+	assert.Check(t, apiKey.authorizedCredentials[1] == "MasterYodaLightSaber")
+}
+
+func TestGetCredentialsFromClusterFail(t *testing.T) {
+	listSecretsFunc = func(list *v1.SecretList) error {
+		return fmt.Errorf("something terribly wrong happened")
 	}
+	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	err := apiKey.GetCredentialsFromCluster(context.TODO())
+
+	assert.Error(t, err, "something terribly wrong happened")
 }

@@ -1,26 +1,23 @@
 package auth_credentials
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
 
 	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	v1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// AuthCredentials interface represents the methods needed to fetch credentials from input
 type AuthCredentials interface {
 	GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error)
-	GetCredentialsFromCluster(context.Context, map[string]string) ([]string, error)
 }
 
+// AuthCredential struct implements the AuthCredentials interface
 type AuthCredential struct {
 	KeySelector string `yaml:"key_selector"`
 	In          string `yaml:"in"`
-	k8sClient   client.Reader
 }
 
 const (
@@ -28,10 +25,10 @@ const (
 	inAuthHeader   = "authorization_header"
 	inQuery        = "query"
 
-	credentialNotFoundMsg          = "credential not found"
-	credentialNotFoundInHeaderMsg  = "the credential was not found in the request header"
-	credentialLocationNotSupported = "the credential location is not supported"
-	authHeaderNotSetMsg            = "the Authorization header is not set"
+	credentialNotFoundMsg             = "credential not found"
+	credentialNotFoundInHeaderMsg     = "the credential was not found in the request header"
+	credentialLocationNotSupportedMsg = "the credential location is not supported"
+	authHeaderNotSetMsg               = "the Authorization header is not set"
 )
 
 var (
@@ -39,14 +36,15 @@ var (
 	notFoundErr = fmt.Errorf(credentialNotFoundMsg)
 )
 
-func NewAuthCredential(selector string, location string, k8sClient client.Reader) *AuthCredential {
+// NewAuthCredential creates a new instance of AuthCredential
+func NewAuthCredential(selector string, location string) *AuthCredential {
 	return &AuthCredential{
 		selector,
 		location,
-		k8sClient,
 	}
 }
 
+// GetCredentialsFromReq will retrieve the secrets from a given location
 func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error) {
 	switch c.In {
 	case inCustomHeader:
@@ -56,23 +54,8 @@ func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.Attri
 	case inQuery:
 		return getCredFromQuery(httpReq.GetPath(), c.KeySelector)
 	default:
-		return "", fmt.Errorf(credentialLocationNotSupported)
+		return "", fmt.Errorf(credentialLocationNotSupportedMsg)
 	}
-}
-
-func (c *AuthCredential) GetCredentialsFromCluster(ctx context.Context, labelSelectors map[string]string) ([]string, error) {
-	var matchingLabels client.MatchingLabels = labelSelectors
-	var secretList = &v1.SecretList{}
-	if err := c.k8sClient.List(ctx, secretList, matchingLabels); err != nil {
-		return nil, err
-	}
-	var parsedSecrets []string
-
-	for _, secret := range secretList.Items {
-		parsedSecrets = append(parsedSecrets, string(secret.Data[c.KeySelector]))
-	}
-
-	return parsedSecrets, nil
 }
 
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {
