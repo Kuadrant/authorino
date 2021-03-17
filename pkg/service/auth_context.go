@@ -222,6 +222,10 @@ func (authContext *AuthContext) GetRequest() *envoy_auth.CheckRequest {
 	return authContext.Request
 }
 
+func (authContext *AuthContext) GetHttp() *envoy_auth.AttributeContext_HttpRequest {
+	return authContext.Request.Attributes.Request.Http
+}
+
 func (authContext *AuthContext) GetAPI() interface{} {
 	return authContext.API
 }
@@ -248,7 +252,7 @@ func (authContext *AuthContext) GetMetadata() map[string]interface{} {
 
 func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) { //TODO: Assign the identity when creating the UserInfo struct and remove this func
 	for identityConfig := range authContext.Identity {
-		if identityConfig.OIDC.Name == name {
+		if identityConfig.OIDC != nil && identityConfig.OIDC.Name == name {
 			return identityConfig.OIDC, nil
 		}
 	}

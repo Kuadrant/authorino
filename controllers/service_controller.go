@@ -108,12 +108,15 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		switch identity.GetType() {
 
 		case configv1beta1.IdentityOidc:
-			authCred := &auth_credentials.AuthCredential{
-				KeySelector: identity.Credentials.KeySelector,
-				In:          identity.Credentials.In,
-			}
+			authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, identity.Credentials.In)
 			translatedIdentity = config.IdentityConfig{
 				OIDC: authorinoIdentity.NewOIDCIdentity(identity.Name, identity.Oidc.Endpoint, authCred),
+			}
+
+		case configv1beta1.IdentityApiKey:
+			authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, identity.Credentials.In)
+			translatedIdentity = config.IdentityConfig{
+				APIKey: authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client),
 			}
 
 		case configv1beta1.TypeUnknown:

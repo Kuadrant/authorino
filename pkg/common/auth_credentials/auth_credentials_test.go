@@ -11,6 +11,16 @@ func TestConstants(t *testing.T) {
 	assert.Check(t, "custom_header" == inCustomHeader)
 	assert.Check(t, "authorization_header" == inAuthHeader)
 	assert.Check(t, "query" == inQuery)
+	assert.Check(t, "credential not found" == credentialNotFoundMsg)
+	assert.Check(t, "the credential was not found in the request header" == credentialNotFoundInHeaderMsg)
+	assert.Check(t, "the credential location is not supported" == credentialLocationNotSupportedMsg)
+	assert.Check(t, "the Authorization header is not set" == authHeaderNotSetMsg)
+}
+
+func TestNewAuthCredential(t *testing.T) {
+	creds := NewAuthCredential("api_key", "query")
+	assert.Check(t, creds.KeySelector == "api_key")
+	assert.Check(t, creds.In == "query")
 }
 
 func TestGetCredentialsLocationNotSupported(t *testing.T) {
@@ -26,7 +36,7 @@ func TestGetCredentialsLocationNotSupported(t *testing.T) {
 
 func TestGetCredentialsFromCustomHeaderSuccess(t *testing.T) {
 	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
-		Headers: map[string]string{"X-API-KEY": "DasUberApiKey"},
+		Headers: map[string]string{"x-api-key": "DasUberApiKey"},
 	}
 
 	authCredentials := AuthCredential{

@@ -9,10 +9,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// AuthCredentials interface represents the methods needed to fetch credentials from input
 type AuthCredentials interface {
 	GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error)
 }
 
+// AuthCredential struct implements the AuthCredentials interface
 type AuthCredential struct {
 	KeySelector string `yaml:"key_selector"`
 	In          string `yaml:"in"`
@@ -22,13 +24,27 @@ const (
 	inCustomHeader = "custom_header"
 	inAuthHeader   = "authorization_header"
 	inQuery        = "query"
+
+	credentialNotFoundMsg             = "credential not found"
+	credentialNotFoundInHeaderMsg     = "the credential was not found in the request header"
+	credentialLocationNotSupportedMsg = "the credential location is not supported"
+	authHeaderNotSetMsg               = "the Authorization header is not set"
 )
 
 var (
 	authCredLog = ctrl.Log.WithName("Authorino").WithName("AuthCredential")
-	notFoundErr = fmt.Errorf("credential not found")
+	notFoundErr = fmt.Errorf(credentialNotFoundMsg)
 )
 
+// NewAuthCredential creates a new instance of AuthCredential
+func NewAuthCredential(selector string, location string) *AuthCredential {
+	return &AuthCredential{
+		selector,
+		location,
+	}
+}
+
+// GetCredentialsFromReq will retrieve the secrets from a given location
 func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error) {
 	switch c.In {
 	case inCustomHeader:
@@ -38,14 +54,14 @@ func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.Attri
 	case inQuery:
 		return getCredFromQuery(httpReq.GetPath(), c.KeySelector)
 	default:
-		return "", fmt.Errorf("the credential location is not supported")
+		return "", fmt.Errorf(credentialLocationNotSupportedMsg)
 	}
 }
 
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {
-	cred, ok := headers[keyName]
+	cred, ok := headers[strings.ToLower(keyName)]
 	if !ok {
-		authCredLog.Error(notFoundErr, "the credential was not found in the request header")
+		authCredLog.Error(notFoundErr, credentialNotFoundInHeaderMsg)
 		return "", notFoundErr
 	}
 	return cred, nil
@@ -54,7 +70,7 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 	authHeader, ok := headers["authorization"]
 
 	if !ok {
-		authCredLog.Error(notFoundErr, "the Authorization header is not set")
+		authCredLog.Error(notFoundErr, authHeaderNotSetMsg)
 		return "", notFoundErr
 	}
 	prefix := keyName + " "

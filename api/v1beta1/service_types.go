@@ -24,6 +24,7 @@ import (
 const (
 	TypeUnknown              = "UNKNOWN"
 	IdentityOidc             = "IDENTITY_OIDC"
+	IdentityApiKey           = "IDENTITY_APIKEY"
 	MetadataUma              = "METADATA_UMA"
 	MetadataUserinfo         = "METADATA_USERINFO"
 	AuthorizationOPAPolicy   = "AUTHORIZATION_OPAPOLICY"
@@ -51,12 +52,19 @@ type Credentials struct {
 type Identity struct {
 	// Adding a Name as we need to reference it from the metadata section.
 	Name        string               `json:"name"`
-	Oidc        *Identity_OidcConfig `json:"oidc,omitempty"`
 	Credentials Credentials          `json:"credentials,omitempty"`
+	Oidc        *Identity_OidcConfig `json:"oidc,omitempty"`
+	APIKey      *Identity_APIKey     `json:"api_key,omitempty"`
 }
 
 type Identity_OidcConfig struct {
 	Endpoint string `json:"endpoint"`
+}
+
+type Identity_APIKey struct {
+	Location       string            `json:"location"`
+	KeySelector    string            `json:"key_selector"`
+	LabelSelectors map[string]string `json:"label_selectors"`
 }
 
 type Metadata struct {
@@ -150,6 +158,8 @@ type ServiceList struct {
 func (i *Identity) GetType() string {
 	if i.Oidc != nil {
 		return IdentityOidc
+	} else if i.APIKey != nil {
+		return IdentityApiKey
 	}
 	return TypeUnknown
 }
