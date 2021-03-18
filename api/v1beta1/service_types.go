@@ -62,8 +62,6 @@ type Identity_OidcConfig struct {
 }
 
 type Identity_APIKey struct {
-	Location       string            `json:"location"`
-	KeySelector    string            `json:"key_selector"`
 	LabelSelectors map[string]string `json:"label_selectors"`
 }
 
