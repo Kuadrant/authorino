@@ -27,11 +27,7 @@ make local-setup
 kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
 
-# create the required secrets to protect the echo api
-kubectl -n authorino create secret generic userinfosecret \
-        --from-literal=clientID=authorino \
-        --from-literal=clientSecret='2e5246f2-f4ef-4d55-8225-36e725071dee'
-
+# create a required secret
 kubectl -n authorino create secret generic umacredentialssecret \
         --from-literal=clientID=echo-api \
         --from-literal=clientSecret='523b92b6-625d-4e1e-a313-77e7a8ae4e88'
@@ -49,15 +45,43 @@ kubectl -n authorino apply -f examples/dex.yaml
 
 Expose the dex service port to the local host:
 ```shell
-kubectl port-forward --namespace authorino deployment/dex 5556:5556 &
+kubectl -n authorino port-forward deployment/dex 5556:5556 &
 ```
 
 Update the Echo API auth service so dex can be used as additional identity source:
 ```shell
-kubectl -n authorino patch services.config.authorino.3scale.net/echo-api --type=merge -p '{"spec": {"identity": [{"name": "keycloak", "oidc":{"endpoint": "http://keycloak:8080/auth/realms/ostia"}}, {"name": "dex", "oidc":{"endpoint": "http://dex:5556"}}]}}'
+kubectl -n authorino patch services.config.authorino.3scale.net/echo-api --type=json -p '
+[
+  {
+    "op": "add",
+    "path": "/spec/identity/-",
+    "value": {
+      "name": "dex",
+      "oidc": {
+        "endpoint": "http://dex:5556"
+      },
+      "credentials": {
+        "in": "authorization_header",
+        "key_selector": "Bearer"
+      }
+    }
+  },
+  {
+    "op": "add",
+    "path": "/spec/metadata/-",
+    "value": {
+      "name": "userinfo",
+      "userInfo": {
+        "identitySource": "dex"
+      }
+    }
+  }
+]'
 ```
 
 The above will add dex as alternative identity source without removing Keycloak. This means that clients authenticated by either of these IAMs will be able to send requests to the Echo API. This is super cool! If you still prefer removing Keycloak altogether though, keeping only dex, it should be just as simple. We'll leave that as an exercise :-)
+
+The patch also adds a second OAuth2 UserInfo metadata source. We chose to name the pre-existing one (pointing to Keycloak) and the new one (pointing to dex) both "userinfo". This is a trick that will make either one of the sources that evaluates to a non-null metadata value to replace the other in the JSON input for the OPA authorization policy evaluator triggered after. You could just as well of course name the Keycloak-fetched UserInfo and the dex-fetched one distinguishbly, and then refer to these metadata values in your authorization policies as such.
 
 After patching the auth service config, the Authorino Kubernetes controller will automatically reconcile and make sure the Echo API is ready to be consumed under the new auth configs, without requiring redeploying any component.
 

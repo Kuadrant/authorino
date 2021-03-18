@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/3scale-labs/authorino/pkg/common"
@@ -230,31 +229,23 @@ func (authContext *AuthContext) GetAPI() interface{} {
 	return authContext.API
 }
 
-func (authContext *AuthContext) GetIdentity() interface{} {
-	var id interface{}
-	for _, v := range authContext.Identity {
-		if v != nil {
-			id = v
-			break
+func (authContext *AuthContext) GetResolvedIdentity() (interface{}, interface{}) {
+	for identityConfig, identityObj := range authContext.Identity {
+		if identityObj != nil {
+			id := identityConfig
+			obj := identityObj
+			return id, obj
 		}
 	}
-	return id
+	return nil, nil
 }
 
-func (authContext *AuthContext) GetMetadata() map[string]interface{} {
-	m := make(map[string]interface{})
+func (authContext *AuthContext) GetResolvedMetadata() map[interface{}]interface{} {
+	m := make(map[interface{}]interface{})
 	for metadataCfg, metadataObj := range authContext.Metadata {
-		t, _ := metadataCfg.GetType()
-		m[t] = metadataObj // FIXME: It will override instead of including all the metadata values of the same type
+		if metadataObj != nil {
+			m[metadataCfg] = metadataObj
+		}
 	}
 	return m
-}
-
-func (authContext *AuthContext) FindIdentityByName(name string) (interface{}, error) { //TODO: Assign the identity when creating the UserInfo struct and remove this func
-	for identityConfig := range authContext.Identity {
-		if identityConfig.OIDC != nil && identityConfig.OIDC.Name == name {
-			return identityConfig.OIDC, nil
-		}
-	}
-	return nil, fmt.Errorf("cannot find OIDC token")
 }

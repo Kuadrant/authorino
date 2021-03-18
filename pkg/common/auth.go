@@ -11,13 +11,19 @@ type AuthContext interface {
 	GetRequest() *envoy_auth.CheckRequest
 	GetHttp() *envoy_auth.AttributeContext_HttpRequest
 	GetAPI() interface{}
-	GetIdentity() interface{} // FIXME: it should return the entire map
-	GetMetadata() map[string]interface{}
-
-	FindIdentityByName(name string) (interface{}, error)
+	GetResolvedIdentity() (interface{}, interface{})
+	GetResolvedMetadata() map[interface{}]interface{}
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
 type AuthConfigEvaluator interface {
 	Call(AuthContext, context.Context) (interface{}, error)
+}
+
+type NamedConfigEvaluator interface {
+	GetName() string
+}
+
+type IdentityConfigEvaluator interface {
+	GetOIDC() interface{}
 }

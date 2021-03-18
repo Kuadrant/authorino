@@ -66,6 +66,7 @@ func getCredFromCustomHeader(headers map[string]string, keyName string) (string,
 	}
 	return cred, nil
 }
+
 func getCredFromAuthHeader(headers map[string]string, keyName string) (string, error) {
 	authHeader, ok := headers["authorization"]
 

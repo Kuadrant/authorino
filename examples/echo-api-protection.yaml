@@ -12,13 +12,12 @@ spec:
       credentials:
         in: authorization_header
         key_selector: Bearer
-
   metadata:
-    - userInfo:
+    - name: userinfo
+      userInfo:
         identitySource: keycloak
-        credentialsRef:
-          name: userinfosecret
-    - uma:
+    - name: resource-data
+      uma:
         identitySource: keycloak
         credentialsRef:
           name: umacredentialssecret
@@ -45,7 +44,7 @@ spec:
           own_resource {
             some greetingid
             path = ["greetings", greetingid]
-            resource := object.get(metadata, "uma", [])[0]
+            resource := object.get(metadata, "resource-data", [])[0]
             owner := object.get(object.get(resource, "owner", {}), "id", "")
             subject := object.get(identity, "sub", object.get(identity, "username", ""))
             owner == subject

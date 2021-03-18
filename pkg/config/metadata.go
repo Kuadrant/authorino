@@ -14,6 +14,7 @@ var (
 )
 
 type MetadataConfig struct {
+	Name     string             `yaml:"name"`
 	UserInfo *metadata.UserInfo `yaml:"userinfo,omitempty"`
 	UMA      *metadata.UMA      `yaml:"uma,omitempty"`
 }
@@ -43,4 +44,8 @@ func (config *MetadataConfig) GetType() (string, error) {
 	default:
 		return "", fmt.Errorf("invalid metadata config")
 	}
+}
+
+func (config *MetadataConfig) GetName() string {
+	return config.Name
 }

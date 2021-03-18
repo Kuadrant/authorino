@@ -3,27 +3,26 @@ kind: Deployment
 metadata:
   name: keycloak
   labels:
-    app: authorino
-    svc: keycloak
+    app: keycloak
 spec:
   selector:
     matchLabels:
-      app: authorino
-      svc: keycloak
+      app: keycloak
   template:
     metadata:
       labels:
-        app: authorino
-        svc: keycloak
+        app: keycloak
     spec:
       containers:
         - name: keycloak
-          image: jboss/keycloak
+          image: quay.io/keycloak/keycloak:12.0.3
           env:
             - name: KEYCLOAK_USER
               value: admin
             - name: KEYCLOAK_PASSWORD
               value: p
+            - name: PROXY_ADDRESS_FORWARDING
+              value: "true"
             - name: KEYCLOAK_IMPORT
               value: /tmp/import-realm.json -Dkeycloak.profile.feature.upload_scripts=enabled
           ports:
@@ -36,7 +35,7 @@ spec:
       volumes:
         - name: realm
           configMap:
-            name: realm
+            name: keycloak-realm
             items:
               - key: import-realm.json
                 path: import-realm.json
@@ -47,11 +46,10 @@ kind: Service
 metadata:
   name: keycloak
   labels:
-    app: authorino
+    app: keycloak
 spec:
   selector:
-    app: authorino
-    svc: keycloak
+    app: keycloak
   ports:
     - name: keycloak
       port: 8080
@@ -60,9 +58,9 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: realm
+  name: keycloak-realm
   labels:
-    app: authorino
+    app: keycloak
 data:
   import-realm.json: |
     {
@@ -370,7 +368,6 @@ data:
           "security-admin-console": [],
           "admin-cli": [],
           "account-console": [],
-          "authorino": [],
           "demo": [],
           "broker": [
             {
@@ -711,58 +708,6 @@ data:
           "authenticationFlowBindingOverrides": {},
           "fullScopeAllowed": false,
           "nodeReRegistrationTimeout": 0,
-          "defaultClientScopes": [
-            "web-origins",
-            "role_list",
-            "roles",
-            "profile",
-            "email"
-          ],
-          "optionalClientScopes": [
-            "address",
-            "phone",
-            "offline_access",
-            "microprofile-jwt"
-          ]
-        },
-        {
-          "id": "4901251e-62b2-4f83-aab5-9619587b0514",
-          "clientId": "authorino",
-          "surrogateAuthRequired": false,
-          "enabled": true,
-          "alwaysDisplayInConsole": false,
-          "clientAuthenticatorType": "client-secret",
-          "secret": "2e5246f2-f4ef-4d55-8225-36e725071dee",
-          "redirectUris": [],
-          "webOrigins": [],
-          "notBefore": 0,
-          "bearerOnly": false,
-          "consentRequired": false,
-          "standardFlowEnabled": false,
-          "implicitFlowEnabled": false,
-          "directAccessGrantsEnabled": false,
-          "serviceAccountsEnabled": false,
-          "publicClient": false,
-          "frontchannelLogout": false,
-          "protocol": "openid-connect",
-          "attributes": {
-            "saml.assertion.signature": "false",
-            "saml.force.post.binding": "false",
-            "saml.multivalued.roles": "false",
-            "saml.encrypt": "false",
-            "saml.server.signature": "false",
-            "saml.server.signature.keyinfo.ext": "false",
-            "exclude.session.state.from.auth.response": "false",
-            "saml_force_name_id_format": "false",
-            "saml.client.signature": "false",
-            "tls.client.certificate.bound.access.tokens": "false",
-            "saml.authnstatement": "false",
-            "display.on.consent.screen": "false",
-            "saml.onetimeuse.condition": "false"
-          },
-          "authenticationFlowBindingOverrides": {},
-          "fullScopeAllowed": true,
-          "nodeReRegistrationTimeout": -1,
           "defaultClientScopes": [
             "web-origins",
             "role_list",

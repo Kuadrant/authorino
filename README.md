@@ -429,13 +429,9 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
 ```
 
-Create the secrets that required in the example config:
+Create the secret that is required in the example config:
 
 ```shell
-kubectl -n authorino create secret generic userinfosecret \
-        --from-literal=clientID=authorino \
-        --from-literal=clientSecret='2e5246f2-f4ef-4d55-8225-36e725071dee'
-
 kubectl -n authorino create secret generic umacredentialssecret \
         --from-literal=clientID=echo-api \
         --from-literal=clientSecret='523b92b6-625d-4e1e-a313-77e7a8ae4e88'

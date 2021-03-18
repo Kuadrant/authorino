@@ -2,10 +2,15 @@ package controllers
 
 import (
 	"context"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/3scale-labs/authorino/api/v1beta1"
 	"github.com/3scale-labs/authorino/pkg/cache"
+
 	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,20 +39,19 @@ var (
 				{
 					Name: "keycloak",
 					Oidc: &v1beta1.Identity_OidcConfig{
-						Endpoint: "http://keycloak:8080/auth/realms/ostia",
+						Endpoint: "http://127.0.0.1:9001/auth/realms/ostia",
 					},
 				},
 			},
 			Metadata: []*v1beta1.Metadata{
 				{
+					Name: "userinfo",
 					UserInfo: &v1beta1.Metadata_UserInfo{
 						IdentitySource: "keycloak",
-						Credentials: &v1.LocalObjectReference{
-							Name: "secret",
-						},
 					},
 				},
 				{
+					Name: "resource-data",
 					UMA: &v1beta1.Metadata_UMA{
 						IdentitySource: "keycloak",
 						Credentials: &v1.LocalObjectReference{
@@ -79,7 +83,7 @@ var (
           own_resource {
             some greetingid
             path = ["greetings", greetingid]
-            resource := object.get(metadata, "uma", [])[0]
+            resource := object.get(metadata, "resource-data", [])[0]
             owner := object.get(object.get(resource, "owner", {}), "id", "")
             subject := object.get(identity, "sub", object.get(identity, "username", ""))
             owner == subject
@@ -124,10 +128,16 @@ var (
 	}
 )
 
+func TestMain(m *testing.M) {
+	authServer := mockHTTPServer()
+	defer authServer.Close()
+	os.Exit(m.Run())
+}
+
 func setupEnvironment(t *testing.T) ServiceReconciler {
 	scheme := runtime.NewScheme()
-	v1beta1.AddToScheme(scheme)
-	v1.AddToScheme(scheme)
+	_ = v1beta1.AddToScheme(scheme)
+	_ = v1.AddToScheme(scheme)
 	// Create a fake client with a service and a secret.
 	client := fake.NewFakeClientWithScheme(scheme, &service, &secret)
 
@@ -139,11 +149,29 @@ func setupEnvironment(t *testing.T) ServiceReconciler {
 		Scheme: nil,
 		Cache:  &c,
 	}
-
 }
 
-func TestReconcilerOk(t *testing.T) {
+func mockHTTPServer() *httptest.Server {
+	responses := make(map[string]string)
+	responses["/auth/realms/ostia/.well-known/openid-configuration"] = `{ "issuer": "http://127.0.0.1:9001/auth/realms/ostia" }`
 
+	listener, err := net.Listen("tcp", "127.0.0.1:9001")
+	if err != nil {
+		panic(err)
+	}
+	handler := func(rw http.ResponseWriter, req *http.Request) {
+		for url, response := range responses {
+			if url == req.URL.String() {
+				rw.Write([]byte(response))
+				break
+			}
+		}
+	}
+	authServer := &httptest.Server{Listener: listener, Config: &http.Server{Handler: http.HandlerFunc(handler)}}
+	authServer.Start()
+	return authServer
+}
+func TestReconcilerOk(t *testing.T) {
 	r := setupEnvironment(t)
 
 	result, err := r.Reconcile(controllerruntime.Request{
@@ -170,7 +198,6 @@ func TestReconcilerOk(t *testing.T) {
 }
 
 func TestReconcilerMissingSecret(t *testing.T) {
-
 	r := setupEnvironment(t)
 
 	r.Client.Delete(context.TODO(), &secret)
@@ -189,7 +216,6 @@ func TestReconcilerMissingSecret(t *testing.T) {
 }
 
 func TestReconcilerNotFound(t *testing.T) {
-
 	r := setupEnvironment(t)
 
 	// Let's try to reconcile a non existing object.
@@ -218,5 +244,5 @@ func TestReconcilerNotFound(t *testing.T) {
 }
 
 func TestTranslateService(t *testing.T) {
-
+	// TODO
 }
