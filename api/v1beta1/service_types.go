@@ -98,7 +98,6 @@ type Authorization struct {
 }
 
 type Authorization_OPA struct {
-	UUID       string `json:"uuid"`
 	InlineRego string `json:"inlineRego,omitempty"`
 }
 

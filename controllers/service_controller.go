@@ -184,7 +184,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
-	for _, authorization := range service.Spec.Authorization {
+	for index, authorization := range service.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
 			Name: authorization.Name,
 		}
@@ -192,11 +192,8 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		switch authorization.GetType() {
 		// opa
 		case configv1beta1.AuthorizationOPA:
-			translatedAuthorization.OPA = &authorinoAuthorization.OPA{
-				UUID: authorization.OPA.UUID,
-				Rego: authorization.OPA.InlineRego,
-			}
-			_ = translatedAuthorization.OPA.Prepare()
+			policyName := service.GetNamespace() + "/" + service.GetName() + "/" + authorization.Name
+			translatedAuthorization.OPA = authorinoAuthorization.NewOPAAuthorization(policyName, authorization.OPA.InlineRego, index)
 
 		// jwt
 		case configv1beta1.AuthorizationJWTClaimSet:

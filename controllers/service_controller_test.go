@@ -64,7 +64,6 @@ var (
 				{
 					Name: "main-policy",
 					OPA: &v1beta1.Authorization_OPA{
-						UUID: "8fa79d93-0f93-4e23-8c2a-666be266cad1",
 						InlineRego: `allow {
             http_request.method == "GET"
             path = ["hello"]

@@ -61,10 +61,6 @@ spec:
                     properties:
                       inlineRego:
                         type: string
-                      uuid:
-                        type: string
-                    required:
-                    - uuid
                     type: object
                 required:
                 - name
