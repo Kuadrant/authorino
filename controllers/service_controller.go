@@ -185,7 +185,9 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, authorization := range service.Spec.Authorization {
-		translatedAuthorization := &config.AuthorizationConfig{}
+		translatedAuthorization := &config.AuthorizationConfig{
+			Name: authorization.Name,
+		}
 
 		switch authorization.GetType() {
 		// opa

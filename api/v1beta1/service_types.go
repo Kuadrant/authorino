@@ -92,6 +92,7 @@ type Metadata_UMA struct {
 }
 
 type Authorization struct {
+	Name        string                     `json:"name"`
 	OPAPolicy   *Authorization_OPAPolicy   `json:"OPAPolicy,omitempty"`
 	JWTClaimSet *Authorization_JWTClaimSet `json:"JWTClaimSet,omitempty"`
 }

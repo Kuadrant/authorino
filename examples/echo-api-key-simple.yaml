@@ -15,7 +15,8 @@ spec:
           target: echo-api # user defined
   metadata: []
   authorization:
-    - JWTClaimSet:
+    - name: my-policy
+      JWTClaimSet:
         match:
           http:
             path: "/api/*"

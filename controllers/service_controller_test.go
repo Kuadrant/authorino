@@ -62,6 +62,7 @@ var (
 			},
 			Authorization: []*v1beta1.Authorization{
 				{
+					Name: "main-policy",
 					OPAPolicy: &v1beta1.Authorization_OPAPolicy{
 						UUID: "8fa79d93-0f93-4e23-8c2a-666be266cad1",
 						InlineRego: `allow {
@@ -95,6 +96,7 @@ var (
 					},
 				},
 				{
+					Name: "some-extra-rules",
 					JWTClaimSet: &v1beta1.Authorization_JWTClaimSet{
 						Match: &v1beta1.Authorization_JWTClaimSet_Match{
 							Http: &v1beta1.Authorization_JWTClaimSet_HTTPMatch{

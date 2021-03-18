@@ -14,8 +14,9 @@ var (
 )
 
 type AuthorizationConfig struct {
-	OPA *authorization.OPA       `yaml:"opa"`
-	JWT *authorization.JWTClaims `yaml:"jwt"`
+	Name string                   `yaml:"name"`
+	OPA  *authorization.OPA       `yaml:"opa,omitempty"`
+	JWT  *authorization.JWTClaims `yaml:"jwt,omitempty"`
 }
 
 func (config *AuthorizationConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
