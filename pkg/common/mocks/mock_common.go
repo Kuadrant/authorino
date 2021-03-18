@@ -121,6 +121,20 @@ func (mr *MockAuthContextMockRecorder) GetResolvedMetadata() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedMetadata", reflect.TypeOf((*MockAuthContext)(nil).GetResolvedMetadata))
 }
 
+// ToData mocks base method.
+func (m *MockAuthContext) ToData() interface{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ToData")
+	ret0, _ := ret[0].(interface{})
+	return ret0
+}
+
+// ToData indicates an expected call of ToData.
+func (mr *MockAuthContextMockRecorder) ToData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToData", reflect.TypeOf((*MockAuthContext)(nil).ToData))
+}
+
 // MockAuthConfigEvaluator is a mock of AuthConfigEvaluator interface.
 type MockAuthConfigEvaluator struct {
 	ctrl     *gomock.Controller

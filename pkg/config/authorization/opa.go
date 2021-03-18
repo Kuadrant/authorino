@@ -2,15 +2,21 @@ package authorization
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/3scale-labs/authorino/pkg/common"
 
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-
 	"github.com/open-policy-agent/opa/rego"
+)
+
+const (
+	policyTemplate = `package %s
+import input.context.request.http as http_request
+import input.auth.identity
+import input.auth.metadata
+path = split(trim_left(http_request.path, "/"), "/")
+default allow = false
+%s`
 )
 
 type OPA struct {
@@ -20,96 +26,50 @@ type OPA struct {
 	policy     *rego.PreparedEvalQuery
 }
 
-func (self *OPA) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (opa *OPA) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type Alias OPA
 	a := Alias{}
 	err := unmarshal(&a)
 	if err != nil {
 		return err
 	}
-	*self = OPA(a)
-	err = self.Prepare()
+	*opa = OPA(a)
+	err = opa.Prepare()
 	if err != nil {
-		return fmt.Errorf("opa: failed to prepare inline Rego policy %v", self.policyName())
+		return fmt.Errorf("opa: failed to prepare inline Rego policy %v", opa.policyName())
 	}
 	return nil
 }
 
-const (
-	policyTemplate = `package %s
-import input.attributes.request.http as http_request
-import input.context.identity
-import input.context.metadata
-path = split(trim_left(http_request.path, "/"), "/")
-default allow = false
-%s`
-)
+func (opa *OPA) Prepare() error {
+	regoPolicy := fmt.Sprintf(policyTemplate, opa.policyName(), opa.Rego)
 
-func (self *OPA) Prepare() error {
-	regoPolicy := fmt.Sprintf(policyTemplate, self.policyName(), self.Rego)
+	opa.opaContext = context.TODO()
 
-	self.opaContext = context.TODO()
-
-	regoQuery := rego.Query("allowed = data." + self.policyName() + ".allow")
-	regoModule := rego.Module(self.UUID+".rego", regoPolicy)
-	p, err := rego.New(regoQuery, regoModule).PrepareForEval(self.opaContext)
+	regoQuery := rego.Query("allowed = data." + opa.policyName() + ".allow")
+	regoModule := rego.Module(opa.UUID+".rego", regoPolicy)
+	p, err := rego.New(regoQuery, regoModule).PrepareForEval(opa.opaContext)
 	if err != nil {
 		return err
 	}
 
-	self.policy = &p
-
-	log.Printf("[OPA] new policy registered: %v", self.policyName())
+	opa.policy = &p
 
 	return nil
 }
 
-func (self *OPA) policyName() string {
-	return fmt.Sprintf(`authorino.authz["%s"]`, self.UUID)
+func (opa *OPA) policyName() string {
+	return fmt.Sprintf(`authorino.authz["%s"]`, opa.UUID)
 }
 
-type OPAInput struct {
-	Request *envoy_auth.AttributeContext `json:"attributes"`
-	Context map[string]interface{}       `json:"context"`
-}
-
-func (self *OPAInput) ToJSON() ([]byte, error) {
-	res, err := json.Marshal(&self)
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-func (self *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	contextData := make(map[string]interface{})
-	_, contextData["identity"] = authContext.GetResolvedIdentity()
-
-	resolvedMetadata := make(map[string]interface{})
-	for config, obj := range authContext.GetResolvedMetadata() {
-		metadataConfig, _ := config.(common.NamedConfigEvaluator)
-		resolvedMetadata[metadataConfig.GetName()] = obj
-	}
-	contextData["metadata"] = resolvedMetadata
-
-	input := OPAInput{
-		Request: authContext.GetRequest().Attributes,
-		Context: contextData,
-	}
-
-	inputJSON, err := input.ToJSON()
-	if err != nil {
-		return false, err
-	}
-	log.Printf("[OPA] input: %v", string(inputJSON))
-
-	evalOption := rego.EvalInput(input)
-	results, err := self.policy.Eval(self.opaContext, evalOption)
+func (opa *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
+	evalOption := rego.EvalInput(authContext.ToData())
+	results, err := opa.policy.Eval(opa.opaContext, evalOption)
 
 	if err != nil {
 		return false, err
 	} else if len(results) == 0 {
-		return false, fmt.Errorf("opa: invalid response for policy %v", self.policyName())
+		return false, fmt.Errorf("opa: invalid response for policy %v", opa.policyName())
 	} else if allowed := results[0].Bindings["allowed"].(bool); !allowed {
 		return false, fmt.Errorf("Unauthorized")
 	} else {

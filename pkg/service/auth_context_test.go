@@ -2,12 +2,30 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
+	"gotest.tools/assert"
+
 	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
-	"gotest.tools/assert"
+
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+)
+
+const (
+	rawRequest string = `{
+		"attributes": {
+			"request": {
+				"http": {
+					"headers": {
+						"authorization": "Bearer n3ex87bye9238ry8"
+					}
+				}
+			}
+		}
+	}`
 )
 
 type successConfig struct{}
@@ -21,20 +39,23 @@ func (c *failConfig) Call(authContext common.AuthContext, ctx context.Context) (
 	return nil, fmt.Errorf("Failed")
 }
 
-func newAuthContext(identityConfigs []common.AuthConfigEvaluator) AuthContext {
+func newAuthContext(identityConfigs []common.AuthConfigEvaluator, req *envoy_auth.CheckRequest) AuthContext {
+	metadataConfigs := make([]common.AuthConfigEvaluator, 0)
+	authorizationConfigs := make([]common.AuthConfigEvaluator, 0)
+
 	apiConfig := config.APIConfig{
 		IdentityConfigs:      identityConfigs,
-		MetadataConfigs:      nil,
-		AuthorizationConfigs: nil,
+		MetadataConfigs:      metadataConfigs,
+		AuthorizationConfigs: authorizationConfigs,
 	}
 
-	return NewAuthContext(context.TODO(), nil, apiConfig)
+	return NewAuthContext(context.TODO(), req, apiConfig)
 }
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -56,7 +77,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -82,7 +103,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -108,7 +129,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 func TestEvaluateAllAuthConfigs(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -134,7 +155,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	var err error
@@ -156,7 +177,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -182,7 +203,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 func TestEvaluateAnyAuthConfig(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -208,7 +229,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -234,7 +255,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
-	authContext := newAuthContext(identityConfigs)
+	authContext := newAuthContext(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -255,4 +276,20 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 
 	assert.Check(t, swap)
 	assert.NilError(t, err)
+}
+
+func TestToData(t *testing.T) {
+	var identityConfigs []common.AuthConfigEvaluator
+	identityConfigs = append(identityConfigs, &successConfig{})
+	request := envoy_auth.CheckRequest{}
+	_ = json.Unmarshal([]byte(rawRequest), &request)
+	authContext := newAuthContext(identityConfigs, &request)
+	data := authContext.ToData()
+	if dataJSON, err := json.Marshal(&data); err != nil {
+		t.Error(err)
+	} else {
+		requestJSON, _ := json.Marshal(request.GetAttributes())
+		expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"identity":null,"metadata":{}}}`, requestJSON)
+		assert.Equal(t, expectedJSON, string(dataJSON))
+	}
 }
