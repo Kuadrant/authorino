@@ -73,6 +73,15 @@ spec:
             identity:
               items:
                 properties:
+                  api_key:
+                    properties:
+                      label_selectors:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    required:
+                    - label_selectors
+                    type: object
                   credentials:
                     properties:
                       in:
