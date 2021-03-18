@@ -22,13 +22,13 @@ import (
 )
 
 const (
-	TypeUnknown              = "UNKNOWN"
-	IdentityOidc             = "IDENTITY_OIDC"
-	IdentityApiKey           = "IDENTITY_APIKEY"
-	MetadataUma              = "METADATA_UMA"
-	MetadataUserinfo         = "METADATA_USERINFO"
-	AuthorizationOPA         = "AUTHORIZATION_OPA"
-	AuthorizationJWTClaimSet = "AUTHORIZATION_JWTCLAIMSET"
+	TypeUnknown                      = "UNKNOWN"
+	IdentityOidc                     = "IDENTITY_OIDC"
+	IdentityApiKey                   = "IDENTITY_APIKEY"
+	MetadataUma                      = "METADATA_UMA"
+	MetadataUserinfo                 = "METADATA_USERINFO"
+	AuthorizationOPA                 = "AUTHORIZATION_OPA"
+	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -92,39 +92,32 @@ type Metadata_UMA struct {
 }
 
 type Authorization struct {
-	Name        string                     `json:"name"`
-	OPA         *Authorization_OPA         `json:"opa,omitempty"`
-	JWTClaimSet *Authorization_JWTClaimSet `json:"JWTClaimSet,omitempty"`
+	Name string                             `json:"name"`
+	OPA  *Authorization_OPA                 `json:"opa,omitempty"`
+	JSON *Authorization_JSONPatternMatching `json:"json,omitempty"`
 }
 
 type Authorization_OPA struct {
 	InlineRego string `json:"inlineRego,omitempty"`
 }
 
-type Authorization_JWTClaimSet struct {
-	Match *Authorization_JWTClaimSet_Match `json:"match,omitempty"`
-	Claim *Authorization_JWTClaimSet_Claim `json:"claim,omitempty"`
+type Authorization_JSONPatternMatching struct {
+	Rules []Authorization_JSONPatternMatching_Rule `json:"rules,omitempty"`
+}
+
+type Authorization_JSONPatternMatching_Rule struct {
+	Selector string `json:"selector"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
 }
 
 func (a *Authorization) GetType() string {
 	if a.OPA != nil {
 		return AuthorizationOPA
-	} else if a.JWTClaimSet != nil {
-		return AuthorizationJWTClaimSet
+	} else if a.JSON != nil {
+		return AuthorizationJSONPatternMatching
 	}
 	return TypeUnknown
-}
-
-type Authorization_JWTClaimSet_Match struct {
-	Http *Authorization_JWTClaimSet_HTTPMatch `json:"http,omitempty"`
-}
-
-type Authorization_JWTClaimSet_HTTPMatch struct {
-	Path string `json:"path,omitempty"`
-}
-
-type Authorization_JWTClaimSet_Claim struct {
-	Aud string `json:"aud,omitempty"`
 }
 
 // ServiceStatus defines the observed state of Service

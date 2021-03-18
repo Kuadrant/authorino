@@ -39,21 +39,23 @@ spec:
             authorization:
               items:
                 properties:
-                  JWTClaimSet:
+                  json:
                     properties:
-                      claim:
-                        properties:
-                          aud:
-                            type: string
-                        type: object
-                      match:
-                        properties:
-                          http:
-                            properties:
-                              path:
-                                type: string
-                            type: object
-                        type: object
+                      rules:
+                        items:
+                          properties:
+                            operator:
+                              type: string
+                            selector:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                          - operator
+                          - selector
+                          - value
+                          type: object
+                        type: array
                     type: object
                   name:
                     type: string

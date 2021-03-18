@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
@@ -195,29 +194,20 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			policyName := service.GetNamespace() + "/" + service.GetName() + "/" + authorization.Name
 			translatedAuthorization.OPA = authorinoAuthorization.NewOPAAuthorization(policyName, authorization.OPA.InlineRego, index)
 
-		// jwt
-		case configv1beta1.AuthorizationJWTClaimSet:
-			// TODO: Ugly, revisit and fix this.
-			match := make(map[string]interface{})
-			matchByte, _ := json.Marshal(authorization.JWTClaimSet.Claim)
-			//TODO: Handle this error properly
-			err := json.Unmarshal(matchByte, &match)
-			if err != nil {
-				panic(err)
-			}
-			claims := make(map[string]interface{})
-
-			claimsByte, _ := json.Marshal(authorization.JWTClaimSet.Claim)
-			//TODO: Handle this error properly
-			err = json.Unmarshal(claimsByte, &claims)
-			if err != nil {
-				panic(err)
+		// json
+		case configv1beta1.AuthorizationJSONPatternMatching:
+			rules := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			for _, r := range authorization.JSON.Rules {
+				rule := &authorinoAuthorization.JSONPatternMatchingRule{
+					Selector: r.Selector,
+					Operator: r.Operator,
+					Value:    r.Value,
+				}
+				rules = append(rules, *rule)
 			}
 
-			translatedAuthorization.JWT = &authorinoAuthorization.JWTClaims{
-				// TODO: Try to map the CRD to this or the other way around.
-				Match:  match,
-				Claims: claims,
+			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
+				Rules: rules,
 			}
 
 		case configv1beta1.TypeUnknown:

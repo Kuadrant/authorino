@@ -24,7 +24,6 @@ default allow = false
 
 	opaPolicyPrecompileErrorMsg = "Failed to precompile OPA policy"
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
-	unauthorizedErrorMsg        = "Unauthorized"
 )
 
 var (

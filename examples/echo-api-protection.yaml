@@ -54,9 +54,11 @@ spec:
             identity.realm_access.roles[_] == "admin"
           }
     - name: some-extra-rule
-      JWTClaimSet:
-        match:
-          http:
-            path: "/api/*"
-        claim:
-          aud: "api"
+      json:
+        rules:
+          - selector: "auth.identity.email_verified"
+            operator: eq
+            value: "true"
+          - selector: "context.source.address.Address.SocketAddress.address"
+            operator: eq
+            value: "127.0.0.1"

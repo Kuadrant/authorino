@@ -14,11 +14,4 @@ spec:
         label_selectors:
           target: echo-api # user defined
   metadata: []
-  authorization:
-    - name: my-policy
-      JWTClaimSet:
-        match:
-          http:
-            path: "/api/*"
-        claim:
-          aud: "api"
+  authorization: []

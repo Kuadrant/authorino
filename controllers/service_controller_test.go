@@ -96,14 +96,18 @@ var (
 				},
 				{
 					Name: "some-extra-rules",
-					JWTClaimSet: &v1beta1.Authorization_JWTClaimSet{
-						Match: &v1beta1.Authorization_JWTClaimSet_Match{
-							Http: &v1beta1.Authorization_JWTClaimSet_HTTPMatch{
-								Path: "/api/*",
+					JSON: &v1beta1.Authorization_JSONPatternMatching{
+						Rules: []v1beta1.Authorization_JSONPatternMatching_Rule{
+							{
+								Selector: "context.identity.role",
+								Operator: "eq",
+								Value:    "admin",
 							},
-						},
-						Claim: &v1beta1.Authorization_JWTClaimSet_Claim{
-							Aud: "api",
+							{
+								Selector: "attributes.source.address.Address.SocketAddress.address",
+								Operator: "eq",
+								Value:    "80.133.21.75",
+							},
 						},
 					}},
 			},
