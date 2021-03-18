@@ -191,9 +191,8 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		// opa
 		case configv1beta1.AuthorizationOPAPolicy:
 			translatedAuthorization.OPA = &authorinoAuthorization.OPA{
-				Enabled: true,
-				UUID:    authorization.OPAPolicy.UUID,
-				Rego:    authorization.OPAPolicy.InlineRego,
+				UUID: authorization.OPAPolicy.UUID,
+				Rego: authorization.OPAPolicy.InlineRego,
 			}
 			_ = translatedAuthorization.OPA.Prepare()
 
@@ -217,7 +216,6 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			}
 
 			translatedAuthorization.JWT = &authorinoAuthorization.JWTClaims{
-				Enabled: true,
 				// TODO: Try to map the CRD to this or the other way around.
 				Match:  match,
 				Claims: claims,
@@ -233,7 +231,6 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	config := make(map[string]authorinoService.APIConfig)
 
 	authorinoService := authorinoService.APIConfig{
-		Enabled:              true,
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,

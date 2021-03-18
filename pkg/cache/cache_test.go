@@ -1,52 +1,64 @@
 package cache
 
 import (
+	"context"
 	"testing"
 
+	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
 	"gotest.tools/assert"
 )
 
+type BogusIdentity struct{}
+
+func (f *BogusIdentity) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+	return true, nil
+}
+
 func TestCache(t *testing.T) {
 	c := NewCache()
 
+	apiKeyIdentityConfig := &BogusIdentity{}
+	identities := make([]common.AuthConfigEvaluator, 1)
+	identities[0] = apiKeyIdentityConfig
 	exampleConfig := config.APIConfig{
-		Enabled:              true,
+		IdentityConfigs:      identities,
+		MetadataConfigs:      nil,
+		AuthorizationConfigs: nil,
+	}
+
+	emptyConfig := config.APIConfig{
 		IdentityConfigs:      nil,
 		MetadataConfigs:      nil,
 		AuthorizationConfigs: nil,
 	}
 
-	// Set one host.
-	err := c.Set("key", "testing.host", exampleConfig, false)
-	if err != nil {
+	// Set a host
+	if err := c.Set("key", "testing.host", exampleConfig, false); err != nil {
 		t.Error(err)
 	}
 
-	// Set a second host with the same key
-	err = c.Set("key", "testing.host.2", exampleConfig, false)
-	if err != nil {
+	// Set a second host with same key
+	if err := c.Set("key", "testing.host.2", exampleConfig, false); err != nil {
 		t.Error(err)
 	}
 
-	// Set a third host with a different key
-	err = c.Set("key2", "testing.host.3", exampleConfig, false)
-	if err != nil {
+	// Set a third host with different key
+	if err := c.Set("key2", "testing.host.3", exampleConfig, false); err != nil {
 		t.Error(err)
 	}
 
-	// Check if we return an error with override to false trying to overwrite an already existing
-	// entry.
-	err = c.Set("key", "testing.host.2", exampleConfig, false)
+	// Set a same host again without override
+	err := c.Set("key", "testing.host.2", exampleConfig, false)
 	assert.Check(t, err != nil)
 
 	// Check if the list contains all the configs
 	configs := c.List()
 	assert.Check(t, len(configs) == 3)
 
-	assert.Check(t, configs["testing.host"].Enabled == true)
-	assert.Check(t, configs["testing.host.2"].Enabled == true)
-	assert.Check(t, configs["testing.host.3"].Enabled == true)
+	assert.DeepEqual(t, exampleConfig, configs["testing.host"])
+	assert.DeepEqual(t, exampleConfig, configs["testing.host.2"])
+	assert.DeepEqual(t, exampleConfig, configs["testing.host.3"])
 
 	// Get a single hosts and check that it is what we expect
 	config := c.Get("testing.host")
@@ -59,17 +71,16 @@ func TestCache(t *testing.T) {
 	c.Delete("key")
 
 	config = c.Get("testing.host")
-	assert.Assert(t, !config.Enabled)
+	assert.DeepEqual(t, emptyConfig, config)
 
 	config = c.Get("testing.host.2")
-	assert.Assert(t, !config.Enabled)
+	assert.DeepEqual(t, emptyConfig, config)
 
 	config = c.Get("testing.host.3")
-	assert.Assert(t, config.Enabled)
+	assert.DeepEqual(t, exampleConfig, config)
 
 	c.Delete("key2")
 
 	config = c.Get("testing.host.3")
-	assert.Assert(t, !config.Enabled)
-
+	assert.DeepEqual(t, emptyConfig, config)
 }

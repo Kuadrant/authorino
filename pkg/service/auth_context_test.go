@@ -23,7 +23,6 @@ func (c *failConfig) Call(authContext common.AuthContext, ctx context.Context) (
 
 func newAuthContext(identityConfigs []common.AuthConfigEvaluator) AuthContext {
 	apiConfig := config.APIConfig{
-		Enabled:              true,
 		IdentityConfigs:      identityConfigs,
 		MetadataConfigs:      nil,
 		AuthorizationConfigs: nil,

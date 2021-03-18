@@ -14,7 +14,6 @@ import (
 )
 
 type OPA struct {
-	Enabled    bool   `yaml:"enabled,omitempty"`
 	UUID       string `yaml:"uuid"`
 	Rego       string `yaml:"rego"`
 	opaContext context.Context
@@ -23,7 +22,7 @@ type OPA struct {
 
 func (self *OPA) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type Alias OPA
-	a := Alias{Enabled: true}
+	a := Alias{}
 	err := unmarshal(&a)
 	if err != nil {
 		return err
@@ -83,10 +82,6 @@ func (self *OPAInput) ToJSON() ([]byte, error) {
 }
 
 func (self *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	if !self.Enabled {
-		return true, nil
-	}
-
 	contextData := make(map[string]interface{})
 	_, contextData["identity"] = authContext.GetResolvedIdentity()
 
