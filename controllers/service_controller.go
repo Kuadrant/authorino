@@ -191,10 +191,10 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 		switch authorization.GetType() {
 		// opa
-		case configv1beta1.AuthorizationOPAPolicy:
+		case configv1beta1.AuthorizationOPA:
 			translatedAuthorization.OPA = &authorinoAuthorization.OPA{
-				UUID: authorization.OPAPolicy.UUID,
-				Rego: authorization.OPAPolicy.InlineRego,
+				UUID: authorization.OPA.UUID,
+				Rego: authorization.OPA.InlineRego,
 			}
 			_ = translatedAuthorization.OPA.Prepare()
 

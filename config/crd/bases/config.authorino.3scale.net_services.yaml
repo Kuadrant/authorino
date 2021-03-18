@@ -55,7 +55,9 @@ spec:
                             type: object
                         type: object
                     type: object
-                  OPAPolicy:
+                  name:
+                    type: string
+                  opa:
                     properties:
                       inlineRego:
                         type: string
@@ -64,8 +66,6 @@ spec:
                     required:
                     - uuid
                     type: object
-                  name:
-                    type: string
                 required:
                 - name
                 type: object

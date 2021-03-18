@@ -27,7 +27,7 @@ const (
 	IdentityApiKey           = "IDENTITY_APIKEY"
 	MetadataUma              = "METADATA_UMA"
 	MetadataUserinfo         = "METADATA_USERINFO"
-	AuthorizationOPAPolicy   = "AUTHORIZATION_OPAPOLICY"
+	AuthorizationOPA         = "AUTHORIZATION_OPA"
 	AuthorizationJWTClaimSet = "AUTHORIZATION_JWTCLAIMSET"
 )
 
@@ -93,11 +93,11 @@ type Metadata_UMA struct {
 
 type Authorization struct {
 	Name        string                     `json:"name"`
-	OPAPolicy   *Authorization_OPAPolicy   `json:"OPAPolicy,omitempty"`
+	OPA         *Authorization_OPA         `json:"opa,omitempty"`
 	JWTClaimSet *Authorization_JWTClaimSet `json:"JWTClaimSet,omitempty"`
 }
 
-type Authorization_OPAPolicy struct {
+type Authorization_OPA struct {
 	UUID       string `json:"uuid"`
 	InlineRego string `json:"inlineRego,omitempty"`
 }
@@ -108,8 +108,8 @@ type Authorization_JWTClaimSet struct {
 }
 
 func (a *Authorization) GetType() string {
-	if a.OPAPolicy != nil {
-		return AuthorizationOPAPolicy
+	if a.OPA != nil {
+		return AuthorizationOPA
 	} else if a.JWTClaimSet != nil {
 		return AuthorizationJWTClaimSet
 	}
