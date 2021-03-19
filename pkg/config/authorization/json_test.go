@@ -18,7 +18,8 @@ const (
 			"request": {
 				"http": {
 					"headers": {
-						"x-secret-header": "no-one-knows"
+						"x-secret-header": "no-one-knows",
+						"x-origin": "some-origin"
 					}
 				}
 			}
@@ -324,6 +325,72 @@ func TestCall(t *testing.T) {
 	// rules empty
 	jsonAuth = &JSONPatternMatching{
 		Rules: []JSONPatternMatchingRule{},
+	}
+
+	authorized, err = jsonAuth.Call(&authContext, nil)
+	assert.Check(t, authorized)
+	assert.Check(t, err == nil)
+
+	// with all conditions matching and value equal than expected
+	jsonAuth = &JSONPatternMatching{
+		Conditions: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-origin",
+				Operator: "eq",
+				Value:    "some-origin",
+			},
+		},
+		Rules: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "eq",
+				Value:    "no-one-knows",
+			},
+		},
+	}
+
+	authorized, err = jsonAuth.Call(&authContext, nil)
+	assert.Check(t, authorized)
+	assert.Check(t, err == nil)
+
+	// with all conditions matching and value other than expected
+	jsonAuth = &JSONPatternMatching{
+		Conditions: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-origin",
+				Operator: "eq",
+				Value:    "some-origin",
+			},
+		},
+		Rules: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "eq",
+				Value:    "other-expected",
+			},
+		},
+	}
+
+	authorized, err = jsonAuth.Call(&authContext, nil)
+	assert.Check(t, !authorized)
+	assert.Error(t, err, "Unauthorized")
+
+	// with unmatching condition
+	jsonAuth = &JSONPatternMatching{
+		Conditions: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-origin",
+				Operator: "eq",
+				Value:    "other-origin",
+			},
+		},
+		Rules: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "eq",
+				Value:    "would-not-authorize-if-this-rule-was-evaluated",
+			},
+		},
 	}
 
 	authorized, err = jsonAuth.Call(&authContext, nil)

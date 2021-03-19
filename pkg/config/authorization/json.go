@@ -26,7 +26,8 @@ type JSONPatternMatchingRule struct {
 }
 
 type JSONPatternMatching struct {
-	Rules []JSONPatternMatchingRule `yaml:"rules"`
+	Conditions []JSONPatternMatchingRule `yaml:"conditions,omitempty"`
+	Rules      []JSONPatternMatchingRule `yaml:"rules"`
 }
 
 func (jsonAuth *JSONPatternMatching) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
@@ -34,45 +35,53 @@ func (jsonAuth *JSONPatternMatching) Call(authContext common.AuthContext, ctx co
 	dataJSON, _ := json.Marshal(data)
 	dataStr := string(dataJSON)
 
-	for _, rule := range jsonAuth.Rules {
-		var authorized bool
-
-		expectedValue := rule.Value
-		obtainedValue := gjson.Get(dataStr, rule.Selector)
-
-		switch rule.Operator {
-		case operatorEq:
-			authorized = expectedValue == obtainedValue.String()
-
-		case operatorNeq:
-			authorized = expectedValue != obtainedValue.String()
-
-		case operatorIncl:
-			authorized = false
-			for _, item := range obtainedValue.Array() {
-				if expectedValue == item.String() {
-					authorized = true
-					break
-				}
-			}
-
-		case operatorExcl:
-			authorized = true
-			for _, item := range obtainedValue.Array() {
-				if expectedValue == item.String() {
-					authorized = false
-					break
-				}
-			}
-
-		default:
-			return false, fmt.Errorf(unsupportedOperatorErrorMsg)
+	for _, condition := range jsonAuth.Conditions {
+		if match, err := evaluateRule(condition, dataStr); err != nil {
+			return false, err
+		} else if !match { // skip the policy if any of the conditions does not match
+			return true, nil
 		}
+	}
 
-		if !authorized {
+	for _, rule := range jsonAuth.Rules {
+		if authorized, err := evaluateRule(rule, dataStr); err != nil {
+			return false, err
+		} else if !authorized {
 			return false, fmt.Errorf(unauthorizedErrorMsg)
 		}
 	}
 
 	return true, nil
+}
+
+func evaluateRule(rule JSONPatternMatchingRule, jsonData string) (bool, error) {
+	expectedValue := rule.Value
+	obtainedValue := gjson.Get(jsonData, rule.Selector)
+
+	switch rule.Operator {
+	case operatorEq:
+		return (expectedValue == obtainedValue.String()), nil
+
+	case operatorNeq:
+		return (expectedValue != obtainedValue.String()), nil
+
+	case operatorIncl:
+		for _, item := range obtainedValue.Array() {
+			if expectedValue == item.String() {
+				return true, nil
+			}
+		}
+		return false, nil
+
+	case operatorExcl:
+		for _, item := range obtainedValue.Array() {
+			if expectedValue == item.String() {
+				return false, nil
+			}
+		}
+		return true, nil
+
+	default:
+		return false, fmt.Errorf(unsupportedOperatorErrorMsg)
+	}
 }

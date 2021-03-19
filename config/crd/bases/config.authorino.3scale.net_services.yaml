@@ -41,6 +41,21 @@ spec:
                 properties:
                   json:
                     properties:
+                      conditions:
+                        items:
+                          properties:
+                            operator:
+                              type: string
+                            selector:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                          - operator
+                          - selector
+                          - value
+                          type: object
+                        type: array
                       rules:
                         items:
                           properties:

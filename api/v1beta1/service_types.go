@@ -102,7 +102,8 @@ type Authorization_OPA struct {
 }
 
 type Authorization_JSONPatternMatching struct {
-	Rules []Authorization_JSONPatternMatching_Rule `json:"rules,omitempty"`
+	Conditions []Authorization_JSONPatternMatching_Rule `json:"conditions,omitempty"`
+	Rules      []Authorization_JSONPatternMatching_Rule `json:"rules,omitempty"`
 }
 
 type Authorization_JSONPatternMatching_Rule struct {

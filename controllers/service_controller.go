@@ -196,6 +196,16 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 		// json
 		case configv1beta1.AuthorizationJSONPatternMatching:
+			conditions := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			for _, c := range authorization.JSON.Conditions {
+				condition := &authorinoAuthorization.JSONPatternMatchingRule{
+					Selector: c.Selector,
+					Operator: c.Operator,
+					Value:    c.Value,
+				}
+				conditions = append(conditions, *condition)
+			}
+
 			rules := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
 			for _, r := range authorization.JSON.Rules {
 				rule := &authorinoAuthorization.JSONPatternMatchingRule{
@@ -207,7 +217,8 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			}
 
 			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
-				Rules: rules,
+				Conditions: conditions,
+				Rules:      rules,
 			}
 
 		case configv1beta1.TypeUnknown:
