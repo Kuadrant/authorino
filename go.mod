@@ -7,6 +7,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.9.8
 	github.com/go-logr/logr v0.1.0
 	github.com/gogo/googleapis v1.3.0
+	github.com/golang/mock v1.5.0
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/open-policy-agent/opa v0.25.2
@@ -15,7 +16,7 @@ require (
 	google.golang.org/genproto v0.0.0-20191108220845-16a3f7862a1a
 	google.golang.org/grpc v1.27.0
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
