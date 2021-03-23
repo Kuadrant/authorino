@@ -79,16 +79,31 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+
+	// sets up the service reconciler
 	cache := cache.NewCache()
-	if err = (&controllers.ServiceReconciler{
+	serviceReconciler := &controllers.ServiceReconciler{
 		Client: mgr.GetClient(),
 		Cache:  &cache,
 		Log:    ctrl.Log.WithName("authorino").WithName("controller").WithName("Service"),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if err = serviceReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
 	}
+
+	// sets up secret reconciler
+	if err = (&controllers.SecretReconciler{
+		Client:            mgr.GetClient(),
+		Log:               ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
+		Scheme:            mgr.GetScheme(),
+		ServiceReconciler: serviceReconciler,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Secret")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	// open socket

@@ -12,6 +12,7 @@ spec:
         key_selector: X-API-KEY # user defined
       api_key:
         label_selectors:
+          authorino.3scale.net/managed-by: authorino
           target: echo-api # user defined
   metadata: []
   authorization: []
