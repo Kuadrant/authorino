@@ -166,6 +166,51 @@ func TestCall(t *testing.T) {
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
+	// regex matches value
+	jsonAuth = &JSONPatternMatching{
+		Rules: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "matches",
+				Value:    "(.+)-knows",
+			},
+		},
+	}
+
+	authorized, err = jsonAuth.Call(authContextMock, nil)
+	assert.Check(t, authorized)
+	assert.Check(t, err == nil)
+
+	// regex does not match value
+	jsonAuth = &JSONPatternMatching{
+		Rules: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "matches",
+				Value:    "(\\d)+",
+			},
+		},
+	}
+
+	authorized, err = jsonAuth.Call(authContextMock, nil)
+	assert.Check(t, !authorized)
+	assert.Error(t, err, "Unauthorized")
+
+	// invalid regex
+	jsonAuth = &JSONPatternMatching{
+		Rules: []JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "matches",
+				Value:    "$$^[not-a-regex",
+			},
+		},
+	}
+
+	authorized, err = jsonAuth.Call(authContextMock, nil)
+	assert.Check(t, !authorized)
+	assert.ErrorContains(t, err, "error parsing regexp")
+
 	// multiple rules
 	jsonAuth = &JSONPatternMatching{
 		Rules: []JSONPatternMatchingRule{

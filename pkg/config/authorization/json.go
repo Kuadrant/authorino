@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/3scale-labs/authorino/pkg/common"
 
@@ -11,10 +12,11 @@ import (
 )
 
 const (
-	operatorEq   = "eq"
-	operatorNeq  = "neq"
-	operatorIncl = "incl"
-	operatorExcl = "excl"
+	operatorEq    = "eq"
+	operatorNeq   = "neq"
+	operatorIncl  = "incl"
+	operatorExcl  = "excl"
+	operatorRegex = "matches"
 
 	unsupportedOperatorErrorMsg = "Unsupported operator for JSON authorization"
 )
@@ -80,6 +82,13 @@ func evaluateRule(rule JSONPatternMatchingRule, jsonData string) (bool, error) {
 			}
 		}
 		return true, nil
+
+	case operatorRegex:
+		if re, err := regexp.Compile(expectedValue); err != nil {
+			return false, err
+		} else {
+			return re.MatchString(obtainedValue.String()), nil
+		}
 
 	default:
 		return false, fmt.Errorf(unsupportedOperatorErrorMsg)
