@@ -25,7 +25,7 @@ func (userinfo *UserInfo) Call(authContext common.AuthContext, ctx context.Conte
 	}
 
 	// get access token from input
-	accessToken, err := oidc.Credentials.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
+	accessToken, err := oidc.Credentials.GetCredentialsFromReq(authContext.GetHttp())
 	if err != nil {
 		return nil, err
 	}

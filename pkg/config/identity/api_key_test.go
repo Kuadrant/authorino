@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	mock_common "github.com/3scale-labs/authorino/pkg/common/mocks"
+	. "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,33 +30,6 @@ var (
 	}
 )
 
-// TODO: Replace for a Mock Factory these kind of interfaces.
-type AuthContextMock struct{}
-
-func (_m *AuthContextMock) GetAPI() interface{} {
-	return nil
-}
-
-func (_m *AuthContextMock) GetResolvedIdentity() (interface{}, interface{}) {
-	return nil, nil
-}
-
-func (_m *AuthContextMock) GetResolvedMetadata() map[interface{}]interface{} {
-	return nil
-}
-
-func (_m *AuthContextMock) GetParentContext() *context.Context {
-	return nil
-}
-
-func (_m *AuthContextMock) GetRequest() *envoyServiceAuthV3.CheckRequest {
-	return nil
-}
-
-func (_m *AuthContextMock) GetHttp() *envoyServiceAuthV3.AttributeContext_HttpRequest {
-	return nil
-}
-
 type authCredMock struct{}
 
 func (a *authCredMock) GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error) {
@@ -69,6 +44,12 @@ func (k *MockK8sClient) Get(_ context.Context, _ client.ObjectKey, _ runtime.Obj
 
 func (k *MockK8sClient) List(_ context.Context, list runtime.Object, _ ...client.ListOption) error {
 	return listSecretsFunc(list.(*v1.SecretList))
+}
+
+func mockAuthContext(ctrl *Controller) (authContextMock *mock_common.MockAuthContext) {
+	authContextMock = mock_common.NewMockAuthContext(ctrl)
+	authContextMock.EXPECT().GetHttp().Return(nil)
+	return
 }
 
 func TestConstants(t *testing.T) {
@@ -91,37 +72,49 @@ func TestNewApiKeyIdentity(t *testing.T) {
 }
 
 func TestCallSuccess(t *testing.T) {
+	ctrl := NewController(t)
+	defer ctrl.Finish()
+	authContextMock := mockAuthContext(ctrl)
+
 	getCredentialsFromReq = func() (string, error) {
 		return "ObiWanKenobiLightSaber", nil
 	}
 
 	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
-	auth, err := apiKey.Call(&AuthContextMock{}, context.TODO())
+	auth, err := apiKey.Call(authContextMock, context.TODO())
 
 	assert.NilError(t, err)
 	assert.Check(t, string(auth.(v1.Secret).Data["api_key"]) == "ObiWanKenobiLightSaber")
 }
 
 func TestCallNoApiKeyFail(t *testing.T) {
+	ctrl := NewController(t)
+	defer ctrl.Finish()
+	authContextMock := mockAuthContext(ctrl)
+
 	getCredentialsFromReq = func() (string, error) {
 		return "", fmt.Errorf("something went wrong getting the API Key")
 	}
 
 	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
 
-	_, err := apiKey.Call(&AuthContextMock{}, context.TODO())
+	_, err := apiKey.Call(authContextMock, context.TODO())
 
 	assert.Error(t, err, "something went wrong getting the API Key")
 
 }
 
 func TestCallInvalidApiKeyFail(t *testing.T) {
+	ctrl := NewController(t)
+	defer ctrl.Finish()
+	authContextMock := mockAuthContext(ctrl)
+
 	getCredentialsFromReq = func() (string, error) {
 		return "ASithLightSaber", nil
 	}
 
 	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
-	_, err := apiKey.Call(&AuthContextMock{}, context.TODO())
+	_, err := apiKey.Call(authContextMock, context.TODO())
 
 	assert.Error(t, err, "the API Key provided is invalid")
 }
