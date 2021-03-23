@@ -249,3 +249,25 @@ func (authContext *AuthContext) GetResolvedMetadata() map[interface{}]interface{
 	}
 	return m
 }
+
+func (authContext *AuthContext) GetDataForAuthorization() interface{} {
+	authData := make(map[string]interface{})
+	_, authData["identity"] = authContext.GetResolvedIdentity()
+
+	resolvedMetadata := make(map[string]interface{})
+	for config, obj := range authContext.GetResolvedMetadata() {
+		metadataConfig, _ := config.(common.NamedConfigEvaluator)
+		resolvedMetadata[metadataConfig.GetName()] = obj
+	}
+	authData["metadata"] = resolvedMetadata
+
+	type authorizationData struct {
+		Context  *envoy_auth.AttributeContext `json:"context"`
+		AuthData map[string]interface{}       `json:"auth"`
+	}
+
+	return &authorizationData{
+		Context:  authContext.GetRequest().Attributes,
+		AuthData: authData,
+	}
+}

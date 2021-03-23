@@ -22,8 +22,8 @@ spec:
         credentialsRef:
           name: umacredentialssecret
   authorization:
-    - OPAPolicy:
-        uuid: 8fa79d93-0f93-4e23-8c2a-666be266cad1
+    - name: my-main-policy
+      opa:
         inlineRego: |
           allow {
             http_request.method == "GET"
@@ -53,9 +53,12 @@ spec:
           is_admin {
             identity.realm_access.roles[_] == "admin"
           }
-    - JWTClaimSet:
-        match:
-          http:
-            path: "/api/*"
-        claim:
-          aud: "api"
+    - name: some-extra-rule
+      json:
+        rules:
+          - selector: "auth.identity.email_verified"
+            operator: eq
+            value: "true"
+          - selector: "context.source.address.Address.SocketAddress.address"
+            operator: eq
+            value: "127.0.0.1"

@@ -50,6 +50,20 @@ func (mr *MockAuthContextMockRecorder) GetAPI() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAPI", reflect.TypeOf((*MockAuthContext)(nil).GetAPI))
 }
 
+// GetDataForAuthorization mocks base method.
+func (m *MockAuthContext) GetDataForAuthorization() interface{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDataForAuthorization")
+	ret0, _ := ret[0].(interface{})
+	return ret0
+}
+
+// GetDataForAuthorization indicates an expected call of GetDataForAuthorization.
+func (mr *MockAuthContextMockRecorder) GetDataForAuthorization() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDataForAuthorization", reflect.TypeOf((*MockAuthContext)(nil).GetDataForAuthorization))
+}
+
 // GetHttp mocks base method.
 func (m *MockAuthContext) GetHttp() *envoy_service_auth_v3.AttributeContext_HttpRequest {
 	m.ctrl.T.Helper()

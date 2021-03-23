@@ -62,8 +62,8 @@ var (
 			},
 			Authorization: []*v1beta1.Authorization{
 				{
-					OPAPolicy: &v1beta1.Authorization_OPAPolicy{
-						UUID: "8fa79d93-0f93-4e23-8c2a-666be266cad1",
+					Name: "main-policy",
+					OPA: &v1beta1.Authorization_OPA{
 						InlineRego: `allow {
             http_request.method == "GET"
             path = ["hello"]
@@ -95,14 +95,19 @@ var (
 					},
 				},
 				{
-					JWTClaimSet: &v1beta1.Authorization_JWTClaimSet{
-						Match: &v1beta1.Authorization_JWTClaimSet_Match{
-							Http: &v1beta1.Authorization_JWTClaimSet_HTTPMatch{
-								Path: "/api/*",
+					Name: "some-extra-rules",
+					JSON: &v1beta1.Authorization_JSONPatternMatching{
+						Rules: []v1beta1.Authorization_JSONPatternMatching_Rule{
+							{
+								Selector: "context.identity.role",
+								Operator: "eq",
+								Value:    "admin",
 							},
-						},
-						Claim: &v1beta1.Authorization_JWTClaimSet_Claim{
-							Aud: "api",
+							{
+								Selector: "attributes.source.address.Address.SocketAddress.address",
+								Operator: "eq",
+								Value:    "80.133.21.75",
+							},
 						},
 					}},
 			},

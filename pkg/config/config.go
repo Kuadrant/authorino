@@ -4,7 +4,6 @@ import "github.com/3scale-labs/authorino/pkg/common"
 
 // APIConfig holds the configuration of each protected API
 type APIConfig struct {
-	Enabled              bool                         `yaml:"enabled,omitempty"`
 	IdentityConfigs      []common.AuthConfigEvaluator `yaml:"identity,omitempty"`
 	MetadataConfigs      []common.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []common.AuthConfigEvaluator `yaml:"authorization,omitempty"`
@@ -12,7 +11,7 @@ type APIConfig struct {
 
 func (self *APIConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type Alias APIConfig
-	a := Alias{Enabled: true}
+	a := Alias{}
 	err := unmarshal(&a)
 	if err != nil {
 		return err

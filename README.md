@@ -402,6 +402,7 @@ The only requirements to try out the example are [Golang](https://golang.org) an
     - Preloaded users:
       - john/p (member)
       - jane/p (admin)
+      - peter/p (member, email not verified)
 
 > In case you are interested in using [dex](https://dexidp.io) identity service, check also [this](examples/dex) other example.
 

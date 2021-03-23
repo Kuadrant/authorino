@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
@@ -184,43 +183,42 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
-	for _, authorization := range service.Spec.Authorization {
-		translatedAuthorization := &config.AuthorizationConfig{}
+	for index, authorization := range service.Spec.Authorization {
+		translatedAuthorization := &config.AuthorizationConfig{
+			Name: authorization.Name,
+		}
 
 		switch authorization.GetType() {
 		// opa
-		case configv1beta1.AuthorizationOPAPolicy:
-			translatedAuthorization.OPA = &authorinoAuthorization.OPA{
-				Enabled: true,
-				UUID:    authorization.OPAPolicy.UUID,
-				Rego:    authorization.OPAPolicy.InlineRego,
-			}
-			_ = translatedAuthorization.OPA.Prepare()
+		case configv1beta1.AuthorizationOPA:
+			policyName := service.GetNamespace() + "/" + service.GetName() + "/" + authorization.Name
+			translatedAuthorization.OPA = authorinoAuthorization.NewOPAAuthorization(policyName, authorization.OPA.InlineRego, index)
 
-		// jwt
-		case configv1beta1.AuthorizationJWTClaimSet:
-			// TODO: Ugly, revisit and fix this.
-			match := make(map[string]interface{})
-			matchByte, _ := json.Marshal(authorization.JWTClaimSet.Claim)
-			//TODO: Handle this error properly
-			err := json.Unmarshal(matchByte, &match)
-			if err != nil {
-				panic(err)
-			}
-			claims := make(map[string]interface{})
-
-			claimsByte, _ := json.Marshal(authorization.JWTClaimSet.Claim)
-			//TODO: Handle this error properly
-			err = json.Unmarshal(claimsByte, &claims)
-			if err != nil {
-				panic(err)
+		// json
+		case configv1beta1.AuthorizationJSONPatternMatching:
+			conditions := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			for _, c := range authorization.JSON.Conditions {
+				condition := &authorinoAuthorization.JSONPatternMatchingRule{
+					Selector: c.Selector,
+					Operator: c.Operator,
+					Value:    c.Value,
+				}
+				conditions = append(conditions, *condition)
 			}
 
-			translatedAuthorization.JWT = &authorinoAuthorization.JWTClaims{
-				Enabled: true,
-				// TODO: Try to map the CRD to this or the other way around.
-				Match:  match,
-				Claims: claims,
+			rules := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			for _, r := range authorization.JSON.Rules {
+				rule := &authorinoAuthorization.JSONPatternMatchingRule{
+					Selector: r.Selector,
+					Operator: r.Operator,
+					Value:    r.Value,
+				}
+				rules = append(rules, *rule)
+			}
+
+			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
+				Conditions: conditions,
+				Rules:      rules,
 			}
 
 		case configv1beta1.TypeUnknown:
@@ -233,7 +231,6 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	config := make(map[string]authorinoService.APIConfig)
 
 	authorinoService := authorinoService.APIConfig{
-		Enabled:              true,
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,

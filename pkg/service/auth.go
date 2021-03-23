@@ -45,7 +45,7 @@ func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest
 	config := self.Cache.List()
 
 	apiConfig, apiConfigOK := config[host]
-	if !apiConfigOK || !apiConfig.Enabled {
+	if !apiConfigOK {
 		return self.deniedResponse(rpc.NOT_FOUND, "Service not found"), nil
 	}
 

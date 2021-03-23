@@ -2,122 +2,86 @@ package authorization
 
 import (
 	"context"
-	"encoding/json"
+	"crypto/md5"
 	"fmt"
-	"log"
 
 	"github.com/3scale-labs/authorino/pkg/common"
 
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-
 	"github.com/open-policy-agent/opa/rego"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
-
-type OPA struct {
-	Enabled    bool   `yaml:"enabled,omitempty"`
-	UUID       string `yaml:"uuid"`
-	Rego       string `yaml:"rego"`
-	opaContext context.Context
-	policy     *rego.PreparedEvalQuery
-}
-
-func (self *OPA) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type Alias OPA
-	a := Alias{Enabled: true}
-	err := unmarshal(&a)
-	if err != nil {
-		return err
-	}
-	*self = OPA(a)
-	err = self.Prepare()
-	if err != nil {
-		return fmt.Errorf("opa: failed to prepare inline Rego policy %v", self.policyName())
-	}
-	return nil
-}
 
 const (
 	policyTemplate = `package %s
-import input.attributes.request.http as http_request
-import input.context.identity
-import input.context.metadata
+import input.context.request.http as http_request
+import input.auth.identity
+import input.auth.metadata
 path = split(trim_left(http_request.path, "/"), "/")
 default allow = false
 %s`
+
+	policyUIDHashSeparator = "|"
+
+	opaPolicyPrecompileErrorMsg = "Failed to precompile OPA policy"
+	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
-func (self *OPA) Prepare() error {
-	regoPolicy := fmt.Sprintf(policyTemplate, self.policyName(), self.Rego)
+var (
+	opaLog = ctrl.Log.WithName("Authorino").WithName("ApiKey")
+)
 
-	self.opaContext = context.TODO()
-
-	regoQuery := rego.Query("allowed = data." + self.policyName() + ".allow")
-	regoModule := rego.Module(self.UUID+".rego", regoPolicy)
-	p, err := rego.New(regoQuery, regoModule).PrepareForEval(self.opaContext)
-	if err != nil {
-		return err
+func NewOPAAuthorization(policyName string, rego string, nonce int) *OPA {
+	o := &OPA{
+		Rego:       rego,
+		policyUID:  generatePolicyUID(policyName, rego, nonce),
+		opaContext: context.TODO(),
 	}
-
-	self.policy = &p
-
-	log.Printf("[OPA] new policy registered: %v", self.policyName())
-
-	return nil
+	if err := o.precompilePolicy(); err != nil {
+		opaLog.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
+		return nil
+	} else {
+		return o
+	}
 }
 
-func (self *OPA) policyName() string {
-	return fmt.Sprintf(`authorino.authz["%s"]`, self.UUID)
+type OPA struct {
+	Rego string `yaml:"rego"`
+
+	opaContext context.Context
+	policy     *rego.PreparedEvalQuery
+	policyUID  string
 }
 
-type OPAInput struct {
-	Request *envoy_auth.AttributeContext `json:"attributes"`
-	Context map[string]interface{}       `json:"context"`
-}
-
-func (self *OPAInput) ToJSON() ([]byte, error) {
-	res, err := json.Marshal(&self)
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-func (self *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	if !self.Enabled {
-		return true, nil
-	}
-
-	contextData := make(map[string]interface{})
-	_, contextData["identity"] = authContext.GetResolvedIdentity()
-
-	resolvedMetadata := make(map[string]interface{})
-	for config, obj := range authContext.GetResolvedMetadata() {
-		metadataConfig, _ := config.(common.NamedConfigEvaluator)
-		resolvedMetadata[metadataConfig.GetName()] = obj
-	}
-	contextData["metadata"] = resolvedMetadata
-
-	input := OPAInput{
-		Request: authContext.GetRequest().Attributes,
-		Context: contextData,
-	}
-
-	inputJSON, err := input.ToJSON()
-	if err != nil {
-		return false, err
-	}
-	log.Printf("[OPA] input: %v", string(inputJSON))
-
-	evalOption := rego.EvalInput(input)
-	results, err := self.policy.Eval(self.opaContext, evalOption)
+func (opa *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
+	options := rego.EvalInput(authContext.GetDataForAuthorization())
+	results, err := opa.policy.Eval(opa.opaContext, options)
 
 	if err != nil {
 		return false, err
 	} else if len(results) == 0 {
-		return false, fmt.Errorf("opa: invalid response for policy %v", self.policyName())
+		return false, fmt.Errorf(invalidOPAResponseErrorMsg)
 	} else if allowed := results[0].Bindings["allowed"].(bool); !allowed {
-		return false, fmt.Errorf("Unauthorized")
+		return false, fmt.Errorf(unauthorizedErrorMsg)
 	} else {
 		return true, nil
 	}
+}
+
+func (opa *OPA) precompilePolicy() error {
+	policyName := fmt.Sprintf(`authorino.authz["%s"]`, opa.policyUID)
+	policyContent := fmt.Sprintf(policyTemplate, policyName, opa.Rego)
+	regoQuery := rego.Query("allowed = data." + policyName + ".allow")
+	regoModule := rego.Module(opa.policyUID+".rego", policyContent)
+
+	if regoPolicy, err := rego.New(regoQuery, regoModule).PrepareForEval(opa.opaContext); err != nil {
+		return err
+	} else {
+		opa.policy = &regoPolicy
+		return nil
+	}
+}
+
+func generatePolicyUID(policyName string, policyContent string, nonce int) string {
+	data := []byte(fmt.Sprint(nonce) + policyUIDHashSeparator + policyName + policyUIDHashSeparator + policyContent)
+	return fmt.Sprintf("%x", md5.Sum(data))
 }
