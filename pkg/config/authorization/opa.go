@@ -53,7 +53,7 @@ type OPA struct {
 }
 
 func (opa *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	options := rego.EvalInput(authContext.ToData())
+	options := rego.EvalInput(authContext.GetDataForAuthorization())
 	results, err := opa.policy.Eval(opa.opaContext, options)
 
 	if err != nil {

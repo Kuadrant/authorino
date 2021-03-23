@@ -13,7 +13,7 @@ type AuthContext interface {
 	GetAPI() interface{}
 	GetResolvedIdentity() (interface{}, interface{})
 	GetResolvedMetadata() map[interface{}]interface{}
-	ToData() interface{}
+	GetDataForAuthorization() interface{}
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization

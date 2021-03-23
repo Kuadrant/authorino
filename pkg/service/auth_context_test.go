@@ -278,13 +278,13 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func TestToData(t *testing.T) {
+func TestGetDataForAuthorization(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{})
 	request := envoy_auth.CheckRequest{}
 	_ = json.Unmarshal([]byte(rawRequest), &request)
 	authContext := newAuthContext(identityConfigs, &request)
-	data := authContext.ToData()
+	data := authContext.GetDataForAuthorization()
 	if dataJSON, err := json.Marshal(&data); err != nil {
 		t.Error(err)
 	} else {

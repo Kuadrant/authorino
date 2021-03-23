@@ -31,7 +31,7 @@ type JSONPatternMatching struct {
 }
 
 func (jsonAuth *JSONPatternMatching) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	data := authContext.ToData()
+	data := authContext.GetDataForAuthorization()
 	dataJSON, _ := json.Marshal(data)
 	dataStr := string(dataJSON)
 
