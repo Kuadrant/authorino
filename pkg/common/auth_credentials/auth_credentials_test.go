@@ -15,6 +15,7 @@ func TestConstants(t *testing.T) {
 	assert.Check(t, "the credential was not found in the request header" == credentialNotFoundInHeaderMsg)
 	assert.Check(t, "the credential location is not supported" == credentialLocationNotSupportedMsg)
 	assert.Check(t, "the Authorization header is not set" == authHeaderNotSetMsg)
+	assert.Check(t, "the Cookie header is not set" == cookieHeaderNotSetMsg)
 }
 
 func TestNewAuthCredential(t *testing.T) {
@@ -88,6 +89,51 @@ func TestGetCredentialsFromAuthHeaderFail(t *testing.T) {
 	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
+}
+
+func TestGetCredentialsFromCookieHeaderSuccess(t *testing.T) {
+	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
+		Headers: map[string]string{"cookie": "Expires=Tue, 01-Jan-2016 21:47:38 GMT; API-KEY=HumanInstrumentality"},
+	}
+
+	authCredentials := AuthCredential{
+		KeySelector: "API-KEY",
+		In:          "cookie",
+	}
+	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+
+	assert.NilError(t, err)
+	assert.Check(t, cred == "HumanInstrumentality")
+}
+
+func TestGetCredentialsFromCookieHeaderNoCookieHeaderFail(t *testing.T) {
+	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
+		Headers: map[string]string{"cookie": "Expires=Tue, 01-Jan-2016 21:47:38 GMT"},
+	}
+
+	authCredentials := AuthCredential{
+		KeySelector: "API-KEY",
+		In:          "cookie",
+	}
+	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+
+	assert.Error(t, err, "credential not found")
+
+}
+
+func TestGetCredentialsFromCookieHeaderNoKeyFoundFail(t *testing.T) {
+	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
+		Headers: map[string]string{},
+	}
+
+	authCredentials := AuthCredential{
+		KeySelector: "API-KEY",
+		In:          "cookie",
+	}
+	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+
+	assert.Error(t, err, "credential not found")
+
 }
 
 func TestGetCredentialsFromQuerySuccess(t *testing.T) {
