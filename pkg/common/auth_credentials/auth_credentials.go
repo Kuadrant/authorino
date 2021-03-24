@@ -23,12 +23,14 @@ type AuthCredential struct {
 const (
 	inCustomHeader = "custom_header"
 	inAuthHeader   = "authorization_header"
+	inCookieHeader = "cookie"
 	inQuery        = "query"
 
 	credentialNotFoundMsg             = "credential not found"
 	credentialNotFoundInHeaderMsg     = "the credential was not found in the request header"
 	credentialLocationNotSupportedMsg = "the credential location is not supported"
 	authHeaderNotSetMsg               = "the Authorization header is not set"
+	cookieHeaderNotSetMsg             = "the Cookie header is not set"
 )
 
 var (
@@ -51,6 +53,8 @@ func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.Attri
 		return getCredFromCustomHeader(httpReq.GetHeaders(), c.KeySelector)
 	case inAuthHeader:
 		return getCredFromAuthHeader(httpReq.GetHeaders(), c.KeySelector)
+	case inCookieHeader:
+		return getFromCookieHeader(httpReq.GetHeaders(), c.KeySelector)
 	case inQuery:
 		return getCredFromQuery(httpReq.GetPath(), c.KeySelector)
 	default:
@@ -78,6 +82,23 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 	if strings.HasPrefix(authHeader, prefix) {
 		return strings.TrimPrefix(authHeader, prefix), nil
 	}
+	return "", notFoundErr
+}
+
+func getFromCookieHeader(headers map[string]string, keyName string) (string, error) {
+	header, ok := headers["cookie"]
+	if !ok {
+		authCredLog.Error(notFoundErr, cookieHeaderNotSetMsg)
+		return "", notFoundErr
+	}
+
+	for _, part := range strings.Split(header, ";") {
+		keyAndValue := strings.Split(strings.TrimSpace(part), "=")
+		if keyAndValue[0] == keyName {
+			return keyAndValue[1], nil
+		}
+	}
+
 	return "", notFoundErr
 }
 
