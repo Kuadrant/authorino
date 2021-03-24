@@ -16,10 +16,11 @@ var (
 type IdentityConfig struct {
 	Name string `yaml:"name"`
 
-	OIDC   *identity.OIDC   `yaml:"oidc,omitempty"`
-	MTLS   *identity.MTLS   `yaml:"mtls,omitempty"`
-	HMAC   *identity.HMAC   `yaml:"hmac,omitempty"`
-	APIKey *identity.APIKey `yaml:"api_key,omitempty"`
+	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
+	MTLS           *identity.MTLS           `yaml:"mtls,omitempty"`
+	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
+	APIKey         *identity.APIKey         `yaml:"api_key,omitempty"`
+	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
 }
 
 func init() {
@@ -37,6 +38,8 @@ func (config *IdentityConfig) Call(authContext common.AuthContext, ctx context.C
 		return config.HMAC.Call(authContext, ctx)
 	case config.APIKey != nil:
 		return config.APIKey.Call(authContext, ctx)
+	case config.KubernetesAuth != nil:
+		return config.KubernetesAuth.Call(authContext, ctx)
 	default:
 		return "", fmt.Errorf("invalid identity config")
 	}

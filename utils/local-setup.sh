@@ -5,7 +5,7 @@ set -euo pipefail
 export AUTHORINO_NAMESPACE="authorino"
 export KIND_CLUSTER_NAME="authorino-integration"
 kind delete cluster
-kind create cluster
+kind create cluster --config ./utils/kind-cluster.yaml
 
 echo "Building Authorino"
 docker build -t authorino:devel ./

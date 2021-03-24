@@ -109,6 +109,8 @@ spec:
                     - in
                     - key_selector
                     type: object
+                  kubernetes:
+                    type: object
                   name:
                     description: Adding a Name as we need to reference it from the
                       metadata section.
