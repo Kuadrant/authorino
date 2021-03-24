@@ -8,7 +8,7 @@ spec:
   identity:
     - name: friends # user defined
       credentials:
-        in: custom_header # options include: custom_header, authorization_header and query
+        in: custom_header # options include: custom_header, authorization_header, cookie and query
         key_selector: X-API-KEY # user defined
       api_key:
         label_selectors:
