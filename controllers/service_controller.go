@@ -106,10 +106,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			Name: identity.Name,
 		}
 
-		authCred := &auth_credentials.AuthCredential{
-			KeySelector: identity.Credentials.KeySelector,
-			In:          identity.Credentials.In,
-		} // TODO: prepare for when missing credentials field
+		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, identity.Credentials.In)
 
 		switch identity.GetType() {
 		// oidc
