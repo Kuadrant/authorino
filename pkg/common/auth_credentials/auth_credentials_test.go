@@ -16,12 +16,19 @@ func TestConstants(t *testing.T) {
 	assert.Check(t, "the credential location is not supported" == credentialLocationNotSupportedMsg)
 	assert.Check(t, "the Authorization header is not set" == authHeaderNotSetMsg)
 	assert.Check(t, "the Cookie header is not set" == cookieHeaderNotSetMsg)
+	assert.Check(t, "Bearer" == defaultKeySelector)
 }
 
 func TestNewAuthCredential(t *testing.T) {
 	creds := NewAuthCredential("api_key", "query")
 	assert.Check(t, creds.KeySelector == "api_key")
 	assert.Check(t, creds.In == "query")
+}
+
+func TestNewAuthCredentialDefaultValues(t *testing.T) {
+	creds := NewAuthCredential("", "")
+	assert.Check(t, creds.KeySelector == "Bearer")
+	assert.Check(t, creds.In == "authorization_header")
 }
 
 func TestGetCredentialsLocationNotSupported(t *testing.T) {
