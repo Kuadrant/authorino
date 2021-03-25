@@ -10,7 +10,9 @@ spec:
       credentials:
         in: authorization_header
         key_selector: Bearer
-      kubernetes: {}
+      kubernetes:
+        audiences:
+          - custom-audience
   metadata: []
   authorization: []
 ---

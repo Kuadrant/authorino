@@ -67,7 +67,9 @@ type Identity_APIKey struct {
 	LabelSelectors map[string]string `json:"label_selectors"`
 }
 
-type Identity_KubernetesAuth struct{}
+type Identity_KubernetesAuth struct {
+	Audiences []string `json:"audiences,omitempty"`
+}
 
 type Metadata struct {
 	Name     string             `json:"name"`

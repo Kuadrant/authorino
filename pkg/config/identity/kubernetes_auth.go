@@ -16,6 +16,7 @@ import (
 )
 
 type kubernetesAuthDetails struct {
+	audiences     []string
 	authenticator authenticationv1.AuthenticationV1Interface
 	serviceToken  string
 }
@@ -25,13 +26,14 @@ type KubernetesAuth struct {
 	kubernetesAuthDetails
 }
 
-func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials) *KubernetesAuth {
+func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audiences []string) *KubernetesAuth {
 	config, _ := rest.InClusterConfig()
 	k8sClient, _ := kubernetes.NewForConfig(config)
 
 	return &KubernetesAuth{
 		authCred,
 		kubernetesAuthDetails{
+			audiences,
 			k8sClient.AuthenticationV1(),
 			config.BearerToken,
 		},
@@ -49,10 +51,8 @@ func (kubeAuth *KubernetesAuth) Call(authCtx common.AuthContext, ctx context.Con
 	} else {
 		tr := authv1.TokenReview{
 			Spec: authv1.TokenReviewSpec{
-				Token: reqToken,
-				Audiences: []string{
-					request.Host,
-				},
+				Token:     reqToken,
+				Audiences: kubeAuth.audiencesWithDefault(request.Host),
 			},
 		}
 
@@ -72,5 +72,13 @@ func (kubeAuth *KubernetesAuth) Call(authCtx common.AuthContext, ctx context.Con
 				return nil, fmt.Errorf("Not authenticated")
 			}
 		}
+	}
+}
+
+func (kubeAuth *KubernetesAuth) audiencesWithDefault(defaultAudience string) []string {
+	if len(kubeAuth.audiences) > 0 {
+		return kubeAuth.audiences
+	} else {
+		return []string{defaultAudience}
 	}
 }
