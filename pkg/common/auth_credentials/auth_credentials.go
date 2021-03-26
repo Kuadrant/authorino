@@ -26,6 +26,8 @@ const (
 	inCookieHeader = "cookie"
 	inQuery        = "query"
 
+	defaultKeySelector = "Bearer"
+
 	credentialNotFoundMsg             = "credential not found"
 	credentialNotFoundInHeaderMsg     = "the credential was not found in the request header"
 	credentialLocationNotSupportedMsg = "the credential location is not supported"
@@ -40,9 +42,17 @@ var (
 
 // NewAuthCredential creates a new instance of AuthCredential
 func NewAuthCredential(selector string, location string) *AuthCredential {
+	var keySelector, in string
+	if keySelector = selector; keySelector == "" {
+		keySelector = defaultKeySelector
+	}
+	if in = location; in == "" {
+		in = inAuthHeader
+	}
+
 	return &AuthCredential{
-		selector,
-		location,
+		keySelector,
+		in,
 	}
 }
 
