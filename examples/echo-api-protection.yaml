@@ -18,7 +18,7 @@ spec:
         identitySource: keycloak
     - name: resource-data
       uma:
-        identitySource: keycloak
+        endpoint: http://keycloak:8080/auth/realms/ostia
         credentialsRef:
           name: umacredentialssecret
   authorization:

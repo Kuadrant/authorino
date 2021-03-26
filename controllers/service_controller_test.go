@@ -2,14 +2,12 @@ package controllers
 
 import (
 	"context"
-	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/3scale-labs/authorino/api/v1beta1"
 	"github.com/3scale-labs/authorino/pkg/cache"
+	. "github.com/3scale-labs/authorino/pkg/common/mocks"
 
 	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"
@@ -53,7 +51,7 @@ var (
 				{
 					Name: "resource-data",
 					UMA: &v1beta1.Metadata_UMA{
-						IdentitySource: "keycloak",
+						Endpoint: "http://127.0.0.1:9001/auth/realms/ostia",
 						Credentials: &v1.LocalObjectReference{
 							Name: "secret",
 						},
@@ -134,7 +132,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	authServer := mockHTTPServer()
+	authServer := NewHttpServerMock("127.0.0.1:9001", map[string]HttpServerMockResponses{
+		"/auth/realms/ostia/.well-known/openid-configuration": {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/ostia" }`},
+		"/auth/realms/ostia/.well-known/uma2-configuration":   {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/ostia" }`},
+	})
 	defer authServer.Close()
 	os.Exit(m.Run())
 }
@@ -156,26 +157,6 @@ func setupEnvironment(t *testing.T) ServiceReconciler {
 	}
 }
 
-func mockHTTPServer() *httptest.Server {
-	responses := make(map[string]string)
-	responses["/auth/realms/ostia/.well-known/openid-configuration"] = `{ "issuer": "http://127.0.0.1:9001/auth/realms/ostia" }`
-
-	listener, err := net.Listen("tcp", "127.0.0.1:9001")
-	if err != nil {
-		panic(err)
-	}
-	handler := func(rw http.ResponseWriter, req *http.Request) {
-		for url, response := range responses {
-			if url == req.URL.String() {
-				rw.Write([]byte(response))
-				break
-			}
-		}
-	}
-	authServer := &httptest.Server{Listener: listener, Config: &http.Server{Handler: http.HandlerFunc(handler)}}
-	authServer.Start()
-	return authServer
-}
 func TestReconcilerOk(t *testing.T) {
 	r := setupEnvironment(t)
 

@@ -50,11 +50,13 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 
 	queryResourcesURL, _ := url.Parse(provider.resourceRegistrationURL)
 	queryResourcesURL.RawQuery = "uri=" + uri
+
 	var resourceIDs []string
-	if err := sendRequestWithPAT(queryResourcesURL.String(), pat, ctx, &resourceIDs); err != nil {
+	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs); err != nil {
 		return nil, err
+	} else {
+		return resourceIDs, nil
 	}
-	return resourceIDs, nil
 }
 
 func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context) ([]interface{}, error) {
@@ -95,7 +97,7 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx contex
 	resourceURL, _ := url.Parse(provider.resourceRegistrationURL)
 	resourceURL.Path += "/" + resourceID
 	var data interface{}
-	if err := sendRequestWithPAT(resourceURL.String(), pat, ctx, &data); err != nil {
+	if err := pat.Get(resourceURL.String(), ctx, &data); err != nil {
 		return nil, err
 	}
 	return data, nil
@@ -109,114 +111,7 @@ func (pat *PAT) String() string {
 	return pat.AccessToken
 }
 
-type UMA struct {
-	Endpoint     string `yaml:"endpoint,omitempty"`
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-}
-
-// NewProvider discovers the uma config and returns a Provider struct with its claims
-func (uma *UMA) NewProvider(ctx context.Context) (*Provider, error) {
-	if err := common.CheckContext(ctx); err != nil {
-		return nil, err
-	}
-
-	// discover uma config
-	wellKnownURL := strings.TrimSuffix(uma.Endpoint, "/") + "/.well-known/uma2-configuration"
-	req, err := http.NewRequestWithContext(ctx, "GET", wellKnownURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var p providerJSON
-	var rawClaims []byte
-	err = common.UnmashalJSONResponse(resp, &p, &rawClaims)
-	if err != nil {
-		return nil, fmt.Errorf("uma: failed to decode provider discovery object: %v", err)
-	}
-
-	// verify same issuer
-	if p.Issuer != uma.Endpoint {
-		return nil, fmt.Errorf("uma: issuer did not match the issuer returned by provider, expected %q got %q", uma.Endpoint, p.Issuer)
-	}
-
-	return &Provider{
-		issuer:                  p.Issuer,
-		tokenURL:                p.TokenURL,
-		resourceRegistrationURL: p.ResourceRegistrationURL,
-		rawClaims:               rawClaims,
-	}, nil
-}
-
-func (uma *UMA) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
-	// discover uma config
-	// TODO: Move to a 'prepare' step and cache it (like in pkg/config/authorization/opa.go)
-	provider, err := uma.NewProvider(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// get the protection API token (PAT)
-	var pat PAT
-	if err := uma.requestPAT(ctx, provider, &pat); err != nil {
-		return nil, err
-	}
-
-	// get resource data
-	uri := authContext.GetRequest().Attributes.Request.Http.GetPath()
-	resourceData, err := provider.GetResourcesByURI(uri, pat, ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return resourceData, nil
-}
-
-func (uma *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
-	parsedURL, err := url.Parse(rawurl)
-	if err != nil {
-		return nil, err
-	}
-	parsedURL.User = url.UserPassword(uma.ClientID, uma.ClientSecret)
-	return parsedURL, nil
-}
-
-func (uma *UMA) requestPAT(ctx context.Context, provider *Provider, pat *PAT) error {
-	if err := common.CheckContext(ctx); err != nil {
-		return err
-	}
-
-	// build the request
-	tokenURL, _ := uma.clientAuthenticatedURL(provider.GetTokenURL())
-	data := url.Values{"grant_type": {"client_credentials"}}
-	encodedData := bytes.NewBufferString(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL.String(), encodedData)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	// get the response
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	// parse the pat
-	err = common.UnmashalJSONResponse(resp, pat, nil)
-	if err != nil {
-		return fmt.Errorf("uma: failed to decode PAT: %v", err)
-	}
-
-	return nil
-}
-
-func sendRequestWithPAT(rawurl string, pat PAT, ctx context.Context, v interface{}) error {
+func (pat *PAT) Get(rawurl string, ctx context.Context, v interface{}) error {
 	if err := common.CheckContext(ctx); err != nil {
 		return err
 	}
@@ -237,4 +132,113 @@ func sendRequestWithPAT(rawurl string, pat PAT, ctx context.Context, v interface
 	defer resp.Body.Close()
 
 	return common.UnmashalJSONResponse(resp, &v, nil)
+}
+
+func NewUMAMetadata(endpoint string, clientID string, clientSecret string) (*UMA, error) {
+	uma := &UMA{
+		Endpoint:     endpoint,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	}
+	if err := uma.discover(); err != nil {
+		return nil, err
+	} else {
+		return uma, nil
+	}
+}
+
+type UMA struct {
+	Endpoint     string `yaml:"endpoint,omitempty"`
+	ClientID     string `yaml:"client_id"`
+	ClientSecret string `yaml:"client_secret"`
+
+	provider *Provider
+}
+
+func (uma *UMA) wellKnownConfigEndpoint() string {
+	return strings.TrimSuffix(uma.Endpoint, "/") + "/.well-known/uma2-configuration"
+}
+
+func (uma *UMA) discover() error {
+	if resp, err := http.Get(uma.wellKnownConfigEndpoint()); err != nil {
+		return fmt.Errorf("failed to fetch uma config: %v", err)
+	} else {
+		defer resp.Body.Close()
+
+		var p providerJSON
+		var rawClaims []byte
+		if err = common.UnmashalJSONResponse(resp, &p, &rawClaims); err != nil {
+			return fmt.Errorf("failed to decode uma provider discovery object: %v", err)
+		}
+
+		// verify same issuer
+		if p.Issuer != uma.Endpoint {
+			return fmt.Errorf("uma endpoint does not match the issuer returned by provider, expected %q got %q", uma.Endpoint, p.Issuer)
+		}
+
+		uma.provider = &Provider{
+			issuer:                  p.Issuer,
+			tokenURL:                p.TokenURL,
+			resourceRegistrationURL: p.ResourceRegistrationURL,
+			rawClaims:               rawClaims,
+		}
+
+		return nil
+	}
+}
+
+func (uma *UMA) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+	// get the protection API token (PAT)
+	var pat PAT
+	if err := uma.requestPAT(ctx, &pat); err != nil {
+		return nil, err
+	}
+
+	// get resource data
+	uri := authContext.GetHttp().GetPath()
+	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resourceData, nil
+}
+
+func (uma *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
+	parsedURL, err := url.Parse(rawurl)
+	if err != nil {
+		return nil, err
+	}
+	parsedURL.User = url.UserPassword(uma.ClientID, uma.ClientSecret)
+	return parsedURL, nil
+}
+
+func (uma *UMA) requestPAT(ctx context.Context, pat *PAT) error {
+	if err := common.CheckContext(ctx); err != nil {
+		return err
+	}
+
+	// build the request
+	tokenURL, _ := uma.clientAuthenticatedURL(uma.provider.GetTokenURL())
+	data := url.Values{"grant_type": {"client_credentials"}}
+	encodedData := bytes.NewBufferString(data.Encode())
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL.String(), encodedData)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// get the response
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	// parse the pat
+	if err := common.UnmashalJSONResponse(resp, pat, nil); err != nil {
+		return fmt.Errorf("failed to decode uma pat: %v", err)
+	}
+
+	return nil
 }
