@@ -106,7 +106,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			Name: identity.Name,
 		}
 
-		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, identity.Credentials.In)
+		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
 
 		switch identity.GetType() {
 		// oidc
@@ -201,7 +201,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			for _, c := range authorization.JSON.Conditions {
 				condition := &authorinoAuthorization.JSONPatternMatchingRule{
 					Selector: c.Selector,
-					Operator: c.Operator,
+					Operator: string(c.Operator),
 					Value:    c.Value,
 				}
 				conditions = append(conditions, *condition)
@@ -211,7 +211,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			for _, r := range authorization.JSON.Rules {
 				rule := &authorinoAuthorization.JSONPatternMatchingRule{
 					Selector: r.Selector,
-					Operator: r.Operator,
+					Operator: string(r.Operator),
 					Value:    r.Value,
 				}
 				rules = append(rules, *rule)

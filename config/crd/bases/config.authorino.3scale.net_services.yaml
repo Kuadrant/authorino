@@ -1,6 +1,6 @@
 
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
@@ -15,177 +15,298 @@ spec:
     plural: services
     singular: service
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      description: Service is the Schema for the services API
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: ServiceSpec defines the desired state of Service
-          properties:
-            authorization:
-              items:
-                properties:
-                  json:
-                    properties:
-                      conditions:
-                        items:
-                          properties:
-                            operator:
-                              type: string
-                            selector:
-                              type: string
-                            value:
-                              type: string
-                          required:
-                          - operator
-                          - selector
-                          - value
-                          type: object
-                        type: array
-                      rules:
-                        items:
-                          properties:
-                            operator:
-                              type: string
-                            selector:
-                              type: string
-                            value:
-                              type: string
-                          required:
-                          - operator
-                          - selector
-                          - value
-                          type: object
-                        type: array
-                    type: object
-                  name:
-                    type: string
-                  opa:
-                    properties:
-                      inlineRego:
-                        type: string
-                    type: object
-                required:
-                - name
-                type: object
-              type: array
-            hosts:
-              items:
-                type: string
-              type: array
-            identity:
-              items:
-                properties:
-                  api_key:
-                    properties:
-                      label_selectors:
-                        additionalProperties:
-                          type: string
-                        type: object
-                    required:
-                    - label_selectors
-                    type: object
-                  credentials:
-                    properties:
-                      in:
-                        type: string
-                      key_selector:
-                        type: string
-                    required:
-                    - in
-                    - key_selector
-                    type: object
-                  kubernetes:
-                    properties:
-                      audiences:
-                        items:
-                          type: string
-                        type: array
-                    type: object
-                  name:
-                    description: Adding a Name as we need to reference it from the
-                      metadata section.
-                    type: string
-                  oidc:
-                    properties:
-                      endpoint:
-                        type: string
-                    required:
-                    - endpoint
-                    type: object
-                required:
-                - name
-                type: object
-              type: array
-            metadata:
-              items:
-                properties:
-                  name:
-                    type: string
-                  uma:
-                    properties:
-                      credentialsRef:
-                        description: LocalObjectReference contains enough information
-                          to let you locate the referenced object inside the same
-                          namespace.
-                        properties:
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                        type: object
-                      endpoint:
-                        type: string
-                    required:
-                    - credentialsRef
-                    - endpoint
-                    type: object
-                  userInfo:
-                    description: Metadata_UserInfo & Metadata_UMA are the same right
-                      now, I'm keeping them split just in case I'm missing something,
-                      but we can merge them into a single type if they don't really
-                      require any extra field...
-                    properties:
-                      identitySource:
-                        type: string
-                    required:
-                    - identitySource
-                    type: object
-                required:
-                - name
-                type: object
-              type: array
-          required:
-          - hosts
-          type: object
-        status:
-          description: ServiceStatus defines the observed state of Service
-          properties:
-            ready:
-              type: boolean
-          required:
-          - ready
-          type: object
-      type: object
-  version: v1beta1
   versions:
   - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: Service is the schema for Authorino's services API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Specifies the desired state of the Service resource, i.e.
+              the authencation/authorization scheme to be applied to protect the matching
+              HTTP services.
+            properties:
+              authorization:
+                description: Authorization is the list of authorization policies.
+                  All policies in this list MUST evaluate to "true" for a request
+                  be successful in the authorization phase.
+                items:
+                  description: 'Authorization policy to be enforced. Apart from "name",
+                    one of the following parameters is required and only one of the
+                    following parameters is allowed: "opa" or "json".'
+                  properties:
+                    json:
+                      description: JSON pattern matching authorization policy.
+                      properties:
+                        conditions:
+                          description: Conditions that must match for Authorino to
+                            enforce this policy; otherwise, the policy will be skipped.
+                          items:
+                            properties:
+                              operator:
+                                description: 'The binary operator to be applied to
+                                  the content fetched from the authorization JSON,
+                                  for comparison with "value". Possible values are:
+                                  "eq" (equal to), "neq" (not equal to), "incl" (includes;
+                                  for arrays), "excl" (excludes; for arrays), "matches"
+                                  (regex)'
+                                enum:
+                                - eq
+                                - neq
+                                - incl
+                                - excl
+                                - matches
+                                type: string
+                              selector:
+                                description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                                  The value is used to fetch content from the input
+                                  authorization JSON built by Authorino along the
+                                  identity and metadata phases.
+                                type: string
+                              value:
+                                description: The value of reference for the comparison
+                                  with the content fetched from the authorization
+                                  policy. If used with the "matches" operator, the
+                                  value must compile to a valid Golang regex.
+                                type: string
+                            required:
+                            - operator
+                            - selector
+                            - value
+                            type: object
+                          type: array
+                        rules:
+                          description: The rules that must all evaluate to "true"
+                            for the request to be authorized.
+                          items:
+                            properties:
+                              operator:
+                                description: 'The binary operator to be applied to
+                                  the content fetched from the authorization JSON,
+                                  for comparison with "value". Possible values are:
+                                  "eq" (equal to), "neq" (not equal to), "incl" (includes;
+                                  for arrays), "excl" (excludes; for arrays), "matches"
+                                  (regex)'
+                                enum:
+                                - eq
+                                - neq
+                                - incl
+                                - excl
+                                - matches
+                                type: string
+                              selector:
+                                description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                                  The value is used to fetch content from the input
+                                  authorization JSON built by Authorino along the
+                                  identity and metadata phases.
+                                type: string
+                              value:
+                                description: The value of reference for the comparison
+                                  with the content fetched from the authorization
+                                  policy. If used with the "matches" operator, the
+                                  value must compile to a valid Golang regex.
+                                type: string
+                            required:
+                            - operator
+                            - selector
+                            - value
+                            type: object
+                          type: array
+                      type: object
+                    name:
+                      description: Name of the authorization policy.
+                      type: string
+                    opa:
+                      description: Open Policy Agent (OPA) authorization policy.
+                      properties:
+                        inlineRego:
+                          description: Authorization policy as a Rego language document.
+                            The Rego document must include the "allow" condition,
+                            set by Authorino to "false" by default (i.e. requests
+                            are unauthorized unless changed). The Rego document must
+                            NOT include the "package" declaration in line 1.
+                          type: string
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
+              hosts:
+                description: The list of public host names of the HTTP services protected
+                  by this authentication/authorization scheme. Authorino uses the
+                  requested host to lookup for the corresponding authentication/authorization
+                  configs to enforce.
+                items:
+                  type: string
+                type: array
+              identity:
+                description: List of identity sources/authentication modes. At least
+                  one config of this list MUST evaluate to a valid identity for a
+                  request to be successful in the identity verification phase.
+                items:
+                  description: 'The identity source/authentication mode config. Apart
+                    from "name", one of the following parameters is required and only
+                    one of the following parameters is allowed: "oicd", "api_key"
+                    or "kubernetes".'
+                  properties:
+                    api_key:
+                      properties:
+                        label_selectors:
+                          additionalProperties:
+                            type: string
+                          description: The map of label selectors used by Authorino
+                            to match secrets from the cluster storing valid credentials
+                            to authenticate to this service
+                          type: object
+                      required:
+                      - label_selectors
+                      type: object
+                    credentials:
+                      description: Defines where client credentials are required to
+                        be passed in the request for this identity source/authentication
+                        mode. If omitted, it defaults to client credentials passed
+                        in the HTTP Authorization header and the "Bearer" prefix expected
+                        prepended to the credentials value (token, API key, etc).
+                      properties:
+                        in:
+                          default: authorization_header
+                          description: The location in the request where client credentials
+                            shall be passed on requests authenticating with this identity
+                            source/authentication mode.
+                          enum:
+                          - authorization_header
+                          - custom_header
+                          - query
+                          - cookie
+                          type: string
+                        key_selector:
+                          description: Used in conjunction with the `in` parameter.
+                            When used with `authorization_header`, the value is the
+                            prefix of the client credentials string, separated by
+                            a white-space, in the HTTP Authorization header (e.g.
+                            "Bearer", "Basic"). When used with `custom_header`, `query`
+                            or `cookie`, the value is the name of the HTTP header,
+                            query string parameter or cookie key, respectively.
+                          type: string
+                      required:
+                      - key_selector
+                      type: object
+                    kubernetes:
+                      properties:
+                        audiences:
+                          description: The list of audiences (scopes) that must be
+                            claimed in a Kubernetes authentication token supplied
+                            in the request, and reviewed by Authorino. If omitted,
+                            Authorino will review tokens expecting the host name of
+                            the requested protected service amongst the audiences.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    name:
+                      description: The name of this identity source/authentication
+                        mode. It usually identifies a source of identities or group
+                        of users/clients of the protected service. It may as well
+                        be used for this identity config to be referred in some metadata
+                        configs.
+                      type: string
+                    oidc:
+                      properties:
+                        endpoint:
+                          description: Endpoint of the OIDC issuer. Authorino will
+                            append to this value the well-known path to the OpenID
+                            Connect discovery endpoint (i.e. "/.well-known/openid-configuration"),
+                            used to automatically discover the OpenID Connect configuration,
+                            whose set of claims is expected to include (among others)
+                            the "jkws_uri" claim. The value must coincide with the
+                            value of  the "iss" (issuer) claim of the discovered OpenID
+                            Connect configuration.
+                          type: string
+                      required:
+                      - endpoint
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
+              metadata:
+                description: List of metadata source configs. Authorino fetches JSON
+                  content from sources on this list on every request.
+                items:
+                  description: 'The metadata config. Apart from "name", one of the
+                    following parameters is required and only one of the following
+                    parameters is allowed: "userInfo" or "uma".'
+                  properties:
+                    name:
+                      description: The name of the metadata source. Policies of te
+                        authorization phase can refer to this metadata by this value.
+                      type: string
+                    uma:
+                      description: User-Managed Access (UMA) source of resource data.
+                      properties:
+                        credentialsRef:
+                          description: Reference to a Kubernetes secret in the same
+                            namespace, that stores client credentials to the resource
+                            registration API of the UMA server.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                        endpoint:
+                          description: The endpoint of the UMA server. The value must
+                            coincide with the "issuer" claim of the UMA config discovered
+                            from the well-known uma configuration endpoint.
+                          type: string
+                      required:
+                      - credentialsRef
+                      - endpoint
+                      type: object
+                    userInfo:
+                      description: OpendID Connect UserInfo linked to an OIDC identity
+                        config of this same spec.
+                      properties:
+                        identitySource:
+                          description: The name of an OIDC identity source included
+                            in the "identity" section and whose OpenID Connect configuration
+                            discovered includes the OIDC "userinfo_endpoint" claim.
+                          type: string
+                      required:
+                      - identitySource
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
+            required:
+            - hosts
+            type: object
+          status:
+            description: ServiceStatus defines the observed state of Service
+            properties:
+              ready:
+                type: boolean
+            required:
+            - ready
+            type: object
+        type: object
     served: true
     storage: true
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

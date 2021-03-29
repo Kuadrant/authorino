@@ -13,7 +13,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
 
 #Use bash as shell
 SHELL = /bin/bash
