@@ -365,14 +365,6 @@ spec:
 
 A more concrete example can be found [here](examples/echo-api-protection.yaml).
 
-#### Inline Rego policies
-
-For inline Rego policies (with the `opa` authorization type), the following objects are available in every document and can be used in the body of any user-defined policy:
-- `http_request`: attributes of the HTTP request (e.g., host, path, headers, etc) as passed by Envoy to Authorino
-- `identity`: whatever is resolved from the "identity" section of Authorino config, e.g. a decoded JWT of an OIDC authentication
-- `metadata`: whatever is resolved from the "metadata" section of Authorino config, e.g. OIDC user info, resource data fetched from a UMA-compliant server
-- `path` (Array): just an array of each segment of `http_request.path` to ease writing of rules with comparisson expressions using the requested path.
-
 ## Try it out with the example
 
 The only requirements to try out the example are [Golang](https://golang.org) and a [Docker](https://docker.com) daemon running. The development/testing environment consists of a Kubernetes server with the following components:

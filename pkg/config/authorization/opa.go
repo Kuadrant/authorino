@@ -13,10 +13,6 @@ import (
 
 const (
 	policyTemplate = `package %s
-import input.context.request.http as http_request
-import input.auth.identity
-import input.auth.metadata
-path = split(trim_left(http_request.path, "/"), "/")
 default allow = false
 %s`
 
