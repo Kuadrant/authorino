@@ -4,24 +4,37 @@ set -euo pipefail
 
 export AUTHORINO_NAMESPACE="authorino"
 export KIND_CLUSTER_NAME="authorino-integration"
+
+load_image_and_deploy() {
+  if command -v jq &> /dev/null; then
+    for img in $(kubectl apply -f $1 -o json | jq -r '.items[] | select(.kind == "Deployment") | .spec.template.spec.containers[].image'); do
+      docker image inspect $img && kind load docker-image $img --name ${KIND_CLUSTER_NAME}
+    done
+  fi
+
+  kubectl -n "${AUTHORINO_NAMESPACE}" apply -f $1
+}
+
 kind delete cluster
 kind create cluster
 
-echo "Building Authorino"
-docker build -t authorino:devel ./
+if [ ! -n "${SKIP_BUILD:-}" ]; then
+  echo "Building Authorino"
+  docker build -t authorino:devel ./
+fi
 kind load docker-image authorino:devel --name ${KIND_CLUSTER_NAME}
 
 echo "Creating namespace"
 kubectl create namespace "${AUTHORINO_NAMESPACE}"
 
 echo "Deploying Keycloak"
-kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/keycloak.yaml
+load_image_and_deploy examples/keycloak.yaml
 
 echo "Deploying Envoy"
-kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/envoy.yaml
+load_image_and_deploy examples/envoy.yaml
 
 echo "Deploying echo-api app"
-kubectl -n "${AUTHORINO_NAMESPACE}" apply -f examples/echo-api.yaml
+load_image_and_deploy examples/echo-api.yaml
 
 echo "Deploying Authorino"
 kustomize build config/default | kubectl -n "${AUTHORINO_NAMESPACE}" apply -f -
