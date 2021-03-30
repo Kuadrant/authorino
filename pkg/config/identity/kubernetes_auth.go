@@ -15,9 +15,13 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+type kubernetesTokenReviewer interface {
+	TokenReviews() authenticationv1.TokenReviewInterface
+}
+
 type kubernetesAuthDetails struct {
 	audiences     []string
-	authenticator authenticationv1.AuthenticationV1Interface
+	authenticator kubernetesTokenReviewer
 	serviceToken  string
 }
 

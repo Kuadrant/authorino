@@ -13,45 +13,8 @@ import (
 	"gotest.tools/assert"
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	authenticationv1 "k8s.io/client-go/kubernetes/typed/authentication/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/util/flowcontrol"
 )
-
-type authenticatorClientMock struct{}
-
-func (client *authenticatorClientMock) GetRateLimiter() flowcontrol.RateLimiter {
-	return nil
-}
-
-func (client *authenticatorClientMock) Verb(_ string) *rest.Request {
-	return nil
-}
-
-func (client *authenticatorClientMock) Post() *rest.Request {
-	return nil
-}
-
-func (client *authenticatorClientMock) Put() *rest.Request {
-	return nil
-}
-
-func (client *authenticatorClientMock) Patch(_ types.PatchType) *rest.Request {
-	return nil
-}
-func (client *authenticatorClientMock) Get() *rest.Request {
-	return nil
-}
-
-func (client *authenticatorClientMock) Delete() *rest.Request {
-	return nil
-}
-
-func (client *authenticatorClientMock) APIVersion() schema.GroupVersion {
-	return schema.GroupVersion{}
-}
 
 type tokenReviewData struct {
 	requestToken  string
@@ -105,10 +68,6 @@ func (client *k8sAuthenticationClientMock) TokenReviews() authenticationv1.Token
 			client.audiences,
 		},
 	}
-}
-
-func (client *k8sAuthenticationClientMock) RESTClient() rest.Interface {
-	return &authenticatorClientMock{}
 }
 
 func newKubernetesAuth(authCreds *mock_auth_credentials.MockAuthCredentials, audiences []string, token tokenReviewData) *KubernetesAuth {
