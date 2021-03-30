@@ -26,9 +26,16 @@ type KubernetesAuth struct {
 	kubernetesAuthDetails
 }
 
-func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audiences []string) *KubernetesAuth {
-	config, _ := rest.InClusterConfig()
-	k8sClient, _ := kubernetes.NewForConfig(config)
+func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audiences []string) (*KubernetesAuth, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
 
 	return &KubernetesAuth{
 		authCred,
@@ -37,7 +44,7 @@ func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audien
 			k8sClient.AuthenticationV1(),
 			config.BearerToken,
 		},
-	}
+	}, nil
 }
 
 func (kubeAuth *KubernetesAuth) Call(authCtx common.AuthContext, ctx context.Context) (interface{}, error) {
