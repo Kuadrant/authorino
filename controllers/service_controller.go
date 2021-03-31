@@ -147,26 +147,22 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		switch metadata.GetType() {
 		// uma
 		case configv1beta1.MetadataUma:
-			translatedMetadata.UMA = &authorinoMetadata.UMA{}
-
-			// TODO: validate the object on creating to make sure the secret exist? or just retry?
-			if metadata.UMA.Credentials != nil {
-				secret := &v1.Secret{}
-				if err := r.Client.Get(ctx, types.NamespacedName{
-					Namespace: service.Namespace,
-					Name:      metadata.UMA.Credentials.Name},
-					secret); err != nil {
-					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
-				}
-
-				translatedMetadata.UMA.ClientID = string(secret.Data["clientID"])
-				translatedMetadata.UMA.ClientSecret = string(secret.Data["clientSecret"])
+			secret := &v1.Secret{}
+			if err := r.Client.Get(ctx, types.NamespacedName{
+				Namespace: service.Namespace,
+				Name:      metadata.UMA.Credentials.Name},
+				secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
-			// Find the actual name for the Identity Source and use that information for the translated object.
-			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UMA.IdentitySource); err != nil {
+
+			if uma, err := authorinoMetadata.NewUMAMetadata(
+				metadata.UMA.Endpoint,
+				string(secret.Data["clientID"]),
+				string(secret.Data["clientSecret"]),
+			); err != nil {
 				return nil, err
 			} else {
-				translatedMetadata.UMA.Endpoint = idConfig.OIDC.Endpoint
+				translatedMetadata.UMA = uma
 			}
 
 		// user_info

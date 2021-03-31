@@ -148,10 +148,11 @@ spec:
                               TODO: Add other useful fields. apiVersion, kind, uid?'
                             type: string
                         type: object
-                      identitySource:
+                      endpoint:
                         type: string
                     required:
-                    - identitySource
+                    - credentialsRef
+                    - endpoint
                     type: object
                   userInfo:
                     description: Metadata_UserInfo & Metadata_UMA are the same right

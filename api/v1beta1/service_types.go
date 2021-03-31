@@ -93,8 +93,8 @@ type Metadata_UserInfo struct {
 	IdentitySource string `json:"identitySource"`
 }
 type Metadata_UMA struct {
-	IdentitySource string                   `json:"identitySource"`
-	Credentials    *v1.LocalObjectReference `json:"credentialsRef,omitempty"`
+	Endpoint    string                   `json:"endpoint"`
+	Credentials *v1.LocalObjectReference `json:"credentialsRef"`
 }
 
 type Authorization struct {
