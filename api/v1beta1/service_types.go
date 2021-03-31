@@ -25,6 +25,7 @@ const (
 	TypeUnknown                      = "UNKNOWN"
 	IdentityOidc                     = "IDENTITY_OIDC"
 	IdentityApiKey                   = "IDENTITY_APIKEY"
+	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
 	MetadataUma                      = "METADATA_UMA"
 	MetadataUserinfo                 = "METADATA_USERINFO"
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
@@ -51,10 +52,11 @@ type Credentials struct {
 
 type Identity struct {
 	// Adding a Name as we need to reference it from the metadata section.
-	Name        string               `json:"name"`
-	Credentials Credentials          `json:"credentials,omitempty"`
-	Oidc        *Identity_OidcConfig `json:"oidc,omitempty"`
-	APIKey      *Identity_APIKey     `json:"api_key,omitempty"`
+	Name           string                   `json:"name"`
+	Credentials    Credentials              `json:"credentials,omitempty"`
+	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
+	APIKey         *Identity_APIKey         `json:"api_key,omitempty"`
+	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
 }
 
 type Identity_OidcConfig struct {
@@ -63,6 +65,10 @@ type Identity_OidcConfig struct {
 
 type Identity_APIKey struct {
 	LabelSelectors map[string]string `json:"label_selectors"`
+}
+
+type Identity_KubernetesAuth struct {
+	Audiences []string `json:"audiences,omitempty"`
 }
 
 type Metadata struct {
@@ -152,8 +158,11 @@ func (i *Identity) GetType() string {
 		return IdentityOidc
 	} else if i.APIKey != nil {
 		return IdentityApiKey
+	} else if i.KubernetesAuth != nil {
+		return IdentityKubernetesAuth
+	} else {
+		return TypeUnknown
 	}
-	return TypeUnknown
 }
 
 func init() {

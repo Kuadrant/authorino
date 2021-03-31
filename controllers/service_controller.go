@@ -121,6 +121,14 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		case configv1beta1.IdentityApiKey:
 			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client)
 
+		// kubernetes auth
+		case configv1beta1.IdentityKubernetesAuth:
+			if k8sAuthConfig, err := authorinoIdentity.NewKubernetesAuthIdentity(authCred, identity.KubernetesAuth.Audiences); err != nil {
+				return nil, err
+			} else {
+				translatedIdentity.KubernetesAuth = k8sAuthConfig
+			}
+
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", identity)
 		}

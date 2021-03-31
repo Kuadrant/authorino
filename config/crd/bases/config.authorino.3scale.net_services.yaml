@@ -109,6 +109,13 @@ spec:
                     - in
                     - key_selector
                     type: object
+                  kubernetes:
+                    properties:
+                      audiences:
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   name:
                     description: Adding a Name as we need to reference it from the
                       metadata section.

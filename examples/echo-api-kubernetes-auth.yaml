@@ -1,0 +1,40 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: echo-api
+spec:
+  hosts:
+    - echo-api
+  identity:
+    - name: authorized-service-accounts
+      credentials:
+        in: authorization_header
+        key_selector: Bearer
+      kubernetes:
+        audiences:
+          - custom-audience
+  metadata: []
+  authorization: []
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-token-issuer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sa-token-issuer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin # it's just for the demo :-)
+subjects:
+- kind: ServiceAccount
+  name: sa-token-issuer
+  namespace: ${AUTHORINO_NAMESPACE}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-consumer
