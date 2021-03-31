@@ -123,7 +123,7 @@ Security token devoid of explicit meaning (e.g. random string); it requires the 
 
 
 **Permission**<br/>
-Association between a protected resource the authorization policies that must be evaluated whether access should be granted; e.g. _<user|group|role> CAN DO <action> ON RESOURCE <X>_.
+Association between a protected resource the authorization policies that must be evaluated whether access should be granted; e.g. _`<user|group|role>` CAN DO `<action>` ON RESOURCE `<X>`_.
 
 
 **Policy**<br/>
