@@ -11,7 +11,7 @@ to this doc with a PR, or modifying the use elsewhere to align with these terms.
 * **Auth client**: an application client that uses an auth server, either to authenticate or to authorize identities who want to consume resources from a resources server; it can represent a user application like a SPA or a mobile app, or a resource server
 * **Auth server**: a server where auth clients, users, roles, scopes, resources, policies and permissions are stored and managed
 * **Authentication (AuthN)**: the process of verifying that a given credential belongs to a claimed-to-be identity; usually resulting in the issuing of an access token
-* **Authorization (AuthZ)**: the process of grating (or denied) access over a resource to a party based on the set of policies and permissions enforced and
+* **Authorization (AuthZ)**: the process of granting (or denying) access over a resource to a party based on the set of policies and permissions enforced
 * **Capability**: usually employed to refer to a management feature of a cloud-native system, based on the definition and use of Kubernetes custom resources (CRDs and CRs), that enables that system to one of the following “capability levels”: Basic Install, Seamless Upgrades, Full Lifecycle, Deep Insights, Auto Pilot
 * **Claim**: an attribute packaged in a security token which represents a claim that the provider of the token is making about an entity
 * **Client ID**:
