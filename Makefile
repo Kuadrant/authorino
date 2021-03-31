@@ -63,7 +63,9 @@ manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 # Download vendor dependencies
+.PHONY: vendor
 vendor:
+	go mod tidy -v
 	go mod vendor -v
 
 # Run go fmt against code
