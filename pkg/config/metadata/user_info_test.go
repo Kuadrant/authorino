@@ -98,7 +98,7 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	otherOidcEvaluator, _ := identity.NewOIDC(fmt.Sprintf("http://wrongServer"), ta.authCredMock)
+	otherOidcEvaluator, _ := identity.NewOIDC("http://wrongServer", ta.authCredMock)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(otherOidcEvaluator)
 	ta.authContextMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
