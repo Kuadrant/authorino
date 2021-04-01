@@ -117,7 +117,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 				translatedIdentity.OIDC = oidcConfig
 			}
 
-		// api_key
+		// apiKey
 		case configv1beta1.IdentityApiKey:
 			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client)
 

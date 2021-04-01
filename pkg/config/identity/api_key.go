@@ -28,7 +28,7 @@ type APIKeyIdentityEvaluator interface {
 
 type apiKeyDetails struct {
 	Name                  string            `yaml:"name"`
-	LabelSelectors        map[string]string `yaml:"label_selectors"`
+	LabelSelectors        map[string]string `yaml:"labelSelectors"`
 	k8sClient             client.Reader
 	authorizedCredentials map[string]v1.Secret
 }

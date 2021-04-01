@@ -62,7 +62,7 @@ kubectl -n authorino patch services.config.authorino.3scale.net/echo-api --type=
       },
       "credentials": {
         "in": "authorization_header",
-        "key_selector": "Bearer"
+        "keySelector": "Bearer"
       }
     }
   },

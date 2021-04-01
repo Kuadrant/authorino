@@ -158,12 +158,12 @@ spec:
                 items:
                   description: 'The identity source/authentication mode config. Apart
                     from "name", one of the following parameters is required and only
-                    one of the following parameters is allowed: "oicd", "api_key"
-                    or "kubernetes".'
+                    one of the following parameters is allowed: "oicd", "apiKey" or
+                    "kubernetes".'
                   properties:
-                    api_key:
+                    apiKey:
                       properties:
-                        label_selectors:
+                        labelSelectors:
                           additionalProperties:
                             type: string
                           description: The map of label selectors used by Authorino
@@ -171,7 +171,7 @@ spec:
                             to authenticate to this service
                           type: object
                       required:
-                      - label_selectors
+                      - labelSelectors
                       type: object
                     credentials:
                       description: Defines where client credentials are required to
@@ -191,7 +191,7 @@ spec:
                           - query
                           - cookie
                           type: string
-                        key_selector:
+                        keySelector:
                           description: Used in conjunction with the `in` parameter.
                             When used with `authorization_header`, the value is the
                             prefix of the client credentials string, separated by
@@ -201,7 +201,7 @@ spec:
                             query string parameter or cookie key, respectively.
                           type: string
                       required:
-                      - key_selector
+                      - keySelector
                       type: object
                     kubernetes:
                       properties:

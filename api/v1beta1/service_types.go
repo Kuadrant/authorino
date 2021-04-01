@@ -64,11 +64,11 @@ type Credentials struct {
 	// Used in conjunction with the `in` parameter.
 	// When used with `authorization_header`, the value is the prefix of the client credentials string, separated by a white-space, in the HTTP Authorization header (e.g. "Bearer", "Basic").
 	// When used with `custom_header`, `query` or `cookie`, the value is the name of the HTTP header, query string parameter or cookie key, respectively.
-	KeySelector string `json:"key_selector"`
+	KeySelector string `json:"keySelector"`
 }
 
 // The identity source/authentication mode config.
-// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "oicd", "api_key" or "kubernetes".
+// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "oicd", "apiKey" or "kubernetes".
 type Identity struct {
 	// The name of this identity source/authentication mode.
 	// It usually identifies a source of identities or group of users/clients of the protected service.
@@ -80,7 +80,7 @@ type Identity struct {
 	Credentials Credentials `json:"credentials,omitempty"`
 
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
-	APIKey         *Identity_APIKey         `json:"api_key,omitempty"`
+	APIKey         *Identity_APIKey         `json:"apiKey,omitempty"`
 	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
 }
 
@@ -93,7 +93,7 @@ type Identity_OidcConfig struct {
 
 type Identity_APIKey struct {
 	// The map of label selectors used by Authorino to match secrets from the cluster storing valid credentials to authenticate to this service
-	LabelSelectors map[string]string `json:"label_selectors"`
+	LabelSelectors map[string]string `json:"labelSelectors"`
 }
 
 type Identity_KubernetesAuth struct {

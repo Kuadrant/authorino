@@ -19,7 +19,7 @@ type IdentityConfig struct {
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
 	MTLS           *identity.MTLS           `yaml:"mtls,omitempty"`
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
-	APIKey         *identity.APIKey         `yaml:"api_key,omitempty"`
+	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
 }
 
