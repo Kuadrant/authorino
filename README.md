@@ -464,6 +464,10 @@ curl -H 'Host: echo-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://lo
 kind delete clusters authorino-integration
 ```
 
+
+## Terminology
+You can find definitions for terms used in this document and others in the [Terminology](docs/terminology.md) document
+
 ## Contributing
 
 - Check the list of issues in GitHub
