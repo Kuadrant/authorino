@@ -1,0 +1,38 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: friends
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  authorization:
+    - name: forbidden-ip
+      json:
+        conditions:
+          - selector: context.request.http.headers.x-forwarded-for
+            operator: matches
+            value: "123\\.45\\.6\\.78"
+        rules:
+          - selector: auth
+            operator: eq
+            value: deny # a nasty trick to always deny
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: friend-1-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque

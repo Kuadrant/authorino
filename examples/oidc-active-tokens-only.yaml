@@ -1,0 +1,22 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: keycloak
+      oidc:
+        endpoint: http://keycloak:8080/auth/realms/kuadrant
+  metadata:
+    - name: user_info
+      userInfo:
+        identitySource: keycloak
+  authorization:
+    - name: active-tokens-only
+      json:
+        rules:
+          - selector: auth.metadata.user_info.email
+            operator: neq
+            value: ""

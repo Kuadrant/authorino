@@ -1,0 +1,34 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: keycloak
+      oidc:
+        endpoint: http://keycloak:8080/auth/realms/kuadrant
+    - name: dex
+      oidc:
+        endpoint: http://dex:5556
+  metadata:
+    - name: user_info
+      userInfo:
+        identitySource: keycloak
+    - name: user_info # a cheap trick to make it easier to read in authorization policy
+      userInfo:
+        identitySource: dex
+  authorization:
+    - name: email-verified-only
+      json:
+        rules:
+          - selector: "auth.identity.email_verified"
+            operator: eq
+            value: "true"
+    - name: active-tokens-only
+      json:
+        rules:
+          - selector: auth.metadata.user_info.email
+            operator: neq
+            value: ""

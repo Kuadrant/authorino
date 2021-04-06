@@ -1,0 +1,22 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: keycloak
+      oidc:
+        endpoint: http://keycloak:8080/auth/realms/kuadrant
+  authorization:
+    - name: rbac
+      json:
+        conditions:
+          - selector: "context.request.http.path"
+            operator: eq
+            value: "/goodbye"
+        rules:
+          - selector: "auth.identity.realm_access.roles"
+            operator: incl
+            value: "admin"

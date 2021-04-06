@@ -1,8 +1,11 @@
 .git
+.github
 .gitignore
 .gitmodules
 .dockerignore
+
+docs
 examples
-legacy
-pocs
 tmp
+
+.idea

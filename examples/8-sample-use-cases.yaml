@@ -1,0 +1,136 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: my-api-protection
+spec:
+  hosts:
+    - myapi.io
+  identity:
+    # use case #1
+    - name: known-clients
+      kubernetes:
+        audiences:
+          - myapi
+
+    # use case #2
+    - name: other-users
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          custom-label: friends
+
+    # use case #4
+    - name: beta-testers
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: beta-testers
+
+    # use case #5
+    - name: keycloak-users
+      oidc:
+        endpoint: http://keycloak:8080/auth/realms/kuadrant
+
+    # use case #8
+    - name: legacy-iam
+      oidc:
+        endpoint: http://dex:5556
+      credentials:
+        in: cookie
+        keySelector: ACCESS-TOKEN
+
+  metadata:
+    # use case #7
+    - name: resource-data
+      uma:
+        endpoint: http://keycloak:8080/auth/realms/kuadrant
+        credentialsRef:
+          name: uma-credentials-secret
+
+  authorization:
+    # use case #3
+    - name: forbidden-ips
+      json:
+        conditions:
+          - selector: context.request.http.headers.x-forwarded-for
+            operator: matches
+            value: "123\\.45\\.6\\.78"
+        rules:
+          - selector: auth
+            operator: eq
+            value: deny # a trick to deny all requests when the conditions match
+
+    # use case #4
+    - name: short-lived-api-keys-for-beta-testers
+      opa:
+        inlineRego: |
+          identityMetadata = object.get(input.auth.identity, "metadata", {})
+          group = object.get(object.get(identityMetadata, "labels", {}), "group", "")
+
+          allow {
+            creationTimestampStr := identityMetadata.creationTimestamp
+            creationTimestamp := time.parse_rfc3339_ns(creationTimestampStr)
+            durationNs := time.now_ns() - creationTimestamp
+            durationDays := (durationNs/1000000000)/86400
+
+            durationDays <= 5
+            group == "beta-testers"
+          }
+
+          allow {
+            group != "beta-testers"
+          }
+
+    # use case #6
+    - name: only-admins-say-hello
+      json:
+        conditions:
+          - selector: auth.identity.iss
+            operator: eq
+            value: http://keycloak:8080/auth/realms/kuadrant
+          - selector: context.request.http.path
+            operator: eq
+            value: /hello
+
+        rules:
+          - selector: auth.identity.realm_access.roles
+            operator: incl
+            value: admin
+
+    # use case #7
+    - name: owned-resources
+      opa:
+        inlineRego: |
+          issuer = object.get(input.auth.identity, "iss", "")
+          http_request = input.context.request.http
+          request_path = split(trim_left(http_request.path, "/"), "/")
+
+          keycloak { issuer == "http://keycloak:8080/auth/realms/kuadrant" }
+          not_keycloak { issuer != "http://keycloak:8080/auth/realms/kuadrant" }
+
+          get { http_request.method == "GET" }
+          not_get { http_request.method != "GET" }
+
+          owned_resource { some id; request_path = ["my-resources", id] }
+          not_owned_resource { request_path = ["my-resources"] }
+
+          get_owned_resource { get; owned_resource }
+
+          owns_the_resource {
+            resource := object.get(input.auth.metadata, "resource-data", [])[0]
+            resource.owner.id == input.auth.identity.sub
+          }
+
+          allow { keycloak; get_owned_resource; owns_the_resource }
+          allow { keycloak; not_get }
+          allow { keycloak; not_owned_resource }
+          allow { not_keycloak }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: uma-credentials-secret
+stringData:
+  clientID: talker-api
+  clientSecret: 523b92b6-625d-4e1e-a313-77e7a8ae4e88
+type: Opaque

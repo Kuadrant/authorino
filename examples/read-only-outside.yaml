@@ -1,0 +1,38 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: friends
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  authorization:
+    - name: read-only-outside
+      opa:
+        inlineRego: |
+          local_network {
+            ips := split(input.context.request.http.headers["x-forwarded-for"], ",")
+            ips[_] == "192.168.1.10"
+          }
+
+          allow { local_network }
+          allow { input.context.request.http.method == "GET" }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: friend-1-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque

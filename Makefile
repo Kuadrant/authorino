@@ -1,7 +1,9 @@
 # Current Operator version
 VERSION ?= 0.0.1
+
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
+
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
@@ -10,8 +12,10 @@ ifneq ($(origin DEFAULT_CHANNEL), undefined)
 BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= authorino:latest
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
 
@@ -37,6 +41,7 @@ test: generate fmt vet manifests
 # Show test coverage
 cover:
 	 go tool cover -html=cover.out
+
 # Build manager binary
 manager: generate fmt vet
 	go build -o bin/authorino main.go
@@ -65,8 +70,8 @@ manifests: controller-gen
 # Download vendor dependencies
 .PHONY: vendor
 vendor:
-	go mod tidy -v
-	go mod vendor -v
+	go mod tidy
+	go mod vendor
 
 # Run go fmt against code
 fmt:
@@ -81,7 +86,7 @@ generate: vendor controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
-docker-build: test
+docker-build: vendor
 	docker build . -t ${IMG}
 
 # Push the docker image
@@ -148,11 +153,29 @@ else
 KIND=$(shell which kind)
 endif
 
+KIND_CLUSTER_NAME ?= authorino
+
+# Start a local Kubernetes cluster using Kind
+.PHONY: local-cluster-up
+local-cluster-up: kind local-cluster-down
+	kind create cluster --name $(KIND_CLUSTER_NAME) --config ./utils/kind-cluster.yaml
+
+# Deletes the local Kubernetes cluster started using Kind
+.PHONY: local-cluster-down
+local-cluster-down: kind
+	kind delete cluster --name $(KIND_CLUSTER_NAME)
+
+# Pushes a local container image of Authorino to the registry of the Kind-started local Kubernetes cluster
+.PHONY: local-push
+local-push: kind
+	kind load docker-image $(IMG) --name $(KIND_CLUSTER_NAME)
+
+# Set up a test/dev local Kubernetes server loaded up with a freshly built Authorino image plus dependencies
 .PHONY: local-setup
-local-setup: vendor kustomize kind
+local-setup: vendor kustomize kind local-cluster-up docker-build local-push
 	utils/local-setup.sh
 
 # Rebuild and push the docker image and redeploy authorino to the local k8s cluster
-.PHONY: local-deploy
-local-deploy: kind
-	utils/local-deploy.sh
+.PHONY: local-rollout
+local-rollout: docker-build local-push
+	utils/local-rollout.sh
