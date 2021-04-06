@@ -15,48 +15,7 @@ Authorino implements [Envoy](https://www.envoyproxy.io) proxy's [external author
 
 ## How it works
 
-<!--
-  "API consumer" -> Envoy : 1. HTTP request
-  Envoy -> Authorino : 2. gRPC
-  Authorino -> Authorino : 3. Verify identity
-  Authorino -> Authorino : 4. Add metadata
-  Authorino -> Authorino : 5. Enforce policies
-  Authorino -> Envoy : 6. OK
-  Envoy -> "Upstream API" : 7. HTTP request
-  "Upstream API" -> "API consumer" : 8. HTTP response
--->
-```
-     ┌────────────┐          ┌─────┐          ┌─────────┐               ┌────────────┐
-     │API consumer│          │Envoy│          │Authorino│               │Upstream API│
-     └─────┬──────┘          └──┬──┘          └────┬────┘               └──────┬─────┘
-           │  1. HTTP request   │                  │                           │
-           │ ──────────────────>│                  │                           │
-           │                    │     2. gRPC      │                           │
-           │                    │─────────────────>│                           │
-           │                    │                  │                           │
-           │                    │                  ────┐                       │
-           │                    │                      │ 3. Verify identity    │
-           │                    │                  <───┘                       │
-           │                    │                  │                           │
-           │                    │                  ────┐                       │
-           │                    │                      │ 4. Add metadata       │
-           │                    │                  <───┘                       │
-           │                    │                  │                           │
-           │                    │                  ────┐                       │
-           │                    │                      │ 5. Enforce policies   │
-           │                    │                  <───┘                       │
-           │                    │      6. OK       │                           │
-           │                    │<─────────────────│                           │
-           │                    │                  │                           │
-           │                    │              7. HTTP request                 │
-           │                    │─────────────────────────────────────────────>│
-           │                    │                  │                           │
-           │                    │   8. HTTP response                           │
-           │ <─────────────────────────────────────────────────────────────────│
-     ┌─────┴──────┐          ┌──┴──┐          ┌────┴────┐               ┌──────┴─────┐
-     │API consumer│          │Envoy│          │Authorino│               │Upstream API│
-     └────────────┘          └─────┘          └─────────┘               └────────────┘
-```
+![How it works](http://www.plantuml.com/plantuml/png/TP31IiOm48JlUOebTr_0W_n5Vb0yMAHwZydM1flTkDa8VNiZWYs1NcU-NMRcKjI9rhIQyXafEt494XFxHJWXg5GqnbLbgkaTnTXXV0JFL6f2iN1p1rVwvWrkuM6QHX3ygbZK_8dD7QekB96u4HyluxtPXSvzGudp1Z4WQTJj71n2W8JgWbDtJbrfPl48cTVe8vOZUKZz_BHdjQ-vg61Re9MqVQNE_NtIZV5_K7BJq5oGGbls1m00)
 
 1. An application client (_API consumer_) obtains credentials to consume resources of the _Upstream API_, and sends a request to the _Envoy_ exposed endpoint
 2. The Envoy proxy establishes fast gRPC connection with _Authorino_ carrying data of the HTTP request (context info)
@@ -246,41 +205,7 @@ Authorino also fetches the JSON Web Key Sets (JWKS) used to verify the JWTs, mat
 
 In general, OIDC confgurations are essentially used in the identity verification phase and possibly as well in the ad-hoc authorization metadata phase of Authorino. The decoded JWTs (and fetched user info) are passed in the authorization payload to phase (iii), i.e., authorization policy enforcement.
 
-<!--
-  Authorino -> "OIDC Issuer" : OIDC discovery
-  "OIDC Issuer" -> Authorino : Well-Known config
-  Authorino -> "OIDC Issuer" : Req OIDC certs
-  "OIDC Issuer" -> Authorino : JWKS
-  Authorino -> Authorino : Verify JWT signature
-  Authorino -> Authorino : Validate JWT
--->
-```
-                 ┌─────────┐              ┌───────────┐
-                 │Authorino│              │OIDC Issuer│
-                 └────┬────┘              └─────┬─────┘
-                      ·                         ·
-Reconciliation-time:  │     OIDC discovery      │
-                      │────────────────────────>│
-                      │    Well-Known config    │
-             (cache)  │<────────────────────────│
-                      │                         │
-                      │     Req OIDC certs      │
-                      │────────────────────────>│
-                      │          JWKS           │
-             (cache)  │<────────────────────────│
-                      ·                         ·
-Request-time:         │                         │
-                      ────┐                     │
-                          │ Verify JWT signature│
-                      <───┘                     │
-                      │                         │
-                      ────┐                     │
-                          │ Validate JWT        │
-                      <───┘                     │
-                 ┌────┴────┐              ┌─────┴─────┐
-                 │Authorino│              │OIDC Issuer│
-                 └─────────┘              └───────────┘
-```
+![OIDC](http://www.plantuml.com/plantuml/png/XO_1IWD138RlynIX9mLt7s1XfQANseDGnPx7sMmtE9EqcOpQjtUeWego7aF-__lubzcyMadHvMVYlLUV80bBc5GIWcb1v_eUDXY40qNoHiADKNtslRigDeaI2pINiBXRtLp3AkU2ke0EJkT0ESWBwj7zV3UryDNkO8inDckMLuPg6cddM0mXucWT11ycd9TjyF0X3AYM_v7TRjVtl_ckRTlFiOU2sVvU-PtpY4hZiU8U8DEElHN5cRIFD7Z3K_uCt_ONm4_ZkLiY3oN5Tm00)
 
 #### User-Managed Access (UMA)
 
@@ -290,45 +215,7 @@ This enables the implementation of resource-level Attribute-Based Access Control
 
 A UMA-compliant server is an external authorization server (e.g., Keycloak) where the protected resources are registered. It can be as well the upstream API itself, as long as it implements the UMA protocol, with initial authentication by `client_credentials` grant to exchange for a Protected API Token (PAT).
 
-<!--
-  Authorino -> "UMA server" : UMA Discovery
-  "UMA server" -> Authorino : Well-Known config
-  Authorino -> "UMA server" : Request PAT
-  "UMA server" -> Authorino : PAT
-  Authorino -> "UMA server" : Query resources (?uri=path)
-  "UMA server" -> Authorino : [...resources]
-  Authorino -> "UMA server" : GET resource
-  "UMA server" -> Authorino : Resource data
--->
-```
-                 ┌─────────┐                 ┌──────────┐
-                 │Authorino│                 │UMA server│
-                 └────┬────┘                 └────┬─────┘
-                      ·                           ·
-Reconciliation-time:  │       UMA Discovery       │
-                      │───────────────────────────>
-                      │     Well-Known config     │
-             (cache)  │<───────────────────────────
-                      │                           │
-                      ·                           ·
-Request-time:         │        Request PAT        │
-                      │───────────────────────────>
-                      │            PAT            │
-                      │<───────────────────────────
-                      │                           │
-                      │Query resources (?uri=path)│
-                      │───────────────────────────>
-                      │      [...resources]       │
-                      │<───────────────────────────
-                      │                           │
-                      │       GET resource        │
-                      │───────────────────────────>
-                      │       Resource data       │
-                      │<───────────────────────────
-                 ┌────┴────┐                 ┌────┴─────┐
-                 │Authorino│                 │UMA server│
-                 └─────────┘                 └──────────┘
-```
+![UMA](http://www.plantuml.com/plantuml/png/ZOx1IWCn48RlUOgX9pri7w0GxOBYGGGj5G_Y8QHJTp2PgPE9qhStmhBW9NWSvll__ziM2ser9rS-Y4z1GuOiB75IoGYc5Ptp7dOOXICb2aR2Wr5xUk_6QfCeiS1m1QldXn4AwXVg2ZRmUzrGYTBki_lp71gzH1lwWYaDzopV357uIE-EnH0I7cq3CSG9dLklrxF9PyLY_rAOMNWSzts11dIBdYhg6HIBL8rOuEAwAlbJiEcoN_pQj9VOMtVZxdQ_BFHBTpC5Xs31RP4FDQSV)
 
 It's important to notice that Authorino does NOT manage resources in the UMA-compliant server. As shown in the flow above, Authorino's UMA client is only to fetch data about the requested resources. Authorino exchanges client credentials for a Protected API Token (PAT), then queries for resources whose URI match the path of the HTTP request (as passed to Authorino by the Envoy proxy) and fecthes data of each macthing resource.
 
@@ -338,40 +225,7 @@ The resources data is added as metadata of the authorization payload and passed 
 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs. Authorino reconciliation cycle keeps track of any changes in the custom resources affecting the written policies and automatically recompiles them with built-in OPA module, and cache them for fast evaluation during request-time.
 
-<!--
-  Authorino -> "Built-in OPA" : Register policy
-  "Built-in OPA" -> "Built-in OPA" : Compile policy
-  "Built-in OPA" -> Authorino
-  Authorino -> "Built-in OPA" : Get document with input
-  "Built-in OPA" -> "Built-in OPA" : Evaluate policy
-  "Built-in OPA" -> Authorino : OK/NOK
--->
-```
-                 ┌─────────┐            ┌────────────┐
-                 │Authorino│            │Built-in OPA│
-                 └────┬────┘            └──────┬─────┘
-                      ·                        ·
-Reconciliation-time:  │    Register policy     │
-                      │───────────────────────>│
-                      │                        │
-                      │                        ────┐
-                      │                            │ Compile policy
-                      │                        <───┘
-              (cache) │<───────────────────────│
-                      │                        │
-                      ·                        ·
-Request-time:         │Get document with input │
-                      │───────────────────────>│
-                      │                        │
-                      │                        ────┐
-                      │                            │ Evaluate policy
-                      │                        <───┘
-                      │         OK/NOK         │
-                      │<───────────────────────│
-                 ┌────┴────┐            ┌──────┴─────┐
-                 │Authorino│            │Built-in OPA│
-                 └─────────┘            └────────────┘
-```
+![OPA](http://www.plantuml.com/plantuml/png/ZSv1IiH048NXVPsYc7tYVY0oeuYB0IFUeEcKfh2xAdPUATxUB4GG5B9_F-yxhKWDKGkjhsfBQgboTVCyDw_2Q254my1Fajso5arGjmvQXOU1pe7PcvfpTys7cz22Jet7n_E1ZrlqeYkayU95yoVz7loPt7fTjCX_nPRyN98vX8iyuyWvvLc8-hx_rhw5hDZ9l1Vmv3cg6FX3CRFQ4jZ3lNjF9H9sURVvUBbw62zq4fkYbYy0)
 
 ## Usage
 
