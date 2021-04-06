@@ -9,10 +9,21 @@ spec:
     - name: friends # user defined
       credentials:
         in: custom_header # options include: custom_header, authorization_header, cookie and query
-        key_selector: X-API-KEY # user defined
-      api_key:
-        label_selectors:
+        keySelector: X-API-KEY # user defined
+      apiKey:
+        labelSelectors:
           authorino.3scale.net/managed-by: authorino
           target: echo-api # user defined
   metadata: []
   authorization: []
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-consumer-1-api-key
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    target: echo-api
+stringData:
+  api_key: eXPebi9Myg0vOMayFO-byLnPeO2Zek8S
+type: Opaque

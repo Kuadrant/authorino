@@ -16,7 +16,7 @@ type AuthCredentials interface {
 
 // AuthCredential struct implements the AuthCredentials interface
 type AuthCredential struct {
-	KeySelector string `yaml:"key_selector"`
+	KeySelector string `yaml:"keySelector"`
 	In          string `yaml:"in"`
 }
 

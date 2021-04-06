@@ -1,0 +1,44 @@
+# Enables oneOf validation for the identity/metadata/authorization modes
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/oneOf
+  value:
+    - properties:
+        name: {}
+        credentials: {}
+        oidc: {}
+      required: [name, oidc]
+    - properties:
+        name: {}
+        credentials: {}
+        apiKey: {}
+      required: [name, apiKey]
+    - properties:
+        name: {}
+        credentials: {}
+        kubernetes: {}
+      required: [name, kubernetes]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/oneOf
+  value:
+    - properties:
+        name: {}
+        userInfo: {}
+      required: [name, userInfo]
+    - properties:
+        name: {}
+        uma: {}
+      required: [name, uma]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/oneOf
+  value:
+    - properties:
+        name: {}
+        opa: {}
+      required: [name, opa]
+    - properties:
+        name: {}
+        json: {}
+      required: [name, json]

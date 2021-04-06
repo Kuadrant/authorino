@@ -9,7 +9,7 @@ spec:
     - name: authorized-service-accounts
       credentials:
         in: authorization_header
-        key_selector: Bearer
+        keySelector: Bearer
       kubernetes:
         audiences:
           - custom-audience
