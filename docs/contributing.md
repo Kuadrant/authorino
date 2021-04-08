@@ -29,6 +29,6 @@ make vendor
 ## Additional resources to contributors
 
 - [Terminology](terminology.md)
-- [Examples](../examples/README.md)
+- [Examples](../examples/)
 - [Deployment instructions](deploy.md)
 - [Code of Conduct](code_of_conduct.md)

@@ -20,9 +20,9 @@ There is no need to redeploy neither Authorino nor Envoy after applying a protec
 
 ## The Authorino `Service` Custom Resource Definition (CRD)
 
-Please check out the [spec](config/crd/bases/config.authorino.3scale.net_services.yaml) of the Authorino `Service` custom resource for the details.
+Please check out the [spec](/config/crd/bases/config.authorino.3scale.net_services.yaml) of the Authorino `Service` custom resource for the details.
 
-A list of more concrete examples can be found [here](examples).
+A list of more concrete examples can be found [here](/examples).
 
 ## The "auth pipeline" (aka Authorino's 3 core "phases")
 
