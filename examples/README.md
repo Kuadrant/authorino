@@ -319,7 +319,7 @@ kubectl -n authorino apply -f ./examples/oidc-active-tokens-only.yaml
 > **NOTE:** Keycloak will not accept requests from tokens whose issuer domain name (the one in the "iss" claim) differs the domain name of the request to the Keycloak server. Since in the example Authorino is configured to reach the Keycloak server using the service host name inside the Kubernetes cluster (i.e. "keycloak"), one cannot issue a token outside the cluster (e.g. from the local host) with a different domain name (e.g. "localhost"). To work around this limitation, one may need to either get the token issued from a request within the cluster or by resolving outside the cluster the same domain name of the Keycloak server inside the cluster (i.e. "keycloak") to "127.0.0.1".
 
 ```sh
-export ACCESS_TOKEN=$(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '.access_token')
+export $(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '"ACCESS_TOKEN="+.access_token,"REFRESH_TOKEN="+.refresh_token')
 
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 200
 ```
@@ -327,9 +327,7 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://local
 Revoke access:
 
 ```sh
-export KEYCLOAK_ADMIN_ACCESS_TOKEN=$(curl -d 'grant_type=password' -d 'client_id=admin-cli' -d 'username=admin' -d 'password=p' "http://localhost:8080/auth/realms/master/protocol/openid-connect/token" | jq -r '.access_token')
-export USER_ID=$(curl -H "Authorization: Bearer $KEYCLOAK_ADMIN_ACCESS_TOKEN" "http://localhost:8080/auth/admin/realms/kuadrant/users?username=john" | jq -r '.[0].id')
-curl -H "Authorization: Bearer $KEYCLOAK_ADMIN_ACCESS_TOKEN" -X POST "http://localhost:8080/auth/admin/realms/kuadrant/users/$USER_ID/logout"
+curl -H "Content-Type: application/x-www-form-urlencoded" -d "refresh_token=$REFRESH_TOKEN" -d 'token_type_hint=requesting_party_token' -u demo: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/logout"
 ```
 
 Send another request:
