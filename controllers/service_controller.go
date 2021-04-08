@@ -109,6 +109,26 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
 
 		switch identity.GetType() {
+		// oauth2
+		case configv1beta1.IdentityOAuth2:
+			oauth2Identity := identity.OAuth2
+
+			secret := &v1.Secret{}
+			if err := r.Client.Get(ctx, types.NamespacedName{
+				Namespace: service.Namespace,
+				Name:      oauth2Identity.Credentials.Name},
+				secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			}
+
+			translatedIdentity.OAuth2 = authorinoIdentity.NewOAuth2Identity(
+				oauth2Identity.TokenIntrospectionUrl,
+				oauth2Identity.TokenTypeHint,
+				string(secret.Data["clientID"]),
+				string(secret.Data["clientSecret"]),
+				authCred,
+			)
+
 		// oidc
 		case configv1beta1.IdentityOidc:
 			if oidcConfig, err := authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred); err != nil {

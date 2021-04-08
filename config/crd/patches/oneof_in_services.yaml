@@ -6,6 +6,11 @@
     - properties:
         name: {}
         credentials: {}
+        oauth2: {}
+      required: [name, oauth2]
+    - properties:
+        name: {}
+        credentials: {}
         oidc: {}
       required: [name, oidc]
     - properties:

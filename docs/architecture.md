@@ -4,6 +4,7 @@
 - [The Authorino `Service` Custom Resource Definition (CRD)](#the-authorino-service-custom-resource-definition-crd)
 - [The "auth pipeline" (aka Authorino's 3 core "phases")](#the-auth-pipeline-aka-authorinos-3-core-phases)
 - [List of features](#list-of-features)
+  - [OAuth 2.0 (token introspetion)](#oauth-20-token-introspection)
   - [OpenID Connect (OIDC)](#openid-connect-oidc)
   - [User-Managed Access (UMA)](#user-managed-access-uma)
   - [Open Policy Agent (OPA)](#open-policy-agent-opa)
@@ -86,8 +87,8 @@ The authorization policies evaluated in phase (iii) can use any info from the au
       <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/9">#9</a>)</td>
     </tr>
     <tr>
-      <td>OAuth2</td>
-      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/82">#62</a>)</td>
+      <td>OAuth 2.0 (token introspection)</td>
+      <td>Ready</td>
     </tr>
     <tr>
       <td>OpenID Connect (OIDC)</td>
@@ -174,6 +175,16 @@ The authorization policies evaluated in phase (iii) can use any info from the au
     </tr>
   </tbody>
 </table>
+
+### OAuth 2.0 (token introspection)
+
+Authorino performs OAuth 2.0 token introspection on access tokens supplied in the requests to protected APIs.
+
+Authorino does not implement any of OAuth 2.0 grants for the applications to obtain the token. However, it can verify supplied tokens with the OAuth server, including opaque tokens, as long as the server exposes the `token_introspect` endpoint ([RFC 7662](https://tools.ietf.org/html/rfc7662)).
+
+Developers must set the token introspection endpoint in the [CR spec](#the-authorino-service-custom-resource-definition-crd), as well as a reference to the Kubernetes secret storing the credentials of the OAuth client to be used by Authorino when requesting the introspect.
+
+![OAuth 2.0 Token Introspect](http://www.plantuml.com/plantuml/png/NP1DJiD038NtSmehQuQgsr4R5TZ0gXLaHwHgD779g8aTF1xAZv0u3GVZ9BHH18YbttkodxzLKY-Q-ywaVQJ1Y--XP-BG2lS8AXcDkRSbN6HjMIAnWrjyp9ZK_4Xmz8lrQOI4yeHIW8CRKk4qO51GtYCPOaMG-D2gWytwhe9P_8rSLzLcDZ-VrtJ5f4XggvS17VXXw6Bm6fbcp_PmEDWTIs-pT4Y16sngccgyZY47b-W51HQJRqCNJ-k2O9FAcceQsomNsgBr8M1ATbJAoTdgyV2sZQJBHKueji5T96nAy-z5-vSAE7Y38gbNBDo8xGo-FZxXtQoGcYFVRm00)
 
 ### OpenID Connect (OIDC)
 

@@ -222,6 +222,29 @@ spec:
                         be used for this identity config to be referred in some metadata
                         configs.
                       type: string
+                    oauth2:
+                      properties:
+                        credentialsRef:
+                          description: Reference to a Kubernetes secret in the same
+                            namespace, that stores client credentials to the OAuth2
+                            server.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                        tokenIntrospectionUrl:
+                          description: The full URL of the token introspection endpoint.
+                          type: string
+                        tokenTypeHint:
+                          description: The token type hint for the token introspection.
+                            If omitted, it defaults to "access_token".
+                          type: string
+                      required:
+                      - credentialsRef
+                      - tokenIntrospectionUrl
+                      type: object
                     oidc:
                       properties:
                         endpoint:

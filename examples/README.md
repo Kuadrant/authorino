@@ -45,6 +45,7 @@ For more information on the deployment options and resources included in the loc
 - [Short-lived API keys (the non-OIDC “beta-testers” use case)](#short-lived-api-keys-the-non-oidc-beta-testers-use-case)
 - [Read-only outside](#read-only-outside)
 - [Kubernetes authentication](#kubernetes-authentication)
+- [Simple OAuth2 (token introspection)](#simple-oauth2-token-introspection)
 - [Simple OIDC (with Keycloak)](#simple-oidc-with-keycloak)
 - [OIDC UserInfo](#oidc-userinfo)
 - [Multiple OIDC providers (Keycloak and Dex)](#multiple-oidc-providers-keycloak-and-dex)
@@ -272,6 +273,40 @@ Send requests to the API:
 
 ```sh
 curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" http://localhost:8000/hello # 200
+```
+
+----
+
+## Simple OAuth2 (token introspection)
+
+Introspection of supplied OAuth2 access tokens with Keycloak.
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/simple-oauth2.yaml
+# service.config.authorino.3scale.net/talker-api-protection created
+# secret/oauth2-token-introspection-credentials created
+```
+
+### Try it out:
+
+```sh
+export $(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '"ACCESS_TOKEN="+.access_token,"REFRESH_TOKEN="+.refresh_token')
+
+curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 200
+```
+
+Revoke access:
+
+```sh
+curl -H "Content-Type: application/x-www-form-urlencoded" -d "refresh_token=$REFRESH_TOKEN" -d 'token_type_hint=requesting_party_token' -u demo: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/logout"
+```
+
+Send another request:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 403
 ```
 
 ----
