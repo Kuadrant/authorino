@@ -37,7 +37,7 @@ var (
 				{
 					Name: "keycloak",
 					Oidc: &v1beta1.Identity_OidcConfig{
-						Endpoint: "http://127.0.0.1:9001/auth/realms/ostia",
+						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
 					},
 				},
 			},
@@ -51,7 +51,7 @@ var (
 				{
 					Name: "resource-data",
 					UMA: &v1beta1.Metadata_UMA{
-						Endpoint: "http://127.0.0.1:9001/auth/realms/ostia",
+						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
 						Credentials: &v1.LocalObjectReference{
 							Name: "secret",
 						},
@@ -133,8 +133,8 @@ var (
 
 func TestMain(m *testing.M) {
 	authServer := NewHttpServerMock("127.0.0.1:9001", map[string]HttpServerMockResponses{
-		"/auth/realms/ostia/.well-known/openid-configuration": {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/ostia" }`},
-		"/auth/realms/ostia/.well-known/uma2-configuration":   {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/ostia" }`},
+		"/auth/realms/demo/.well-known/openid-configuration": {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`},
+		"/auth/realms/demo/.well-known/uma2-configuration":   {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`},
 	})
 	defer authServer.Close()
 	os.Exit(m.Run())

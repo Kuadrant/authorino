@@ -1,0 +1,66 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: friends
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+    - name: beta-testers
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          beta-tester: "true"
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  authorization:
+    - name: short-lived-api-keys-for-beta-testers
+      opa:
+        inlineRego: |
+          identity_metadata = object.get(input.auth.identity, "metadata", {})
+          beta_tester = object.get(object.get(identity_metadata, "labels", {}), "beta-tester", "false")
+
+          allow {
+            creation_ts_str := identity_metadata.creationTimestamp
+            creation_ts := time.parse_rfc3339_ns(creation_ts_str)
+            duration_ns := time.now_ns() - creation_ts
+            duration_days := (duration_ns/1000000000)/86400
+
+            duration_days <= 5
+            beta_tester == "true"
+          }
+
+          allow {
+            beta_tester == "false"
+          }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: friend-1-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: beta-tester-1-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    beta-tester: "true"
+stringData:
+  api_key: 76yh702XoA9GLzFHCuF42fq7lHJz5Etc
+type: Opaque
