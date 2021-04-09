@@ -374,7 +374,7 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_MARTA" http:/
 ----
 ## Resource-level authorization (with UMA resource registry)
 
-The example uses Keycloak User-Managed Access (UMA) implementation hosting resource data, that is later fetched by Authorino on every request, in metadata phase.
+The example uses Keycloak User-Managed Access (UMA) implementation hosting resource data, that is later fetched by Authorino on every request, in metadata phase. See [Authorino architecture > User-Managed Access (UMA)](/docs/architecture.md#user-managed-access-uma) for more information.
 
 The Keycloak server also provides identities for OIDC authentication. The identity subject ("sub" claim) must match the owner of the requested resource, identitfied by the URI of the request.
 
