@@ -16,6 +16,7 @@ var (
 type IdentityConfig struct {
 	Name string `yaml:"name"`
 
+	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
 	MTLS           *identity.MTLS           `yaml:"mtls,omitempty"`
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
@@ -30,6 +31,8 @@ func init() {
 // Call method will execute the specific Identity implementation's method
 func (config *IdentityConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
 	switch {
+	case config.OAuth2 != nil:
+		return config.OAuth2.Call(authContext, ctx)
 	case config.OIDC != nil:
 		return config.OIDC.Call(authContext, ctx)
 	case config.MTLS != nil:

@@ -18,9 +18,11 @@ Some of the examples involve having an external identity provider (IdP), such as
 DEPLOY_IDPS=1 make local-setup
 ```
 
-> **NOTE**: You can replace `DEPLOY_IDPS` above with `DEPLOY_KEYCLOAK` or `DEPLOY_DEX`, in case you only want one of these auth servers deployed.
+> **NOTE:** You can replace `DEPLOY_IDPS` above with `DEPLOY_KEYCLOAK` or `DEPLOY_DEX`, in case you only want one of these auth servers deployed.
 
-Next, forward requests from your local host to the corresponding ports of Envoy, Keycloak, and Dex, running inside the cluster:
+**For the examples using Keycloak** – Keycloak will reject tokens whose domain name of the issuer ("iss" claim) differs from the domain name of the request to the Keycloak server. In some examples, Authorino reaches the Keycloak server within the cluster, using the Kubernetes Keycloak service host name (i.e. "keycloak"). Therefore, you cannot get a token issued hitting Keycloak on `http://localhost:8080`, e.g., and later get this token validated through Authorino contacting Keycloak on `http://keycloak:8080`. To work around this limitation, you may need to either get tokens issued always from requests to Keycloak initiated inside the cluster, or, as assumed in the examples below, by resolving outside the cluster the same domain name assigned to the Keycloak service inside the cluster – i.e. `echo "127.0.0.1 keycloak" >> /etc/hosts`.
+
+<br/>To finish the setup, forward requests from your local host to the corresponding ports of Envoy, Keycloak, and Dex, running inside the cluster:
 
 ```sh
 kubectl -n authorino port-forward deployment/envoy 8000:8000 &
@@ -28,7 +30,7 @@ kubectl -n authorino port-forward deployment/keycloak 8080:8080 & # (if using Ke
 kubectl -n authorino port-forward deployment/dex 5556:5556 &      # (if using Dex)
 ```
 
-To cleanup, run:
+<br/>To cleanup, run:
 
 ```sh
 make local-cluster-down
@@ -45,6 +47,7 @@ For more information on the deployment options and resources included in the loc
 - [Short-lived API keys (the non-OIDC “beta-testers” use case)](#short-lived-api-keys-the-non-oidc-beta-testers-use-case)
 - [Read-only outside](#read-only-outside)
 - [Kubernetes authentication](#kubernetes-authentication)
+- [Simple OAuth2 (token introspection)](#simple-oauth2-token-introspection)
 - [Simple OIDC (with Keycloak)](#simple-oidc-with-keycloak)
 - [OIDC UserInfo](#oidc-userinfo)
 - [Multiple OIDC providers (Keycloak and Dex)](#multiple-oidc-providers-keycloak-and-dex)
@@ -275,6 +278,40 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" http:/
 ```
 
 ----
+
+## Simple OAuth2 (token introspection)
+
+Introspection of supplied OAuth2 access tokens with Keycloak.
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/simple-oauth2.yaml
+# service.config.authorino.3scale.net/talker-api-protection created
+# secret/oauth2-token-introspection-credentials created
+```
+
+### Try it out:
+
+```sh
+export $(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '"ACCESS_TOKEN="+.access_token,"REFRESH_TOKEN="+.refresh_token')
+
+curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 200
+```
+
+Revoke access:
+
+```sh
+curl -H "Content-Type: application/x-www-form-urlencoded" -d "refresh_token=$REFRESH_TOKEN" -d 'token_type_hint=requesting_party_token' -u demo: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/logout"
+```
+
+Send another request:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 403
+```
+
+----
 ## Simple OIDC (with Keycloak)
 
 The example connects Authorino to a Keycloak realm as source of identities via OIDC. It also sets authorization to allow requests only from users with email verified.
@@ -317,8 +354,6 @@ kubectl -n authorino apply -f ./examples/oidc-active-tokens-only.yaml
 ```
 
 ### Try it out:
-
-> **NOTE:** Keycloak will not accept requests from tokens whose issuer domain name (the one in the "iss" claim) differs the domain name of the request to the Keycloak server. Since in the example Authorino is configured to reach the Keycloak server using the service host name inside the Kubernetes cluster (i.e. "keycloak"), one cannot issue a token outside the cluster (e.g. from the local host) with a different domain name (e.g. "localhost"). To work around this limitation, one may need to either get the token issued from a request within the cluster or by resolving outside the cluster the same domain name of the Keycloak server inside the cluster (i.e. "keycloak") to "127.0.0.1".
 
 ```sh
 export $(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '"ACCESS_TOKEN="+.access_token,"REFRESH_TOKEN="+.refresh_token')

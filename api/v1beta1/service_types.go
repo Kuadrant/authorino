@@ -23,6 +23,7 @@ import (
 
 const (
 	TypeUnknown                      = "UNKNOWN"
+	IdentityOAuth2                   = "IDENTITY_OAUTH2"
 	IdentityOidc                     = "IDENTITY_OIDC"
 	IdentityApiKey                   = "IDENTITY_APIKEY"
 	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
@@ -79,9 +80,21 @@ type Identity struct {
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
 	Credentials Credentials `json:"credentials,omitempty"`
 
+	OAuth2         *Identity_OAuth2Config   `json:"oauth2,omitempty"`
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
 	APIKey         *Identity_APIKey         `json:"apiKey,omitempty"`
 	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
+}
+
+type Identity_OAuth2Config struct {
+	// The full URL of the token introspection endpoint.
+	TokenIntrospectionUrl string `json:"tokenIntrospectionUrl"`
+	// The token type hint for the token introspection.
+	// If omitted, it defaults to "access_token".
+	TokenTypeHint string `json:"tokenTypeHint,omitempty"`
+
+	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the OAuth2 server.
+	Credentials *v1.LocalObjectReference `json:"credentialsRef"`
 }
 
 type Identity_OidcConfig struct {
@@ -216,7 +229,9 @@ type ServiceList struct {
 }
 
 func (i *Identity) GetType() string {
-	if i.Oidc != nil {
+	if i.OAuth2 != nil {
+		return IdentityOAuth2
+	} else if i.Oidc != nil {
 		return IdentityOidc
 	} else if i.APIKey != nil {
 		return IdentityApiKey

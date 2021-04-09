@@ -1,0 +1,30 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: keycloak
+      oauth2:
+        tokenIntrospectionUrl: http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
+        tokenTypeHint: requesting_party_token
+        credentialsRef:
+          name: oauth2-token-introspection-credentials
+  authorization:
+    - name: active-access-tokens-only
+      json:
+        rules:
+          - selector: "auth.identity.active"
+            operator: eq
+            value: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth2-token-introspection-credentials
+stringData:
+  clientID: talker-api
+  clientSecret: 523b92b6-625d-4e1e-a313-77e7a8ae4e88
+type: Opaque
