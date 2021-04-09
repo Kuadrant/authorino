@@ -1,14 +1,42 @@
 # Authorino examples
 
-In case you would like to try out the examples in this page in either a local sample setup environment or in your own custom Kubernetes deployment, please refer to the [docs](/docs/deploy.md) for instructions on how to deploy Authorino.
+## Setup the environment
 
-For a short one-liner local setup, go for `make local-setup` in the root directory of the Authorino repo and make sure to forward local requests to the Envoy proxy running in the cluster.
+The simplest way to try the examples in this page is by launching a local test Kubernetes environment included in the Authorino examples.
+
+Run from the root directory of the Authorino repo:
+
+```sh
+make local-setup
+```
+
+The above will setup the local environment, deploy Authorino, Envoy and the sample API to be protected called **Talker API**.
+
+Some of the examples involve having an external identity provider (IdP), such as [Keycloak](https://www.keycloak.org) and/or [Dex](https://dexidp.io), to support authentication. To launch the local test environment including as well both these IdPs deployed to the cluster, run instead:
+
+```sh
+DEPLOY_IDPS=1 make local-setup
+```
+
+> **NOTE**: You can replace `DEPLOY_IDPS` above with `DEPLOY_KEYCLOAK` or `DEPLOY_DEX`, in case you only want one of these auth servers deployed.
+
+Next, forward requests from your local host to the corresponding ports of Envoy, Keycloak, and Dex, running inside the cluster:
 
 ```sh
 kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl -n authorino port-forward deployment/keycloak 8080:8080 & # (if using Keycloak)
+kubectl -n authorino port-forward deployment/dex 5556:5556 &      # (if using Dex)
 ```
 
-## Table of Content
+To cleanup, run:
+
+```sh
+make local-cluster-down
+```
+
+For more information on the deployment options and resources included in the local test Kubernetes environment included in Authorino examples, see [Deploying Authorino](/docs/deploy.md).
+
+## Table of examples
 
 - [Simple API key authentication](#simple-api-key-authentication)
 - [Alternative credentials location](#alternative-credentials-location)
@@ -253,19 +281,6 @@ The example connects Authorino to a Keycloak realm as source of identities via O
 
 ### Deploy the example:
 
-Deploy Keycloak to the local server:
-
-```sh
-kubectl -n authorino apply -f examples/keycloak/keycloak-deploy.yaml
-# deployment.apps/keycloak created
-# service/keycloak created
-# configmap/keycloak-realm created
-
-kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
-```
-
-Apply the protection to the upstream API:
-
 ```sh
 kubectl -n authorino apply -f ./examples/simple-oidc.yaml
 # service.config.authorino.3scale.net/talker-api-protection created
@@ -296,19 +311,6 @@ It leverages OIDC UserInfo requests during Authorino metadata phase to validate 
 
 ### Deploy the example:
 
-Deploy Keycloak to the local server:
-
-```sh
-kubectl -n authorino apply -f examples/keycloak/keycloak-deploy.yaml
-# deployment.apps/keycloak created
-# service/keycloak created
-# configmap/keycloak-realm created
-
-kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
-```
-
-Apply the protection to the upstream API:
-
 ```sh
 kubectl -n authorino apply -f ./examples/oidc-active-tokens-only.yaml
 # service.config.authorino.3scale.net/talker-api-protection created
@@ -319,7 +321,7 @@ kubectl -n authorino apply -f ./examples/oidc-active-tokens-only.yaml
 > **NOTE:** Keycloak will not accept requests from tokens whose issuer domain name (the one in the "iss" claim) differs the domain name of the request to the Keycloak server. Since in the example Authorino is configured to reach the Keycloak server using the service host name inside the Kubernetes cluster (i.e. "keycloak"), one cannot issue a token outside the cluster (e.g. from the local host) with a different domain name (e.g. "localhost"). To work around this limitation, one may need to either get the token issued from a request within the cluster or by resolving outside the cluster the same domain name of the Keycloak server inside the cluster (i.e. "keycloak") to "127.0.0.1".
 
 ```sh
-export ACCESS_TOKEN=$(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '.access_token')
+export $(curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '"ACCESS_TOKEN="+.access_token,"REFRESH_TOKEN="+.refresh_token')
 
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 200
 ```
@@ -327,9 +329,7 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://local
 Revoke access:
 
 ```sh
-export KEYCLOAK_ADMIN_ACCESS_TOKEN=$(curl -d 'grant_type=password' -d 'client_id=admin-cli' -d 'username=admin' -d 'password=p' "http://localhost:8080/auth/realms/master/protocol/openid-connect/token" | jq -r '.access_token')
-export USER_ID=$(curl -H "Authorization: Bearer $KEYCLOAK_ADMIN_ACCESS_TOKEN" "http://localhost:8080/auth/admin/realms/kuadrant/users?username=john" | jq -r '.[0].id')
-curl -H "Authorization: Bearer $KEYCLOAK_ADMIN_ACCESS_TOKEN" -X POST "http://localhost:8080/auth/admin/realms/kuadrant/users/$USER_ID/logout"
+curl -H "Content-Type: application/x-www-form-urlencoded" -d "refresh_token=$REFRESH_TOKEN" -d 'token_type_hint=requesting_party_token' -u demo: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/logout"
 ```
 
 Send another request:
@@ -341,31 +341,9 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://local
 ----
 ## Multiple OIDC providers (Keycloak and Dex)
 
+The example sets two sources of identity to verify OIDC tokens (JWTs) – i.e., the Keycloak server and the Dex server, both running inside the cluster. If any of these providers accepts the token, Authorino succeeds in the identity verification phase.
+
 ### Deploy the example:
-
-Deploy Keycloak to the local server:
-
-```sh
-kubectl -n authorino apply -f examples/keycloak/keycloak-deploy.yaml
-# deployment.apps/keycloak created
-# service/keycloak created
-# configmap/keycloak-realm created
-
-kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
-```
-
-Deploy Dex to the local server:
-
-```sh
-kubectl -n authorino apply -f examples/dex/dex-deploy.yaml
-# deployment.apps/dex created
-# configmap/dex created
-# service/dex created
-
-kubectl -n authorino port-forward deployment/dex 5556:5556 &
-```
-
-Apply the protection to the upstream API:
 
 ```sh
 kubectl -n authorino apply -f ./examples/oidc-multiple-sources.yaml
@@ -395,29 +373,22 @@ export ACCESS_TOKEN_MARTA=$(curl -k -d 'grant_type=authorization_code' -d "code=
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_MARTA" http://localhost:8000/hello # 200
 ```
 
+Invalid token (neither Keycloak, nor Dex will accept it):
+
+```sh
+curl -H 'Host: talker-api' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c' http://localhost:8000/hello # 403
+```
+
 ----
 ## Resource-level authorization (with UMA resource registry)
 
-The example uses Keycloak User-Managed Access (UMA) implementation hosting resource data, that is later fetched by Authorino on every request, in metadata phase.
+The example uses Keycloak User-Managed Access (UMA) implementation hosting resource data, that is later fetched by Authorino on every request, in metadata phase. See [Authorino architecture > User-Managed Access (UMA)](/docs/architecture.md#user-managed-access-uma) for more information.
 
 The Keycloak server also provides identities for OIDC authentication. The identity subject ("sub" claim) must match the owner of the requested resource, identitfied by the URI of the request.
 
 According to the policy, everyone can send either GET or POST requests to `/greetings` and only the resource owners can send GET, PUT and DELETE requests to `/greetings/{resource-id}`.
 
 ### Deploy the example:
-
-Deploy Keycloak to the local server:
-
-```sh
-kubectl -n authorino apply -f examples/keycloak/keycloak-deploy.yaml
-# deployment.apps/keycloak created
-# service/keycloak created
-# configmap/keycloak-realm created
-
-kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
-```
-
-Apply the protection to the upstream API:
 
 ```sh
 kubectl -n authorino apply -f ./examples/resource-level-authz.yaml
@@ -467,19 +438,6 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_PETER" http:/
 ## Role-Based Access Control (RBAC) (with Keycloak realm roles)
 
 ### Deploy the example:
-
-Deploy Keycloak to the local server:
-
-```sh
-kubectl -n authorino apply -f examples/keycloak/keycloak-deploy.yaml
-# deployment.apps/keycloak created
-# service/keycloak created
-# configmap/keycloak-realm created
-
-kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
-```
-
-Apply the protection to the upstream API:
 
 ```sh
 kubectl -n authorino apply -f ./examples/keycloak-rbac.yaml
