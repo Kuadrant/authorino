@@ -341,6 +341,8 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://local
 ----
 ## Multiple OIDC providers (Keycloak and Dex)
 
+The example sets two sources of identity to verify OIDC tokens (JWTs) – i.e., the Keycloak server and the Dex server, both running inside the cluster. If any of these providers accepts the token, Authorino succeeds in the identity verification phase.
+
 ### Deploy the example:
 
 ```sh
@@ -369,6 +371,12 @@ Dex user:
 export ACCESS_TOKEN_MARTA=$(curl -k -d 'grant_type=authorization_code' -d "code=<authorization-code>" -d 'client_id=demo' -d 'client_secret=aaf88e0e-d41d-4325-a068-57c4b0d61d8e' -d 'redirect_uri=http://localhost:3000/callback' "http://localhost:5556/token" | jq -r '.id_token')
 
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_MARTA" http://localhost:8000/hello # 200
+```
+
+Invalid token (neither Keycloak, nor Dex will accept it):
+
+```sh
+curl -H 'Host: talker-api' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c' http://localhost:8000/hello # 403
 ```
 
 ----
