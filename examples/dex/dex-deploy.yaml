@@ -63,6 +63,11 @@ data:
       redirectUris:
       - http://localhost:3000/callback
       secret: aaf88e0e-d41d-4325-a068-57c4b0d61d8e
+    - id: webapp
+      name: 'WebApp'
+      redirectUris:
+      - http://talker-api-authorino.127.0.0.1.nip.io:8000/web/auth/redirect
+      secret: ca24403c-fd8a-4463-a754-52730c70a823
 
     enablePasswordDB: true
     staticPasswords:
