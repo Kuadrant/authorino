@@ -6,6 +6,9 @@ import (
 
 	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -50,4 +53,17 @@ func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 
 func (config *IdentityConfig) GetOIDC() interface{} {
 	return config.OIDC
+}
+
+func (config *IdentityConfig) GetAPIKey() interface{} {
+	return config.APIKey
+}
+
+func (config *IdentityConfig) FindSecretByName(lookup types.NamespacedName) *v1.Secret {
+	apiKey := config.APIKey
+	if apiKey != nil {
+		return apiKey.FindSecretByName(lookup)
+	} else {
+		return nil
+	}
 }

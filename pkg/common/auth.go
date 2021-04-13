@@ -4,6 +4,8 @@ import (
 	"golang.org/x/net/context"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type AuthPipeline interface {
@@ -27,4 +29,8 @@ type NamedConfigEvaluator interface {
 
 type IdentityConfigEvaluator interface {
 	GetOIDC() interface{}
+}
+
+type APIKeySecretFinder interface {
+	FindSecretByName(types.NamespacedName) *v1.Secret
 }
