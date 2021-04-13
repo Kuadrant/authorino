@@ -1,19 +1,150 @@
+# This examples is based on the "8 sample use cases", presented in the showcase of Authorino's features.
+#
+# INSTRUCTIONS
+#
+# 1) Setup the trial local environment
+#
+#        DEPLOY_IDPS=1 make local-setup
+#        kubectl -n authorino apply -f ./examples/talker-web/talker-web-deploy.yaml
+#        kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+#        kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
+#        kubectl -n authorino port-forward deployment/dex 5556:5556 &
+#
+# 2) Deploy the protection scheme for the Talker API
+#
+#        kubectl -n authorino apply -f ./examples/8-sample-use-cases.yaml
+#
+# 3) Issue a Kubernetes-valid token for a user of the identity group 'same-k8s-server-users' [Use-case #1]
+#    - Users of this identity group ("same-k8s-server-users") have full access to the API
+#    - Access tokens issued following to instructions below are immediately valid and expire after 10 minutes.
+#
+#    Start by defining a 'Token issuer' Service Account and proper permissions:
+#
+#        kubectl -n authorino apply -f - <<EOF
+#        apiVersion: v1
+#        kind: ServiceAccount
+#        metadata:
+#          name: sa-token-issuer
+#        EOF
+#
+#        kubectl -n authorino apply -f - <<EOF
+#        apiVersion: rbac.authorization.k8s.io/v1
+#        kind: ClusterRoleBinding
+#        metadata:
+#          name: sa-token-issuer
+#        roleRef:
+#          apiGroup: rbac.authorization.k8s.io
+#          kind: ClusterRole
+#          name: cluster-admin # it's just for the demo :-)
+#        subjects:
+#        - kind: ServiceAccount
+#          name: sa-token-issuer
+#          namespace: authorino
+#        EOF
+#
+#    Then create a Service Account to represent the user (consumer) of the API:
+#
+#        kubectl -n authorino apply -f - <<EOF
+#        apiVersion: v1
+#        kind: ServiceAccount
+#        metadata:
+#          name: api-consumer
+#        EOF
+#
+#    Finally, use Kubernetes TokenRequest API to issue the access token:
+#
+#        export KUBERNETES_API=$(kubectl cluster-info | head -n 1 | awk '{print $7}' | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g")
+#        export TOKEN_ISSUER_TOKEN=$(kubectl -n authorino get secret/$(kubectl -n authorino get sa/sa-token-issuer -o json | jq -r '.secrets[0].name') -o json | jq -r '.data.token' | base64 -d)
+#
+#        curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer/token" \
+#             -H "Authorization: Bearer $TOKEN_ISSUER_TOKEN" \
+#             -H 'Content-Type: application/json; charset=utf-8' \
+#             -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker"], "expirationSeconds": 600 } }' | jq -r '.status.token'
+#
+# 4) Issue an API key for a user of the identity group 'friends' [Use-case #2]
+#    - Users of this identity group ("friends") are not authorized to send DELETE requests to the API. [Use-case #3]
+#
+#        kubectl -n authorino apply -f - <<EOF
+#        apiVersion: v1
+#        kind: Secret
+#        metadata:
+#          name: friend-1-api-key-1
+#          labels:
+#            authorino.3scale.net/managed-by: authorino
+#            custom-label: friends
+#        stringData:
+#          api_key: $(openssl rand -hex 32)
+#        type: Opaque
+#        EOF
+#
+#        kubectl -n authorino get secret/friend-1-api-key-1 -o json | jq -r '.data.api_key' | base64 -d
+#
+# 5) Issue an API key for a user of the identity group 'beta-testers' [Use-case #4]
+#    - Users of this identity group ("beta-testers") will have access automatically revoked after 5 days.
+#
+#        kubectl -n authorino apply -f - <<EOF
+#        apiVersion: v1
+#        kind: Secret
+#        metadata:
+#          name: beta-tester-1-api-key-1
+#          labels:
+#            authorino.3scale.net/managed-by: authorino
+#            group: beta-testers
+#        stringData:
+#          api_key: $(openssl rand -hex 32)
+#        type: Opaque
+#        EOF
+#
+#        kubectl -n authorino get secret/beta-tester-1-api-key-1 -o json | jq -r '.data.api_key' | base64 -d
+#
+# 6) Issue an OpenID Connect JWT with Keycloak [Use-case #5]
+#    - Users of this identity group ("keycloak-users") are only authorized to send requests to `/hello` when the user has realm role 'admin'. [Use-case #6]
+#    - Users of this identity group ("keycloak-users") are only authorized to send requests to `PUT /greetings/{id}` when the user is the owner of the resource `/greetings/{id}`. [Use-case #7]
+#
+#    Try with user John (not admin; owner of /greetings/1):
+#    curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '.access_token'
+#
+#    Try with user Jane (admin; owner of /greetings/2):
+#    curl -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/token" | jq -r '.access_token'
+#
+# 7) Consume the API from the terminal passing the credentials obtained by any of the methods above (3 to 6)
+#
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' -x POST http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' -X PUT http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/2
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' -X PUT http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/2
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/2
+#        curl -H 'Authorization: Bearer <access-token-or-api-key>' http://talker-api-authorino.127.0.0.1.nip.io:8000/goodbye
+#
+# 8) Consume the API from the web application [Use-case #8]
+#    - Users of this identity group ("legacy-iam") have full access to the API
+#
+#    Access the webapp in the browser at http://talker-api-authorino.127.0.0.1.nip.io:8000/web
+#
+#    Authenticate with the following credentials whenever requested (Dex login page):
+#        username: marta@localhost
+#        password: password
+
 apiVersion: config.authorino.3scale.net/v1beta1
 kind: Service
 metadata:
-  name: my-api-protection
+  name: talker-api-protection
 spec:
   hosts:
-    - myapi.io
+    - talker-api-authorino.127.0.0.1.nip.io:8000
   identity:
     # use case #1
-    - name: known-clients
+    - name: same-k8s-server-users
       kubernetes:
         audiences:
-          - myapi
+          - talker
 
     # use case #2
-    - name: other-users
+    - name: friends
       apiKey:
         labelSelectors:
           authorino.3scale.net/managed-by: authorino
@@ -49,16 +180,16 @@ spec:
 
   authorization:
     # use case #3
-    - name: forbidden-ips
+    - name: friends-cannot-delete
       json:
         conditions:
-          - selector: context.request.http.headers.x-forwarded-for
-            operator: matches
-            value: "123\\.45\\.6\\.78"
-        rules:
-          - selector: auth
+          - selector: auth.identity.metadata.labels.custom-label
             operator: eq
-            value: deny # a trick to deny all requests when the conditions match
+            value: friends
+        rules:
+          - selector: context.request.http.method
+            operator: neq
+            value: DELETE
 
     # use case #4
     - name: short-lived-api-keys-for-beta-testers
@@ -108,23 +239,25 @@ spec:
           keycloak { issuer == "http://keycloak:8080/auth/realms/kuadrant" }
           not_keycloak { issuer != "http://keycloak:8080/auth/realms/kuadrant" }
 
-          get { http_request.method == "GET" }
-          not_get { http_request.method != "GET" }
+          put { http_request.method == "PUT" }
+          not_put { http_request.method != "PUT" }
 
-          owned_resource { some id; request_path = ["my-resources", id] }
-          not_owned_resource { request_path = ["my-resources"] }
+          owned_resource { some id; request_path = ["greetings", id] }
+          not_owned_resource { request_path = ["greetings"] }
+          not_owned_resource { request_path = ["hello"] }
+          not_owned_resource { request_path = ["goodbye"] }
 
-          get_owned_resource { get; owned_resource }
+          put_owned_resource { put; owned_resource }
 
-          owns_the_resource {
+          identity_owns_the_resource {
             resource := object.get(input.auth.metadata, "resource-data", [])[0]
             resource.owner.id == input.auth.identity.sub
           }
 
-          allow { keycloak; get_owned_resource; owns_the_resource }
-          allow { keycloak; not_get }
-          allow { keycloak; not_owned_resource }
           allow { not_keycloak }
+          allow { keycloak; not_owned_resource }
+          allow { keycloak; owned_resource; not_put }
+          allow { keycloak; put_owned_resource; identity_owns_the_resource }
 ---
 apiVersion: v1
 kind: Secret
