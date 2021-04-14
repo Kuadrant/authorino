@@ -18,9 +18,12 @@ import (
 
 type fakeReconciler struct {
 	Reconciled bool
+	Finished   chan bool
 }
 
 func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	defer close(r.Finished)
+	r.Finished <- true
 	r.Reconciled = true
 	return ctrl.Result{}, nil
 }
@@ -84,8 +87,9 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	// Create a fake client with a service and a secret.
 	client := fake.NewFakeClientWithScheme(scheme, &service, &secret)
 
-	serviceReconciler := &fakeReconciler{}
-
+	serviceReconciler := &fakeReconciler{
+		Finished: make(chan bool),
+	}
 	secretReconciler := &SecretReconciler{
 		Client:            client,
 		Log:               ctrl.Log.WithName("reconcilerTest"),
@@ -133,6 +137,9 @@ func TestSameLabelsAsService(t *testing.T) {
 
 	_, err := reconcilerTest.reconcile()
 
+	finished := <-reconcilerTest.serviceReconciler.Finished
+
+	assert.Check(t, finished)
 	assert.Check(t, reconcilerTest.serviceReconciler.Reconciled)
 	assert.NilError(t, err)
 }

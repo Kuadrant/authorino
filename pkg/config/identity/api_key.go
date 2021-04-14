@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/3scale-labs/authorino/pkg/common"
@@ -92,4 +93,13 @@ func (apiKey *APIKey) Call(pipeline common.AuthPipeline, _ context.Context) (int
 	err := fmt.Errorf(invalidApiKeyMsg)
 	apiKeyLog.Error(err, invalidApiKeyMsg)
 	return nil, err
+}
+
+func (apiKey *APIKey) FindSecretByName(lookup types.NamespacedName) *v1.Secret {
+	for _, secret := range apiKey.authorizedCredentials {
+		if secret.GetNamespace() == lookup.Namespace && secret.GetName() == lookup.Name {
+			return &secret
+		}
+	}
+	return nil
 }
