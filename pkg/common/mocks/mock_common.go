@@ -13,31 +13,31 @@ import (
 	context "golang.org/x/net/context"
 )
 
-// MockAuthContext is a mock of AuthContext interface.
-type MockAuthContext struct {
+// MockAuthPipeline is a mock of AuthPipeline interface.
+type MockAuthPipeline struct {
 	ctrl     *gomock.Controller
-	recorder *MockAuthContextMockRecorder
+	recorder *MockAuthPipelineMockRecorder
 }
 
-// MockAuthContextMockRecorder is the mock recorder for MockAuthContext.
-type MockAuthContextMockRecorder struct {
-	mock *MockAuthContext
+// MockAuthPipelineMockRecorder is the mock recorder for MockAuthPipeline.
+type MockAuthPipelineMockRecorder struct {
+	mock *MockAuthPipeline
 }
 
-// NewMockAuthContext creates a new mock instance.
-func NewMockAuthContext(ctrl *gomock.Controller) *MockAuthContext {
-	mock := &MockAuthContext{ctrl: ctrl}
-	mock.recorder = &MockAuthContextMockRecorder{mock}
+// NewMockAuthPipeline creates a new mock instance.
+func NewMockAuthPipeline(ctrl *gomock.Controller) *MockAuthPipeline {
+	mock := &MockAuthPipeline{ctrl: ctrl}
+	mock.recorder = &MockAuthPipelineMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAuthContext) EXPECT() *MockAuthContextMockRecorder {
+func (m *MockAuthPipeline) EXPECT() *MockAuthPipelineMockRecorder {
 	return m.recorder
 }
 
 // GetAPI mocks base method.
-func (m *MockAuthContext) GetAPI() interface{} {
+func (m *MockAuthPipeline) GetAPI() interface{} {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAPI")
 	ret0, _ := ret[0].(interface{})
@@ -45,13 +45,13 @@ func (m *MockAuthContext) GetAPI() interface{} {
 }
 
 // GetAPI indicates an expected call of GetAPI.
-func (mr *MockAuthContextMockRecorder) GetAPI() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetAPI() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAPI", reflect.TypeOf((*MockAuthContext)(nil).GetAPI))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAPI", reflect.TypeOf((*MockAuthPipeline)(nil).GetAPI))
 }
 
 // GetDataForAuthorization mocks base method.
-func (m *MockAuthContext) GetDataForAuthorization() interface{} {
+func (m *MockAuthPipeline) GetDataForAuthorization() interface{} {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDataForAuthorization")
 	ret0, _ := ret[0].(interface{})
@@ -59,13 +59,13 @@ func (m *MockAuthContext) GetDataForAuthorization() interface{} {
 }
 
 // GetDataForAuthorization indicates an expected call of GetDataForAuthorization.
-func (mr *MockAuthContextMockRecorder) GetDataForAuthorization() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetDataForAuthorization() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDataForAuthorization", reflect.TypeOf((*MockAuthContext)(nil).GetDataForAuthorization))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDataForAuthorization", reflect.TypeOf((*MockAuthPipeline)(nil).GetDataForAuthorization))
 }
 
 // GetHttp mocks base method.
-func (m *MockAuthContext) GetHttp() *envoy_service_auth_v3.AttributeContext_HttpRequest {
+func (m *MockAuthPipeline) GetHttp() *envoy_service_auth_v3.AttributeContext_HttpRequest {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHttp")
 	ret0, _ := ret[0].(*envoy_service_auth_v3.AttributeContext_HttpRequest)
@@ -73,13 +73,13 @@ func (m *MockAuthContext) GetHttp() *envoy_service_auth_v3.AttributeContext_Http
 }
 
 // GetHttp indicates an expected call of GetHttp.
-func (mr *MockAuthContextMockRecorder) GetHttp() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetHttp() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHttp", reflect.TypeOf((*MockAuthContext)(nil).GetHttp))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHttp", reflect.TypeOf((*MockAuthPipeline)(nil).GetHttp))
 }
 
 // GetParentContext mocks base method.
-func (m *MockAuthContext) GetParentContext() *context.Context {
+func (m *MockAuthPipeline) GetParentContext() *context.Context {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetParentContext")
 	ret0, _ := ret[0].(*context.Context)
@@ -87,13 +87,13 @@ func (m *MockAuthContext) GetParentContext() *context.Context {
 }
 
 // GetParentContext indicates an expected call of GetParentContext.
-func (mr *MockAuthContextMockRecorder) GetParentContext() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetParentContext() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParentContext", reflect.TypeOf((*MockAuthContext)(nil).GetParentContext))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParentContext", reflect.TypeOf((*MockAuthPipeline)(nil).GetParentContext))
 }
 
 // GetRequest mocks base method.
-func (m *MockAuthContext) GetRequest() *envoy_service_auth_v3.CheckRequest {
+func (m *MockAuthPipeline) GetRequest() *envoy_service_auth_v3.CheckRequest {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRequest")
 	ret0, _ := ret[0].(*envoy_service_auth_v3.CheckRequest)
@@ -101,13 +101,13 @@ func (m *MockAuthContext) GetRequest() *envoy_service_auth_v3.CheckRequest {
 }
 
 // GetRequest indicates an expected call of GetRequest.
-func (mr *MockAuthContextMockRecorder) GetRequest() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetRequest() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRequest", reflect.TypeOf((*MockAuthContext)(nil).GetRequest))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRequest", reflect.TypeOf((*MockAuthPipeline)(nil).GetRequest))
 }
 
 // GetResolvedIdentity mocks base method.
-func (m *MockAuthContext) GetResolvedIdentity() (interface{}, interface{}) {
+func (m *MockAuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResolvedIdentity")
 	ret0, _ := ret[0].(interface{})
@@ -116,13 +116,13 @@ func (m *MockAuthContext) GetResolvedIdentity() (interface{}, interface{}) {
 }
 
 // GetResolvedIdentity indicates an expected call of GetResolvedIdentity.
-func (mr *MockAuthContextMockRecorder) GetResolvedIdentity() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetResolvedIdentity() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedIdentity", reflect.TypeOf((*MockAuthContext)(nil).GetResolvedIdentity))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedIdentity", reflect.TypeOf((*MockAuthPipeline)(nil).GetResolvedIdentity))
 }
 
 // GetResolvedMetadata mocks base method.
-func (m *MockAuthContext) GetResolvedMetadata() map[interface{}]interface{} {
+func (m *MockAuthPipeline) GetResolvedMetadata() map[interface{}]interface{} {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResolvedMetadata")
 	ret0, _ := ret[0].(map[interface{}]interface{})
@@ -130,9 +130,9 @@ func (m *MockAuthContext) GetResolvedMetadata() map[interface{}]interface{} {
 }
 
 // GetResolvedMetadata indicates an expected call of GetResolvedMetadata.
-func (mr *MockAuthContextMockRecorder) GetResolvedMetadata() *gomock.Call {
+func (mr *MockAuthPipelineMockRecorder) GetResolvedMetadata() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedMetadata", reflect.TypeOf((*MockAuthContext)(nil).GetResolvedMetadata))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedMetadata", reflect.TypeOf((*MockAuthPipeline)(nil).GetResolvedMetadata))
 }
 
 // MockAuthConfigEvaluator is a mock of AuthConfigEvaluator interface.
@@ -159,7 +159,7 @@ func (m *MockAuthConfigEvaluator) EXPECT() *MockAuthConfigEvaluatorMockRecorder 
 }
 
 // Call mocks base method.
-func (m *MockAuthConfigEvaluator) Call(arg0 common.AuthContext, arg1 context.Context) (interface{}, error) {
+func (m *MockAuthConfigEvaluator) Call(arg0 common.AuthPipeline, arg1 context.Context) (interface{}, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Call", arg0, arg1)
 	ret0, _ := ret[0].(interface{})

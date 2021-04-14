@@ -29,20 +29,20 @@ func init() {
 }
 
 // Call method will execute the specific Identity implementation's method
-func (config *IdentityConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	switch {
 	case config.OAuth2 != nil:
-		return config.OAuth2.Call(authContext, ctx)
+		return config.OAuth2.Call(pipeline, ctx)
 	case config.OIDC != nil:
-		return config.OIDC.Call(authContext, ctx)
+		return config.OIDC.Call(pipeline, ctx)
 	case config.MTLS != nil:
-		return config.MTLS.Call(authContext, ctx)
+		return config.MTLS.Call(pipeline, ctx)
 	case config.HMAC != nil:
-		return config.HMAC.Call(authContext, ctx)
+		return config.HMAC.Call(pipeline, ctx)
 	case config.APIKey != nil:
-		return config.APIKey.Call(authContext, ctx)
+		return config.APIKey.Call(pipeline, ctx)
 	case config.KubernetesAuth != nil:
-		return config.KubernetesAuth.Call(authContext, ctx)
+		return config.KubernetesAuth.Call(pipeline, ctx)
 	default:
 		return "", fmt.Errorf("invalid identity config")
 	}

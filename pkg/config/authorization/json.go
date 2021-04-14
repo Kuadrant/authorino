@@ -32,8 +32,8 @@ type JSONPatternMatching struct {
 	Rules      []JSONPatternMatchingRule `yaml:"rules"`
 }
 
-func (jsonAuth *JSONPatternMatching) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	data := authContext.GetDataForAuthorization()
+func (jsonAuth *JSONPatternMatching) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
+	data := pipeline.GetDataForAuthorization()
 	dataJSON, _ := json.Marshal(data)
 	dataStr := string(dataJSON)
 

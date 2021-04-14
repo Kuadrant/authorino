@@ -19,12 +19,12 @@ type AuthorizationConfig struct {
 	JSON *authorization.JSONPatternMatching `yaml:"json,omitempty"`
 }
 
-func (config *AuthorizationConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	switch {
 	case config.OPA != nil:
-		return config.OPA.Call(authContext, ctx)
+		return config.OPA.Call(pipeline, ctx)
 	case config.JSON != nil:
-		return config.JSON.Call(authContext, ctx)
+		return config.JSON.Call(pipeline, ctx)
 	default:
 		return false, fmt.Errorf("invalid authorization configs")
 	}

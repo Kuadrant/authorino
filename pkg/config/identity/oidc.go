@@ -29,9 +29,9 @@ func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials) (*OIDC, er
 	}
 }
 
-func (oidc *OIDC) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// retrieve access token
-	accessToken, err := oidc.Credentials.GetCredentialsFromReq(authContext.GetRequest().GetAttributes().GetRequest().GetHttp())
+	accessToken, err := oidc.Credentials.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
 		return nil, err
 	}

@@ -91,14 +91,14 @@ func TestAuthenticatedToken(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	authContextMock := mock_common.NewMockAuthContext(ctrl)
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	authContextMock.EXPECT().GetHttp().Return(request).AnyTimes()
+	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, true, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(authContextMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 
@@ -113,14 +113,14 @@ func TestUnauthenticatedToken(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	authContextMock := mock_common.NewMockAuthContext(ctrl)
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	authContextMock.EXPECT().GetHttp().Return(request).AnyTimes()
+	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, false, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(authContextMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
 	assert.Error(t, err, "Not authenticated")
@@ -134,14 +134,14 @@ func TestOpaqueToken(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	authContextMock := mock_common.NewMockAuthContext(ctrl)
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	authContextMock.EXPECT().GetHttp().Return(request).AnyTimes()
+	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, true, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(authContextMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 
@@ -157,14 +157,14 @@ func TestCustomAudiences(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	authContextMock := mock_common.NewMockAuthContext(ctrl)
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	authContextMock.EXPECT().GetHttp().Return(request).AnyTimes()
+	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{"custom-audience"}, tokenReviewData{requestToken, true, []string{"custom-audience"}})
-	ret, err := kubernetesAuth.Call(authContextMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 
@@ -179,14 +179,14 @@ func TestCustomAudiencesUnmatch(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	authContextMock := mock_common.NewMockAuthContext(ctrl)
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	authContextMock.EXPECT().GetHttp().Return(request).AnyTimes()
+	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{"expected-audience"}, tokenReviewData{requestToken, false, []string{"custom-audience"}})
-	ret, err := kubernetesAuth.Call(authContextMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
 	assert.Error(t, err, "Not authenticated")

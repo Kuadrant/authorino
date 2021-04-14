@@ -37,8 +37,8 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authContextMock := mock_common.NewMockAuthContext(ctrl)
-	authContextMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization).AnyTimes()
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization).AnyTimes()
 
 	var (
 		jsonAuth   *JSONPatternMatching
@@ -57,7 +57,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -72,7 +72,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -87,7 +87,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -102,7 +102,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -117,7 +117,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -132,7 +132,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -147,7 +147,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -162,7 +162,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -177,7 +177,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -192,7 +192,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -207,7 +207,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.ErrorContains(t, err, "error parsing regexp")
 
@@ -242,7 +242,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -277,7 +277,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -286,7 +286,7 @@ func TestCall(t *testing.T) {
 		Rules: []JSONPatternMatchingRule{},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -308,7 +308,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -330,7 +330,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -352,7 +352,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(authContextMock, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 }

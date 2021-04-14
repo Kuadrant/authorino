@@ -51,12 +51,12 @@ func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audien
 	}, nil
 }
 
-func (kubeAuth *KubernetesAuth) Call(authCtx common.AuthContext, ctx context.Context) (interface{}, error) {
+func (kubeAuth *KubernetesAuth) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	request := authCtx.GetHttp()
+	request := pipeline.GetHttp()
 	if reqToken, err := kubeAuth.GetCredentialsFromReq(request); err != nil {
 		return nil, err
 	} else {
