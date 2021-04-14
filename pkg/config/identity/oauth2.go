@@ -12,12 +12,12 @@ import (
 )
 
 type OAuth2 struct {
+	auth_credentials.AuthCredentials
+
 	TokenIntrospectionUrl string `yaml:"tokenIntrospectionUrl"`
 	TokenTypeHint         string `yaml:"tokenTypeHint,omitempty"`
 	ClientID              string `yaml:"clientId"`
 	ClientSecret          string `yaml:"clientSecret"`
-
-	Credentials auth_credentials.AuthCredentials
 }
 
 func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clientID string, clientSecret string, creds auth_credentials.AuthCredentials) *OAuth2 {
@@ -29,11 +29,11 @@ func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clien
 	}
 
 	return &OAuth2{
+		creds,
 		tokenIntrospectionUrl,
 		tokenHint,
 		clientID,
 		clientSecret,
-		creds,
 	}
 }
 
@@ -43,7 +43,7 @@ func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (in
 	}
 
 	// retrieve access token
-	accessToken, err := oauth.Credentials.GetCredentialsFromReq(pipeline.GetHttp())
+	accessToken, err := oauth.GetCredentialsFromReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}

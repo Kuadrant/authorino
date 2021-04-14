@@ -5,20 +5,18 @@ import (
 	"fmt"
 	"testing"
 
-	mock_common "github.com/3scale-labs/authorino/pkg/common/mocks"
+	. "github.com/3scale-labs/authorino/pkg/common/auth_credentials/mocks"
+	. "github.com/3scale-labs/authorino/pkg/common/mocks"
+
 	. "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-
 	"gotest.tools/assert"
 )
 
 var (
-	getCredentialsFromReq func() (string, error)
-
 	clusterSecret1 = v1.Secret{Data: map[string][]byte{"api_key": []byte("ObiWanKenobiLightSaber")}}
 	clusterSecret2 = v1.Secret{Data: map[string][]byte{"api_key": []byte("MasterYodaLightSaber")}}
 
@@ -30,12 +28,6 @@ var (
 	}
 )
 
-type authCredMock struct{}
-
-func (a *authCredMock) GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error) {
-	return getCredentialsFromReq()
-}
-
 type MockK8sClient struct{}
 
 func (k *MockK8sClient) Get(_ context.Context, _ client.ObjectKey, _ runtime.Object) error {
@@ -46,8 +38,8 @@ func (k *MockK8sClient) List(_ context.Context, list runtime.Object, _ ...client
 	return listSecretsFunc(list.(*v1.SecretList))
 }
 
-func mockAuthPipeline(ctrl *Controller) (pipelineMock *mock_common.MockAuthPipeline) {
-	pipelineMock = mock_common.NewMockAuthPipeline(ctrl)
+func mockAuthPipeline(ctrl *Controller) (pipelineMock *MockAuthPipeline) {
+	pipelineMock = NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetHttp().Return(nil)
 	return
 }
@@ -60,7 +52,10 @@ func TestConstants(t *testing.T) {
 }
 
 func TestNewApiKeyIdentity(t *testing.T) {
-	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	ctrl := NewController(t)
+	defer ctrl.Finish()
+
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, NewMockAuthCredentials(ctrl), &MockK8sClient{})
 
 	assert.Check(t, apiKey.Name == "jedi")
 	assert.Check(t, apiKey.LabelSelectors["planet"] == "tatooine")
@@ -76,11 +71,10 @@ func TestCallSuccess(t *testing.T) {
 	defer ctrl.Finish()
 	pipelineMock := mockAuthPipeline(ctrl)
 
-	getCredentialsFromReq = func() (string, error) {
-		return "ObiWanKenobiLightSaber", nil
-	}
+	authCredMock := NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("ObiWanKenobiLightSaber", nil)
 
-	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, authCredMock, &MockK8sClient{})
 	auth, err := apiKey.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
@@ -92,11 +86,10 @@ func TestCallNoApiKeyFail(t *testing.T) {
 	defer ctrl.Finish()
 	pipelineMock := mockAuthPipeline(ctrl)
 
-	getCredentialsFromReq = func() (string, error) {
-		return "", fmt.Errorf("something went wrong getting the API Key")
-	}
+	authCredMock := NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", fmt.Errorf("something went wrong getting the API Key"))
 
-	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, authCredMock, &MockK8sClient{})
 
 	_, err := apiKey.Call(pipelineMock, context.TODO())
 
@@ -109,18 +102,17 @@ func TestCallInvalidApiKeyFail(t *testing.T) {
 	defer ctrl.Finish()
 	pipelineMock := mockAuthPipeline(ctrl)
 
-	getCredentialsFromReq = func() (string, error) {
-		return "ASithLightSaber", nil
-	}
+	authCredMock := NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("ASithLightSaber", nil)
 
-	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, authCredMock, &MockK8sClient{})
 	_, err := apiKey.Call(pipelineMock, context.TODO())
 
 	assert.Error(t, err, "the API Key provided is invalid")
 }
 
 func TestGetCredentialsFromClusterSuccess(t *testing.T) {
-	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "tatooine"}, nil, &MockK8sClient{})
 	err := apiKey.GetCredentialsFromCluster(context.TODO())
 
 	assert.NilError(t, err)
@@ -139,7 +131,7 @@ func TestGetCredentialsFromClusterFail(t *testing.T) {
 	listSecretsFunc = func(list *v1.SecretList) error {
 		return fmt.Errorf("something terribly wrong happened")
 	}
-	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
+	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "tatooine"}, nil, &MockK8sClient{})
 	err := apiKey.GetCredentialsFromCluster(context.TODO())
 
 	assert.Error(t, err, "something terribly wrong happened")

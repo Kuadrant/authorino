@@ -13,6 +13,32 @@ import (
 	"github.com/gogo/googleapis/google/rpc"
 )
 
+func getHeader(headers []*envoy_core.HeaderValueOption, key string) string {
+	for _, header := range headers {
+		entry := header.Header
+		if entry.GetKey() == key {
+			return entry.GetValue()
+		}
+	}
+	return ""
+}
+
+func TestSuccessResponse(t *testing.T) {
+	c := cache.NewCache()
+	service := AuthService{
+		Cache: &c,
+	}
+
+	var resp *envoy_auth.OkHttpResponse
+
+	resp = service.successResponse(nil).GetOkResponse()
+	assert.Equal(t, 0, len(resp.GetHeaders()))
+
+	headers := []map[string]string{{"X-Custom-Header": "some-value"}}
+	resp = service.successResponse(headers).GetOkResponse()
+	assert.Equal(t, "some-value", getHeader(resp.GetHeaders(), "X-Custom-Header"))
+}
+
 func TestDeniedResponse(t *testing.T) {
 	c := cache.NewCache()
 	service := AuthService{
@@ -21,25 +47,21 @@ func TestDeniedResponse(t *testing.T) {
 
 	var resp *envoy_auth.DeniedHttpResponse
 
-	findAuthReason := func(headers []*envoy_core.HeaderValueOption) string {
-		for i := range headers {
-			header := headers[i].Header
-			if header.GetKey() == "x-ext-auth-reason" {
-				return header.GetValue()
-			}
-		}
-		return ""
-	}
-
-	resp = service.deniedResponse(rpc.FAILED_PRECONDITION, "Invalid request").GetDeniedResponse()
+	resp = service.deniedResponse(AuthResult{Code: rpc.FAILED_PRECONDITION, Message: "Invalid request"}).GetDeniedResponse()
 	assert.Equal(t, envoy_type.StatusCode_BadRequest, resp.Status.Code)
-	assert.Equal(t, "Invalid request", findAuthReason(resp.GetHeaders()))
+	assert.Equal(t, "Invalid request", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
 
-	resp = service.deniedResponse(rpc.NOT_FOUND, "Service not found").GetDeniedResponse()
+	resp = service.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: "Service not found"}).GetDeniedResponse()
 	assert.Equal(t, envoy_type.StatusCode_NotFound, resp.Status.Code)
-	assert.Equal(t, "Service not found", findAuthReason(resp.GetHeaders()))
+	assert.Equal(t, "Service not found", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
 
-	resp = service.deniedResponse(rpc.PERMISSION_DENIED, "Unauthorized").GetDeniedResponse()
+	extraHeaders := []map[string]string{{"WWW-Authenticate": "Bearer"}}
+	resp = service.deniedResponse(AuthResult{Code: rpc.UNAUTHENTICATED, Message: "Unauthenticated", Headers: extraHeaders}).GetDeniedResponse()
+	assert.Equal(t, envoy_type.StatusCode_Unauthorized, resp.Status.Code)
+	assert.Equal(t, "Unauthenticated", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
+	assert.Equal(t, "Bearer", getHeader(resp.GetHeaders(), "WWW-Authenticate"))
+
+	resp = service.deniedResponse(AuthResult{Code: rpc.PERMISSION_DENIED, Message: "Unauthorized"}).GetDeniedResponse()
 	assert.Equal(t, envoy_type.StatusCode_Forbidden, resp.Status.Code)
-	assert.Equal(t, "Unauthorized", findAuthReason(resp.GetHeaders()))
+	assert.Equal(t, "Unauthorized", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
 }

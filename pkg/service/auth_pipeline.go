@@ -5,7 +5,9 @@ import (
 
 	"github.com/3scale-labs/authorino/pkg/common"
 	"github.com/3scale-labs/authorino/pkg/config"
+
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	"github.com/gogo/googleapis/google/rpc"
 	"golang.org/x/net/context"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -24,12 +26,26 @@ func (evresp *EvaluationResponse) Success() bool {
 	return evresp.Error == nil
 }
 
+func (evresp *EvaluationResponse) GetErrorMessage() string {
+	return evresp.Error.Error()
+}
+
 func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}, err error) EvaluationResponse {
 	return EvaluationResponse{
 		Evaluator: evaluator,
 		Object:    obj,
 		Error:     err,
 	}
+}
+
+type AuthResult struct {
+	Code    rpc.Code
+	Message string
+	Headers []map[string]string
+}
+
+func (result *AuthResult) Success() bool {
+	return result.Code == rpc.OK
 }
 
 // AuthPipeline evaluates the context of an auth request upon the auth configs defined for the requested API
@@ -82,7 +98,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 
 type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
 
-func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse, es authConfigEvaluationStrategy) {
+func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
 	ctx, cancel := context.WithCancel(*pipeline.ParentContext)
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
@@ -91,8 +107,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []common.AuthConfi
 		objConfig := authConfig
 		go func() {
 			defer waitGroup.Done()
-
-			es(objConfig, ctx, respChannel, cancel)
+			evaluate(objConfig, ctx, respChannel, cancel)
 		}()
 	}
 
@@ -117,7 +132,7 @@ func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthCon
 	})
 }
 
-func (pipeline *AuthPipeline) evaluateIdentityConfigs() error {
+func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 	configs := pipeline.API.IdentityConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -126,7 +141,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() error {
 		pipeline.evaluateOneAuthConfig(configs, &respChannel)
 	}()
 
-	var lastError error
+	var lastResp EvaluationResponse
 
 	for resp := range respChannel {
 		conf, _ := resp.Evaluator.(*config.IdentityConfig)
@@ -135,14 +150,14 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() error {
 		if resp.Success() {
 			pipeline.Identity[conf] = obj
 			authCtxLog.Info("Identity", "config", conf, "authObj", obj)
-			return nil
+			return resp
 		} else {
-			lastError = resp.Error
-			authCtxLog.Info("Identity", "config", conf, "error", lastError)
+			lastResp = resp
+			authCtxLog.Info("Identity", "config", conf, "error", resp.Error)
 		}
 	}
 
-	return lastError
+	return lastResp
 }
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
@@ -167,7 +182,7 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 	}
 }
 
-func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() error {
+func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse {
 	configs := pipeline.API.AuthorizationConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -184,31 +199,39 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() error {
 			pipeline.Authorization[conf] = obj
 			authCtxLog.Info("Authorization", "config", conf, "authObj", obj)
 		} else {
-			err := resp.Error
-			authCtxLog.Info("Authorization", "config", conf, "error", err)
-			return err
+			authCtxLog.Info("Authorization", "config", conf, "error", resp.Error)
+			return resp
 		}
 	}
 
-	return nil
+	return EvaluationResponse{}
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
-func (pipeline *AuthPipeline) Evaluate() error {
+func (pipeline *AuthPipeline) Evaluate() AuthResult {
 	// identity
-	if err := pipeline.evaluateIdentityConfigs(); err != nil {
-		return err
+	if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
+		return AuthResult{
+			Code:    rpc.UNAUTHENTICATED,
+			Message: resp.GetErrorMessage(),
+			Headers: pipeline.API.GetChallengeHeaders(),
+		}
 	}
 
 	// metadata
 	pipeline.evaluateMetadataConfigs()
 
 	// policy enforcement (authorization)
-	if err := pipeline.evaluateAuthorizationConfigs(); err != nil {
-		return err
+	if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
+		return AuthResult{
+			Code:    rpc.PERMISSION_DENIED,
+			Message: resp.GetErrorMessage(),
+		}
 	}
 
-	return nil
+	return AuthResult{
+		Code: rpc.OK,
+	}
 }
 
 func (pipeline *AuthPipeline) GetParentContext() *context.Context {

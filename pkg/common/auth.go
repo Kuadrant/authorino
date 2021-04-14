@@ -3,6 +3,8 @@ package common
 import (
 	"golang.org/x/net/context"
 
+	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
+
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,6 +30,7 @@ type NamedConfigEvaluator interface {
 }
 
 type IdentityConfigEvaluator interface {
+	GetAuthCredentials() auth_credentials.AuthCredentials
 	GetOIDC() interface{}
 }
 

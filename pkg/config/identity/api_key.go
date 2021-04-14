@@ -21,12 +21,6 @@ const (
 	credentialsFetchingErrorMsg = "Something went wrong fetching the authorized credentials"
 )
 
-// APIKeyIdentityEvaluator interface represents the API Key Identity evaluator
-type APIKeyIdentityEvaluator interface {
-	GetCredentialsFromCluster(context.Context) error
-	Call(common.AuthPipeline, context.Context) (interface{}, error)
-}
-
 type apiKeyDetails struct {
 	Name                  string            `yaml:"name"`
 	LabelSelectors        map[string]string `yaml:"labelSelectors"`
@@ -34,9 +28,9 @@ type apiKeyDetails struct {
 	authorizedCredentials map[string]v1.Secret
 }
 
-// APIKey struct implements the APIKeyIdentityEvaluator interface
 type APIKey struct {
 	auth_credentials.AuthCredentials
+
 	apiKeyDetails
 }
 

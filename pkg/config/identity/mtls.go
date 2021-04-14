@@ -4,9 +4,12 @@ import (
 	"context"
 
 	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
 )
 
 type MTLS struct {
+	auth_credentials.AuthCredentials
+
 	PEM string `yaml:"pem"`
 }
 

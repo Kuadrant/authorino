@@ -15,12 +15,20 @@ import (
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 )
 
+const (
+	X_EXT_AUTH_REASON_HEADER = "X-Ext-Auth-Reason"
+
+	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
+	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"
+)
+
 var (
 	authServiceLog = ctrl.Log.WithName("Authorino").WithName("AuthService")
 
 	statusCodeMapping = map[rpc.Code]envoy_type.StatusCode{
 		rpc.FAILED_PRECONDITION: envoy_type.StatusCode_BadRequest,
 		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
+		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
 		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
 	}
 )
@@ -35,7 +43,7 @@ type AuthService struct {
 func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	reqJSON, err := json.MarshalIndent(req, "", "  ")
 	if err != nil {
-		return self.deniedResponse(rpc.FAILED_PRECONDITION, "Invalid request"), nil
+		return self.deniedResponse(AuthResult{Code: rpc.FAILED_PRECONDITION, Message: RESPONSE_MESSAGE_INVALID_REQUEST}), nil
 	}
 	authServiceLog.Info("Check()", "reqJSON", string(reqJSON))
 
@@ -46,31 +54,33 @@ func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest
 
 	apiConfig, apiConfigOK := config[host]
 	if !apiConfigOK {
-		return self.deniedResponse(rpc.NOT_FOUND, "Service not found"), nil
+		return self.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}), nil
 	}
 
 	pipeline := NewAuthPipeline(ctx, req, apiConfig)
 
-	err = pipeline.Evaluate()
-	if err != nil {
-		return self.deniedResponse(rpc.PERMISSION_DENIED, err.Error()), nil
+	if result := pipeline.Evaluate(); result.Success() {
+		return self.successResponse(result.Headers), nil
+	} else {
+		return self.deniedResponse(result), nil
 	}
-
-	return self.successResponse(), nil
 }
 
-func (self *AuthService) successResponse() *envoy_auth.CheckResponse {
+func (self *AuthService) successResponse(headers []map[string]string) *envoy_auth.CheckResponse {
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
 			Code: int32(rpc.OK),
 		},
 		HttpResponse: &envoy_auth.CheckResponse_OkResponse{
-			OkResponse: &envoy_auth.OkHttpResponse{},
+			OkResponse: &envoy_auth.OkHttpResponse{
+				Headers: buildResponseHeaders(headers),
+			},
 		},
 	}
 }
 
-func (self *AuthService) deniedResponse(code rpc.Code, message string) *envoy_auth.CheckResponse {
+func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+	code := authResult.Code
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
 			Code: int32(code),
@@ -80,15 +90,39 @@ func (self *AuthService) deniedResponse(code rpc.Code, message string) *envoy_au
 				Status: &envoy_type.HttpStatus{
 					Code: statusCodeMapping[code],
 				},
-				Headers: []*envoy_core.HeaderValueOption{
-					{
-						Header: &envoy_core.HeaderValue{
-							Key:   "x-ext-auth-reason",
-							Value: message,
-						},
-					},
-				},
+				Headers: buildResponseHeadersWithReason(authResult.Message, authResult.Headers),
 			},
 		},
 	}
+}
+
+func buildResponseHeaders(headers []map[string]string) []*envoy_core.HeaderValueOption {
+	responseHeaders := make([]*envoy_core.HeaderValueOption, 0)
+
+	for _, headerMap := range headers {
+		for key, value := range headerMap {
+			responseHeaders = append(responseHeaders, &envoy_core.HeaderValueOption{
+				Header: &envoy_core.HeaderValue{
+					Key:   key,
+					Value: value,
+				},
+			})
+		}
+	}
+
+	return responseHeaders
+}
+
+func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string]string) []*envoy_core.HeaderValueOption {
+	var headers []map[string]string
+
+	if extraHeaders != nil {
+		headers = extraHeaders
+	} else {
+		headers = make([]map[string]string, 0)
+	}
+
+	headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
+
+	return buildResponseHeaders(headers)
 }

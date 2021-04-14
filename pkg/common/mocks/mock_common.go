@@ -8,9 +8,12 @@ import (
 	reflect "reflect"
 
 	common "github.com/3scale-labs/authorino/pkg/common"
+	auth_credentials "github.com/3scale-labs/authorino/pkg/common/auth_credentials"
 	envoy_service_auth_v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
+	v1 "k8s.io/api/core/v1"
+	types "k8s.io/apimachinery/pkg/types"
 )
 
 // MockAuthPipeline is a mock of AuthPipeline interface.
@@ -233,6 +236,20 @@ func (m *MockIdentityConfigEvaluator) EXPECT() *MockIdentityConfigEvaluatorMockR
 	return m.recorder
 }
 
+// GetAuthCredentials mocks base method.
+func (m *MockIdentityConfigEvaluator) GetAuthCredentials() auth_credentials.AuthCredentials {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAuthCredentials")
+	ret0, _ := ret[0].(auth_credentials.AuthCredentials)
+	return ret0
+}
+
+// GetAuthCredentials indicates an expected call of GetAuthCredentials.
+func (mr *MockIdentityConfigEvaluatorMockRecorder) GetAuthCredentials() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthCredentials", reflect.TypeOf((*MockIdentityConfigEvaluator)(nil).GetAuthCredentials))
+}
+
 // GetOIDC mocks base method.
 func (m *MockIdentityConfigEvaluator) GetOIDC() interface{} {
 	m.ctrl.T.Helper()
@@ -245,4 +262,41 @@ func (m *MockIdentityConfigEvaluator) GetOIDC() interface{} {
 func (mr *MockIdentityConfigEvaluatorMockRecorder) GetOIDC() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOIDC", reflect.TypeOf((*MockIdentityConfigEvaluator)(nil).GetOIDC))
+}
+
+// MockAPIKeySecretFinder is a mock of APIKeySecretFinder interface.
+type MockAPIKeySecretFinder struct {
+	ctrl     *gomock.Controller
+	recorder *MockAPIKeySecretFinderMockRecorder
+}
+
+// MockAPIKeySecretFinderMockRecorder is the mock recorder for MockAPIKeySecretFinder.
+type MockAPIKeySecretFinderMockRecorder struct {
+	mock *MockAPIKeySecretFinder
+}
+
+// NewMockAPIKeySecretFinder creates a new mock instance.
+func NewMockAPIKeySecretFinder(ctrl *gomock.Controller) *MockAPIKeySecretFinder {
+	mock := &MockAPIKeySecretFinder{ctrl: ctrl}
+	mock.recorder = &MockAPIKeySecretFinderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAPIKeySecretFinder) EXPECT() *MockAPIKeySecretFinderMockRecorder {
+	return m.recorder
+}
+
+// FindSecretByName mocks base method.
+func (m *MockAPIKeySecretFinder) FindSecretByName(arg0 types.NamespacedName) *v1.Secret {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindSecretByName", arg0)
+	ret0, _ := ret[0].(*v1.Secret)
+	return ret0
+}
+
+// FindSecretByName indicates an expected call of FindSecretByName.
+func (mr *MockAPIKeySecretFinderMockRecorder) FindSecretByName(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSecretByName", reflect.TypeOf((*MockAPIKeySecretFinder)(nil).FindSecretByName), arg0)
 }
