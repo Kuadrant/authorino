@@ -37,13 +37,13 @@ func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clien
 	}
 }
 
-func (oauth *OAuth2) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
 	// retrieve access token
-	accessToken, err := oauth.Credentials.GetCredentialsFromReq(authContext.GetHttp())
+	accessToken, err := oauth.Credentials.GetCredentialsFromReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}

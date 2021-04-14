@@ -187,7 +187,7 @@ func (uma *UMA) discover() error {
 	}
 }
 
-func (uma *UMA) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (uma *UMA) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// get the protection API token (PAT)
 	var pat PAT
 	if err := uma.requestPAT(ctx, &pat); err != nil {
@@ -195,7 +195,7 @@ func (uma *UMA) Call(authContext common.AuthContext, ctx context.Context) (inter
 	}
 
 	// get resource data
-	uri := authContext.GetHttp().GetPath()
+	uri := pipeline.GetHttp().GetPath()
 	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx)
 
 	if err != nil {

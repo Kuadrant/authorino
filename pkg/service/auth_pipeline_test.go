@@ -31,15 +31,15 @@ const (
 type successConfig struct{}
 type failConfig struct{}
 
-func (c *successConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (c *successConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return nil, nil
 }
 
-func (c *failConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (c *failConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return nil, fmt.Errorf("Failed")
 }
 
-func newAuthContext(identityConfigs []common.AuthConfigEvaluator, req *envoy_auth.CheckRequest) AuthContext {
+func newAuthPipeline(identityConfigs []common.AuthConfigEvaluator, req *envoy_auth.CheckRequest) AuthPipeline {
 	metadataConfigs := make([]common.AuthConfigEvaluator, 0)
 	authorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
@@ -49,20 +49,20 @@ func newAuthContext(identityConfigs []common.AuthConfigEvaluator, req *envoy_aut
 		AuthorizationConfigs: authorizationConfigs,
 	}
 
-	return NewAuthContext(context.TODO(), req, apiConfig)
+	return NewAuthPipeline(context.TODO(), req, apiConfig)
 }
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateOneAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -77,7 +77,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -85,7 +85,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateOneAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -103,7 +103,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -111,7 +111,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateOneAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateOneAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -129,7 +129,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 func TestEvaluateAllAuthConfigs(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -137,7 +137,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAllAuthConfigs(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -155,14 +155,14 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	var err error
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAllAuthConfigs(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -177,7 +177,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -185,7 +185,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateAllAuthConfigs(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAllAuthConfigs(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -203,7 +203,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 func TestEvaluateAnyAuthConfig(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -211,7 +211,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAnyAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -229,7 +229,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &failConfig{}, &failConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -237,7 +237,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAnyAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -255,7 +255,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	var identityConfigs []common.AuthConfigEvaluator
 	identityConfigs = append(identityConfigs, &successConfig{}, &successConfig{})
-	authContext := newAuthContext(identityConfigs, nil)
+	pipeline := newAuthPipeline(identityConfigs, nil)
 	respChannel := make(chan EvaluationResponse, 2)
 
 	swap := false
@@ -263,7 +263,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		authContext.evaluateAnyAuthConfig(authContext.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAnyAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -283,8 +283,8 @@ func TestGetDataForAuthorization(t *testing.T) {
 	identityConfigs = append(identityConfigs, &successConfig{})
 	request := envoy_auth.CheckRequest{}
 	_ = json.Unmarshal([]byte(rawRequest), &request)
-	authContext := newAuthContext(identityConfigs, &request)
-	data := authContext.GetDataForAuthorization()
+	pipeline := newAuthPipeline(identityConfigs, &request)
+	data := pipeline.GetDataForAuthorization()
 	if dataJSON, err := json.Marshal(&data); err != nil {
 		t.Error(err)
 	} else {

@@ -28,14 +28,14 @@ func TestOAuth2Call(t *testing.T) {
 	authCredMock := NewMockAuthCredentials(ctrl)
 	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("oauth-opaque-token", nil).AnyTimes()
 
-	authContextMock := NewMockAuthContext(ctrl)
-	authContextMock.EXPECT().GetHttp().Return(nil).AnyTimes()
+	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetHttp().Return(nil).AnyTimes()
 
 	ctx := context.Background()
 
 	{
 		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-active", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
-		obj, err := oauthEvaluator.Call(authContextMock, ctx)
+		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
 		assert.NilError(t, err)
 		claims := obj.(map[string]interface{})
 		assert.Assert(t, claims["active"])
@@ -43,7 +43,7 @@ func TestOAuth2Call(t *testing.T) {
 
 	{
 		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-inactive", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
-		obj, err := oauthEvaluator.Call(authContextMock, ctx)
+		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
 		assert.NilError(t, err)
 		claims := obj.(map[string]interface{})
 		assert.Assert(t, claims["active"] == false)

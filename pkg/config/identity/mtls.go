@@ -10,6 +10,6 @@ type MTLS struct {
 	PEM string `yaml:"pem"`
 }
 
-func (self *MTLS) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (self *MTLS) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return "Authenticated with mTLS", nil // TODO: implement
 }

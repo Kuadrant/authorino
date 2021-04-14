@@ -49,9 +49,9 @@ func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest
 		return self.deniedResponse(rpc.NOT_FOUND, "Service not found"), nil
 	}
 
-	authContext := NewAuthContext(ctx, req, apiConfig)
+	pipeline := NewAuthPipeline(ctx, req, apiConfig)
 
-	err = authContext.Evaluate()
+	err = pipeline.Evaluate()
 	if err != nil {
 		return self.deniedResponse(rpc.PERMISSION_DENIED, err.Error()), nil
 	}

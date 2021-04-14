@@ -27,13 +27,13 @@ var wellKnownOIDCConfig string = fmt.Sprintf(`{
 	}`, authServerHost, authServerHost)
 
 type userInfoTestData struct {
-	ctx             context.Context
-	cancel          context.CancelFunc
-	newOIDC         *identity.OIDC
-	userInfo        UserInfo
-	authCredMock    *MockAuthCredentials
-	authContextMock *MockAuthContext
-	idConfEvalMock  *MockIdentityConfigEvaluator
+	ctx            context.Context
+	cancel         context.CancelFunc
+	newOIDC        *identity.OIDC
+	userInfo       UserInfo
+	authCredMock   *MockAuthCredentials
+	pipelineMock   *MockAuthPipeline
+	idConfEvalMock *MockIdentityConfigEvaluator
 }
 
 func newUserInfoTestData(ctrl *Controller) userInfoTestData {
@@ -46,7 +46,7 @@ func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 		newOIDC,
 		UserInfo{newOIDC},
 		authCredMock,
-		NewMockAuthContext(ctrl),
+		NewMockAuthPipeline(ctrl),
 		NewMockIdentityConfigEvaluator(ctrl),
 	}
 }
@@ -66,10 +66,10 @@ func TestUserInfoCall(t *testing.T) {
 
 	ta.authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", nil)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
-	ta.authContextMock.EXPECT().GetHttp().Return(nil)
-	ta.authContextMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
+	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
+	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
-	obj, err := ta.userInfo.Call(ta.authContextMock, ta.ctx)
+	obj, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 
 	assert.NilError(t, err)
 
@@ -84,11 +84,11 @@ func TestUserInfoCanceledContext(t *testing.T) {
 
 	ta.authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", nil)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
-	ta.authContextMock.EXPECT().GetHttp().Return(nil)
-	ta.authContextMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
+	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
+	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
 	ta.cancel()
-	_, err := ta.userInfo.Call(ta.authContextMock, ta.ctx)
+	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 
 	assert.Error(t, err, "context canceled")
 }
@@ -100,8 +100,8 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 
 	otherOidcEvaluator, _ := identity.NewOIDC("http://wrongServer", ta.authCredMock)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(otherOidcEvaluator)
-	ta.authContextMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
+	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
-	_, err := ta.userInfo.Call(ta.authContextMock, ta.ctx)
+	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 	assert.Error(t, err, "Missing identity for OIDC issuer http://127.0.0.1:9002. Skipping related UserInfo metadata.")
 }

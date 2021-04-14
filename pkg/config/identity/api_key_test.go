@@ -46,9 +46,9 @@ func (k *MockK8sClient) List(_ context.Context, list runtime.Object, _ ...client
 	return listSecretsFunc(list.(*v1.SecretList))
 }
 
-func mockAuthContext(ctrl *Controller) (authContextMock *mock_common.MockAuthContext) {
-	authContextMock = mock_common.NewMockAuthContext(ctrl)
-	authContextMock.EXPECT().GetHttp().Return(nil)
+func mockAuthPipeline(ctrl *Controller) (pipelineMock *mock_common.MockAuthPipeline) {
+	pipelineMock = mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetHttp().Return(nil)
 	return
 }
 
@@ -74,14 +74,14 @@ func TestNewApiKeyIdentity(t *testing.T) {
 func TestCallSuccess(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
-	authContextMock := mockAuthContext(ctrl)
+	pipelineMock := mockAuthPipeline(ctrl)
 
 	getCredentialsFromReq = func() (string, error) {
 		return "ObiWanKenobiLightSaber", nil
 	}
 
 	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
-	auth, err := apiKey.Call(authContextMock, context.TODO())
+	auth, err := apiKey.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 	assert.Check(t, string(auth.(v1.Secret).Data["api_key"]) == "ObiWanKenobiLightSaber")
@@ -90,7 +90,7 @@ func TestCallSuccess(t *testing.T) {
 func TestCallNoApiKeyFail(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
-	authContextMock := mockAuthContext(ctrl)
+	pipelineMock := mockAuthPipeline(ctrl)
 
 	getCredentialsFromReq = func() (string, error) {
 		return "", fmt.Errorf("something went wrong getting the API Key")
@@ -98,7 +98,7 @@ func TestCallNoApiKeyFail(t *testing.T) {
 
 	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
 
-	_, err := apiKey.Call(authContextMock, context.TODO())
+	_, err := apiKey.Call(pipelineMock, context.TODO())
 
 	assert.Error(t, err, "something went wrong getting the API Key")
 
@@ -107,14 +107,14 @@ func TestCallNoApiKeyFail(t *testing.T) {
 func TestCallInvalidApiKeyFail(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
-	authContextMock := mockAuthContext(ctrl)
+	pipelineMock := mockAuthPipeline(ctrl)
 
 	getCredentialsFromReq = func() (string, error) {
 		return "ASithLightSaber", nil
 	}
 
 	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "tatooine"}, &authCredMock{}, &MockK8sClient{})
-	_, err := apiKey.Call(authContextMock, context.TODO())
+	_, err := apiKey.Call(pipelineMock, context.TODO())
 
 	assert.Error(t, err, "the API Key provided is invalid")
 }

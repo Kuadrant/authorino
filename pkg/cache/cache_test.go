@@ -11,7 +11,7 @@ import (
 
 type BogusIdentity struct{}
 
-func (f *BogusIdentity) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (f *BogusIdentity) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return true, nil
 }
 

@@ -6,7 +6,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
 
-type AuthContext interface {
+type AuthPipeline interface {
 	GetParentContext() *context.Context
 	GetRequest() *envoy_auth.CheckRequest
 	GetHttp() *envoy_auth.AttributeContext_HttpRequest
@@ -18,7 +18,7 @@ type AuthContext interface {
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
 type AuthConfigEvaluator interface {
-	Call(AuthContext, context.Context) (interface{}, error)
+	Call(AuthPipeline, context.Context) (interface{}, error)
 }
 
 type NamedConfigEvaluator interface {

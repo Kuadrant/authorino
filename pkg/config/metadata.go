@@ -23,13 +23,13 @@ func init() {
 	MetadataEvaluator = &MetadataConfig{}
 }
 
-func (config *MetadataConfig) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	t, _ := config.GetType()
 	switch t {
 	case "userinfo":
-		return config.UserInfo.Call(authContext, ctx)
+		return config.UserInfo.Call(pipeline, ctx)
 	case "uma":
-		return config.UMA.Call(authContext, ctx)
+		return config.UMA.Call(pipeline, ctx)
 	default:
 		return "", fmt.Errorf("invalid metadata config")
 	}

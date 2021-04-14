@@ -48,8 +48,8 @@ type OPA struct {
 	policyUID  string
 }
 
-func (opa *OPA) Call(authContext common.AuthContext, ctx context.Context) (bool, error) {
-	options := rego.EvalInput(authContext.GetDataForAuthorization())
+func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
+	options := rego.EvalInput(pipeline.GetDataForAuthorization())
 	results, err := opa.policy.Eval(opa.opaContext, options)
 
 	if err != nil {

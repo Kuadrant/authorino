@@ -23,7 +23,7 @@ const (
 // APIKeyIdentityEvaluator interface represents the API Key Identity evaluator
 type APIKeyIdentityEvaluator interface {
 	GetCredentialsFromCluster(context.Context) error
-	Call(common.AuthContext, context.Context) (interface{}, error)
+	Call(common.AuthPipeline, context.Context) (interface{}, error)
 }
 
 type apiKeyDetails struct {
@@ -77,8 +77,8 @@ func (apiKey *APIKey) GetCredentialsFromCluster(ctx context.Context) error {
 }
 
 // Call will evaluate the credentials within the request against the authorized ones
-func (apiKey *APIKey) Call(authCtx common.AuthContext, _ context.Context) (interface{}, error) {
-	if reqKey, err := apiKey.GetCredentialsFromReq(authCtx.GetHttp()); err != nil {
+func (apiKey *APIKey) Call(pipeline common.AuthPipeline, _ context.Context) (interface{}, error) {
+	if reqKey, err := apiKey.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
 		apiKeyLog.Error(err, noApiKeysFoundMsg)
 		return nil, err
 	} else {

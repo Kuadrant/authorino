@@ -10,6 +10,6 @@ type HMAC struct {
 	Secret string `yaml:"secret"`
 }
 
-func (self *HMAC) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (self *HMAC) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return "Authenticated with HMAC", nil // TODO: implement
 }

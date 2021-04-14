@@ -69,13 +69,13 @@ func TestUMACall(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
 
-	authContextMock := NewMockAuthContext(ctrl)
+	pipelineMock := NewMockAuthPipeline(ctrl)
 	request := &envoy_auth.AttributeContext_HttpRequest{Path: "/someresource"}
-	authContextMock.EXPECT().GetHttp().Return(request)
+	pipelineMock.EXPECT().GetHttp().Return(request)
 
 	uma, _ := NewUMAMetadata(umaIssuer, "client-id", "client-secret")
 
-	obj, err := uma.Call(authContextMock, context.TODO())
+	obj, err := uma.Call(pipelineMock, context.TODO())
 
 	data, _ := json.Marshal(obj)
 	assert.Equal(t, "["+resourceData+"]", string(data))

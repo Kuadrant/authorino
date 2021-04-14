@@ -14,18 +14,18 @@ type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
-func (userinfo *UserInfo) Call(authContext common.AuthContext, ctx context.Context) (interface{}, error) {
+func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	oidc := userinfo.OIDC
 
 	// check if corresponding oidc identity was resolved
-	resolvedIdentity, _ := authContext.GetResolvedIdentity()
+	resolvedIdentity, _ := pipeline.GetResolvedIdentity()
 	identityEvaluator, _ := resolvedIdentity.(common.IdentityConfigEvaluator)
 	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC == nil || resolvedOIDC.Endpoint != oidc.Endpoint {
 		return nil, fmt.Errorf("Missing identity for OIDC issuer %v. Skipping related UserInfo metadata.", oidc.Endpoint)
 	}
 
 	// get access token from input
-	accessToken, err := oidc.Credentials.GetCredentialsFromReq(authContext.GetHttp())
+	accessToken, err := oidc.Credentials.GetCredentialsFromReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}
