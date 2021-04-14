@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/3scale-labs/authorino/pkg/common"
@@ -134,14 +136,15 @@ func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthCon
 
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 	configs := pipeline.API.IdentityConfigs
-	respChannel := make(chan EvaluationResponse, len(configs))
+	count := len(configs)
+	respChannel := make(chan EvaluationResponse, count)
 
 	go func() {
 		defer close(respChannel)
 		pipeline.evaluateOneAuthConfig(configs, &respChannel)
 	}()
 
-	var lastResp EvaluationResponse
+	errors := make(map[string]string)
 
 	for resp := range respChannel {
 		conf, _ := resp.Evaluator.(*config.IdentityConfig)
@@ -152,12 +155,20 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 			authCtxLog.Info("Identity", "config", conf, "authObj", obj)
 			return resp
 		} else {
-			lastResp = resp
-			authCtxLog.Info("Identity", "config", conf, "error", resp.Error)
+			err := resp.Error
+			authCtxLog.Info("Identity", "config", conf, "error", err)
+			if count == 1 {
+				return resp
+			} else {
+				errors[conf.Name] = err.Error()
+			}
 		}
 	}
 
-	return lastResp
+	errorsJSON, _ := json.Marshal(errors)
+	return EvaluationResponse{
+		Error: fmt.Errorf("%s", errorsJSON),
+	}
 }
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
