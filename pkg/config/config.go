@@ -1,26 +1,26 @@
 package config
 
-import "github.com/3scale-labs/authorino/pkg/common"
+import (
+	"fmt"
 
-// APIConfig holds the configuration of each protected API
+	"github.com/3scale-labs/authorino/pkg/common"
+)
+
+// APIConfig holds the static configuration to be evaluated in the auth pipeline
 type APIConfig struct {
 	IdentityConfigs      []common.AuthConfigEvaluator `yaml:"identity,omitempty"`
 	MetadataConfigs      []common.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []common.AuthConfigEvaluator `yaml:"authorization,omitempty"`
 }
 
-func (self *APIConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type Alias APIConfig
-	a := Alias{}
-	err := unmarshal(&a)
-	if err != nil {
-		return err
-	}
-	*self = APIConfig(a)
-	return nil
-}
+func (config *APIConfig) GetChallengeHeaders() []map[string]string {
+	challengeHeaders := make([]map[string]string, 0)
 
-// ServiceConfig is the instance config, holding the collection of configs of all protected APIs
-type ServiceConfig struct {
-	APIs map[string]APIConfig
+	for _, authConfig := range config.IdentityConfigs {
+		idConfig := authConfig.(*IdentityConfig)
+		challenge := fmt.Sprintf("%v realm=\"%v\"", idConfig.GetAuthCredentials().GetCredentialsKeySelector(), idConfig.Name)
+		challengeHeaders = append(challengeHeaders, map[string]string{"WWW-Authenticate": challenge})
+	}
+
+	return challengeHeaders
 }

@@ -25,7 +25,7 @@ func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context
 	}
 
 	// get access token from input
-	accessToken, err := oidc.Credentials.GetCredentialsFromReq(pipeline.GetHttp())
+	accessToken, err := oidc.GetCredentialsFromReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}

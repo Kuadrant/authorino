@@ -48,3 +48,17 @@ func (mr *MockAuthCredentialsMockRecorder) GetCredentialsFromReq(arg0 interface{
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsFromReq", reflect.TypeOf((*MockAuthCredentials)(nil).GetCredentialsFromReq), arg0)
 }
+
+// GetCredentialsKeySelector mocks base method.
+func (m *MockAuthCredentials) GetCredentialsKeySelector() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCredentialsKeySelector")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetCredentialsKeySelector indicates an expected call of GetCredentialsKeySelector.
+func (mr *MockAuthCredentialsMockRecorder) GetCredentialsKeySelector() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsKeySelector", reflect.TypeOf((*MockAuthCredentials)(nil).GetCredentialsKeySelector))
+}

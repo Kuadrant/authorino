@@ -11,8 +11,9 @@ import (
 )
 
 type OIDC struct {
-	Endpoint    string `yaml:"endpoint"`
-	Credentials auth_credentials.AuthCredentials
+	auth_credentials.AuthCredentials
+
+	Endpoint string `yaml:"endpoint"`
 
 	provider *goidc.Provider
 }
@@ -22,8 +23,8 @@ func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials) (*OIDC, er
 		return nil, err
 	} else {
 		return &OIDC{
-			endpoint,
 			creds,
+			endpoint,
 			issuer,
 		}, nil
 	}
@@ -31,7 +32,7 @@ func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials) (*OIDC, er
 
 func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// retrieve access token
-	accessToken, err := oidc.Credentials.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
+	accessToken, err := oidc.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
 		return nil, err
 	}

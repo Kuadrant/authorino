@@ -12,6 +12,7 @@ import (
 // AuthCredentials interface represents the methods needed to fetch credentials from input
 type AuthCredentials interface {
 	GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error)
+	GetCredentialsKeySelector() string
 }
 
 // AuthCredential struct implements the AuthCredentials interface
@@ -70,6 +71,10 @@ func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.Attri
 	default:
 		return "", fmt.Errorf(credentialLocationNotSupportedMsg)
 	}
+}
+
+func (c *AuthCredential) GetCredentialsKeySelector() string {
+	return c.KeySelector
 }
 
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {

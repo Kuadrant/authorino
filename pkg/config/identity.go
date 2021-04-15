@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
 	"github.com/3scale-labs/authorino/pkg/config/identity"
 
 	v1 "k8s.io/api/core/v1"
@@ -31,33 +32,48 @@ func init() {
 	IdentityEvaluator = &IdentityConfig{}
 }
 
-// Call method will execute the specific Identity implementation's method
-func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
 	switch {
 	case config.OAuth2 != nil:
-		return config.OAuth2.Call(pipeline, ctx)
+		return config.OAuth2
 	case config.OIDC != nil:
-		return config.OIDC.Call(pipeline, ctx)
+		return config.OIDC
 	case config.MTLS != nil:
-		return config.MTLS.Call(pipeline, ctx)
+		return config.MTLS
 	case config.HMAC != nil:
-		return config.HMAC.Call(pipeline, ctx)
+		return config.HMAC
 	case config.APIKey != nil:
-		return config.APIKey.Call(pipeline, ctx)
+		return config.APIKey
 	case config.KubernetesAuth != nil:
-		return config.KubernetesAuth.Call(pipeline, ctx)
+		return config.KubernetesAuth
 	default:
-		return "", fmt.Errorf("invalid identity config")
+		return nil
 	}
 }
+
+// impl:AuthConfigEvaluator
+
+func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
+		return evaluator.Call(pipeline, ctx)
+	} else {
+		return nil, fmt.Errorf("invalid identity config")
+	}
+}
+
+// impl:IdentityConfigEvaluator
 
 func (config *IdentityConfig) GetOIDC() interface{} {
 	return config.OIDC
 }
 
-func (config *IdentityConfig) GetAPIKey() interface{} {
-	return config.APIKey
+func (config *IdentityConfig) GetAuthCredentials() auth_credentials.AuthCredentials {
+	evaluator := config.GetAuthConfigEvaluator()
+	creds := evaluator.(auth_credentials.AuthCredentials)
+	return creds
 }
+
+// impl:APIKeySecretFinder
 
 func (config *IdentityConfig) FindSecretByName(lookup types.NamespacedName) *v1.Secret {
 	apiKey := config.APIKey
