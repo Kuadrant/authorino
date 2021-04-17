@@ -1,0 +1,28 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api-authorino.127.0.0.1.nip.io:8000
+  identity:
+    - name: same-k8s-server-users
+      kubernetes:
+        audiences:
+          - talker
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          custom-label: friends
+  authorization:
+    - name: friends-cannot-delete
+      json:
+        conditions:
+          - selector: auth.identity.metadata.labels.custom-label
+            operator: eq
+            value: friends
+        rules:
+          - selector: context.request.http.method
+            operator: neq
+            value: DELETE

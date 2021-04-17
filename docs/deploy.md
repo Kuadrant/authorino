@@ -47,7 +47,7 @@ Option A is meant for trying out Authorino locally. It gives you a bundle of a [
 
 Included resources:<br/>
 - **Talker API**<br/>
-    Just a simple rack application that echoes back in a JSON whatever is gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
+    Just a simple rack application that echoes back in a JSON whatever it gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Authorino**<br/>
     The Cloud-native AuthN/AuthZ enforcer that looks for `config.authorino.3scale.net/Service` custom resources in the Kubernetes server to add protection to your APIs.
 - **Envoy proxy**<br/>

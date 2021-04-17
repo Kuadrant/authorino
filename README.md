@@ -38,9 +38,11 @@ The [architecture](docs/architecture.md) section of the docs covers the details 
 2. Have your upstream API [ready](docs/architecture.md#protecting-upstream-apis-with-envoy-and-authorino) to be protected
 3. [Write](docs/architecture.md#the-authorino-service-custom-resource-definition-crd) and apply a `config.authorino.3scale.net`/`Service` custom resource declaring the desired state of the protection of your API
 
-## Sample use cases
+## Examples and Tutorials
 
-The [Examples](examples) page lists several use cases and demonstrates how to implement those as Authorino custom resources.
+The [Examples](examples) page lists several use cases and demonstrates how to implement those as Authorino custom resources. Each example use case presents a feature of Authorino and is independent from the other.
+
+The Authorino [Tutorials](docs/tutorials.md) provide guided examples for deploying and protecting an API with Authorino and the Envoy proxy, where each tutorial combines multiple features of Authorino into one cohesive use case, resembling real life use cases.
 
 ## Terminology
 

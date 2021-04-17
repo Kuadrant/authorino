@@ -1,6 +1,10 @@
 # Authorino examples
 
-## Setup the environment
+The examples provided in this page show several use cases and how to implement them as Authorino custom resources. Each example presents a feature of Authorino and is independent from the other.
+
+For applications of Authorino into more complex combined real life-like guided examples, see Authorino [Tutorials](/docs/tutorials.md).
+
+## Setting up the environment setup for the examples
 
 The simplest way to try the examples in this page is by launching a local test Kubernetes environment included in the Authorino examples.
 
