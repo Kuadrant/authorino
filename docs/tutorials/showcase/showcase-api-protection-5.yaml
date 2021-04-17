@@ -1,0 +1,55 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api-authorino.127.0.0.1.nip.io:8000
+  identity:
+    - name: same-k8s-server-users
+      kubernetes:
+        audiences:
+          - talker
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          custom-label: friends
+    - name: beta-testers
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: beta-testers
+    - name: keycloak-users
+      oidc:
+        endpoint: http://keycloak:8080/auth/realms/kuadrant
+  authorization:
+    - name: friends-cannot-delete
+      json:
+        conditions:
+          - selector: auth.identity.metadata.labels.custom-label
+            operator: eq
+            value: friends
+        rules:
+          - selector: context.request.http.method
+            operator: neq
+            value: DELETE
+    - name: short-lived-api-keys-for-beta-testers
+      opa:
+        inlineRego: |
+          identityMetadata = object.get(input.auth.identity, "metadata", {})
+          group = object.get(object.get(identityMetadata, "labels", {}), "group", "")
+
+          allow {
+            creationTimestampStr := identityMetadata.creationTimestamp
+            creationTimestamp := time.parse_rfc3339_ns(creationTimestampStr)
+            durationNs := time.now_ns() - creationTimestamp
+            durationDays := (durationNs/1000000000)/86400
+
+            durationDays <= 5
+            group == "beta-testers"
+          }
+
+          allow {
+            group != "beta-testers"
+          }
