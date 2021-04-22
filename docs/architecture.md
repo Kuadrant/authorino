@@ -80,11 +80,11 @@ The authorization policies evaluated in phase (iii) can use any info from the au
     </tr>
     <tr>
       <td>mTLS</td>
-      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/8">#8</a>)</td>
+      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/8">#8</a>)</td>
     </tr>
     <tr>
       <td>HMAC</td>
-      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/9">#9</a>)</td>
+      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/9">#9</a>)</td>
     </tr>
     <tr>
       <td>OAuth 2.0 (token introspection)</td>
@@ -113,7 +113,7 @@ The authorization policies evaluated in phase (iii) can use any info from the au
     </tr>
     <tr>
       <td>HTTP GET-by-POST</td>
-      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/10">#10</a>)</td>
+      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/10">#10</a>)</td>
     </tr>
     <tr>
       <td rowspan="4">Policy enforcement</td>
@@ -143,11 +143,11 @@ The authorization policies evaluated in phase (iii) can use any info from the au
     </tr>
     <tr>
       <td>Revoked access tokens</td>
-      <td>In analysis (<a href="https://github.com/3scale-labs/authorino/issues/19">#19</a>)</td>
+      <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/19">#19</a>)</td>
     </tr>
     <tr>
       <td>Resource data</td>
-      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/21">#21</a>)</td>
+      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/21">#21</a>)</td>
     </tr>
     <tr>
       <td>Compiled Rego policies</td>
@@ -155,15 +155,15 @@ The authorization policies evaluated in phase (iii) can use any info from the au
     </tr>
     <tr>
       <td>Repeated requests</td>
-      <td>In analysis (<a href="https://github.com/3scale-labs/authorino/issues/20">#20</a>)</td>
+      <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/20">#20</a>)</td>
     </tr>
     <tr>
       <td colspan="2">Mutate request with auth data</td>
-      <td>Planned (<a href="https://github.com/3scale-labs/authorino/issues/22">#22</a>)</td>
+      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/22">#22</a>)</td>
     </tr>
     <tr>
       <td colspan="2">Token normalization (Edge Auth)</td>
-      <td>In analysis (<a href="https://github.com/3scale-labs/authorino/issues/24">#24</a>)</td>
+      <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/24">#24</a>)</td>
     </tr>
     <tr>
       <td colspan="2">Multitenancy (multiple upstreams and hosts)</td>

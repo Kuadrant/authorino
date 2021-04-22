@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 
-	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common"
 
 	"github.com/open-policy-agent/opa/rego"
 	ctrl "sigs.k8s.io/controller-runtime"

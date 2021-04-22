@@ -3,8 +3,8 @@ package identity
 import (
 	"context"
 
-	"github.com/3scale-labs/authorino/pkg/common"
-	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 )
 
 type MTLS struct {

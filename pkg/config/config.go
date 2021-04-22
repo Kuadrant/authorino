@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common"
 )
 
 // APIConfig holds the static configuration to be evaluated in the auth pipeline

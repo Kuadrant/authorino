@@ -1,4 +1,4 @@
-module github.com/3scale-labs/authorino
+module github.com/kuadrant/authorino
 
 go 1.15
 

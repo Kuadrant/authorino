@@ -6,7 +6,7 @@ import (
 	"golang.org/x/net/context"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/3scale-labs/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/cache"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"

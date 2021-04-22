@@ -25,10 +25,10 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
-	"github.com/3scale-labs/authorino/controllers"
-	"github.com/3scale-labs/authorino/pkg/cache"
-	"github.com/3scale-labs/authorino/pkg/service"
+	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/controllers"
+	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/service"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"

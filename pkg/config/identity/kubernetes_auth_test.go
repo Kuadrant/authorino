@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	mock_auth_credentials "github.com/3scale-labs/authorino/pkg/common/auth_credentials/mocks"
-	mock_common "github.com/3scale-labs/authorino/pkg/common/mocks"
+	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
+	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/mock/gomock"

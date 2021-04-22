@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/3scale-labs/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/config"
 )
 
 type Cache struct {

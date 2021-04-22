@@ -3,7 +3,7 @@ package controllers
 import (
 	"testing"
 
-	"github.com/3scale-labs/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/api/v1beta1"
 	"gotest.tools/assert"
 
 	v1 "k8s.io/api/core/v1"
