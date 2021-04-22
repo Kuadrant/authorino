@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
+	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 

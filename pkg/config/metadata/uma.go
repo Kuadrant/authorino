@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common"
 )
 
 type providerJSON struct {

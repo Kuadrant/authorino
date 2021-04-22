@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/3scale-labs/authorino/pkg/common/auth_credentials/mocks"
-	. "github.com/3scale-labs/authorino/pkg/common/mocks"
+	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
+	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	. "github.com/golang/mock/gomock"
 

@@ -1,7 +1,7 @@
 domain: authorino.3scale.net
 layout: go.kubebuilder.io/v2
 projectName: authorino
-repo: github.com/3scale-labs/authorino/
+repo: github.com/kuadrant/authorino/
 resources:
 - group: config
   kind: Service

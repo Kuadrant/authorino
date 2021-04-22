@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/3scale-labs/authorino/api/v1beta1"
-	"github.com/3scale-labs/authorino/pkg/cache"
-	. "github.com/3scale-labs/authorino/pkg/common/mocks"
+	"github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/pkg/cache"
+	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"

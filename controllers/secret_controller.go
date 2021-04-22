@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/3scale-labs/authorino/api/v1beta1"
-	configv1beta1 "github.com/3scale-labs/authorino/api/v1beta1"
-	"github.com/3scale-labs/authorino/pkg/common"
+	"github.com/kuadrant/authorino/api/v1beta1"
+	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/pkg/common"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"

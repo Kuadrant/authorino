@@ -7,10 +7,10 @@ package mock_common
 import (
 	reflect "reflect"
 
-	common "github.com/3scale-labs/authorino/pkg/common"
-	auth_credentials "github.com/3scale-labs/authorino/pkg/common/auth_credentials"
 	envoy_service_auth_v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	gomock "github.com/golang/mock/gomock"
+	common "github.com/kuadrant/authorino/pkg/common"
+	auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	context "golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	types "k8s.io/apimachinery/pkg/types"

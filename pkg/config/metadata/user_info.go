@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/3scale-labs/authorino/pkg/common"
-	"github.com/3scale-labs/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/config/identity"
 )
 
 type UserInfo struct {

@@ -73,7 +73,7 @@ On top of this platform, the following applications compose the stack for this t
 ## Clone the repo
 
 ```sh
-$ git clone git@github.com:3scale-labs/authorino.git && cd authorino
+$ git clone git@github.com:kuadrant/authorino.git && cd authorino
 ```
 
 ## Setup the trial local environment

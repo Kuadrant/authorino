@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/3scale-labs/authorino/pkg/common"
-	"github.com/3scale-labs/authorino/pkg/config/authorization"
+	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/config/authorization"
 )
 
 var (

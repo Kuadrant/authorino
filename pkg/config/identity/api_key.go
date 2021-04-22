@@ -8,8 +8,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/3scale-labs/authorino/pkg/common"
-	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 

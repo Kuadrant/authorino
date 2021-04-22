@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/3scale-labs/authorino/pkg/common/mocks"
+	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	. "github.com/golang/mock/gomock"

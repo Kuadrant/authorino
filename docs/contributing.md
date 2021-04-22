@@ -2,9 +2,9 @@
 
 ## Open issues
 
-Start by checking the list of [issues](https://github.com/3scale-labs/authorino/issues) in GitHub. Maybe your idea was discussed in the past or is part of an ongoing conversation.
+Start by checking the list of [issues](https://github.com/kuadrant/authorino/issues) in GitHub. Maybe your idea was discussed in the past or is part of an ongoing conversation.
 
-In case it is a new idea for enhancement, a bug fix, a question or whatever unprecedented contribution you want to share, before sending a pull-request, please make sure to [describe the issue](https://github.com/3scale-labs/authorino/issues/new) so we can have a conversation together and help you fin dthe best way to get your contribution merged.
+In case it is a new idea for enhancement, a bug fix, a question or whatever unprecedented contribution you want to share, before sending a pull-request, please make sure to [describe the issue](https://github.com/kuadrant/authorino/issues/new) so we can have a conversation together and help you fin dthe best way to get your contribution merged.
 
 ## Local setup
 
@@ -16,7 +16,7 @@ Make sure you have installed:
 Then fork the repo and download the Golang dependencies:
 
 ```sh
-git clone git@github.com:3scale-labs/authorino.git && cd authorino
+git clone git@github.com:kuadrant/authorino.git && cd authorino
 make vendor
 ```
 

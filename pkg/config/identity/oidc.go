@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/3scale-labs/authorino/pkg/common"
-	"github.com/3scale-labs/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 
 	goidc "github.com/coreos/go-oidc"
 )
