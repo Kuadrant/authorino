@@ -1,0 +1,28 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: edge
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  wristband:
+    customClaims:
+      aud: users
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: edge-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque

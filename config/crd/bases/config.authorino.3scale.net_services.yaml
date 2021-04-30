@@ -314,6 +314,17 @@ spec:
                   - name
                   type: object
                 type: array
+              wristband:
+                description: Wristband is the opt-in configuration for issuing Authorino
+                  Festival Wristband tokens at the end of the auth pipeline.
+                properties:
+                  customClaims:
+                    additionalProperties:
+                      type: string
+                    description: Any claims to be added to the wristband token apart
+                      from the standard JWT claims added by default (iss, iat, exp).
+                    type: object
+                type: object
             required:
             - hosts
             type: object

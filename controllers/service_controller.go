@@ -251,14 +251,22 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 	config := make(map[string]authorinoService.APIConfig)
 
-	authorinoService := authorinoService.APIConfig{
+	apiConfig := authorinoService.APIConfig{
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 	}
 
+	if wristband := service.Spec.Wristband; wristband != nil {
+		if authorinoWristband, err := authorinoService.NewWristbandConfig(wristband.CustomClaims); err != nil {
+			return nil, err
+		} else {
+			apiConfig.Wristband = authorinoWristband
+		}
+	}
+
 	for _, host := range service.Spec.Hosts {
-		config[host] = authorinoService
+		config[host] = apiConfig
 	}
 	return config, nil
 }

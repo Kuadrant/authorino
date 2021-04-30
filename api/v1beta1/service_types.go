@@ -53,6 +53,9 @@ type ServiceSpec struct {
 	// Authorization is the list of authorization policies.
 	// All policies in this list MUST evaluate to "true" for a request be successful in the authorization phase.
 	Authorization []*Authorization `json:"authorization,omitempty"`
+
+	// Wristband is the opt-in configuration for issuing Authorino Festival Wristband tokens at the end of the auth pipeline.
+	Wristband *Wristband `json:"wristband,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=authorization_header;custom_header;query;cookie
@@ -200,6 +203,11 @@ func (a *Authorization) GetType() string {
 		return AuthorizationJSONPatternMatching
 	}
 	return TypeUnknown
+}
+
+type Wristband struct {
+	// Any claims to be added to the wristband token apart from the standard JWT claims added by default (iss, iat, exp).
+	CustomClaims map[string]string `json:"customClaims,omitempty"`
 }
 
 // ServiceStatus defines the observed state of Service

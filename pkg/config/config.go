@@ -11,6 +11,7 @@ type APIConfig struct {
 	IdentityConfigs      []common.AuthConfigEvaluator `yaml:"identity,omitempty"`
 	MetadataConfigs      []common.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []common.AuthConfigEvaluator `yaml:"authorization,omitempty"`
+	Wristband            common.AuthConfigEvaluator   `yaml:"wristband,omitempty"`
 }
 
 func (config *APIConfig) GetChallengeHeaders() []map[string]string {

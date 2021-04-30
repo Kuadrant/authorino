@@ -218,6 +218,27 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 	return EvaluationResponse{}
 }
 
+func (pipeline *AuthPipeline) issueWristband() EvaluationResponse {
+	ev := pipeline.API.Wristband
+
+	if ev == nil {
+		return EvaluationResponse{}
+	}
+
+	if wristband, err := ev.Call(pipeline, *pipeline.ParentContext); err != nil {
+		authCtxLog.Error(err, "Failed to issue wristband",)
+
+		return EvaluationResponse{
+			Error: err,
+		}
+	} else {
+		return EvaluationResponse{
+			Evaluator: ev,
+			Object: wristband,
+		}
+	}
+}
+
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (pipeline *AuthPipeline) Evaluate() AuthResult {
 	// identity
@@ -240,8 +261,15 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 		}
 	}
 
+	// wristband
+	wristbandHeader := make(map[string]string)
+	if wristband := pipeline.issueWristband().Object; wristband != nil {
+		wristbandHeader[X_EXT_AUTH_WRISTBAND] = fmt.Sprintf("%v", wristband)
+	}
+
 	return AuthResult{
 		Code: rpc.OK,
+		Headers: []map[string]string{ wristbandHeader },
 	}
 }
 
