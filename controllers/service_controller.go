@@ -29,6 +29,7 @@ import (
 	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
 	authorinoIdentity "github.com/kuadrant/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/kuadrant/authorino/pkg/config/metadata"
+	"gopkg.in/square/go-jose.v2"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -258,7 +259,30 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 	}
 
 	if wristband := service.Spec.Wristband; wristband != nil {
-		if authorinoWristband, err := authorinoService.NewWristbandConfig(wristband.CustomClaims); err != nil {
+		signingKeys := make([]jose.JSONWebKey, 0)
+
+		for _, signingKeyRef := range wristband.SigningKeyRefs {
+			secret := &v1.Secret{}
+			secretName := types.NamespacedName{
+				Namespace: service.Namespace,
+				Name:      signingKeyRef.Name,
+			}
+			if err := r.Client.Get(ctx, secretName, secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			} else {
+				if signingKey, err := authorinoService.NewSigningKey(
+					signingKeyRef.Name,
+					string(signingKeyRef.Algorithm),
+					secret.Data["key.pem"],
+				); err != nil {
+					return nil, err
+				} else {
+					signingKeys = append(signingKeys, *signingKey)
+				}
+			}
+		}
+
+		if authorinoWristband, err := authorinoService.NewWristbandConfig(wristband.CustomClaims, wristband.TokenDuration, signingKeys); err != nil {
 			return nil, err
 		} else {
 			apiConfig.Wristband = authorinoWristband

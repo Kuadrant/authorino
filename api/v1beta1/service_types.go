@@ -205,9 +205,26 @@ func (a *Authorization) GetType() string {
 	return TypeUnknown
 }
 
+// +kubebuilder:validation:Enum:=ES256;ES384;ES512;RS256;RS384;RS512
+type SigningKeyAlgorithm string
+
+type SigningKeyRef struct {
+	// Name of the signing key.
+	// The value is used to reference the Kubernetes secret that stores the key and in the `kid` claim of the wristband token header.
+	Name string `json:"name"`
+
+	// Algorithm to sign the wristband token using the signing key provided
+	Algorithm SigningKeyAlgorithm `json:"algorithm"`
+}
+
 type Wristband struct {
 	// Any claims to be added to the wristband token apart from the standard JWT claims added by default (iss, iat, exp).
 	CustomClaims map[string]string `json:"customClaims,omitempty"`
+	// Time span of the wristband token, in seconds.
+	TokenDuration *int64 `json:"tokenDuration,omitempty"`
+	// Reference by name to Kubernetes secrets and corresponding signing algorithms.
+	// The secrets must contain a `key.pem` entry whose value is the signing key formatted as PEM.
+	SigningKeyRefs []*SigningKeyRef `json:"signingKeyRefs"`
 }
 
 // ServiceStatus defines the observed state of Service

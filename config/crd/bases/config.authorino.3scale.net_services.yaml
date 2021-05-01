@@ -324,6 +324,39 @@ spec:
                     description: Any claims to be added to the wristband token apart
                       from the standard JWT claims added by default (iss, iat, exp).
                     type: object
+                  signingKeyRefs:
+                    description: Reference by name to Kubernetes secrets and corresponding
+                      signing algorithms. The secrets must contain a `key.pem` entry
+                      whose value is the signing key formatted as PEM.
+                    items:
+                      properties:
+                        algorithm:
+                          description: Algorithm to sign the wristband token using
+                            the signing key provided
+                          enum:
+                          - ES256
+                          - ES384
+                          - ES512
+                          - RS256
+                          - RS384
+                          - RS512
+                          type: string
+                        name:
+                          description: Name of the signing key. The value is used
+                            to reference the Kubernetes secret that stores the key
+                            and in the `kid` claim of the wristband token header.
+                          type: string
+                      required:
+                      - algorithm
+                      - name
+                      type: object
+                    type: array
+                  tokenDuration:
+                    description: Time span of the wristband token, in seconds.
+                    format: int64
+                    type: integer
+                required:
+                - signingKeyRefs
                 type: object
             required:
             - hosts

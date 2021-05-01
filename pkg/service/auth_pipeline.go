@@ -226,7 +226,7 @@ func (pipeline *AuthPipeline) issueWristband() EvaluationResponse {
 	}
 
 	if wristband, err := ev.Call(pipeline, *pipeline.ParentContext); err != nil {
-		authCtxLog.Error(err, "Failed to issue wristband",)
+		authCtxLog.Error(err, "Failed to issue wristband")
 
 		return EvaluationResponse{
 			Error: err,
@@ -234,7 +234,7 @@ func (pipeline *AuthPipeline) issueWristband() EvaluationResponse {
 	} else {
 		return EvaluationResponse{
 			Evaluator: ev,
-			Object: wristband,
+			Object:    wristband,
 		}
 	}
 }
@@ -268,8 +268,8 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 	}
 
 	return AuthResult{
-		Code: rpc.OK,
-		Headers: []map[string]string{ wristbandHeader },
+		Code:    rpc.OK,
+		Headers: []map[string]string{wristbandHeader},
 	}
 }
 
