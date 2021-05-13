@@ -19,7 +19,11 @@ spec:
   wristband:
     issuer: http://authorino-authorization:8003/authorino/talker-api-protection
     customClaims:
-      aud: users
+      - name: aud
+        value: internal
+      - name: born
+        valueFrom:
+          authJSON: auth.identity.metadata.creationTimestamp
     tokenDuration: 300
     signingKeyRefs:
       - name: my-signing-key

@@ -12,6 +12,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/common"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/tidwall/gjson"
 	jose "gopkg.in/square/go-jose.v2"
 )
 
@@ -53,13 +54,17 @@ func (c *Claims) Valid() error {
 	return nil
 }
 
-func NewWristbandConfig(issuer string, claims map[string]string, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
-	// custom claims
-	customClaims := make(Claims)
-	for claim, value := range claims {
-		customClaims[claim] = value
-	}
+type ClaimValue struct {
+	Static   string
+	FromJSON string
+}
 
+type WristbandClaim struct {
+	Name  string
+	Value *ClaimValue
+}
+
+func NewWristbandConfig(issuer string, claims []WristbandClaim, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
 	// token duration
 	var duration int64
 	if tokenDuration != nil {
@@ -75,7 +80,7 @@ func NewWristbandConfig(issuer string, claims map[string]string, tokenDuration *
 
 	return &Wristband{
 		Issuer:        issuer,
-		CustomClaims:  customClaims,
+		CustomClaims:  claims,
 		TokenDuration: duration,
 		SigningKeys:   signingKeys,
 	}, nil
@@ -83,7 +88,7 @@ func NewWristbandConfig(issuer string, claims map[string]string, tokenDuration *
 
 type Wristband struct {
 	Issuer        string
-	CustomClaims  Claims
+	CustomClaims  []WristbandClaim
 	TokenDuration int64
 	SigningKeys   []jose.JSONWebKey
 }
@@ -108,8 +113,16 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 		"sub": sub,
 	}
 
-	for claim, value := range w.CustomClaims {
-		claims[claim] = value
+	authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+	authJSON := string(authData)
+
+	for _, claim := range w.CustomClaims {
+		value := claim.Value
+		if value.FromJSON != "" {
+			claims[claim.Name] = gjson.Get(authJSON, value.FromJSON).String()
+		} else {
+			claims[claim.Name] = value.Static
+		}
 	}
 
 	// signing key

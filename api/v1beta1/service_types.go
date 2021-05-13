@@ -217,11 +217,25 @@ type SigningKeyRef struct {
 	Algorithm SigningKeyAlgorithm `json:"algorithm"`
 }
 
+type claimValueFrom struct {
+	// Selector to fill the value of claim from the authorization JSON
+	AuthJSON string `json:"authJSON,omitempty"`
+}
+
+type wristbandClaim struct {
+	// The name of the claim
+	Name string `json:"name"`
+	// Static value of the claim
+	Value string `json:"value,omitempty"`
+	// Dynamic value of the claim
+	ValueFrom claimValueFrom `json:"valueFrom,omitempty"`
+}
+
 type Wristband struct {
 	// The endpoint to the Authorino service that issues the wristband (format: <scheme>://<host>:<port>/<realm>, where <realm> = <namespace>/<authorino-service-resource-name)
 	Issuer string `json:"issuer"`
-	// Any claims to be added to the wristband token apart from the standard JWT claims added by default (iss, iat, exp).
-	CustomClaims map[string]string `json:"customClaims,omitempty"`
+	// Any claims to be added to the wristband token apart from the standard JWT claims (iss, iat, exp) added by default.
+	CustomClaims []wristbandClaim `json:"customClaims,omitempty"`
 	// Time span of the wristband token, in seconds.
 	TokenDuration *int64 `json:"tokenDuration,omitempty"`
 	// Reference by name to Kubernetes secrets and corresponding signing algorithms.

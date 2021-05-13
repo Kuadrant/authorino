@@ -445,10 +445,8 @@ func (in *Wristband) DeepCopyInto(out *Wristband) {
 	*out = *in
 	if in.CustomClaims != nil {
 		in, out := &in.CustomClaims, &out.CustomClaims
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+		*out = make([]wristbandClaim, len(*in))
+		copy(*out, *in)
 	}
 	if in.TokenDuration != nil {
 		in, out := &in.TokenDuration, &out.TokenDuration

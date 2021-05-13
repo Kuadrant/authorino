@@ -276,9 +276,20 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 			}
 		}
 
+		customClaims := make([]authorinoService.WristbandClaim, 0)
+		for _, claim := range wristband.CustomClaims {
+			customClaims = append(customClaims, authorinoService.WristbandClaim{
+				Name: claim.Name,
+				Value: &authorinoService.ClaimValue{
+					Static:   claim.Value,
+					FromJSON: claim.ValueFrom.AuthJSON,
+				},
+			})
+		}
+
 		if authorinoWristband, err := authorinoService.NewWristbandConfig(
 			wristband.Issuer,
-			wristband.CustomClaims,
+			customClaims,
 			wristband.TokenDuration,
 			signingKeys,
 		); err != nil {

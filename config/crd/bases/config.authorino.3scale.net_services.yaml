@@ -319,11 +319,28 @@ spec:
                   Festival Wristband tokens at the end of the auth pipeline.
                 properties:
                   customClaims:
-                    additionalProperties:
-                      type: string
                     description: Any claims to be added to the wristband token apart
-                      from the standard JWT claims added by default (iss, iat, exp).
-                    type: object
+                      from the standard JWT claims (iss, iat, exp) added by default.
+                    items:
+                      properties:
+                        name:
+                          description: The name of the claim
+                          type: string
+                        value:
+                          description: Static value of the claim
+                          type: string
+                        valueFrom:
+                          description: Dynamic value of the claim
+                          properties:
+                            authJSON:
+                              description: Selector to fill the value of claim from
+                                the authorization JSON
+                              type: string
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
                   issuer:
                     description: 'The endpoint to the Authorino service that issues
                       the wristband (format: <scheme>://<host>:<port>/<realm>, where
