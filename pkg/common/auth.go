@@ -37,3 +37,10 @@ type IdentityConfigEvaluator interface {
 type APIKeySecretFinder interface {
 	FindSecretByName(types.NamespacedName) *v1.Secret
 }
+
+type WristbandIssuer interface {
+	AuthConfigEvaluator
+	GetIssuer() string
+	OpenIDConfig() (string, error)
+	JWKS() (string, error)
+}

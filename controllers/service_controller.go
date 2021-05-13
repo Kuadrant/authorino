@@ -96,9 +96,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceReconciler) translateService(ctx context.Context,
-	service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
-
+func (r *ServiceReconciler) translateService(ctx context.Context, service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
 	identityConfigs := make([]config.IdentityConfig, 0)
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
@@ -132,11 +130,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 		// oidc
 		case configv1beta1.IdentityOidc:
-			if oidcConfig, err := authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred); err != nil {
-				return nil, err
-			} else {
-				translatedIdentity.OIDC = oidcConfig
-			}
+			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred)
 
 		// apiKey
 		case configv1beta1.IdentityApiKey:
@@ -282,7 +276,12 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 			}
 		}
 
-		if authorinoWristband, err := authorinoService.NewWristbandConfig(wristband.CustomClaims, wristband.TokenDuration, signingKeys); err != nil {
+		if authorinoWristband, err := authorinoService.NewWristbandConfig(
+			wristband.Issuer,
+			wristband.CustomClaims,
+			wristband.TokenDuration,
+			signingKeys,
+		); err != nil {
 			return nil, err
 		} else {
 			apiConfig.Wristband = authorinoWristband

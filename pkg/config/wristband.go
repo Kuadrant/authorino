@@ -13,12 +13,9 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	jose "gopkg.in/square/go-jose.v2"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const DEFAULT_WRISTBAND_DURATION = 300
-
-var wristbandLogger = ctrl.Log.WithName("authorino").WithName("wristband")
 
 func NewSigningKey(name string, algorithm string, singingKey []byte) (*jose.JSONWebKey, error) {
 	signingKey := &jose.JSONWebKey{
@@ -56,7 +53,7 @@ func (c *Claims) Valid() error {
 	return nil
 }
 
-func NewWristbandConfig(claims map[string]string, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
+func NewWristbandConfig(issuer string, claims map[string]string, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
 	// custom claims
 	customClaims := make(Claims)
 	for claim, value := range claims {
@@ -76,22 +73,16 @@ func NewWristbandConfig(claims map[string]string, tokenDuration *int64, signingK
 		return nil, fmt.Errorf("missing at least one signing key")
 	}
 
-	wristband := &Wristband{
+	return &Wristband{
+		Issuer:        issuer,
 		CustomClaims:  customClaims,
 		TokenDuration: duration,
 		SigningKeys:   signingKeys,
-	}
-
-	if jwks, err := wristband.JWKS(); err != nil { // TODO: Move to HTTP service (jwks_uri)
-		wristbandLogger.Error(err, "could not generate jwks")
-	} else {
-		wristbandLogger.Info("signing festival wristbands", "jwks", jwks)
-	}
-
-	return wristband, nil
+	}, nil
 }
 
 type Wristband struct {
+	Issuer        string
 	CustomClaims  Claims
 	TokenDuration int64
 	SigningKeys   []jose.JSONWebKey
@@ -111,7 +102,7 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 
 	// claims
 	claims := Claims{
-		"iss": "authorino", // TODO: This needs to be replaced with an HTTP endpoint wherefrom an OpenID Connnect well-known config can be downloaded, including inside a`jwks_uri` claim that points to another HTTP endpoint where a JSON `{ "keys": [{ <w.SigningKey> }] }` can be obtained
+		"iss": w.GetIssuer(),
 		"iat": iat,
 		"exp": exp,
 		"sub": sub,
@@ -131,6 +122,31 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 		return nil, err
 	} else {
 		return wristband, nil
+	}
+}
+
+type oidcConfig struct {
+	Issuer               string   `json:"issuer"`
+	JWKSURI              string   `json:"jwks_uri"`
+	SupportedSigningAlgs []string `json:"id_token_signing_alg_values_supported"`
+}
+
+func (w *Wristband) GetIssuer() string {
+	return w.Issuer
+}
+
+func (w *Wristband) OpenIDConfig() (string, error) {
+	issuer := w.GetIssuer()
+	config := &oidcConfig{
+		Issuer:               issuer,
+		JWKSURI:              fmt.Sprintf("%v/.well-known/openid-connect/certs", issuer),
+		SupportedSigningAlgs: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"},
+	}
+
+	if configJSON, err := json.Marshal(config); err != nil {
+		return "", err
+	} else {
+		return string(configJSON), nil
 	}
 }
 

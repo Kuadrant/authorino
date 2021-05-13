@@ -324,6 +324,11 @@ spec:
                     description: Any claims to be added to the wristband token apart
                       from the standard JWT claims added by default (iss, iat, exp).
                     type: object
+                  issuer:
+                    description: 'The endpoint to the Authorino service that issues
+                      the wristband (format: <scheme>://<host>:<port>/<realm>, where
+                      <realm> = <namespace>/<authorino-service-resource-name)'
+                    type: string
                   signingKeyRefs:
                     description: Reference by name to Kubernetes secrets and corresponding
                       signing algorithms. The secrets must contain a `key.pem` entry
@@ -356,6 +361,7 @@ spec:
                     format: int64
                     type: integer
                 required:
+                - issuer
                 - signingKeyRefs
                 type: object
             required:

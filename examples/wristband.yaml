@@ -13,7 +13,11 @@ spec:
       credentials:
         in: authorization_header
         keySelector: APIKEY
+    - name: wristband
+      oidc:
+        endpoint: http://authorino-authorization:8003/authorino/talker-api-protection
   wristband:
+    issuer: http://authorino-authorization:8003/authorino/talker-api-protection
     customClaims:
       aud: users
     tokenDuration: 300

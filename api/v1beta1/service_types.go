@@ -218,6 +218,8 @@ type SigningKeyRef struct {
 }
 
 type Wristband struct {
+	// The endpoint to the Authorino service that issues the wristband (format: <scheme>://<host>:<port>/<realm>, where <realm> = <namespace>/<authorino-service-resource-name)
+	Issuer string `json:"issuer"`
 	// Any claims to be added to the wristband token apart from the standard JWT claims added by default (iss, iat, exp).
 	CustomClaims map[string]string `json:"customClaims,omitempty"`
 	// Time span of the wristband token, in seconds.

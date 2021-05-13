@@ -7,6 +7,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/gogo/googleapis/google/rpc"
@@ -219,13 +220,19 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 }
 
 func (pipeline *AuthPipeline) issueWristband() EvaluationResponse {
-	ev := pipeline.API.Wristband
+	wristbandIssuer := pipeline.API.Wristband
 
-	if ev == nil {
+	if wristbandIssuer == nil {
 		return EvaluationResponse{}
 	}
 
-	if wristband, err := ev.Call(pipeline, *pipeline.ParentContext); err != nil {
+	resolvedIdentity, _ := pipeline.GetResolvedIdentity()
+	identityEvaluator, _ := resolvedIdentity.(common.IdentityConfigEvaluator)
+	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC != nil && resolvedOIDC.Endpoint == wristbandIssuer.GetIssuer() {
+		return EvaluationResponse{}
+	}
+
+	if wristband, err := wristbandIssuer.Call(pipeline, *pipeline.ParentContext); err != nil {
 		authCtxLog.Error(err, "Failed to issue wristband")
 
 		return EvaluationResponse{
@@ -233,7 +240,7 @@ func (pipeline *AuthPipeline) issueWristband() EvaluationResponse {
 		}
 	} else {
 		return EvaluationResponse{
-			Evaluator: ev,
+			Evaluator: wristbandIssuer,
 			Object:    wristband,
 		}
 	}

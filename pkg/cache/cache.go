@@ -58,3 +58,10 @@ func (c *Cache) Delete(key string) {
 		delete(c.apiConfigs, configName)
 	}
 }
+
+func (c *Cache) Hosts(key string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.keyMapping[key]
+}

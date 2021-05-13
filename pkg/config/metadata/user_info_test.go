@@ -38,7 +38,7 @@ type userInfoTestData struct {
 
 func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 	authCredMock := NewMockAuthCredentials(ctrl)
-	newOIDC, _ := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock)
+	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock)
 	ctx, cancel := context.WithCancel(context.TODO())
 	return userInfoTestData{
 		ctx,
@@ -98,7 +98,7 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	otherOidcEvaluator, _ := identity.NewOIDC("http://wrongServer", ta.authCredMock)
+	otherOidcEvaluator := identity.NewOIDC("http://wrongServer", ta.authCredMock)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(otherOidcEvaluator)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 

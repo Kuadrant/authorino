@@ -16,7 +16,11 @@ spec:
     app: authorino
     control-plane: controller-manager
   ports:
-    - port: 50051
+    - name: ext-auth
+      port: 50051
+      protocol: TCP
+    - name: wristband-oidc
+      port: 8003
       protocol: TCP
 ---
 apiVersion: apps/v1
