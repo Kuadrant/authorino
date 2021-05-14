@@ -16,7 +16,7 @@ import (
 	jose "gopkg.in/square/go-jose.v2"
 )
 
-const DEFAULT_WRISTBAND_DURATION = 300
+const DEFAULT_WRISTBAND_DURATION = int64(300)
 
 func NewSigningKey(name string, algorithm string, singingKey []byte) (*jose.JSONWebKey, error) {
 	signingKey := &jose.JSONWebKey{
@@ -25,6 +25,10 @@ func NewSigningKey(name string, algorithm string, singingKey []byte) (*jose.JSON
 	}
 
 	keyPEM, _ := pem.Decode(singingKey)
+
+	if keyPEM == nil {
+		return nil, fmt.Errorf("failed to decode PEM file")
+	}
 
 	switch strings.Split(keyPEM.Type, " ")[0] {
 	case "EC":
@@ -113,15 +117,17 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 		"sub": sub,
 	}
 
-	authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
-	authJSON := string(authData)
+	if len(w.CustomClaims) > 0 {
+		authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+		authJSON := string(authData)
 
-	for _, claim := range w.CustomClaims {
-		value := claim.Value
-		if value.FromJSON != "" {
-			claims[claim.Name] = gjson.Get(authJSON, value.FromJSON).String()
-		} else {
-			claims[claim.Name] = value.Static
+		for _, claim := range w.CustomClaims {
+			value := claim.Value
+			if value.FromJSON != "" {
+				claims[claim.Name] = gjson.Get(authJSON, value.FromJSON).String()
+			} else {
+				claims[claim.Name] = value.Static
+			}
 		}
 	}
 
