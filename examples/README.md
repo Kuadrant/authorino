@@ -57,6 +57,7 @@ For more information on the deployment options and resources included in the loc
 - [Multiple OIDC providers (Keycloak and Dex)](#multiple-oidc-providers-keycloak-and-dex)
 - [Resource-level authorization (with UMA resource registry)](#resource-level-authorization-with-uma-resource-registry)
 - [Role-Based Access Control (RBAC) (with Keycloak realm roles)](#role-based-access-control-rbac-with-keycloak-realm-roles)
+- [Festival Wristbands](#festival-wristbands)
 
 ----
 ## Simple API key authentication
@@ -502,3 +503,61 @@ export ACCESS_TOKEN_JANE=$(curl -d 'grant_type=password' -d 'client_id=demo' -d 
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/greetings # 200
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/goodbye # 200
 ```
+
+----
+## Festival Wristbands
+
+Festival Wristbands are OpenID Connect JSON Web Tokens (JWTs) issued by Authorino at the end of the auth pipeline and passed back to the client in the HTTP response header `X-Ext-Auth-Wristband`. It is an opt-in feature that can be used to enable Edge Authentication and token normalization. Authorino wristbands can also be used as vessels to carry from the external authorization back to the client (with custom claims).
+
+In this example, we set an API protection that issues a wristband after a successful authentication via API key. The wristband contains standard JWT claims such as `iss`, `iat`, and `exp`. It also contains with 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the creation timestamp of the secret that represents the API used to authenticate. The tokens expires after 300 seconds and is signed using an elliptic curve private key stored in a Kubernetes secret.
+
+The example also sets the API protection to accepts the same wristbands as valid authentication tokens to consume the API. This is also option and rely on Authorino's OIDC identity verification feature.
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/wristband.yaml
+# service.config.authorino.3scale.net/talker-api-protection created
+# secret/edge-api-key-1 created
+# secret/my-signing-key created
+# secret/my-old-signing-key created
+```
+
+### Try it out:
+
+Obtain a wristband by successfully authenticating via API key:
+
+```sh
+export WRISTBAND=$(curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/hello | jq -r '.headers.HTTP_X_EXT_AUTH_WRISTBAND')
+```
+
+Send requests to the same API now authenticating with the wristband:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: Bearer $WRISTBAND" http://localhost:8000/hello -v # 200
+```
+
+The payload of the wristband (decoded) shall look like the following:
+
+```jsonc
+{
+  "aud": "internal", # custom claim (static value)
+  "born": "2021-05-13T15:42:41Z", # custom claim (dynamic value)
+  "exp": 1620921395,
+  "iat": 1620921095,
+  "iss": "http://authorino-authorization:8003/authorino/talker-api-protection",
+  "sub": "84d3f3a06f5569e06a050516363f0a65c1789d3433bb4fed5d48801997d5c30e" # SHA256 of the resolved identity in the initial request (based on API key auth)
+}
+```
+
+To discover the OpenID Connect configuration and JSON Web Key Set (JWKS) to verify and validate wristbands issued on requests to this protected API:
+
+```
+kubectl -n authorino port-forward service/authorino-authorization 8003:8003
+```
+
+OpenID Connect configuration well-known endpoint:<br/>
+http://localhost:8003/authorino/talker-api-protection/.well-known/openid-configuration
+
+JSON Web Key Set (JWKS) well-known endpoint:<br/>
+http://localhost:8003/authorino/talker-api-protection/.well-known/openid-connect/certs
