@@ -69,6 +69,7 @@ The authorization policies evaluated in phase (iii) can use any info from the au
   <thead>
     <tr>
       <th colspan="2">Feature</th>
+      <th>Description</th>
       <th>Stage</th>
     </tr>
   </thead>
@@ -76,101 +77,120 @@ The authorization policies evaluated in phase (iii) can use any info from the au
     <tr>
       <td rowspan="7">Identity verification</td>
       <td>API key</td>
+      <td>Represented as Kubernetes `Secret` resources. The secret MUST contain an entry `api_key` that holds the value of the API key. The secret MUST also contain at least one lable `authorino.3scale.net/managed-by` with whatever value, plus any number of optional labels. The labels are used by Authorino to match corresponding API protections that accept the API key as valid credential.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>mTLS</td>
+      <td>Authentication by client certificate.</td>
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/8">#8</a>)</td>
     </tr>
     <tr>
       <td>HMAC</td>
+      <td>Authentication by Hash Message Authentication Code (HMAC), where a unique secret generated per API consumer, combined with parts of the request metadata, is used to generate a hash that is passed as authentication value by the client and verified by Authorino.</td>
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/9">#9</a>)</td>
     </tr>
     <tr>
       <td>OAuth 2.0 (token introspection)</td>
+      <td>Online introspection of access tokens with an OAuth 2.0 server.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>OpenID Connect (OIDC)</td>
+      <td>Offline signature verification and time validation of OpenID Connect ID tokens (JWTs). Authorino caches the OpenID Connect configuration and JSON Web Key Set (JWKS) obtained from the OIDC Discovery well-known endpoint, and uses them to verify and validate tokens in request time.</td>
       <td>Ready</td>
     </tr>
     <tr>
-      <td>Kubernetes auth (SA token/TokenReview API)</td>
+      <td>Kubernetes auth</td>
+      <td>Online verification of Kubernetes access tokens through the Kubernetes TokenReview API. The `audiences` of the token MUST include the ones specified in the API protection state, which, when omitted, is assumed to be equal to the host name of the protected API. It can be used to authenticate Kubernetes `Service Account`s (e.g. other pods running in the cluster) and users of the cluster in general.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>OpenShift OAuth (user-echo endpoint)</td>
+      <td>Online token introspection of OpenShift-valid access tokens based on OpenShift's user-echo endpoint.</td>
       <td>In analysis</td>
     </tr>
     <tr>
       <td rowspan="3">Ad-hoc authorization metadata</td>
       <td>OIDC user info</td>
+      <td>Online request to OpenID Connect User Info endpoint. Requires an associated OIDC identity source.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>UMA-protected resource attributes</td>
+      <td>Online request to a User-Managed Access (UMA) server to fetch data from the UMA Resource Set API.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>HTTP GET-by-POST</td>
+      <td>Generic online HTTP request to a service. It can be used to fetch online metadata for the auth pipeline or as a web hook.</td>
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/10">#10</a>)</td>
     </tr>
     <tr>
       <td rowspan="4">Policy enforcement</td>
       <td>JSON pattern matching (e.g. JWT claims)</td>
+      <td>Authorization policies represented as simple JSON pattern-matching rules. Values can be selected from the authorization JSON built along the auth pipeline. Operations include _equals_ (`eq`), _not equal_ (`neq`), _includes_ (`incl`, for arrays), _excludes_ (`excl`, for arrays) and _matches_ (`matches`, for regular expressions). Individuals policies can be optionally skipped based on "conditions" represented with similar data selectors and operators.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>OPA Rego policies</td>
+      <td>Built-in evaluator of Open Policy Agent (OPA) inline Rego policies. The policies written in Rego language are compiled and cached by Authorino in reconciliation-time, and evaluated against the authorization JSON in every request.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>Keycloak (UMA-compliant Authorization API)</td>
+      <td>Online delegation of authorization to a Keycloak server.</td>
       <td>In analysis</td>
     </tr>
     <tr>
       <td>HTTP external authorization service</td>
+      <td>Generic online delegation of authorization to an external HTTP service.</td>
       <td>In analysis</td>
     </tr>
     <tr>
       <td rowspan="6">Caching</td>
       <td>OIDC and UMA configs</td>
+      <td>OpenID Connect and User-Managed Access configurations discovered in reconciliation-time.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)</td>
+      <td>JSON signature verification certificates discovered usually in reconciliation-time, following an OIDC discovery associated to an identity source.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>Revoked access tokens</td>
+      <td>Caching of access tokens identified as revoked before expiration.</td>
       <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/19">#19</a>)</td>
     </tr>
     <tr>
       <td>Resource data</td>
+      <td>Caching of resource data obtained in previous requests.</td>
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/21">#21</a>)</td>
     </tr>
     <tr>
       <td>Compiled Rego policies</td>
+      <td>Performed automatically by Authorino in reconciliation-time for the authorization policies based on the built-in OPA module.</td>
       <td>Ready</td>
     </tr>
     <tr>
       <td>Repeated requests</td>
+      <td>For consecutive requests performed, within a given period of time, by a same user that request for a same resource, such that the result of the auth pipeline can be proven that would not change.</td>
       <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/20">#20</a>)</td>
     </tr>
     <tr>
-      <td colspan="2">Mutate request with auth data</td>
-      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/22">#22</a>)</td>
-    </tr>
-    <tr>
-      <td colspan="2">Token normalization (Edge Auth)</td>
-      <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/24">#24</a>)</td>
-    </tr>
-    <tr>
-      <td colspan="2">Multitenancy (multiple upstreams and hosts)</td>
+      <td colspan="2">Festival wristbands</td>
+      <td>JWTs issued by Authorino at the end of the auth pipeline and passed back to the client in the HTTP response header `X-Ext-Auth-Wristband`. Opt-in feature that can be used to enable Edge Authentication and token normalization, as well as to carry data from the external authorization back to the client (with support to static and dynamic custom claims). Authorino also exposes well-known endpoints for OpenID Connect Discovery, so the wristbands can be verified and validated, including by Authorino itself using the OIDC identity verification feature.</td>
       <td>Ready</td>
     </tr>
     <tr>
+      <td colspan="2">Multitenancy</td>
+      <td>Managed instances of Authorino offered to API providers who create and maintain their own API protection states within their own realms and namespaces.</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
       <td colspan="2">External policy registry</td>
+      <td>Fetching of compatible policies from an external registry, in reconciliation-time.</td>
       <td>In analysis</td>
     </tr>
   </tbody>
