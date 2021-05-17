@@ -47,7 +47,8 @@ var (
 )
 
 const (
-	GRPCMaxConcurrentStreams = 10000
+	GRPCMaxConcurrentStreams    = 10000
+	authorinoWatchedSecretLabel = "authorino.3scale.net/managed-by"
 )
 
 func init() {
@@ -99,6 +100,7 @@ func main() {
 		Client:            mgr.GetClient(),
 		Log:               ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
 		Scheme:            mgr.GetScheme(),
+		SecretLabel:       fetchEnv("AUTHORINO_SECRET_LABEL", authorinoWatchedSecretLabel),
 		ServiceReconciler: serviceReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
