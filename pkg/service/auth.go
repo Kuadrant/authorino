@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"strings"
 
 	"golang.org/x/net/context"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,6 +54,12 @@ func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest
 	config := self.Cache.List()
 
 	apiConfig, apiConfigOK := config[host]
+	// If the host is not found, but contains a port, remove the port part and retry.
+	if !apiConfigOK && strings.Contains(host, ":") {
+		splitHost := strings.Split(host, ":")
+		apiConfig, apiConfigOK = config[splitHost[0]]
+	}
+	//If we couldn't find the APIConfig in the config, we return and deny.
 	if !apiConfigOK {
 		return self.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}), nil
 	}
