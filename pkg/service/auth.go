@@ -18,6 +18,7 @@ import (
 
 const (
 	X_EXT_AUTH_REASON_HEADER = "X-Ext-Auth-Reason"
+	X_EXT_AUTH_WRISTBAND     = "X-Ext-Auth-Wristband"
 
 	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
 	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"

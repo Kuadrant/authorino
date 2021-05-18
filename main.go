@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"net"
+	"net/http"
 	"os"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -28,6 +29,7 @@ import (
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/service"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,8 +66,6 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
-	log := ctrl.Log.WithName("authorino").WithName("listener")
-
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -80,8 +80,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// sets up the service reconciler
 	cache := cache.NewCache()
+
+	// sets up the service reconciler
 	serviceReconciler := &controllers.ServiceReconciler{
 		Client: mgr.GetClient(),
 		Cache:  &cache,
@@ -106,29 +107,8 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 
-	// open socket
-	grpcPort := ":" + fetchEnv("PORT", "50051")
-	lis, err := net.Listen("tcp", grpcPort)
-	if err != nil {
-		log.Error(err, "failed to listen", "port", grpcPort)
-		os.Exit(1)
-	}
-
-	// start grpc server
-	opts := []grpc.ServerOption{grpc.MaxConcurrentStreams(GRPCMaxConcurrentStreams)}
-	s := grpc.NewServer(opts...)
-
-	envoy_auth.RegisterAuthorizationServer(s, &service.AuthService{Cache: &cache})
-	healthpb.RegisterHealthServer(s, &service.HealthService{})
-
-	log.Info("Starting grpc service", "port", grpcPort)
-	go func() {
-		err = s.Serve(lis)
-		if err != nil {
-			log.Error(err, "failed to start grpc service")
-			os.Exit(1)
-		}
-	}()
+	startExtAuthServer(&cache)
+	startOIDCServer(&cache)
 
 	setupLog.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
@@ -137,11 +117,61 @@ func main() {
 	}
 }
 
-func fetchEnv(key string, def string) string {
-	val, ok := os.LookupEnv(key)
-	if !ok {
-		return def
+func startExtAuthServer(serviceCache *cache.Cache) {
+	startExtAuthServerGRPC(serviceCache)
+	startExtAuthServerHTTP(serviceCache)
+}
+
+func startExtAuthServerGRPC(serviceCache *cache.Cache) {
+	logger := ctrl.Log.WithName("authorino").WithName("auth")
+	port := common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
+
+	if lis, err := net.Listen("tcp", ":"+port); err != nil {
+		logger.Error(err, "failed to obtain port for grpc auth service")
+		os.Exit(1)
 	} else {
-		return val
+		opts := []grpc.ServerOption{grpc.MaxConcurrentStreams(GRPCMaxConcurrentStreams)}
+		s := grpc.NewServer(opts...)
+
+		envoy_auth.RegisterAuthorizationServer(s, &service.AuthService{Cache: serviceCache})
+		healthpb.RegisterHealthServer(s, &service.HealthService{})
+
+		logger.Info("starting grpc service", "port", port)
+
+		go func() {
+			if err := s.Serve(lis); err != nil {
+				logger.Error(err, "failed to start grpc service")
+				os.Exit(1)
+			}
+		}()
+	}
+}
+
+func startExtAuthServerHTTP(serviceCache *cache.Cache) {
+	// TODO
+}
+
+func startOIDCServer(serviceCache *cache.Cache) {
+	logger := ctrl.Log.WithName("authorino").WithName("oidc")
+	port := common.FetchEnv("OIDC_HTTP_PORT", "8003")
+
+	if lis, err := net.Listen("tcp", ":"+port); err != nil {
+		logger.Error(err, "failed to obtain port for http oidc service")
+		os.Exit(1)
+	} else {
+		http.Handle("/", &service.OidcService{
+			Cache: serviceCache,
+		})
+
+		logger.Info("starting oidc service", "port", port)
+
+		go func() {
+			if err := http.Serve(lis, nil); err != nil {
+				logger.Error(err, "failed to start oidc service")
+				os.Exit(1)
+			}
+
+			// TODO: ServeTLS
+		}()
 	}
 }

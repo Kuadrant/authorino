@@ -29,6 +29,7 @@ import (
 	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
 	authorinoIdentity "github.com/kuadrant/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/kuadrant/authorino/pkg/config/metadata"
+	"gopkg.in/square/go-jose.v2"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -95,9 +96,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceReconciler) translateService(ctx context.Context,
-	service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
-
+func (r *ServiceReconciler) translateService(ctx context.Context, service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
 	identityConfigs := make([]config.IdentityConfig, 0)
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
@@ -131,11 +130,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 		// oidc
 		case configv1beta1.IdentityOidc:
-			if oidcConfig, err := authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred); err != nil {
-				return nil, err
-			} else {
-				translatedIdentity.OIDC = oidcConfig
-			}
+			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred)
 
 		// apiKey
 		case configv1beta1.IdentityApiKey:
@@ -251,14 +246,61 @@ func (r *ServiceReconciler) translateService(ctx context.Context,
 
 	config := make(map[string]authorinoService.APIConfig)
 
-	authorinoService := authorinoService.APIConfig{
+	apiConfig := authorinoService.APIConfig{
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 	}
 
+	if wristband := service.Spec.Wristband; wristband != nil {
+		signingKeys := make([]jose.JSONWebKey, 0)
+
+		for _, signingKeyRef := range wristband.SigningKeyRefs {
+			secret := &v1.Secret{}
+			secretName := types.NamespacedName{
+				Namespace: service.Namespace,
+				Name:      signingKeyRef.Name,
+			}
+			if err := r.Client.Get(ctx, secretName, secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			} else {
+				if signingKey, err := authorinoService.NewSigningKey(
+					signingKeyRef.Name,
+					string(signingKeyRef.Algorithm),
+					secret.Data["key.pem"],
+				); err != nil {
+					return nil, err
+				} else {
+					signingKeys = append(signingKeys, *signingKey)
+				}
+			}
+		}
+
+		customClaims := make([]authorinoService.WristbandClaim, 0)
+		for _, claim := range wristband.CustomClaims {
+			customClaims = append(customClaims, authorinoService.WristbandClaim{
+				Name: claim.Name,
+				Value: &authorinoService.ClaimValue{
+					Static:   claim.Value,
+					FromJSON: claim.ValueFrom.AuthJSON,
+				},
+			})
+		}
+
+		if authorinoWristband, err := authorinoService.NewWristbandConfig(
+			wristband.Issuer,
+			customClaims,
+			wristband.TokenDuration,
+			signingKeys,
+		); err != nil {
+			return nil, err
+		} else {
+			apiConfig.Wristband = authorinoWristband
+		}
+	}
+
 	for _, host := range service.Spec.Hosts {
-		config[host] = authorinoService
+		config[host] = apiConfig
 	}
 	return config, nil
 }

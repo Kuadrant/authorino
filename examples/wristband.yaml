@@ -1,0 +1,102 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: edge
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+    - name: wristband
+      oidc:
+        endpoint: http://authorino-authorization:8003/authorino/talker-api-protection
+  wristband:
+    issuer: http://authorino-authorization:8003/authorino/talker-api-protection
+    customClaims:
+      - name: aud
+        value: internal
+      - name: born
+        valueFrom:
+          authJSON: auth.identity.metadata.creationTimestamp
+    tokenDuration: 300
+    signingKeyRefs:
+      - name: my-signing-key
+        algorithm: ES256
+      - name: my-old-signing-key
+        algorithm: RS256
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: edge-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-signing-key
+stringData:
+  key.pem: |
+    -----BEGIN EC PRIVATE KEY-----
+    MHcCAQEEIDHvuf81gVlWGo0hmXGTAnA/HVxGuH8vOc7/8jewcVvqoAoGCCqGSM49
+    AwEHoUQDQgAETJf5NLVKplSYp95TOfhVPqvxvEibRyjrUZwwtpDuQZxJKDysoGwn
+    cnUvHIu23SgW+Ee9lxSmZGhO4eTdQeKxMA==
+    -----END EC PRIVATE KEY-----
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-old-signing-key
+stringData:
+  key.pem: |
+    -----BEGIN RSA PRIVATE KEY-----
+    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
+    -----END RSA PRIVATE KEY-----
+type: Opaque

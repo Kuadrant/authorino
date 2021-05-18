@@ -314,6 +314,73 @@ spec:
                   - name
                   type: object
                 type: array
+              wristband:
+                description: Wristband is the opt-in configuration for issuing Authorino
+                  Festival Wristband tokens at the end of the auth pipeline.
+                properties:
+                  customClaims:
+                    description: Any claims to be added to the wristband token apart
+                      from the standard JWT claims (iss, iat, exp) added by default.
+                    items:
+                      properties:
+                        name:
+                          description: The name of the claim
+                          type: string
+                        value:
+                          description: Static value of the claim
+                          type: string
+                        valueFrom:
+                          description: Dynamic value of the claim
+                          properties:
+                            authJSON:
+                              description: Selector to fill the value of claim from
+                                the authorization JSON
+                              type: string
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
+                  issuer:
+                    description: 'The endpoint to the Authorino service that issues
+                      the wristband (format: <scheme>://<host>:<port>/<realm>, where
+                      <realm> = <namespace>/<authorino-service-resource-name)'
+                    type: string
+                  signingKeyRefs:
+                    description: Reference by name to Kubernetes secrets and corresponding
+                      signing algorithms. The secrets must contain a `key.pem` entry
+                      whose value is the signing key formatted as PEM.
+                    items:
+                      properties:
+                        algorithm:
+                          description: Algorithm to sign the wristband token using
+                            the signing key provided
+                          enum:
+                          - ES256
+                          - ES384
+                          - ES512
+                          - RS256
+                          - RS384
+                          - RS512
+                          type: string
+                        name:
+                          description: Name of the signing key. The value is used
+                            to reference the Kubernetes secret that stores the key
+                            and in the `kid` claim of the wristband token header.
+                          type: string
+                      required:
+                      - algorithm
+                      - name
+                      type: object
+                    type: array
+                  tokenDuration:
+                    description: Time span of the wristband token, in seconds.
+                    format: int64
+                    type: integer
+                required:
+                - issuer
+                - signingKeyRefs
+                type: object
             required:
             - hosts
             type: object
