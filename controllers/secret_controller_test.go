@@ -94,6 +94,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		Client:            client,
 		Log:               ctrl.Log.WithName("reconcilerTest"),
 		Scheme:            nil,
+		SecretLabel:       "authorino.3scale.net/managed-by",
 		ServiceReconciler: serviceReconciler,
 	}
 

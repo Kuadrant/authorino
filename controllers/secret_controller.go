@@ -18,13 +18,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const authorinoWatchedSecretLabel = "authorino.3scale.net/managed-by"
-
 // SecretReconciler reconciles k8s Secret objects
 type SecretReconciler struct {
 	client.Client
 	Log               logr.Logger
 	Scheme            *runtime.Scheme
+	SecretLabel       string
 	ServiceReconciler reconcile.Reconciler
 }
 
@@ -59,7 +58,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// found the secret
 
 		// return if not an Authorino-watched secret
-		if _, watched := secret.Labels[authorinoWatchedSecretLabel]; !watched {
+		if _, watched := secret.Labels[r.SecretLabel]; !watched {
 			return ctrl.Result{}, nil
 		}
 
