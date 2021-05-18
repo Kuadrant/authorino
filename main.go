@@ -100,7 +100,7 @@ func main() {
 		Client:            mgr.GetClient(),
 		Log:               ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
 		Scheme:            mgr.GetScheme(),
-		SecretLabel:       fetchEnv("AUTHORINO_SECRET_LABEL", authorinoWatchedSecretLabel),
+		SecretLabel:       common.FetchEnv("AUTHORINO_SECRET_LABEL", authorinoWatchedSecretLabel),
 		ServiceReconciler: serviceReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
