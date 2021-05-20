@@ -509,7 +509,7 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://
 
 Festival Wristbands are OpenID Connect JSON Web Tokens (JWTs) issued by Authorino at the end of the auth pipeline and passed back to the client in the HTTP response header `X-Ext-Auth-Wristband`. It is an opt-in feature that can be used to enable Edge Authentication and token normalization. Authorino wristbands can also be used as vessels to carry from the external authorization back to the client (with custom claims).
 
-In this example, we set an API protection that issues a wristband after a successful authentication via API key. The wristband contains standard JWT claims such as `iss`, `iat`, and `exp`. It also contains with 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the creation timestamp of the secret that represents the API used to authenticate. The tokens expires after 300 seconds and is signed using an elliptic curve private key stored in a Kubernetes secret.
+In this example, we set an API protection that issues a wristband after a successful authentication via API key. The wristband contains standard JWT claims such as `iss`, `iat`, and `exp`. It also contains with 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the creation timestamp of the secret that represents the API key used to authenticate. The tokens expires after 300 seconds and is signed using an elliptic curve private key stored in a Kubernetes secret.
 
 The example also sets the API protection to accepts the same wristbands as valid authentication tokens to consume the API. This is also option and rely on Authorino's OIDC identity verification feature.
 
