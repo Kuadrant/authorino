@@ -25,6 +25,7 @@ type SecretReconciler struct {
 	Scheme            *runtime.Scheme
 	SecretLabel       string
 	ServiceReconciler reconcile.Reconciler
+	ServiceReader     client.Reader
 }
 
 func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -91,7 +92,7 @@ func (r *SecretReconciler) getServicesUsingAPIKey(ctx context.Context, namespace
 	var existingServices = &configv1beta1.ServiceList{}
 	selectedServices := make([]configv1beta1.Service, 0)
 
-	if err := r.List(ctx, existingServices, &client.ListOptions{
+	if err := r.ServiceReader.List(ctx, existingServices, &client.ListOptions{
 		Namespace: namespace,
 	}); err != nil {
 		return nil, err

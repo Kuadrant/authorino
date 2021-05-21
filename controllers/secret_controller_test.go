@@ -96,6 +96,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		Scheme:            nil,
 		SecretLabel:       "authorino.3scale.net/managed-by",
 		ServiceReconciler: serviceReconciler,
+		ServiceReader:     client,
 	}
 
 	t := secretReconcilerTest{
