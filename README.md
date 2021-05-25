@@ -90,9 +90,9 @@ The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipel
       <td>Ready</td>
     </tr>
     <tr>
-      <td>HTTP GET-by-POST</td>
-      <td>Generic online HTTP request to a service. It can be used to fetch online metadata for the auth pipeline or as a web hook.</td>
-      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/10">#10</a>)</td>
+      <td>External HTTP service</td>
+      <td>Generic online HTTP request to an external service. It can be used to fetch online metadata for the auth pipeline or as a web hook.</td>
+      <td>Ready</td>
     </tr>
     <tr>
       <td rowspan="4">Policy enforcement</td>

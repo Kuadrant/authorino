@@ -57,6 +57,7 @@ For more information on the deployment options and resources included in the loc
 - [Multiple OIDC providers (Keycloak and Dex)](#multiple-oidc-providers-keycloak-and-dex)
 - [Resource-level authorization (with UMA resource registry)](#resource-level-authorization-with-uma-resource-registry)
 - [Role-Based Access Control (RBAC) (with Keycloak realm roles)](#role-based-access-control-rbac-with-keycloak-realm-roles)
+- [External HTTP metadata](#external-http-metadata)
 - [Festival Wristbands](#festival-wristbands)
 
 ----
@@ -502,6 +503,24 @@ export ACCESS_TOKEN_JANE=$(curl -d 'grant_type=password' -d 'client_id=demo' -d 
 
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/greetings # 200
 curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://localhost:8000/goodbye # 200
+```
+
+----
+## External HTTP metadata
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/ext-http-metadata.yaml
+# service.config.authorino.3scale.net/talker-api-protection configured
+# secret/echo-metadata-shared-auth configured
+# secret/friend-1-api-key-1 configured
+```
+### Try it out:
+
+```sh
+# safe origin
+curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/hello # 200
 ```
 
 ----

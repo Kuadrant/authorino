@@ -1,7 +1,10 @@
 package auth_credentials
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -13,6 +16,8 @@ import (
 type AuthCredentials interface {
 	GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error)
 	GetCredentialsKeySelector() string
+	GetCredentialsIn() string
+	BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error)
 }
 
 // AuthCredential struct implements the AuthCredentials interface
@@ -75,6 +80,45 @@ func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.Attri
 
 func (c *AuthCredential) GetCredentialsKeySelector() string {
 	return c.KeySelector
+}
+
+func (c *AuthCredential) GetCredentialsIn() string {
+	return c.In
+}
+
+func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error) {
+	url := endpoint
+
+	// build url with creds
+	if c.In == inQuery {
+		var separator string
+		if strings.Contains(url, "?") {
+			separator = "&"
+		} else {
+			separator = "?"
+		}
+		url = url + separator + c.KeySelector + "=" + credentialValue
+	}
+
+	// build request
+	if req, err := http.NewRequestWithContext(ctx, method, url, body); err != nil {
+		return nil, err
+	} else {
+		// add creds to request
+		switch c.In {
+		case inAuthHeader:
+			req.Header.Set("Authorization", c.KeySelector+" "+credentialValue)
+		case inCustomHeader:
+			req.Header.Set(c.KeySelector, credentialValue)
+		case inCookieHeader:
+			req.Header.Set("Cookie", c.KeySelector+"="+credentialValue)
+		case inQuery:
+			// already done
+		default:
+			return nil, fmt.Errorf("unsupported credentials location")
+		}
+		return req, nil
+	}
 }
 
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {

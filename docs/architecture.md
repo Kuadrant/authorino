@@ -14,7 +14,7 @@
   - [Hash Message Authentication Code (HMAC) authentication](#hash-message-authentication-code-hmac-authentication)
   - [OpenID Connect (OIDC) User Info](#openid-connect-oidc-user-info)
   - [User-Managed Access (UMA) resource data](#user-managed-access-uma-resource-data)
-  - [HTTP GET-by-POST authorization metadata](#http-get-by-post-authorization-metadata)
+  - [External HTTP authorization metadata](#external-http-authorization-metadata)
   - [Open Policy Agent (OPA) Rego policies](#open-policy-agent-opa-rego-policies)
   - [Festival Wristbands](#festival-wristbands)
 
@@ -276,9 +276,13 @@ It's important to notice that Authorino does NOT manage resources in the UMA-com
 
 The resources data is added as metadata of the authorization payload and passed as input for the configured authorization policies. All resources returned by the UMA-compliant server in the query by URI are passed along. They are available in the PDPs (authorization payload) as `input.auth.metadata.custom-name => Array`. (See [The "Auth Pipeline"](#the-auth-pipeline-aka-authorinos-3-core-phases) for details.)
 
-### HTTP GET-by-POST authorization metadata
+### External HTTP authorization metadata
 
-`[Not Implemented]` Generic HTTP adapter to fetch external metadata for the authorization policies (phase ii of the Authorino [Auth Pipeline](#the-auth-pipeline)).
+Generic HTTP adapter to fetch external metadata for the authorization policies (phase ii of the Authorino [Auth Pipeline](#the-auth-pipeline)).
+
+The adapter allows fecthing auth metadata from external HTTP services by GET or POST requests. When POST is used, the resolved identity object (as JSON) is passed in the body of the request.
+
+A shared secret between Authorino and the external HTTP service must be defined (`sharedSecretRef` property), and the  service can use such secret to authenticate the origin of the request. The location where the secret travels in the request performed by Authorino to the HTTP service can be specified in a typical "credentials" property.
 
 ### Open Policy Agent (OPA) Rego policies
 

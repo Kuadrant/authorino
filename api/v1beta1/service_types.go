@@ -28,6 +28,7 @@ const (
 	IdentityApiKey                   = "IDENTITY_APIKEY"
 	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
 	MetadataUma                      = "METADATA_UMA"
+	MetadataGenericHTTP              = "METADATA_GENERIC_HTTP"
 	MetadataUserinfo                 = "METADATA_USERINFO"
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
@@ -125,8 +126,9 @@ type Metadata struct {
 	// Policies of te authorization phase can refer to this metadata by this value.
 	Name string `json:"name"`
 
-	UserInfo *Metadata_UserInfo `json:"userInfo,omitempty"`
-	UMA      *Metadata_UMA      `json:"uma,omitempty"`
+	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
+	UMA         *Metadata_UMA         `json:"uma,omitempty"`
+	GenericHTTP *Metadata_GenericHTTP `json:"http,omitempty"`
 }
 
 func (m *Metadata) GetType() string {
@@ -134,6 +136,8 @@ func (m *Metadata) GetType() string {
 		return MetadataUserinfo
 	} else if m.UMA != nil {
 		return MetadataUma
+	} else if m.GenericHTTP != nil {
+		return MetadataGenericHTTP
 	}
 	return TypeUnknown
 }
@@ -152,6 +156,26 @@ type Metadata_UMA struct {
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the resource registration API of the UMA server.
 	Credentials *v1.LocalObjectReference `json:"credentialsRef"`
+}
+
+// +kubebuilder:validation:Enum:=GET;POST
+type GenericHTTP_Method string
+
+// Generic HTTP interface to obtain authorization metadata from a HTTP service.
+type Metadata_GenericHTTP struct {
+	// Endpoint of the HTTP service
+	Endpoint string `json:"endpoint"`
+
+	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
+	// When the request method is POST, the resolved identity object is passed (as JSON) in the body of the request.
+	Method GenericHTTP_Method `json:"method,omitempty"`
+
+	// Reference to a Secret resource whose value of the key named equally to the domain name of the service will be passed by Authorino in the request for origin authentication by shared secret.
+	SharedSecret *v1.LocalObjectReference `json:"sharedSecretRef"`
+
+	// Defines where client credentials will be passed in the request to the service.
+	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
+	Credentials Credentials `json:"credentials,omitempty"`
 }
 
 // Authorization policy to be enforced.

@@ -1,0 +1,52 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: friends
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  metadata:
+    - name: echo
+      http:
+        endpoint: http://talker-api.authorino.svc.cluster.local:3000/authz
+        method: POST
+        sharedSecretRef:
+          name: echo-metadata-shared-auth
+        credentials:
+          in: authorization_header
+          keySelector: Bearer
+  authorization:
+    - name: validate-echo-response
+      json:
+        rules:
+          - selector: auth.metadata.echo.path
+            operator: eq
+            value: /authz
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-metadata-shared-auth
+stringData:
+  talker-api.authorino.svc.cluster.local: 7f6fcf4961b979cd703e6c396d1378e282b109991344a97c2ad4d785eece3d54
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: friend-1-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
