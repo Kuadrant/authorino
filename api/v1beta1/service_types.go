@@ -172,7 +172,10 @@ type GenericHTTP_Method string
 
 // Generic HTTP interface to obtain authorization metadata from a HTTP service.
 type Metadata_GenericHTTP struct {
-	// Endpoint of the HTTP service
+	// Endpoint of the HTTP service.
+	// The endpoint accepts variable placeholders in the format "{selector}", where "selector" is any pattern supported
+	// by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
+	// E.g. https://ext-auth-server.io/metadata?p={context.request.http.path}
 	Endpoint string `json:"endpoint"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.

@@ -41,7 +41,10 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 		return nil, fmt.Errorf("unsupported method")
 	}
 
-	req, err := h.BuildRequestWithCredentials(ctx, h.Endpoint, method, h.SharedSecret, requestBody)
+	authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, string(authData))
+
+	req, err := h.BuildRequestWithCredentials(ctx, endpoint, method, h.SharedSecret, requestBody)
 	if err != nil {
 		return nil, err
 	}

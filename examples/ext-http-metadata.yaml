@@ -17,7 +17,7 @@ spec:
   metadata:
     - name: echo
       http:
-        endpoint: http://talker-api.authorino.svc.cluster.local:3000/authz
+        endpoint: http://talker-api.authorino.svc.cluster.local:3000/authz?requested_path={context.request.http.path}
         method: POST
         sharedSecretRef:
           name: talker-api-protection-secret

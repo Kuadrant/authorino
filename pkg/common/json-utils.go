@@ -6,6 +6,10 @@ import (
 	"io/ioutil"
 	"mime"
 	"net/http"
+	"regexp"
+	"strings"
+
+	"github.com/tidwall/gjson"
 )
 
 // UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure
@@ -39,4 +43,15 @@ func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {
 		return fmt.Errorf("got Content-Type = application/json, but could not unmarshal as JSON: %v", err)
 	}
 	return fmt.Errorf("expected Content-Type = application/json, got %q: %v", ct, err)
+}
+
+func ReplaceJSONPlaceholders(source string, jsonData string) string {
+	replaced := source
+	regex := regexp.MustCompile("{([^}]*)}")
+	matches := regex.FindAllStringSubmatch(source, -1)
+	for _, selector := range matches {
+		value := gjson.Get(jsonData, selector[1]).String()
+		replaced = strings.ReplaceAll(replaced, "{"+selector[1]+"}", value)
+	}
+	return replaced
 }
