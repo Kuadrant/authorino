@@ -280,7 +280,7 @@ The resources data is added as metadata of the authorization payload and passed 
 
 Generic HTTP adapter to fetch external metadata for the authorization policies (phase ii of the Authorino [Auth Pipeline](#the-auth-pipeline)).
 
-The adapter allows fecthing auth metadata from external HTTP services by GET or POST requests. When POST is used, the resolved identity object (as JSON) is passed in the body of the request.
+The adapter allows fecthing auth metadata from external HTTP services by GET or POST requests. When POST is used, the [authorization JSON](#the-authorization-json) is passed in the body of the request.
 
 A shared secret between Authorino and the external HTTP service must be defined (`sharedSecretRef` property), and the  service can use such secret to authenticate the origin of the request. The location where the secret travels in the request performed by Authorino to the HTTP service can be specified in a typical "credentials" property.
 

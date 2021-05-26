@@ -179,7 +179,7 @@ type Metadata_GenericHTTP struct {
 	Endpoint string `json:"endpoint"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
-	// When the request method is POST, the resolved identity object is passed (as JSON) in the body of the request.
+	// When the request method is POST, the authorization JSON is passed in the body of the request.
 	Method GenericHTTP_Method `json:"method,omitempty"`
 
 	// Reference to a Secret key whose value will be passed by Authorino in the request.

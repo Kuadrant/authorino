@@ -32,7 +32,7 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	dataForAuthorization, _ := buildGenericHttpAuthDataMock()
+	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
@@ -67,14 +67,12 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	dataForAuthorization, identityObjectMock := buildGenericHttpAuthDataMock()
-
+	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetResolvedIdentity().Return(nil, identityObjectMock)
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
-	identityObjectMockJSON, _ := json.Marshal(identityObjectMock)
+	identityObjectMockJSON, _ := json.Marshal(dataForAuthorization)
 	requestBody := bytes.NewBuffer(identityObjectMockJSON)
 	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
 	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
@@ -107,7 +105,7 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	endpointWithPlaceholders := "http://" + extHttpServiceHost + "/metadata?p={context.request.http.headers.x-origin}"
 	endpoint := "http://" + extHttpServiceHost + "/metadata?p=some-origin"
 
-	dataForAuthorization, _ := buildGenericHttpAuthDataMock()
+	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
@@ -130,19 +128,17 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	assert.Equal(t, objJSON["foo"], "bar")
 }
 
-func buildGenericHttpAuthDataMock() (interface{}, interface{}) {
+func buildGenericHttpAuthDataMock() interface{} {
 	type mockIdentityObject struct {
 		User string `json:"user"`
 	}
-
-	identityObjectMock := &mockIdentityObject{User: "mock"}
 
 	type authorizationData struct {
 		Context  *envoy_auth.AttributeContext `json:"context"`
 		AuthData map[string]interface{}       `json:"auth"`
 	}
 
-	dataForAuthorization := &authorizationData{
+	return &authorizationData{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{
@@ -154,9 +150,7 @@ func buildGenericHttpAuthDataMock() (interface{}, interface{}) {
 			},
 		},
 		AuthData: map[string]interface{}{
-			"identity": identityObjectMock,
+			"identity": &mockIdentityObject{User: "mock"},
 		},
 	}
-
-	return dataForAuthorization, identityObjectMock
 }

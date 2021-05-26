@@ -24,6 +24,9 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 		return nil, err
 	}
 
+	authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, string(authData))
+
 	var requestBody io.Reader
 
 	method := h.Method
@@ -31,18 +34,10 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	case "GET":
 		requestBody = nil
 	case "POST":
-		_, identityObject := pipeline.GetResolvedIdentity()
-		if reqBody, err := json.Marshal(identityObject); err != nil {
-			return nil, err
-		} else {
-			requestBody = bytes.NewBuffer(reqBody)
-		}
+		requestBody = bytes.NewBuffer(authData)
 	default:
 		return nil, fmt.Errorf("unsupported method")
 	}
-
-	authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
-	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, string(authData))
 
 	req, err := h.BuildRequestWithCredentials(ctx, endpoint, method, h.SharedSecret, requestBody)
 	if err != nil {
