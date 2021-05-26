@@ -37,6 +37,15 @@ const (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// SecretKeyReference selects a key of a Secret.
+type SecretKeyReference struct {
+	// The name of the secret in the Authorino's namespace to select from.
+	Name string `json:"name"`
+
+	// The key of the secret to select from.  Must be a valid secret key.
+	Key string `json:"key"`
+}
+
 // Specifies the desired state of the Service resource, i.e. the authencation/authorization scheme to be applied to protect the matching HTTP services.
 type ServiceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
@@ -170,8 +179,9 @@ type Metadata_GenericHTTP struct {
 	// When the request method is POST, the resolved identity object is passed (as JSON) in the body of the request.
 	Method GenericHTTP_Method `json:"method,omitempty"`
 
-	// Reference to a Secret resource whose value of the key named equally to the domain name of the service will be passed by Authorino in the request for origin authentication by shared secret.
-	SharedSecret *v1.LocalObjectReference `json:"sharedSecretRef"`
+	// Reference to a Secret key whose value will be passed by Authorino in the request.
+	// The HTTP service can use the shared secret to authenticate the origin of the request.
+	SharedSecret *SecretKeyReference `json:"sharedSecretRef"`
 
 	// Defines where client credentials will be passed in the request to the service.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.

@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
@@ -194,23 +193,21 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 		// generic http
 		case configv1beta1.MetadataGenericHTTP:
 			genericHttp := metadata.GenericHTTP
+			sharedSecretRef := genericHttp.SharedSecret
+			creds := genericHttp.Credentials
 
 			secret := &v1.Secret{}
 			if err := r.Client.Get(ctx, types.NamespacedName{
 				Namespace: service.Namespace,
-				Name:      genericHttp.SharedSecret.Name},
+				Name:      sharedSecretRef.Name},
 				secret); err != nil {
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
-			endpoint := genericHttp.Endpoint
-			creds := genericHttp.Credentials
-			secretKey := strings.Split(strings.Split(endpoint, "/")[2], ":")[0]
-
 			translatedMetadata.GenericHTTP = &authorinoMetadata.GenericHttp{
-				Endpoint:        endpoint,
+				Endpoint:        genericHttp.Endpoint,
 				Method:          string(genericHttp.Method),
-				SharedSecret:    string(secret.Data[secretKey]),
+				SharedSecret:    string(secret.Data[sharedSecretRef.Key]),
 				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),
 			}
 

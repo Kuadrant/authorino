@@ -20,7 +20,8 @@ spec:
         endpoint: http://talker-api.authorino.svc.cluster.local:3000/authz
         method: POST
         sharedSecretRef:
-          name: echo-metadata-shared-auth
+          name: talker-api-protection-secret
+          key: echo-metadata-shared-auth
         credentials:
           in: authorization_header
           keySelector: Bearer
@@ -35,9 +36,9 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: echo-metadata-shared-auth
+  name: talker-api-protection-secret
 stringData:
-  talker-api.authorino.svc.cluster.local: 7f6fcf4961b979cd703e6c396d1378e282b109991344a97c2ad4d785eece3d54
+  echo-metadata-shared-auth: 7f6fcf4961b979cd703e6c396d1378e282b109991344a97c2ad4d785eece3d54
 type: Opaque
 ---
 apiVersion: v1

@@ -320,15 +320,22 @@ spec:
                           - POST
                           type: string
                         sharedSecretRef:
-                          description: Reference to a Secret resource whose value
-                            of the key named equally to the domain name of the service
-                            will be passed by Authorino in the request for origin
-                            authentication by shared secret.
+                          description: Reference to a Secret key whose value will
+                            be passed by Authorino in the request. The HTTP service
+                            can use the shared secret to authenticate the origin of
+                            the request.
                           properties:
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
                               type: string
+                            name:
+                              description: The name of the secret in the Authorino's
+                                namespace to select from.
+                              type: string
+                          required:
+                          - key
+                          - name
                           type: object
                       required:
                       - endpoint
