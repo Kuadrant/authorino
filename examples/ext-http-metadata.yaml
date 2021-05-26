@@ -15,7 +15,7 @@ spec:
         in: authorization_header
         keySelector: APIKEY
   metadata:
-    - name: echo
+    - name: echo-api
       http:
         endpoint: http://talker-api.authorino.svc.cluster.local:3000/authz?requested_path={context.request.http.path}
         method: POST
@@ -29,7 +29,7 @@ spec:
     - name: validate-echo-response
       json:
         rules:
-          - selector: auth.metadata.echo.path
+          - selector: auth.metadata.echo-api.path
             operator: eq
             value: /authz
 ---
