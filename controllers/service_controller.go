@@ -190,6 +190,27 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 				translatedMetadata.UserInfo.OIDC = idConfig.OIDC
 			}
 
+		// generic http
+		case configv1beta1.MetadataGenericHTTP:
+			genericHttp := metadata.GenericHTTP
+			sharedSecretRef := genericHttp.SharedSecret
+			creds := genericHttp.Credentials
+
+			secret := &v1.Secret{}
+			if err := r.Client.Get(ctx, types.NamespacedName{
+				Namespace: service.Namespace,
+				Name:      sharedSecretRef.Name},
+				secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			}
+
+			translatedMetadata.GenericHTTP = &authorinoMetadata.GenericHttp{
+				Endpoint:        genericHttp.Endpoint,
+				Method:          string(genericHttp.Method),
+				SharedSecret:    string(secret.Data[sharedSecretRef.Key]),
+				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),
+			}
+
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", metadata)
 		}

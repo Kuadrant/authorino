@@ -8,15 +8,22 @@ import (
 	"github.com/kuadrant/authorino/pkg/config/metadata"
 )
 
+const (
+	metadataUserInfo    = "METADATA_USERINFO"
+	metadataUMA         = "METADATA_UMA"
+	metadataGenericHTTP = "METADATA_GENERIC_HTTP"
+)
+
 var (
 	// MetadataEvaluator represents the metadataStruct implementing its Call method
 	MetadataEvaluator common.AuthConfigEvaluator
 )
 
 type MetadataConfig struct {
-	Name     string             `yaml:"name"`
-	UserInfo *metadata.UserInfo `yaml:"userinfo,omitempty"`
-	UMA      *metadata.UMA      `yaml:"uma,omitempty"`
+	Name        string                `yaml:"name"`
+	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
+	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
+	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
 }
 
 func init() {
@@ -26,10 +33,12 @@ func init() {
 func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	t, _ := config.GetType()
 	switch t {
-	case "userinfo":
+	case metadataUserInfo:
 		return config.UserInfo.Call(pipeline, ctx)
-	case "uma":
+	case metadataUMA:
 		return config.UMA.Call(pipeline, ctx)
+	case metadataGenericHTTP:
+		return config.GenericHTTP.Call(pipeline, ctx)
 	default:
 		return "", fmt.Errorf("invalid metadata config")
 	}
@@ -38,9 +47,11 @@ func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 func (config *MetadataConfig) GetType() (string, error) {
 	switch {
 	case config.UserInfo != nil:
-		return "userinfo", nil
+		return metadataUserInfo, nil
 	case config.UMA != nil:
-		return "uma", nil
+		return metadataUMA, nil
+	case config.GenericHTTP != nil:
+		return metadataGenericHTTP, nil
 	default:
 		return "", fmt.Errorf("invalid metadata config")
 	}

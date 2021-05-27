@@ -28,6 +28,7 @@ const (
 	IdentityApiKey                   = "IDENTITY_APIKEY"
 	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
 	MetadataUma                      = "METADATA_UMA"
+	MetadataGenericHTTP              = "METADATA_GENERIC_HTTP"
 	MetadataUserinfo                 = "METADATA_USERINFO"
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
@@ -35,6 +36,15 @@ const (
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// SecretKeyReference selects a key of a Secret.
+type SecretKeyReference struct {
+	// The name of the secret in the Authorino's namespace to select from.
+	Name string `json:"name"`
+
+	// The key of the secret to select from.  Must be a valid secret key.
+	Key string `json:"key"`
+}
 
 // Specifies the desired state of the Service resource, i.e. the authencation/authorization scheme to be applied to protect the matching HTTP services.
 type ServiceSpec struct {
@@ -125,8 +135,9 @@ type Metadata struct {
 	// Policies of te authorization phase can refer to this metadata by this value.
 	Name string `json:"name"`
 
-	UserInfo *Metadata_UserInfo `json:"userInfo,omitempty"`
-	UMA      *Metadata_UMA      `json:"uma,omitempty"`
+	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
+	UMA         *Metadata_UMA         `json:"uma,omitempty"`
+	GenericHTTP *Metadata_GenericHTTP `json:"http,omitempty"`
 }
 
 func (m *Metadata) GetType() string {
@@ -134,6 +145,8 @@ func (m *Metadata) GetType() string {
 		return MetadataUserinfo
 	} else if m.UMA != nil {
 		return MetadataUma
+	} else if m.GenericHTTP != nil {
+		return MetadataGenericHTTP
 	}
 	return TypeUnknown
 }
@@ -152,6 +165,30 @@ type Metadata_UMA struct {
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the resource registration API of the UMA server.
 	Credentials *v1.LocalObjectReference `json:"credentialsRef"`
+}
+
+// +kubebuilder:validation:Enum:=GET;POST
+type GenericHTTP_Method string
+
+// Generic HTTP interface to obtain authorization metadata from a HTTP service.
+type Metadata_GenericHTTP struct {
+	// Endpoint of the HTTP service.
+	// The endpoint accepts variable placeholders in the format "{selector}", where "selector" is any pattern supported
+	// by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
+	// E.g. https://ext-auth-server.io/metadata?p={context.request.http.path}
+	Endpoint string `json:"endpoint"`
+
+	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
+	// When the request method is POST, the authorization JSON is passed in the body of the request.
+	Method GenericHTTP_Method `json:"method,omitempty"`
+
+	// Reference to a Secret key whose value will be passed by Authorino in the request.
+	// The HTTP service can use the shared secret to authenticate the origin of the request.
+	SharedSecret *SecretKeyReference `json:"sharedSecretRef"`
+
+	// Defines where client credentials will be passed in the request to the service.
+	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
+	Credentials Credentials `json:"credentials,omitempty"`
 }
 
 // Authorization policy to be enforced.

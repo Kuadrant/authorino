@@ -5,6 +5,9 @@
 package mock_auth_credentials
 
 import (
+	context "context"
+	io "io"
+	http "net/http"
 	reflect "reflect"
 
 	envoy_service_auth_v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -34,6 +37,21 @@ func (m *MockAuthCredentials) EXPECT() *MockAuthCredentialsMockRecorder {
 	return m.recorder
 }
 
+// BuildRequestWithCredentials mocks base method.
+func (m *MockAuthCredentials) BuildRequestWithCredentials(ctx context.Context, endpoint, method, credentialValue string, body io.Reader) (*http.Request, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BuildRequestWithCredentials", ctx, endpoint, method, credentialValue, body)
+	ret0, _ := ret[0].(*http.Request)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BuildRequestWithCredentials indicates an expected call of BuildRequestWithCredentials.
+func (mr *MockAuthCredentialsMockRecorder) BuildRequestWithCredentials(ctx, endpoint, method, credentialValue, body interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildRequestWithCredentials", reflect.TypeOf((*MockAuthCredentials)(nil).BuildRequestWithCredentials), ctx, endpoint, method, credentialValue, body)
+}
+
 // GetCredentialsFromReq mocks base method.
 func (m *MockAuthCredentials) GetCredentialsFromReq(arg0 *envoy_service_auth_v3.AttributeContext_HttpRequest) (string, error) {
 	m.ctrl.T.Helper()
@@ -47,6 +65,20 @@ func (m *MockAuthCredentials) GetCredentialsFromReq(arg0 *envoy_service_auth_v3.
 func (mr *MockAuthCredentialsMockRecorder) GetCredentialsFromReq(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsFromReq", reflect.TypeOf((*MockAuthCredentials)(nil).GetCredentialsFromReq), arg0)
+}
+
+// GetCredentialsIn mocks base method.
+func (m *MockAuthCredentials) GetCredentialsIn() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCredentialsIn")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetCredentialsIn indicates an expected call of GetCredentialsIn.
+func (mr *MockAuthCredentialsMockRecorder) GetCredentialsIn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsIn", reflect.TypeOf((*MockAuthCredentials)(nil).GetCredentialsIn))
 }
 
 // GetCredentialsKeySelector mocks base method.
