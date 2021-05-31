@@ -8,6 +8,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/config"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -51,21 +52,19 @@ func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest
 
 	// service config
 	host := req.Attributes.Request.Http.Host
-	// TODO: Get this from the cache.
-	config := self.Cache.List()
-
-	apiConfig, apiConfigOK := config[host]
+	var apiConfig *config.APIConfig
+	apiConfig = self.Cache.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
-	if !apiConfigOK && strings.Contains(host, ":") {
+	if apiConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
-		apiConfig, apiConfigOK = config[splitHost[0]]
+		apiConfig = self.Cache.Get(splitHost[0])
 	}
-	//If we couldn't find the APIConfig in the config, we return and deny.
-	if !apiConfigOK {
+	// If we couldn't find the APIConfig in the config, we return and deny.
+	if apiConfig == nil {
 		return self.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}), nil
 	}
 
-	pipeline := NewAuthPipeline(ctx, req, apiConfig)
+	pipeline := NewAuthPipeline(ctx, req, *apiConfig)
 
 	if result := pipeline.Evaluate(); result.Success() {
 		return self.successResponse(result.Headers), nil

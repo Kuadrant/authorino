@@ -2,10 +2,12 @@ package cache
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
+
 	"gotest.tools/assert"
 )
 
@@ -27,12 +29,6 @@ func TestCache(t *testing.T) {
 		AuthorizationConfigs: nil,
 	}
 
-	emptyConfig := config.APIConfig{
-		IdentityConfigs:      nil,
-		MetadataConfigs:      nil,
-		AuthorizationConfigs: nil,
-	}
-
 	// Set a host
 	if err := c.Set("key", "testing.host", exampleConfig, false); err != nil {
 		t.Error(err)
@@ -48,39 +44,60 @@ func TestCache(t *testing.T) {
 		t.Error(err)
 	}
 
+	// Get hosts associated with a key
+	hosts := c.Hosts("key")
+	sort.Strings(hosts)
+	assert.DeepEqual(t, hosts, []string{"testing.host", "testing.host.2"})
+
+	hosts = c.Hosts("key2")
+	sort.Strings(hosts)
+	assert.DeepEqual(t, hosts, []string{"testing.host.3"})
+
+	hosts = c.Hosts("key3")
+	sort.Strings(hosts)
+	assert.Check(t, hosts == nil)
+
+	// Get key associated with a host
+	key := c.Key("testing.host")
+	assert.Equal(t, *key, "key")
+
+	key = c.Key("testing.host.2")
+	assert.Equal(t, *key, "key")
+
+	key = c.Key("testing.host.3")
+	assert.Equal(t, *key, "key2")
+
+	key = c.Key("testing.host.4")
+	assert.Check(t, key == nil)
+
 	// Set a same host again without override
 	err := c.Set("key", "testing.host.2", exampleConfig, false)
 	assert.Check(t, err != nil)
 
-	// Check if the list contains all the configs
-	configs := c.List()
-	assert.Check(t, len(configs) == 3)
-
-	assert.DeepEqual(t, exampleConfig, configs["testing.host"])
-	assert.DeepEqual(t, exampleConfig, configs["testing.host.2"])
-	assert.DeepEqual(t, exampleConfig, configs["testing.host.3"])
-
 	// Get a single hosts and check that it is what we expect
 	config := c.Get("testing.host")
-	assert.DeepEqual(t, config, exampleConfig)
+	assert.DeepEqual(t, *config, exampleConfig)
 
 	config = c.Get("testing.host.2")
-	assert.DeepEqual(t, config, exampleConfig)
+	assert.DeepEqual(t, *config, exampleConfig)
+
+	config = c.Get("testing.host.4")
+	assert.Check(t, config == nil)
 
 	// Delete the key, so both entries should be empty.
 	c.Delete("key")
 
 	config = c.Get("testing.host")
-	assert.DeepEqual(t, emptyConfig, config)
+	assert.Check(t, config == nil)
 
 	config = c.Get("testing.host.2")
-	assert.DeepEqual(t, emptyConfig, config)
+	assert.Check(t, config == nil)
 
 	config = c.Get("testing.host.3")
-	assert.DeepEqual(t, exampleConfig, config)
+	assert.DeepEqual(t, *config, exampleConfig)
 
 	c.Delete("key2")
 
 	config = c.Get("testing.host.3")
-	assert.DeepEqual(t, emptyConfig, config)
+	assert.Check(t, config == nil)
 }

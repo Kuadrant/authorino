@@ -7,55 +7,60 @@ import (
 	"github.com/kuadrant/authorino/pkg/config"
 )
 
+type cacheEntry struct {
+	Key       string
+	APIConfig config.APIConfig
+}
+
 type Cache struct {
 	// TODO: move to RWMutex?
-	mu         sync.Mutex
-	keyMapping map[string][]string
-	apiConfigs map[string]config.APIConfig
+	mu                 sync.Mutex
+	keyHostMapping     map[string][]string
+	hostConfigsMapping map[string]cacheEntry
 }
 
 func NewCache() Cache {
 	return Cache{
-		mu:         sync.Mutex{},
-		keyMapping: make(map[string][]string),
-		apiConfigs: make(map[string]config.APIConfig),
+		mu:                 sync.Mutex{},
+		keyHostMapping:     make(map[string][]string),
+		hostConfigsMapping: make(map[string]cacheEntry),
 	}
 }
 
-func (c *Cache) Get(serviceHost string) config.APIConfig {
+func (c *Cache) Get(host string) *config.APIConfig {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.apiConfigs[serviceHost]
-}
-
-func (c *Cache) Set(key string, serviceHost string, config config.APIConfig, override bool) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, ok := c.apiConfigs[serviceHost]; !ok || override {
-		c.apiConfigs[serviceHost] = config
+	if entry, ok := c.hostConfigsMapping[host]; ok {
+		return &entry.APIConfig
 	} else {
-		return fmt.Errorf("service already exists in cache: %s", serviceHost)
+		return nil
 	}
-	c.keyMapping[key] = append(c.keyMapping[key], serviceHost)
+}
+
+func (c *Cache) Set(key string, host string, config config.APIConfig, override bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, ok := c.hostConfigsMapping[host]; !ok || override {
+		c.hostConfigsMapping[host] = cacheEntry{
+			Key:       key,
+			APIConfig: config,
+		}
+	} else {
+		return fmt.Errorf("service already exists in cache: %s", host)
+	}
+	c.keyHostMapping[key] = append(c.keyHostMapping[key], host)
 
 	return nil
-}
-
-func (c *Cache) List() map[string]config.APIConfig {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return c.apiConfigs
 }
 
 func (c *Cache) Delete(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, configName := range c.keyMapping[key] {
-		delete(c.apiConfigs, configName)
+	for _, configName := range c.keyHostMapping[key] {
+		delete(c.hostConfigsMapping, configName)
 	}
 }
 
@@ -63,5 +68,16 @@ func (c *Cache) Hosts(key string) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.keyMapping[key]
+	return c.keyHostMapping[key]
+}
+
+func (c *Cache) Key(host string) *string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if entry, ok := c.hostConfigsMapping[host]; ok {
+		return &entry.Key
+	} else {
+		return nil
+	}
 }

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
@@ -74,14 +75,21 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// The object exists so we need to either create it or update
-	config, err := r.translateService(ctx, &service)
+	serviceConfigByHost, err := r.translateService(ctx, &service)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	for serviceHost, apiConfig := range config {
-		err := r.Cache.Set(req.String(), serviceHost, apiConfig, true)
-		if err != nil {
+	for serviceHost, apiConfig := range serviceConfigByHost {
+		// Check for host collision with another namespace
+		if cachedKey := r.Cache.Key(serviceHost); cachedKey != nil {
+			if cachedKeyParts := strings.Split(*cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
+				log.Info("host already taken in another namespace", "host", serviceHost)
+				return ctrl.Result{}, nil
+			}
+		}
+
+		if err := r.Cache.Set(req.String(), serviceHost, apiConfig, true); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
