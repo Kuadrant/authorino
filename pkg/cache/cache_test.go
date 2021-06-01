@@ -20,61 +20,65 @@ func (f *BogusIdentity) Call(pipeline common.AuthPipeline, ctx context.Context) 
 func TestCache(t *testing.T) {
 	c := NewCache()
 
-	apiKeyIdentityConfig := &BogusIdentity{}
+	apiFindIdIdentityConfig := &BogusIdentity{}
 	identities := make([]common.AuthConfigEvaluator, 1)
-	identities[0] = apiKeyIdentityConfig
+	identities[0] = apiFindIdIdentityConfig
 	exampleConfig := config.APIConfig{
 		IdentityConfigs:      identities,
 		MetadataConfigs:      nil,
 		AuthorizationConfigs: nil,
 	}
 
-	// Set a host
-	if err := c.Set("key", "testing.host", exampleConfig, false); err != nil {
+	// Set a key
+	if err := c.Set("id", "testing.host", exampleConfig, false); err != nil {
 		t.Error(err)
 	}
 
-	// Set a second host with same key
-	if err := c.Set("key", "testing.host.2", exampleConfig, false); err != nil {
+	// Set a second key with same id
+	if err := c.Set("id", "testing.host.2", exampleConfig, false); err != nil {
 		t.Error(err)
 	}
 
-	// Set a third host with different key
-	if err := c.Set("key2", "testing.host.3", exampleConfig, false); err != nil {
+	// Set a third key with different id
+	if err := c.Set("id2", "testing.host.3", exampleConfig, false); err != nil {
 		t.Error(err)
 	}
 
-	// Get hosts associated with a key
-	hosts := c.Hosts("key")
-	sort.Strings(hosts)
-	assert.DeepEqual(t, hosts, []string{"testing.host", "testing.host.2"})
+	// Get keys associated with an id
+	keys := c.FindKeys("id")
+	sort.Strings(keys)
+	assert.DeepEqual(t, keys, []string{"testing.host", "testing.host.2"})
 
-	hosts = c.Hosts("key2")
-	sort.Strings(hosts)
-	assert.DeepEqual(t, hosts, []string{"testing.host.3"})
+	keys = c.FindKeys("id2")
+	sort.Strings(keys)
+	assert.DeepEqual(t, keys, []string{"testing.host.3"})
 
-	hosts = c.Hosts("key3")
-	sort.Strings(hosts)
-	assert.Check(t, hosts == nil)
+	keys = c.FindKeys("id3")
+	sort.Strings(keys)
+	assert.Check(t, keys == nil)
 
-	// Get key associated with a host
-	key := c.Key("testing.host")
-	assert.Equal(t, *key, "key")
+	// Get id associated with a host
+	id, found := c.FindId("testing.host")
+	assert.Check(t, found)
+	assert.Equal(t, id, "id")
 
-	key = c.Key("testing.host.2")
-	assert.Equal(t, *key, "key")
+	id, found = c.FindId("testing.host.2")
+	assert.Check(t, found)
+	assert.Equal(t, id, "id")
 
-	key = c.Key("testing.host.3")
-	assert.Equal(t, *key, "key2")
+	id, found = c.FindId("testing.host.3")
+	assert.Check(t, found)
+	assert.Equal(t, id, "id2")
 
-	key = c.Key("testing.host.4")
-	assert.Check(t, key == nil)
+	id, found = c.FindId("testing.host.4")
+	assert.Check(t, !found)
+	assert.Equal(t, id, "")
 
 	// Set a same host again without override
-	err := c.Set("key", "testing.host.2", exampleConfig, false)
+	err := c.Set("id", "testing.host.2", exampleConfig, false)
 	assert.Check(t, err != nil)
 
-	// Get a single hosts and check that it is what we expect
+	// Get a single key and check that it is what we expect
 	config := c.Get("testing.host")
 	assert.DeepEqual(t, *config, exampleConfig)
 
@@ -84,8 +88,8 @@ func TestCache(t *testing.T) {
 	config = c.Get("testing.host.4")
 	assert.Check(t, config == nil)
 
-	// Delete the key, so both entries should be empty.
-	c.Delete("key")
+	// Delete the id, so both entries should be empty.
+	c.Delete("id")
 
 	config = c.Get("testing.host")
 	assert.Check(t, config == nil)
@@ -96,7 +100,7 @@ func TestCache(t *testing.T) {
 	config = c.Get("testing.host.3")
 	assert.DeepEqual(t, *config, exampleConfig)
 
-	c.Delete("key2")
+	c.Delete("id2")
 
 	config = c.Get("testing.host.3")
 	assert.Check(t, config == nil)

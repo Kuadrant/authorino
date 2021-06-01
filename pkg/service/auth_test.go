@@ -24,9 +24,8 @@ func getHeader(headers []*envoy_core.HeaderValueOption, key string) string {
 }
 
 func TestSuccessResponse(t *testing.T) {
-	c := cache.NewCache()
 	service := AuthService{
-		Cache: &c,
+		Cache: cache.NewCache(),
 	}
 
 	var resp *envoy_auth.OkHttpResponse
@@ -40,9 +39,8 @@ func TestSuccessResponse(t *testing.T) {
 }
 
 func TestDeniedResponse(t *testing.T) {
-	c := cache.NewCache()
 	service := AuthService{
-		Cache: &c,
+		Cache: cache.NewCache(),
 	}
 
 	var resp *envoy_auth.DeniedHttpResponse

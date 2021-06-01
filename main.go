@@ -86,7 +86,7 @@ func main() {
 	// sets up the service reconciler
 	serviceReconciler := &controllers.ServiceReconciler{
 		Client: mgr.GetClient(),
-		Cache:  &cache,
+		Cache:  cache,
 		Log:    ctrl.Log.WithName("authorino").WithName("controller").WithName("Service"),
 		Scheme: mgr.GetScheme(),
 	}
@@ -109,8 +109,8 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 
-	startExtAuthServer(&cache)
-	startOIDCServer(&cache)
+	startExtAuthServer(cache)
+	startOIDCServer(cache)
 
 	setupLog.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
@@ -119,12 +119,12 @@ func main() {
 	}
 }
 
-func startExtAuthServer(serviceCache *cache.Cache) {
+func startExtAuthServer(serviceCache cache.Cache) {
 	startExtAuthServerGRPC(serviceCache)
 	startExtAuthServerHTTP(serviceCache)
 }
 
-func startExtAuthServerGRPC(serviceCache *cache.Cache) {
+func startExtAuthServerGRPC(serviceCache cache.Cache) {
 	logger := ctrl.Log.WithName("authorino").WithName("auth")
 	port := common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
 
@@ -149,11 +149,11 @@ func startExtAuthServerGRPC(serviceCache *cache.Cache) {
 	}
 }
 
-func startExtAuthServerHTTP(serviceCache *cache.Cache) {
+func startExtAuthServerHTTP(serviceCache cache.Cache) {
 	// TODO
 }
 
-func startOIDCServer(serviceCache *cache.Cache) {
+func startOIDCServer(serviceCache cache.Cache) {
 	logger := ctrl.Log.WithName("authorino").WithName("oidc")
 	port := common.FetchEnv("OIDC_HTTP_PORT", "8003")
 

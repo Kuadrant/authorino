@@ -46,7 +46,7 @@ type ServiceReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
-	Cache  *cache.Cache
+	Cache  cache.Cache
 }
 
 // +kubebuilder:rbac:groups=config.authorino.3scale.net,resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -82,8 +82,8 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	for serviceHost, apiConfig := range serviceConfigByHost {
 		// Check for host collision with another namespace
-		if cachedKey := r.Cache.Key(serviceHost); cachedKey != nil {
-			if cachedKeyParts := strings.Split(*cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
+		if cachedKey, found := r.Cache.FindId(serviceHost); found {
+			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
 				log.Info("host already taken in another namespace", "host", serviceHost)
 				return ctrl.Result{}, nil
 			}

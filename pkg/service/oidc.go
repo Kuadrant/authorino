@@ -15,7 +15,7 @@ var oidcServiceLog = ctrl.Log.WithName("authorino").WithName("OidcService")
 
 // OidcService implements an HTTP server for OpenID Connect Discovery
 type OidcService struct {
-	Cache *cache.Cache
+	Cache cache.Cache
 }
 
 func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
@@ -68,7 +68,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 }
 
 func (o *OidcService) findWristbandIssuer(realm string) common.WristbandIssuer {
-	hosts := o.Cache.Hosts(realm)
+	hosts := o.Cache.FindKeys(realm)
 	if len(hosts) > 0 {
 		return o.Cache.Get(hosts[0]).Wristband
 	} else {

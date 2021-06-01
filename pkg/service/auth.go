@@ -38,7 +38,7 @@ var (
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
-	Cache *cache.Cache
+	Cache cache.Cache
 }
 
 // Check performs authorization check based on the attributes associated with the incoming request,
