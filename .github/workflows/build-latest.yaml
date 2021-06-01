@@ -1,0 +1,36 @@
+name: Build and push image
+on:
+  push:
+    branches:
+      - 'main'
+      - 'master'
+
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build Image
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: authorino
+          tags: latest ${{ github.sha }}
+          dockerfiles: |
+            ./Dockerfile
+
+      - name: Push To quay.io
+        id: push-to-quay
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: quay.io/3scale
+          username: 3scale+authorino_github
+          password: ${{ secrets.REGISTRY_AUTH_TOKEN }}
+
+      - name: Print Image URL
+        run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
