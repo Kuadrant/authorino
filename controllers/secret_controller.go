@@ -73,7 +73,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
-	if err := r.reconcileServicesUsingAPIKey(ctx, reconcile); err != nil {
+	if err := r.reconcileServicesUsingAPIKey(ctx, req.Namespace, reconcile); err != nil {
 		log.Info("could not reconcile services", "req", req)
 		return ctrl.Result{}, err
 	} else {
@@ -87,11 +87,13 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *SecretReconciler) getServicesUsingAPIKey(ctx context.Context) ([]configv1beta1.Service, error) {
+func (r *SecretReconciler) getServicesUsingAPIKey(ctx context.Context, namespace string) ([]configv1beta1.Service, error) {
 	var existingServices = &configv1beta1.ServiceList{}
 	selectedServices := make([]configv1beta1.Service, 0)
 
-	if err := r.List(ctx, existingServices); err != nil {
+	if err := r.List(ctx, existingServices, &client.ListOptions{
+		Namespace: namespace,
+	}); err != nil {
 		return nil, err
 	} else {
 		for _, service := range existingServices.Items {
@@ -107,8 +109,8 @@ func (r *SecretReconciler) getServicesUsingAPIKey(ctx context.Context) ([]config
 }
 
 // reconcileServicesUsingAPIKey invokes the reconcile(service) func asynchronously, for each service using API key identity
-func (r *SecretReconciler) reconcileServicesUsingAPIKey(ctx context.Context, reconcile func(configv1beta1.Service)) error {
-	if services, err := r.getServicesUsingAPIKey(ctx); err != nil {
+func (r *SecretReconciler) reconcileServicesUsingAPIKey(ctx context.Context, namespace string, reconcile func(configv1beta1.Service)) error {
+	if services, err := r.getServicesUsingAPIKey(ctx, namespace); err != nil {
 		return err
 	} else {
 		for _, service := range services {
