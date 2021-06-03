@@ -269,7 +269,9 @@ sed -e "s/\${AUTHORINO_NAMESPACE}/authorino/g" ./examples/kubernetes-auth.yaml |
 Get a valid Kubernetes token:
 
 ```sh
-export KUBERNETES_API=$(kubectl cluster-info | head -n 1 | awk '{print $7}' | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g")
+CURRENT_K8S_CONTEXT=$(kubectl config view -o json | jq -r '."current-context"')
+CURRENT_K8S_CLUSTER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.cluster')
+export KUBERNETES_API=$(kubectl config view -o json | jq -r --arg K8S_CLUSTER "${CURRENT_K8S_CLUSTER}" '.clusters[] | select(.name == $K8S_CLUSTER) | .cluster.server')
 export TOKEN_ISSUER_TOKEN=$(kubectl -n authorino get secret/$(kubectl -n authorino get sa/sa-token-issuer -o json | jq -r '.secrets[0].name') -o json | jq -r '.data.token' | base64 -d)
 export API_CONSUMER_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer/token" \
      -H "Authorization: Bearer $TOKEN_ISSUER_TOKEN" \
