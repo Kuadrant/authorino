@@ -99,7 +99,7 @@ kubectl -n authorino apply -f ./examples/simple-api-key.yaml
 
 ```sh
 curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/hello # 200
-curl -H 'Host: talker-api' -H 'Authorization: APIKEY nonono' http://localhost:8000/hello # 403
+curl -H 'Host: talker-api' -H 'Authorization: APIKEY nonono' http://localhost:8000/hello # 401
 ```
 
 ----
