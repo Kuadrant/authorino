@@ -15,9 +15,9 @@ spec:
         keySelector: APIKEY
     - name: wristband
       oidc:
-        endpoint: http://authorino-authorization:8003/authorino/talker-api-protection
+        endpoint: http://authorino-wristband:8003/authorino/talker-api-protection
   wristband:
-    issuer: http://authorino-authorization:8003/authorino/talker-api-protection
+    issuer: http://authorino-wristband:8003/authorino/talker-api-protection
     customClaims:
       - name: aud
         value: internal

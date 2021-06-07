@@ -13,12 +13,6 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-# Image URL to use all building/pushing image targets
-IMG ?= authorino:latest
-
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1"
-
 #Use bash as shell
 SHELL = /bin/bash
 
@@ -28,6 +22,13 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
+
+# Image URL to use all building/pushing image targets
+AUTHORINO_IMAGE ?= authorino:latest
+# The Kubernetes namespace where to deploy the Authorino instance.
+AUTHORINO_NAMESPACE ?= authorino
+# Flavour of the Authorino deployment – Options: 'namespaced' (default), 'cluster-wide'
+AUTHORINO_DEPLOYMENT ?= namespaced
 
 all: manager
 
@@ -40,7 +41,7 @@ test: generate fmt vet manifests
 
 # Show test coverage
 cover:
-	 go tool cover -html=cover.out
+	go tool cover -html=cover.out
 
 # Build manager binary
 manager: generate fmt vet
@@ -52,20 +53,24 @@ run: generate fmt vet manifests
 
 # Install CRDs into a cluster
 install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+	$(KUSTOMIZE) build install | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
 uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+	$(KUSTOMIZE) build install | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
+	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
+	$(KUSTOMIZE) build deploy/overlays/$(AUTHORINO_DEPLOYMENT) | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
+# rollback kustomize edit
+	cd deploy/base && $(KUSTOMIZE) edit set image authorino=authorino:latest && $(KUSTOMIZE) edit set namespace authorino
+	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace authorino
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd  output:rbac:artifacts:config=install/rbac
 
 # Download vendor dependencies
 .PHONY: vendor
@@ -87,11 +92,11 @@ generate: vendor controller-gen
 
 # Build the docker image
 docker-build: vendor
-	docker build . -t ${IMG}
+	docker build . -t ${AUTHORINO_IMAGE}
 
 # Push the docker image
 docker-push:
-	docker push ${IMG}
+	docker push ${AUTHORINO_IMAGE}
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -129,8 +134,8 @@ endif
 .PHONY: bundle
 bundle: manifests kustomize
 	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE)
+	$(KUSTOMIZE) build install/crd | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 # Build the bundle image.
@@ -153,29 +158,73 @@ else
 KIND=$(shell which kind)
 endif
 
+# Prints relevant environment variables
+.PHONY: envs
+envs:
+	@{ \
+	echo "CONTROLLER_GEN=$(CONTROLLER_GEN)"; \
+	echo "KUSTOMIZE=$(KUSTOMIZE)"; \
+	echo "AUTHORINO_IMAGE=$(AUTHORINO_IMAGE)"; \
+	echo "AUTHORINO_NAMESPACE=$(AUTHORINO_NAMESPACE)"; \
+	echo "AUTHORINO_DEPLOYMENT=$(AUTHORINO_DEPLOYMENT)"; \
+	}
+
+# Creates a namespace where to deploy Authorino
+.PHONY: namespace
+namespace:
+	kubectl create namespace $(AUTHORINO_NAMESPACE)
+
+# Deploys the examples user apps: Talker API and Envoy proxy, and optionally Keycloak and Dex
+.PHONY: example-apps
+NAMESPACE ?= $(AUTHORINO_NAMESPACE)
+DEPLOY_KEYCLOAK ?= $(DEPLOY_IDPS)
+DEPLOY_DEX ?= $(DEPLOY_IDPS)
+example-apps:
+	kubectl -n $(NAMESPACE) apply -f examples/talker-api/talker-api-deploy.yaml
+	kubectl -n $(NAMESPACE) apply -f examples/envoy/envoy-deploy.yaml
+ifneq (, $(DEPLOY_KEYCLOAK))
+	kubectl -n $(NAMESPACE) apply -f examples/keycloak/keycloak-deploy.yaml
+endif
+ifneq (, $(DEPLOY_DEX))
+	kubectl -n $(NAMESPACE) apply -f examples/dex/dex-deploy.yaml
+endif
+
+# Targets with the 'local-' prefix, for trying Authorino in a local cluster spawned with Kind
+
 KIND_CLUSTER_NAME ?= authorino
 
 # Start a local Kubernetes cluster using Kind
 .PHONY: local-cluster-up
-local-cluster-up: kind local-cluster-down
+local-cluster-up: kind
 	kind create cluster --name $(KIND_CLUSTER_NAME) --config ./utils/kind-cluster.yaml
 
-# Deletes the local Kubernetes cluster started using Kind
-.PHONY: local-cluster-down
-local-cluster-down: kind
-	kind delete cluster --name $(KIND_CLUSTER_NAME)
-
-# Pushes a local container image of Authorino to the registry of the Kind-started local Kubernetes cluster
+# Pushes the Authorino image to the registry of the Kind-started local Kubernetes cluster
 .PHONY: local-push
 local-push: kind
-	kind load docker-image $(IMG) --name $(KIND_CLUSTER_NAME)
+	kind load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
+
+# Builds the image, pushes to the local cluster and deployes Authorino.
+# Sets the imagePullPolicy to 'IfNotPresent' so it doesn't try to pull the image again (just pushed into the server registry)
+.PHONY: deploy
+local-deploy: docker-build local-push deploy
+	kubectl -n $(AUTHORINO_NAMESPACE) patch deployment authorino-controller-manager -p '{"spec": {"template": {"spec":{"containers":[{"name": "manager", "imagePullPolicy":"IfNotPresent"}]}}}}'
 
 # Set up a test/dev local Kubernetes server loaded up with a freshly built Authorino image plus dependencies
 .PHONY: local-setup
-local-setup: vendor kustomize kind local-cluster-up docker-build local-push
-	utils/local-setup.sh
+local-setup: local-cluster-up install namespace local-deploy example-apps
+	kubectl -n $(AUTHORINO_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
+	@{ \
+	echo "Now you can export the envoy service by doing:"; \
+	echo "kubectl port-forward --namespace $(NAMESPACE) deployment/envoy 8000:8000"; \
+	echo "After that, you can curl -H \"Host: myhost.com\" localhost:8000"; \
+	}
 
-# Rebuild and push the docker image and redeploy authorino to the local k8s cluster
+# Rebuild and push the docker image and redeploy Authorino to the local k8s cluster
 .PHONY: local-rollout
 local-rollout: docker-build local-push
-	utils/local-rollout.sh
+	kubectl -n $(AUTHORINO_NAMESPACE) rollout restart deployment.apps/authorino-controller-manager
+
+# Deletes the local Kubernetes cluster started using Kind
+.PHONY: local-cleanup
+local-cleanup: kind
+	kind delete cluster --name $(KIND_CLUSTER_NAME)

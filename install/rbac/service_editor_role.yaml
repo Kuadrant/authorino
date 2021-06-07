@@ -15,7 +15,6 @@ rules:
   - list
   - patch
   - update
-  - watch
 - apiGroups:
   - config.authorino.3scale.net
   resources:

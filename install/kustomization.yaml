@@ -1,0 +1,13 @@
+# This is the main Kustomization file to install Authorino.
+# It includes the installation of the CRD and RBAC required to later deploy an AUthorino instance.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- crd
+- rbac
+
+# Value of this field is prepended to the names of all resources.
+# E.g. a deployment named "controller" becomes "authorino-controller".
+namePrefix: authorino-
+
