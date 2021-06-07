@@ -85,7 +85,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if cachedKey, found := r.Cache.FindId(serviceHost); found {
 			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
 				log.Info("host already taken in another namespace", "host", serviceHost)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, r.updateServiceStatus(ctx, &service, false)
 			}
 		}
 
@@ -94,14 +94,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
-	// TODO: This is not enough. Fix the whole Readiness.
-	service.Status.Ready = true
-	err = r.Client.Update(ctx, &service)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, r.updateServiceStatus(ctx, &service, true)
 }
 
 func (r *ServiceReconciler) translateService(ctx context.Context, service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
@@ -332,6 +325,19 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 		config[host] = apiConfig
 	}
 	return config, nil
+}
+
+func (r *ServiceReconciler) updateServiceStatus(ctx context.Context, service *configv1beta1.Service, ready bool) error {
+	service.Status.Ready = ready
+	service.Status.NumIdentityPolicies = int64(len(service.Spec.Identity))
+	service.Status.NumMetadataPolicies = int64(len(service.Spec.Metadata))
+	service.Status.NumAuthorizationPolicies = int64(len(service.Spec.Authorization))
+	service.Status.FestivalWristbandEnabled = service.Spec.Wristband != nil
+	if err := r.Client.Status().Update(ctx, service); err != nil {
+		return err
+	} else {
+		return nil
+	}
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {

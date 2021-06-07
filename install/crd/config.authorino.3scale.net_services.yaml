@@ -16,7 +16,32 @@ spec:
     singular: service
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Ready?
+      jsonPath: .status.ready
+      name: Ready
+      type: boolean
+    - description: Number of identity verification policies
+      jsonPath: .status.numIdentityPolicies
+      name: Id policies
+      priority: 2
+      type: integer
+    - description: Number of metadata policies
+      jsonPath: .status.numMetadataPolicies
+      name: Metadata policies
+      priority: 2
+      type: integer
+    - description: Number of authorization policies
+      jsonPath: .status.numAuthorizationPolicies
+      name: Authz policies
+      priority: 2
+      type: integer
+    - description: Whether issuing Festival Wristbands
+      jsonPath: .status.festivalWristbandEnabled
+      name: Wristband
+      priority: 2
+      type: boolean
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: Service is the schema for Authorino's services API
@@ -459,9 +484,24 @@ spec:
           status:
             description: ServiceStatus defines the observed state of Service
             properties:
+              festivalWristbandEnabled:
+                type: boolean
+              numAuthorizationPolicies:
+                format: int64
+                type: integer
+              numIdentityPolicies:
+                format: int64
+                type: integer
+              numMetadataPolicies:
+                format: int64
+                type: integer
               ready:
                 type: boolean
             required:
+            - festivalWristbandEnabled
+            - numAuthorizationPolicies
+            - numIdentityPolicies
+            - numMetadataPolicies
             - ready
             type: object
         type: object

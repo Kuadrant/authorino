@@ -99,6 +99,20 @@ type Identity struct {
 	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
 }
 
+func (i *Identity) GetType() string {
+	if i.OAuth2 != nil {
+		return IdentityOAuth2
+	} else if i.Oidc != nil {
+		return IdentityOidc
+	} else if i.APIKey != nil {
+		return IdentityApiKey
+	} else if i.KubernetesAuth != nil {
+		return IdentityKubernetesAuth
+	} else {
+		return TypeUnknown
+	}
+}
+
 type Identity_OAuth2Config struct {
 	// The full URL of the token introspection endpoint.
 	TokenIntrospectionUrl string `json:"tokenIntrospectionUrl"`
@@ -201,6 +215,15 @@ type Authorization struct {
 	JSON *Authorization_JSONPatternMatching `json:"json,omitempty"`
 }
 
+func (a *Authorization) GetType() string {
+	if a.OPA != nil {
+		return AuthorizationOPA
+	} else if a.JSON != nil {
+		return AuthorizationJSONPatternMatching
+	}
+	return TypeUnknown
+}
+
 // Open Policy Agent (OPA) authorization policy.
 type Authorization_OPA struct {
 	// Authorization policy as a Rego language document.
@@ -231,15 +254,6 @@ type Authorization_JSONPatternMatching_Rule struct {
 	// The value of reference for the comparison with the content fetched from the authorization policy.
 	// If used with the "matches" operator, the value must compile to a valid Golang regex.
 	Value string `json:"value"`
-}
-
-func (a *Authorization) GetType() string {
-	if a.OPA != nil {
-		return AuthorizationOPA
-	} else if a.JSON != nil {
-		return AuthorizationJSONPatternMatching
-	}
-	return TypeUnknown
 }
 
 // +kubebuilder:validation:Enum:=ES256;ES384;ES512;RS256;RS384;RS512
@@ -282,13 +296,21 @@ type Wristband struct {
 
 // ServiceStatus defines the observed state of Service
 type ServiceStatus struct {
-	Ready bool `json:"ready"`
+	Ready                    bool  `json:"ready"`
+	NumIdentityPolicies      int64 `json:"numIdentityPolicies"`
+	NumMetadataPolicies      int64 `json:"numMetadataPolicies"`
+	NumAuthorizationPolicies int64 `json:"numAuthorizationPolicies"`
+	FestivalWristbandEnabled bool  `json:"festivalWristbandEnabled"`
 }
 
+// Service is the schema for Authorino's services API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
-// Service is the schema for Authorino's services API
+// +kubebuilder:printcolumn:name="Ready",type=boolean,JSONPath=`.status.ready`,description="Ready?"
+// +kubebuilder:printcolumn:name="Id policies",type=integer,JSONPath=`.status.numIdentityPolicies`,description="Number of identity verification policies",priority=2
+// +kubebuilder:printcolumn:name="Metadata policies",type=integer,JSONPath=`.status.numMetadataPolicies`,description="Number of metadata policies",priority=2
+// +kubebuilder:printcolumn:name="Authz policies",type=integer,JSONPath=`.status.numAuthorizationPolicies`,description="Number of authorization policies",priority=2
+// +kubebuilder:printcolumn:name="Wristband",type=boolean,JSONPath=`.status.festivalWristbandEnabled`,description="Whether issuing Festival Wristbands",priority=2
 type Service struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -304,20 +326,6 @@ type ServiceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Service `json:"items"`
-}
-
-func (i *Identity) GetType() string {
-	if i.OAuth2 != nil {
-		return IdentityOAuth2
-	} else if i.Oidc != nil {
-		return IdentityOidc
-	} else if i.APIKey != nil {
-		return IdentityApiKey
-	} else if i.KubernetesAuth != nil {
-		return IdentityKubernetesAuth
-	} else {
-		return TypeUnknown
-	}
 }
 
 func init() {
