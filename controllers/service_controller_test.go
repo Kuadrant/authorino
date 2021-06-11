@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -171,14 +170,6 @@ func TestReconcilerOk(t *testing.T) {
 		t.Error(err)
 	}
 
-	serviceCheck := v1beta1.Service{}
-
-	_ = r.Client.Get(context.TODO(), client.ObjectKey{
-		Namespace: service.Namespace,
-		Name:      service.Name,
-	}, &serviceCheck)
-
-	assert.Check(t, serviceCheck.Status.Ready)
 	// Result should be empty
 	assert.DeepEqual(t, result, ctrl.Result{})
 }
@@ -215,15 +206,6 @@ func TestReconcilerNotFound(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	serviceCheck := v1beta1.Service{}
-	_ = r.Client.Get(context.TODO(), client.ObjectKey{
-		Namespace: service.Namespace,
-		Name:      service.Name,
-	}, &serviceCheck)
-
-	// The object we created should remain not ready
-	assert.Check(t, !serviceCheck.Status.Ready)
 
 	// Result should be empty
 	assert.DeepEqual(t, result, ctrl.Result{})

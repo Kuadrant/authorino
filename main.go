@@ -78,8 +78,7 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "cb88a58a.authorino.3scale.net",
+		LeaderElection:     false,
 	}
 
 	if watchNamespace != "" {
@@ -124,9 +123,38 @@ func main() {
 	startExtAuthServer(cache)
 	startOIDCServer(cache)
 
+	signalHandler := ctrl.SetupSignalHandler()
+
 	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+
+	go func() {
+		if err := mgr.Start(signalHandler); err != nil {
+			setupLog.Error(err, "problem running manager")
+			os.Exit(1)
+		}
+	}()
+
+	// status update manager
+	managerOptions.LeaderElection = enableLeaderElection
+	managerOptions.LeaderElectionID = "cb88a58a.authorino.3scale.net"
+	managerOptions.MetricsBindAddress = "0"
+	statusUpdateManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
+	if err != nil {
+		setupLog.Error(err, "unable to create status update manager")
+		os.Exit(1)
+	}
+
+	// sets up service status update controller
+	if err = (&controllers.ServiceStatusUpdater{
+		Client: statusUpdateManager.GetClient(),
+	}).SetupWithManager(statusUpdateManager); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceStatusUpdate")
+	}
+
+	setupLog.Info("Starting status update manager")
+
+	if err := statusUpdateManager.Start(signalHandler); err != nil {
+		setupLog.Error(err, "problem running status update manager")
 		os.Exit(1)
 	}
 }
