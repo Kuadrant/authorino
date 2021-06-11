@@ -29,6 +29,8 @@ AUTHORINO_IMAGE ?= authorino:latest
 AUTHORINO_NAMESPACE ?= authorino
 # Flavour of the Authorino deployment – Options: 'namespaced' (default), 'cluster-wide'
 AUTHORINO_DEPLOYMENT ?= namespaced
+# Number of Authorino replicas
+AUTHORINO_REPLICAS ?= 1
 
 all: manager
 
@@ -61,11 +63,11 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
+	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE) && $(KUSTOMIZE) edit set replicas authorino-controller-manager=$(AUTHORINO_REPLICAS)
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
 	$(KUSTOMIZE) build deploy/overlays/$(AUTHORINO_DEPLOYMENT) | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
 # rollback kustomize edit
-	cd deploy/base && $(KUSTOMIZE) edit set image authorino=authorino:latest && $(KUSTOMIZE) edit set namespace authorino
+	cd deploy/base && $(KUSTOMIZE) edit set image authorino=authorino:latest && $(KUSTOMIZE) edit set namespace authorino && $(KUSTOMIZE) edit set replicas authorino-controller-manager=1
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace authorino
 
 # Generate manifests e.g. CRD, RBAC etc.
@@ -167,6 +169,7 @@ envs:
 	echo "AUTHORINO_IMAGE=$(AUTHORINO_IMAGE)"; \
 	echo "AUTHORINO_NAMESPACE=$(AUTHORINO_NAMESPACE)"; \
 	echo "AUTHORINO_DEPLOYMENT=$(AUTHORINO_DEPLOYMENT)"; \
+	echo "AUTHORINO_REPLICAS=$(AUTHORINO_REPLICAS)"; \
 	}
 
 # Creates a namespace where to deploy Authorino

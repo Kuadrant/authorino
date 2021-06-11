@@ -33,3 +33,7 @@ images:
 - name: authorino
   newName: authorino
   newTag: latest
+
+replicas:
+- count: 1
+  name: authorino-controller-manager
