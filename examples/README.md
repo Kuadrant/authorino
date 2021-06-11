@@ -14,7 +14,7 @@ Run from the root directory of the Authorino repo:
 make local-setup
 ```
 
-The above will setup the local environment, deploy Authorino, Envoy and the sample API to be protected called **Talker API**.
+The above will setup the local environment, install and deploy Authorino, Envoy and the sample API to be protected called **Talker API**.
 
 Some of the examples involve having an external identity provider (IdP), such as [Keycloak](https://www.keycloak.org) and/or [Dex](https://dexidp.io), to support authentication. To launch the local test environment including as well both these IdPs deployed to the cluster, run instead:
 
