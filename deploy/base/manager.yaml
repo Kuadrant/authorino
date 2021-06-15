@@ -1,11 +1,4 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: system
----
-apiVersion: v1
 kind: Service
 metadata:
   name: authorization
@@ -16,11 +9,8 @@ spec:
     app: authorino
     control-plane: controller-manager
   ports:
-    - name: ext-auth
+    - name: grpc
       port: 50051
-      protocol: TCP
-    - name: wristband-oidc
-      port: 8003
       protocol: TCP
 ---
 apiVersion: apps/v1

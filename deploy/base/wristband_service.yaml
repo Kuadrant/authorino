@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wristband
+  labels:
+    app: authorino
+spec:
+  selector:
+    app: authorino
+    control-plane: controller-manager
+  ports:
+    - name: oidc
+      port: 8003
+      protocol: TCP

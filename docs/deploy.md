@@ -1,8 +1,8 @@
-# Deploying Authorino
+# Installing and Deploying Authorino
 
 1. [Clone the repo](#clone-the-repo)
 2. [Meet the requirements](#meet-the-requirements)
-3. [Deploy](#deploy)
+3. [Install and Deploy](#install-and-deploy)
    - [Option A: Local cluster](#option-a-local-cluster)
    - [Option B: Custom deployment](#option-b-custom-deployment)
 
@@ -34,12 +34,17 @@ Some other feature-specific requirements (as opposed to actual requirements of A
 - For UMA-protected resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more tipically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
 - For Kubernetes authentication tokens, in case you want to be able to requests access tokens for clients running outside the custer, you may want to check out the requisites for using Kubernetes [TokenRquest API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#tokenrequest-v1-storage-k8s-io) (GA in v1.20).
 
-## Deploy
+## Install and Deploy
 
 Choose between the options below to continue:
 
-[**Option A:** Local cluster (try it out and examples)](#option-a-local-cluster)<br/>
-[**Option B:** Custom deployment](#option-b-custom-deployment)
+[**Option A:** Local cluster](#option-a-local-cluster)<br/>
+To try Auhtorino out and/or run the examples, based on a fresh image of Authorino built locally.<br/>
+Setup may take up to 5 minutes.
+
+[**Option B:** Custom deployment](#option-b-custom-deployment)<br/>
+For deploying locally or in the cloud, with options to pick a pre-built image publicly available or build locally, define the name of your namespace, reconciliation mode, and number of replicas.<br/>
+Setup time may vary from 2 to 10 minutes, depending on options chosen.
 
 ### Option A: Local cluster
 
@@ -138,82 +143,131 @@ kubectl -n authorino port-forward deployment/dex 5556:5556 &
 Delete the local Kind-managed Kubernetes cluster, thus cleaning up all resources deployed:
 
 ```sh
-make local-cluster-down
+make local-cleanup
 ```
 
 ### Option B: Custom deployment
 
-A typical Authorino deployment to a Kubernetes server of choice includes:<br/>
-- i. Authorino (CRD, some Roles and RoleBindings, Deployment and Service)
-- ii. Envoy proxy (w/ ext_authz filter pointing to Authorino)
-- iii. One or more APIs (upstreams) to be protected
-- iv. Identity/authorization server (e.g. Keycloak), depending on the authentication methods chosen
+The steps to custom deploy Authorino are divided in two parts: **installation** and **deployment**.
 
-The next steps provide some guidance on how to deploy Authorino, which is item (i) of the list of components above. To deploy and configure Envoy, as well as any possibly required identity providers/authorization servers, please refer to the corresponding docs of each of those components.
+Installing Authorino refers to the step of applying the Authorino CRD and `ClusterRole`s to the Kubernetes cluster. This step requires admin privileges over the cluster and is performed only once per cluster.
 
-The [examples](/examples) provided in the Authorino repo may as well offer some hints on how to finish the deployment.
+Deploying Authorino instances refers to starting up Authorino external authorization service pods that will enforce auth configs on specified hosts. This step may or may not require admin privileges over the Kubernetes cluster, depending on the deployment mode that is chosen – i.e. **namespace-scoped** deployment or **cluster-wide** deployment.
 
-#### Choose your server
+In the end, a typical setup with one or more upstream APIs protected with Authorino and Envoy on a Kubernetes server, includes:<br/>
+- i. Authorino definitions (CRD, `ClusterRole`s) and replica sets of the Authorino authorization service (`RoleBinding`s, `Deployment` and `Service`)
+- ii. Envoy proxy (w/ ext_authz filter pointing to an instance of Authorino)
+- iii. The one or more APIs ("upstreams") to be protected
+- iv. Identity/authorization server (e.g. Keycloak), depending on the authentication methods of choice
 
-In case you do not have a target Kubernetes server where to deploy Authorino yet and simply want to try it out locally, you can launch a local cluster with [Kind](https://kind.sigs.k8s.io) by running:
+The next steps provide some guidance on how to install and deploy Authorino, corresponding only to item (i) on the list of components above. To deploy and configure Envoy, as well as possibly required identity providers/authorization servers, please refer to the corresponding docs of each of those components.
+
+The [examples](/examples) provided in the Authorino repo may as well offer some hints on how to finish the setup.
+
+#### 1. Choose your server
+
+The commands to install and deploy Authorino mostly assume you have a Kubernetes cluster where your `kubectl` is pointing at. Make sure your `kubectl` CLI is pointing to the Kubernetes cluster where you want to deploy Authorino.
+
+In case you do not have a target Kubernetes server where to deploy Authorino yet, and simply want to try it out locally, you can launch a local cluster with [Kind](https://kind.sigs.k8s.io) by running:
 
 ```sh
 make local-cluster-up
 ```
 
-By defult, the new local cluster name will be "authorino". You can set a different one by changing Kind's context cluster name (environment variable `KIND_CLUSTER_NAME`).
+By defult, the name of the new local cluster will be "authorino". You can set a different one by changing Kind's context cluster name (environment variable `KIND_CLUSTER_NAME`).
 
-#### Choose an image
+#### 2. Install Authorino
 
-By default, Authorino image tag will be assumed to be `authorino:latest`. You can check out [quay.io/3scale/authorino](https://quay.io/3scale/authorino) for an existing list of tags available, or build your own local image of Authorino.
+To install Authorino Custom Resource Definition (CRD) and `ClusterRole`s, admins of the Kubernetes cluster can run:
 
-To build you own local image based on the fetched version of the repo, run:
+```sh
+make install
+```
+
+The command above will create the Authorino definitions in the cluster based on the manifests fetched with the code. It is imperative that this version of the manifests are compatible with the Authorino image chosen for the deployment in the next step.
+
+#### 3. Choose an image
+
+Chose or build an image of Authorino that is compatible with the version of the CRD installed in the previous step.
+
+You can check out [quay.io/3scale/authorino](https://quay.io/3scale/authorino) for a list of pre-built image tags available. If you choose any of the publicly available pre-built images of Authorino, you can go to the next step.
+
+Alternatively, you can build an image of Authorino from code. To build you own local image of Authorino, based on the fetched version of the repo, run:
 
 ```sh
 make docker-build
 ```
 
-You can also set the environment variable `IMG` to control the name of tag. E.g.:
+The default tag of the image, in this case, will be `authorino:latest`. You can use the parameter `AUTHORINO_IMAGE` to control the name of the tag. E.g.:
 
 ```sh
-IMG=authorino:local make docker-build
+AUTHORINO_IMAGE=authorino:my-local-image make docker-build
 ```
 
-The `IMG` parameter can be supplied as well as to the `local-push` and `deploy` targets mentioned below.
-
-To push the Authorino image to a local Kubernetes cluster started with Kind, run:
+To push the image to a local Kubernetes cluster started with Kind, run:
 
 ```sh
 make local-push
 ```
 
-Use normal `docker push` command alternatively, i.e., in case you are not working with a local Kubernetes server started with the `local-cluster` make target but yet has built your own local image of Authorino.
+or, specifying an image tag other than `authorino-latest` that you might have chosen before:
 
-#### Create the namespace
+```sh
+AUTHORINO_IMAGE=authorino:my-local-image make local-push
+```
 
-Export and create the Authorino namespace in the cluster:
+In case you are not working with a local Kubernetes server started with `local-cluster-up`, but yet has built your own local image of Authorino, use normal `docker push` command to push the image to a registry of your preference.
+
+#### 4. Create the namespace
+
+To use the default name "authorino" for the namespace, run:
+
+```sh
+make namespace
+```
+
+You can change the name of the namespace by setting the `AUTHORINO_NAMESPACE` variable beforehand. In this case, it is recommended to export the variable to the shell, so the value is available as well for the next step, i.e. deploying Authorino.
 
 ```sh
 export AUTHORINO_NAMESPACE="authorino"
-kubectl create namespace "${AUTHORINO_NAMESPACE}"
-kubectl config set-context --current --namespace="${AUTHORINO_NAMESPACE}"
+make namespace
 ```
 
-#### Deploy Authorino
+#### 5. Deploy Authorino instances
 
-To create Authorino Custom Resource Definition (CRD), required Kubernetes Roles and RoleBindings, as well as Authorino's Deployment and Service, run:
+To deploy Auhorino instances, you can choose either **namespaced** instances or **cluster-wide** instances.
+
+Namespace-scoped instances of Authorino only watch CRs and `Secret`s created in a given namespace. This deployment mode does not require admin privileges over the Kubernetes cluster to deploy.
+
+Cluster-wide deployment mode, in contraposition, deploys instances of Authorino that watch CRs and `Secret` defined by users in any namespace across the cluster, consolidating all resources into one single cache of auth configs. Admin privileges over the Kubernetes cluster is required to deploy Authorino in cluster-wide reconciliation mode.
+
+> **Warning:** It is NOT recommended to combine instances of Authorino deployed with both of this modes in the same Kubernetes cluster, but either only one or the other should be chosen for a given Kubernetes cluster at a time instead.
+
+To deploy namespaced Authorino instances (`Deployment`, `Service` and `RoleBinding`s), run:
 
 ```sh
 make deploy
 ```
 
-or, to specify a custom image:
+To deploy cluster-wide Authorino instances (`Deployment`, `Service` and `ClusterRoleBinding`s), run:
 
 ```sh
-IMG=authorino:custom-target make deploy
+AUTHORINO_DEPLOYMENT=cluster-wide make deploy
+```
+
+By default, the commands above assume `authorino:latest` to be the tag of the Authorino image to deploy. You can change that by setting the `AUTHORINO_IMAGE` parameter.
+
+```sh
+AUTHORINO_IMAGE=authorino:my-custom-image make deploy
 ```
 
 > **NOTE:** In case you are working with a local Kubernetes cluster started with Kind, have built and pushed a local image to the server registry, remind of Kubernetes default pull policy, which establishes that the image tag `:latest` causes the policy `Always` to be enforced. In such case, you may want to change the policy to `IfNotPresent`. See [Kubernetes `imagePullPolicy`](https://kubernetes.io/docs/concepts/containers/images/#updating-images) for more information.
+
+You can tweak with the number of replicas of the Authorino `Deployment`, by setting the `AUTHORINO_REPLICAS` parameter. E.g.:
+
+```sh
+AUTHORINO_REPLICAS=4 AUTHORINO_DEPLOYMENT=cluster-wide AUTHORINO_IMAGE=quay.io/3scale/authorino:latest make deploy
+```
 
 #### Next steps
 

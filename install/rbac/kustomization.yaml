@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- role.yaml
+- service_editor_role.yaml
+- service_viewer_role.yaml
+- auth_proxy_role.yaml
+- auth_proxy_client_role.yaml

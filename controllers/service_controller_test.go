@@ -7,8 +7,10 @@ import (
 
 	"github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
-	. "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
+	mocks "github.com/kuadrant/authorino/pkg/common/mocks"
 
+	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -132,7 +133,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	authServer := NewHttpServerMock("127.0.0.1:9001", map[string]HttpServerMockResponses{
+	authServer := mocks.NewHttpServerMock("127.0.0.1:9001", map[string]mocks.HttpServerMockResponses{
 		"/auth/realms/demo/.well-known/openid-configuration": {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`},
 		"/auth/realms/demo/.well-known/uma2-configuration":   {Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`},
 	})
@@ -140,25 +141,23 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func setupEnvironment(t *testing.T) ServiceReconciler {
+func setupEnvironment(t *testing.T, c cache.Cache) ServiceReconciler {
 	scheme := runtime.NewScheme()
 	_ = v1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	// Create a fake client with a service and a secret.
 	client := fake.NewFakeClientWithScheme(scheme, &service, &secret)
 
-	c := cache.NewCache()
-
 	return ServiceReconciler{
 		Client: client,
 		Log:    ctrl.Log.WithName("reconcilerTest"),
 		Scheme: nil,
-		Cache:  &c,
+		Cache:  c,
 	}
 }
 
 func TestReconcilerOk(t *testing.T) {
-	r := setupEnvironment(t)
+	r := setupEnvironment(t, cache.NewCache())
 
 	result, err := r.Reconcile(controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
@@ -171,22 +170,14 @@ func TestReconcilerOk(t *testing.T) {
 		t.Error(err)
 	}
 
-	serviceCheck := v1beta1.Service{}
-
-	r.Client.Get(context.TODO(), client.ObjectKey{
-		Namespace: service.Namespace,
-		Name:      service.Name,
-	}, &serviceCheck)
-
-	assert.Check(t, serviceCheck.Status.Ready)
 	// Result should be empty
 	assert.DeepEqual(t, result, ctrl.Result{})
 }
 
 func TestReconcilerMissingSecret(t *testing.T) {
-	r := setupEnvironment(t)
+	r := setupEnvironment(t, cache.NewCache())
 
-	r.Client.Delete(context.TODO(), &secret)
+	_ = r.Client.Delete(context.TODO(), &secret)
 
 	result, err := r.Reconcile(controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
@@ -202,7 +193,7 @@ func TestReconcilerMissingSecret(t *testing.T) {
 }
 
 func TestReconcilerNotFound(t *testing.T) {
-	r := setupEnvironment(t)
+	r := setupEnvironment(t, cache.NewCache())
 
 	// Let's try to reconcile a non existing object.
 	result, err := r.Reconcile(controllerruntime.Request{
@@ -216,19 +207,30 @@ func TestReconcilerNotFound(t *testing.T) {
 		t.Error(err)
 	}
 
-	serviceCheck := v1beta1.Service{}
-	r.Client.Get(context.TODO(), client.ObjectKey{
-		Namespace: service.Namespace,
-		Name:      service.Name,
-	}, &serviceCheck)
-
-	// The object we created should remain not ready
-	assert.Check(t, !serviceCheck.Status.Ready)
-
 	// Result should be empty
 	assert.DeepEqual(t, result, ctrl.Result{})
 }
 
 func TestTranslateService(t *testing.T) {
 	// TODO
+}
+
+func TestHostColllision(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	c := mock_cache.NewMockCache(mockController)
+	r := setupEnvironment(t, c)
+
+	c.EXPECT().FindId("echo-api").Return("other-namespace/other-service-with-same-host", true)
+
+	result, err := r.Reconcile(controllerruntime.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+		},
+	})
+
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.NilError(t, err)
 }

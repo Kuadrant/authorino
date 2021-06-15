@@ -41,14 +41,19 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
+const (
+	gRPCMaxConcurrentStreams           = 10000
+	defaultAuthorinoWatchedSecretLabel = "authorino.3scale.net/managed-by"
+)
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-)
 
-const (
-	GRPCMaxConcurrentStreams    = 10000
-	authorinoWatchedSecretLabel = "authorino.3scale.net/managed-by"
+	watchNamespace              = common.FetchEnv("WATCH_NAMESPACE", "")
+	authorinoWatchedSecretLabel = common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", defaultAuthorinoWatchedSecretLabel)
+	extAuthGRPCPort             = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
+	oidcHTTPPort                = common.FetchEnv("OIDC_HTTP_PORT", "8003")
 )
 
 func init() {
@@ -69,13 +74,19 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	managerOptions := ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "cb88a58a.authorino.3scale.net",
-	})
+		LeaderElection:     false,
+	}
+
+	if watchNamespace != "" {
+		managerOptions.Namespace = watchNamespace
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
+
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -86,7 +97,7 @@ func main() {
 	// sets up the service reconciler
 	serviceReconciler := &controllers.ServiceReconciler{
 		Client: mgr.GetClient(),
-		Cache:  &cache,
+		Cache:  cache,
 		Log:    ctrl.Log.WithName("authorino").WithName("controller").WithName("Service"),
 		Scheme: mgr.GetScheme(),
 	}
@@ -100,7 +111,7 @@ func main() {
 		Client:            mgr.GetClient(),
 		Log:               ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
 		Scheme:            mgr.GetScheme(),
-		SecretLabel:       common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", authorinoWatchedSecretLabel),
+		SecretLabel:       authorinoWatchedSecretLabel,
 		ServiceReconciler: serviceReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
@@ -109,36 +120,64 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 
-	startExtAuthServer(&cache)
-	startOIDCServer(&cache)
+	startExtAuthServer(cache)
+	startOIDCServer(cache)
+
+	signalHandler := ctrl.SetupSignalHandler()
 
 	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+
+	go func() {
+		if err := mgr.Start(signalHandler); err != nil {
+			setupLog.Error(err, "problem running manager")
+			os.Exit(1)
+		}
+	}()
+
+	// status update manager
+	managerOptions.LeaderElection = enableLeaderElection
+	managerOptions.LeaderElectionID = "cb88a58a.authorino.3scale.net"
+	managerOptions.MetricsBindAddress = "0"
+	statusUpdateManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
+	if err != nil {
+		setupLog.Error(err, "unable to create status update manager")
+		os.Exit(1)
+	}
+
+	// sets up service status update controller
+	if err = (&controllers.ServiceStatusUpdater{
+		Client: statusUpdateManager.GetClient(),
+	}).SetupWithManager(statusUpdateManager); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceStatusUpdate")
+	}
+
+	setupLog.Info("Starting status update manager")
+
+	if err := statusUpdateManager.Start(signalHandler); err != nil {
+		setupLog.Error(err, "problem running status update manager")
 		os.Exit(1)
 	}
 }
 
-func startExtAuthServer(serviceCache *cache.Cache) {
+func startExtAuthServer(serviceCache cache.Cache) {
 	startExtAuthServerGRPC(serviceCache)
 	startExtAuthServerHTTP(serviceCache)
 }
 
-func startExtAuthServerGRPC(serviceCache *cache.Cache) {
+func startExtAuthServerGRPC(serviceCache cache.Cache) {
 	logger := ctrl.Log.WithName("authorino").WithName("auth")
-	port := common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
 
-	if lis, err := net.Listen("tcp", ":"+port); err != nil {
+	if lis, err := net.Listen("tcp", ":"+extAuthGRPCPort); err != nil {
 		logger.Error(err, "failed to obtain port for grpc auth service")
 		os.Exit(1)
 	} else {
-		opts := []grpc.ServerOption{grpc.MaxConcurrentStreams(GRPCMaxConcurrentStreams)}
+		opts := []grpc.ServerOption{grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams)}
 		s := grpc.NewServer(opts...)
 
 		envoy_auth.RegisterAuthorizationServer(s, &service.AuthService{Cache: serviceCache})
 		healthpb.RegisterHealthServer(s, &service.HealthService{})
 
-		logger.Info("starting grpc service", "port", port)
+		logger.Info("starting grpc service", "port", extAuthGRPCPort)
 
 		go func() {
 			if err := s.Serve(lis); err != nil {
@@ -149,15 +188,14 @@ func startExtAuthServerGRPC(serviceCache *cache.Cache) {
 	}
 }
 
-func startExtAuthServerHTTP(serviceCache *cache.Cache) {
+func startExtAuthServerHTTP(serviceCache cache.Cache) {
 	// TODO
 }
 
-func startOIDCServer(serviceCache *cache.Cache) {
+func startOIDCServer(serviceCache cache.Cache) {
 	logger := ctrl.Log.WithName("authorino").WithName("oidc")
-	port := common.FetchEnv("OIDC_HTTP_PORT", "8003")
 
-	if lis, err := net.Listen("tcp", ":"+port); err != nil {
+	if lis, err := net.Listen("tcp", ":"+oidcHTTPPort); err != nil {
 		logger.Error(err, "failed to obtain port for http oidc service")
 		os.Exit(1)
 	} else {
@@ -165,7 +203,7 @@ func startOIDCServer(serviceCache *cache.Cache) {
 			Cache: serviceCache,
 		})
 
-		logger.Info("starting oidc service", "port", port)
+		logger.Info("starting oidc service", "port", oidcHTTPPort)
 
 		go func() {
 			if err := http.Serve(lis, nil); err != nil {
