@@ -39,7 +39,7 @@ Some other feature-specific requirements (as opposed to actual requirements of A
 Choose between the options below to continue:
 
 [**Option A:** Local cluster](#option-a-local-cluster)<br/>
-To try Auhtorino out and/or run the examples, based on a fresh image of Authorino built locally.<br/>
+To try Authorino out and/or run the examples, based on a fresh image of Authorino built locally.<br/>
 Setup may take up to 5 minutes.
 
 [**Option B:** Custom deployment](#option-b-custom-deployment)<br/>

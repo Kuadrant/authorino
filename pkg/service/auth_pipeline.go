@@ -52,7 +52,7 @@ func (result *AuthResult) Success() bool {
 }
 
 // AuthPipeline evaluates the context of an auth request upon the auth configs defined for the requested API
-// Throughout the pipeline, user identity, adhoc metadata and authorization policies are evaluated and their
+// Throughout the pipeline, user identity, ad hoc metadata and authorization policies are evaluated and their
 // corresponding resulting objects stored in the respective maps.
 type AuthPipeline struct {
 	ParentContext *context.Context

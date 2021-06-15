@@ -43,7 +43,7 @@ On top of this platform, the following applications compose the stack for this t
 - **Authorino**<br/>
     The AuthN/AuthZ enforcer that will watch and apply Authorino `Service` custom resources in the Kubernetes/OpenShift server.
 - **Keycloak**<br/>
-    To issue OIDC access tokens and to provide adhoc resource data for the authorization payload. The server is bundled with the following preloaded settings and realm resources:
+    To issue OIDC access tokens and to provide ad hoc resource data for the authorization payload. The server is bundled with the following preloaded settings and realm resources:
     - Admin console: http://localhost:8080/auth/admin (admin/p)
     - Preloaded realm: **kuadrant**
     - Preloaded clients:
@@ -78,7 +78,7 @@ $ git clone git@github.com:kuadrant/authorino.git && cd authorino
 
 ## Setup the trial local environment
 
-Launch the Kubernetes cluster on a Dokcer with [Kind](https://kind.sigs.k8s.io), build the latest Authrorino image from source and deploy the main applications of the stack. This step may take up to a few minutes for the cluster and all the deployments to be ready.
+Launch the Kubernetes cluster on a Docker with [Kind](https://kind.sigs.k8s.io), build the latest Authorino image from source and deploy the main applications of the stack. This step may take up to a few minutes for the cluster and all the deployments to be ready.
 
 ```sh
 $ DEPLOY_IDPS=1 make local-setup
