@@ -7,6 +7,7 @@ import (
 	"github.com/kuadrant/authorino/api/v1beta1"
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/common"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -15,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -81,9 +83,19 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 }
 
+func filterByLabels(secretLabel string) func(meta metav1.Object, object runtime.Object) bool {
+	return func(meta metav1.Object, object runtime.Object) bool {
+		_, ok := meta.GetLabels()[secretLabel]
+		return ok
+	}
+}
+
 func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	predicate := predicate.NewPredicateFuncs(filterByLabels(r.SecretLabel))
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.Secret{}).
+		WithEventFilter(predicate).
 		Complete(r)
 }
 
