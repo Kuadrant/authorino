@@ -121,11 +121,15 @@ invalid
 	key, err = NewSigningKey("my-signing-key", "ES256", []byte(ellipticCurveSigningKey))
 	assert.NilError(t, err)
 	assert.Equal(t, key.KeyID, "my-signing-key")
+	assert.Equal(t, key.Algorithm, "ES256")
+	assert.Equal(t, key.Use, "sig")
 	assert.Check(t, key.Valid())
 
 	key, err = NewSigningKey("my-signing-key", "RS256", []byte(rsaSigningKey))
 	assert.NilError(t, err)
 	assert.Equal(t, key.KeyID, "my-signing-key")
+	assert.Equal(t, key.Algorithm, "RS256")
+	assert.Equal(t, key.Use, "sig")
 	assert.Check(t, key.Valid())
 }
 

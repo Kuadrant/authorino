@@ -22,6 +22,7 @@ func NewSigningKey(name string, algorithm string, singingKey []byte) (*jose.JSON
 	signingKey := &jose.JSONWebKey{
 		KeyID:     name,
 		Algorithm: algorithm,
+		Use:       "sig",
 	}
 
 	keyPEM, _ := pem.Decode(singingKey)
