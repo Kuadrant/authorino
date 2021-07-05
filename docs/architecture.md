@@ -77,7 +77,7 @@ spec:
 
   # Festival Wristband (only if you want JWTs issued by Authorino at the end of the auth pipeline)
   wristband:
-    issuer: http://authorino.svc.cluster.local:8003/namespace/my-api-protection
+    issuer: https://authorino-oidc.authorino.svc.cluster.local:8083/namespace/my-api-protection
     customClaims:
       - name: foo
         value: bar
@@ -314,7 +314,7 @@ spec:
         in: authorization_header
         keySelector: APIKEY
   wristband:
-    issuer: http://authorino.svc.cluster.local:8003/my-namespace/talker-api-protection
+    issuer: https://authorino-oidc.authorino.svc:8083/my-namespace/talker-api-protection
     customClaims:
       - name: aud
         value: internal
@@ -331,8 +331,8 @@ spec:
 
 The signing key names listed in `signingKeyRefs` must match the names of Kubernetes `Secret` resources created in the same namespace, where each secret contains a `key.pem` entry that holds the value of the private key that will be used to sign the wristbands issued, formatted as [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail). The first key in this list will be used to sign the wristbands, while the others are kept to support key rotation.
 
-For each protected API configured for the Festival Wristband issuing, Authorino exposes the following OpenID Connect Discovery well-known endpoints:
+For each protected API configured for the Festival Wristband issuing, Authorino exposes the following OpenID Connect Discovery well-known endpoints (available for requests within the cluster):
 - **OpenID Connect configuration:**<br/>
-  http://authorino.svc.cluster.local:8003/{namespace}/{api-protection-name}/.well-known/openid-configuration
+  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/.well-known/openid-configuration
 - **JSON Web Key Set (JWKS) well-known endpoint:**<br/>
-  http://authorino.svc.cluster.local:8003/{namespace}/{api-protection-name}/.well-known/openid-connect/certs
+  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/.well-known/openid-connect/certs

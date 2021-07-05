@@ -46,6 +46,12 @@ install: manifests kustomize
 uninstall: manifests kustomize
 	$(KUSTOMIZE) build install | kubectl delete -f -
 
+# Install CertManager to the Kubernetes cluster
+.PHONY: cert-manager
+cert-manager:
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+	kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE) && $(KUSTOMIZE) edit set replicas authorino-controller-manager=$(AUTHORINO_REPLICAS)
@@ -181,12 +187,12 @@ local-push: kind
 # Builds the image, pushes to the local cluster and deployes Authorino.
 # Sets the imagePullPolicy to 'IfNotPresent' so it doesn't try to pull the image again (just pushed into the server registry)
 .PHONY: deploy
-local-deploy: docker-build local-push deploy
+local-deploy: deploy
 	kubectl -n $(AUTHORINO_NAMESPACE) patch deployment authorino-controller-manager -p '{"spec": {"template": {"spec":{"containers":[{"name": "manager", "imagePullPolicy":"IfNotPresent"}]}}}}'
 
 # Set up a test/dev local Kubernetes server loaded up with a freshly built Authorino image plus dependencies
 .PHONY: local-setup
-local-setup: local-cluster-up install namespace local-deploy example-apps
+local-setup: docker-build local-cluster-up local-push cert-manager install namespace local-deploy example-apps
 	kubectl -n $(AUTHORINO_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \

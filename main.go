@@ -53,7 +53,8 @@ var (
 	watchNamespace              = common.FetchEnv("WATCH_NAMESPACE", "")
 	authorinoWatchedSecretLabel = common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", defaultAuthorinoWatchedSecretLabel)
 	extAuthGRPCPort             = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
-	oidcHTTPPort                = common.FetchEnv("OIDC_HTTP_PORT", "8003")
+	oidcHTTPPort                = common.FetchEnv("OIDC_HTTP_PORT", "8083")
+	oidcCAPath                  = common.FetchEnv("OIDC_CA_PATH", "/etc/ssl")
 )
 
 func init() {
@@ -206,12 +207,10 @@ func startOIDCServer(serviceCache cache.Cache) {
 		logger.Info("starting oidc service", "port", oidcHTTPPort)
 
 		go func() {
-			if err := http.Serve(lis, nil); err != nil {
+			if err := http.ServeTLS(lis, nil, oidcCAPath+"/certs/tls.crt", oidcCAPath+"/private/tls.key"); err != nil {
 				logger.Error(err, "failed to start oidc service")
 				os.Exit(1)
 			}
-
-			// TODO: ServeTLS
 		}()
 	}
 }

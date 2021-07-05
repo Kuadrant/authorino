@@ -1,5 +1,7 @@
 resources:
-- certificate.yaml
+- issuer.yaml
+- oidc-server-cert.yaml
+# - webhook-server-cert.yaml
 
 configurations:
 - kustomizeconfig.yaml

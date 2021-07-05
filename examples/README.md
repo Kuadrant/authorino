@@ -566,7 +566,7 @@ The payload of the wristband (decoded) shall look like the following:
   "born": "2021-05-13T15:42:41Z", # custom claim (dynamic value)
   "exp": 1620921395,
   "iat": 1620921095,
-  "iss": "http://authorino-authorization:8003/authorino/talker-api-protection",
+  "iss": "https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection",
   "sub": "84d3f3a06f5569e06a050516363f0a65c1789d3433bb4fed5d48801997d5c30e" # SHA256 of the resolved identity in the initial request (based on API key auth)
 }
 ```
@@ -574,11 +574,11 @@ The payload of the wristband (decoded) shall look like the following:
 To discover the OpenID Connect configuration and JSON Web Key Set (JWKS) to verify and validate wristbands issued on requests to this protected API:
 
 ```
-kubectl -n authorino port-forward service/authorino-authorization 8003:8003
+kubectl -n authorino port-forward service/authorino-oidc 8083:8083
 ```
 
 OpenID Connect configuration well-known endpoint:<br/>
-http://localhost:8003/authorino/talker-api-protection/.well-known/openid-configuration
+http://localhost:8083/authorino/talker-api-protection/.well-known/openid-configuration
 
 JSON Web Key Set (JWKS) well-known endpoint:<br/>
-http://localhost:8003/authorino/talker-api-protection/.well-known/openid-connect/certs
+http://localhost:8083/authorino/talker-api-protection/.well-known/openid-connect/certs
