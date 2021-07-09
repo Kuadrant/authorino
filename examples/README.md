@@ -11,7 +11,7 @@ The simplest way to try the examples in this page is by launching a local test K
 Run from the root directory of the Authorino repo:
 
 ```sh
-make local-setup
+make local-setup SKIP_LOCAL_BUILD=1
 ```
 
 The above will setup the local environment, install and deploy Authorino, Envoy and the sample API to be protected called **Talker API**.
@@ -19,7 +19,7 @@ The above will setup the local environment, install and deploy Authorino, Envoy 
 Some of the examples involve having an external identity provider (IdP), such as [Keycloak](https://www.keycloak.org) and/or [Dex](https://dexidp.io), to support authentication. To launch the local test environment including as well both these IdPs deployed to the cluster, run instead:
 
 ```sh
-DEPLOY_IDPS=1 make local-setup
+make local-setup SKIP_LOCAL_BUILD=1 DEPLOY_IDPS=1
 ```
 
 > **NOTE:** You can replace `DEPLOY_IDPS` above with `DEPLOY_KEYCLOAK` or `DEPLOY_DEX`, in case you only want one of these auth servers deployed.
@@ -37,7 +37,7 @@ kubectl -n authorino port-forward deployment/dex 5556:5556 &      # (if using De
 <br/>To cleanup, run:
 
 ```sh
-make local-cluster-down
+make local-cleanup
 ```
 
 For more information on the deployment options and resources included in the local test Kubernetes environment included in Authorino examples, see [Deploying Authorino](/docs/deploy.md).
