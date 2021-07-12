@@ -64,7 +64,13 @@ To start the local Kubernetes cluster, build and deploy Authorino, run:
 make local-setup
 ```
 
-You will then need to forward local requests to port 8000 to Envoy, by running:
+You can skip the local build of the image, and work with the default `quay.io/3scale/authorino:latest`, by using the `SKIP_LOCAL_BUILD` flag:
+
+```sh
+make local-setup SKIP_LOCAL_BUILD=1
+```
+
+After all deployments are ready and in case you want to consume protected services running inside the cluster from your local host, you can forward the requests on port 8000 to the Envoy service by running:
 
 ```sh
 kubectl -n authorino port-forward deployment/envoy 8000:8000 &
@@ -97,7 +103,7 @@ The bundle comes preloaded with the following sample configs:<br/>
   - peter/p (member, email not verified)
 
 ```sh
-DEPLOY_KEYCLOAK=1 make local-setup
+make local-setup DEPLOY_KEYCLOAK=1
 ```
 
 Forward local requests to the services running in the cluster, by running:
@@ -116,7 +122,7 @@ The [Dex](https://dexidp.io) bundle included is a simple OIDC identity provider 
   - marta@localhost/password
 
 ```sh
-DEPLOY_DEX=1 make local-setup
+make local-setup DEPLOY_DEX=1
 ```
 
 Forward local requests to the services running in the cluster, by running:
@@ -129,7 +135,7 @@ kubectl -n authorino port-forward deployment/dex 5556:5556 &
 #### Deploy with Keycloak and Dex
 
 ```sh
-DEPLOY_IDPS=1 make local-setup
+make local-setup DEPLOY_IDPS=1
 ```
 
 ```sh
@@ -190,30 +196,20 @@ The command above will create the Authorino definitions in the cluster based on 
 
 Chose or build an image of Authorino that is compatible with the version of the CRD installed in the previous step.
 
-You can check out [quay.io/3scale/authorino](https://quay.io/3scale/authorino) for a list of pre-built image tags available. If you choose any of the publicly available pre-built images of Authorino, you can go to the next step.
+By default, `quay.io/3scale/authorino:latest` will be used. You can check out [quay.io/3scale/authorino](https://quay.io/3scale/authorino) for a list of pre-built image tags available.
 
-Alternatively, you can build an image of Authorino from code. To build you own local image of Authorino, based on the fetched version of the repo, run:
+If you choose to continue with the default Authorino image or any other publicly available pre-built image, you can go to the next step.
 
-```sh
-make docker-build
-```
-
-The default tag of the image, in this case, will be `authorino:latest`. You can use the parameter `AUTHORINO_IMAGE` to control the name of the tag. E.g.:
+To build you own local image of Authorino from code, run:
 
 ```sh
-AUTHORINO_IMAGE=authorino:my-local-image make docker-build
+make docker-build AUTHORINO_IMAGE=authorino:my-local-image
 ```
 
 To push the image to a local Kubernetes cluster started with Kind, run:
 
 ```sh
-make local-push
-```
-
-or, specifying an image tag other than `authorino-latest` that you might have chosen before:
-
-```sh
-AUTHORINO_IMAGE=authorino:my-local-image make local-push
+make local-push AUTHORINO_IMAGE=authorino:my-local-image
 ```
 
 In case you are not working with a local Kubernetes server started with `local-cluster-up`, but yet has built your own local image of Authorino, use normal `docker push` command to push the image to a registry of your preference.
@@ -252,13 +248,13 @@ make deploy
 To deploy cluster-wide Authorino instances (`Deployment`, `Service` and `ClusterRoleBinding`s), run:
 
 ```sh
-AUTHORINO_DEPLOYMENT=cluster-wide make deploy
+make deploy AUTHORINO_DEPLOYMENT=cluster-wide
 ```
 
-By default, the commands above assume `authorino:latest` to be the tag of the Authorino image to deploy. You can change that by setting the `AUTHORINO_IMAGE` parameter.
+By default, the commands above assume `quay.io/3scale/authorino:latest` to be the Authorino image tag to deploy. You can change that by setting the `AUTHORINO_IMAGE` parameter.
 
 ```sh
-AUTHORINO_IMAGE=authorino:my-custom-image make deploy
+make deploy AUTHORINO_IMAGE=authorino:my-custom-image
 ```
 
 > **NOTE:** In case you are working with a local Kubernetes cluster started with Kind, have built and pushed a local image to the server registry, remind of Kubernetes default pull policy, which establishes that the image tag `:latest` causes the policy `Always` to be enforced. In such case, you may want to change the policy to `IfNotPresent`. See [Kubernetes `imagePullPolicy`](https://kubernetes.io/docs/concepts/containers/images/#updating-images) for more information.
@@ -266,7 +262,7 @@ AUTHORINO_IMAGE=authorino:my-custom-image make deploy
 You can tweak with the number of replicas of the Authorino `Deployment`, by setting the `AUTHORINO_REPLICAS` parameter. E.g.:
 
 ```sh
-AUTHORINO_REPLICAS=4 AUTHORINO_DEPLOYMENT=cluster-wide AUTHORINO_IMAGE=quay.io/3scale/authorino:latest make deploy
+make deploy AUTHORINO_REPLICAS=4 AUTHORINO_DEPLOYMENT=namespaced AUTHORINO_IMAGE=quay.io/3scale/authorino:latest
 ```
 
 #### Next steps

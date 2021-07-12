@@ -32,7 +32,7 @@ patchesStrategicMerge:
 
 images:
 - name: authorino
-  newName: authorino
+  newName: quay.io/3scale/authorino
   newTag: latest
 
 replicas:

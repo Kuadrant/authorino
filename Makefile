@@ -9,7 +9,8 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # Image URL to use all building/pushing image targets
-AUTHORINO_IMAGE ?= authorino:latest
+DEFAULT_AUTHORINO_IMAGE = quay.io/3scale/authorino:latest
+AUTHORINO_IMAGE ?= $(DEFAULT_AUTHORINO_IMAGE)
 # The Kubernetes namespace where to deploy the Authorino instance.
 AUTHORINO_NAMESPACE ?= authorino
 # Flavour of the Authorino deployment – Options: 'namespaced' (default), 'cluster-wide'
@@ -58,7 +59,7 @@ deploy: manifests kustomize
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
 	$(KUSTOMIZE) build deploy/overlays/$(AUTHORINO_DEPLOYMENT) | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
 # rollback kustomize edit
-	cd deploy/base && $(KUSTOMIZE) edit set image authorino=authorino:latest && $(KUSTOMIZE) edit set namespace authorino && $(KUSTOMIZE) edit set replicas authorino-controller-manager=1
+	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(DEFAULT_AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace authorino && $(KUSTOMIZE) edit set replicas authorino-controller-manager=1
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace authorino
 
 # Generate manifests e.g. CRD, RBAC etc.
@@ -179,6 +180,15 @@ KIND_CLUSTER_NAME ?= authorino
 local-cluster-up: kind
 	kind create cluster --name $(KIND_CLUSTER_NAME) --config ./utils/kind-cluster.yaml
 
+# Builds an image locally and pushes it to the registry of the Kind-started local Kubernetes cluster
+.PHONY: local-build-and-push
+local-build-and-push:
+ifneq (1, $(SKIP_LOCAL_BUILD))
+	$(eval AUTHORINO_IMAGE = authorino:local)
+	$(MAKE) docker-build AUTHORINO_IMAGE=$(AUTHORINO_IMAGE)
+	$(MAKE) local-push AUTHORINO_IMAGE=$(AUTHORINO_IMAGE)
+endif
+
 # Pushes the Authorino image to the registry of the Kind-started local Kubernetes cluster
 .PHONY: local-push
 local-push: kind
@@ -192,7 +202,7 @@ local-deploy: deploy
 
 # Set up a test/dev local Kubernetes server loaded up with a freshly built Authorino image plus dependencies
 .PHONY: local-setup
-local-setup: docker-build local-cluster-up local-push cert-manager install namespace local-deploy example-apps
+local-setup: local-cluster-up local-build-and-push cert-manager install namespace local-deploy example-apps
 	kubectl -n $(AUTHORINO_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \
@@ -202,7 +212,7 @@ local-setup: docker-build local-cluster-up local-push cert-manager install names
 
 # Rebuild and push the docker image and redeploy Authorino to the local k8s cluster
 .PHONY: local-rollout
-local-rollout: docker-build local-push
+local-rollout: local-build-and-push
 	kubectl -n $(AUTHORINO_NAMESPACE) rollout restart deployment.apps/authorino-controller-manager
 
 # Deletes the local Kubernetes cluster started using Kind

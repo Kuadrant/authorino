@@ -78,10 +78,10 @@ $ git clone git@github.com:kuadrant/authorino.git && cd authorino
 
 ## Setup the trial local environment
 
-Launch the Kubernetes cluster on a Docker with [Kind](https://kind.sigs.k8s.io), build the latest Authorino image from source and deploy the main applications of the stack. This step may take up to a few minutes for the cluster and all the deployments to be ready.
+Launch the Kubernetes cluster on a Docker with [Kind](https://kind.sigs.k8s.io) and deploy the main applications of the stack. This step may take up to a few minutes for the cluster and all the deployments to be ready.
 
 ```sh
-$ DEPLOY_IDPS=1 make local-setup
+$ make local-setup SKIP_LOCAL_BUILD=1 DEPLOY_IDPS=1
 ```
 
 Forward requests from the local host machine to pods running inside the cluster (API, Keycloak server, and Dex server):
@@ -422,7 +422,7 @@ Click again on the menu buttons to consume resources of the API. Verify that now
 Delete the Kubernetes cluster:
 
 ```sh
-$ make local-cluster-down
+$ make local-cleanup
 ```
 
 Remove the entry added to your `/etc/hosts` file to resolve the `keycloak` host name locally.
