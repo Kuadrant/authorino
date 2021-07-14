@@ -6,12 +6,13 @@ import (
 
 	"github.com/kuadrant/authorino/api/v1beta1"
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	"github.com/kuadrant/authorino/pkg/common"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,6 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
+
+// Supporting mocking out functions for testing
+var newController = controller_builder.NewControllerManagedBy
 
 // SecretReconciler reconciles k8s Secret objects
 type SecretReconciler struct {
@@ -93,7 +97,7 @@ func filterByLabels(secretLabel string) func(meta metav1.Object, object runtime.
 func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	predicate := predicate.NewPredicateFuncs(filterByLabels(r.SecretLabel))
 
-	return ctrl.NewControllerManagedBy(mgr).
+	return newController(mgr).
 		For(&v1.Secret{}).
 		WithEventFilter(predicate).
 		Complete(r)
