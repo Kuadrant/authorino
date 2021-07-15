@@ -51,6 +51,8 @@ uninstall: manifests kustomize
 .PHONY: cert-manager
 cert-manager:
 	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+	kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
+	kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io/cert-manager-webhook
 	kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
