@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"testing"
 
 	"gotest.tools/assert"
@@ -27,7 +28,7 @@ type fakeReconciler struct {
 	Finished   chan bool
 }
 
-func (r *fakeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *fakeReconciler) Reconcile(_ context.Context, req ctrl.Request) (ctrl.Result, error) {
 	defer close(r.Finished)
 	r.Finished <- true
 	r.Reconciled = true
@@ -149,7 +150,7 @@ func TestSetupSecretReconcilerWithManager(t *testing.T) {
 }
 
 func (t *secretReconcilerTest) reconcile() (reconcile.Result, error) {
-	return t.secretReconciler.Reconcile(controllerruntime.Request{
+	return t.secretReconciler.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: t.secret.Namespace,
 			Name:      t.secret.Name,

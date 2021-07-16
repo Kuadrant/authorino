@@ -47,7 +47,7 @@ func TestServiceStatusUpdaterReconcile(t *testing.T) {
 
 	result, err := (&ServiceStatusUpdater{
 		Client: client,
-	}).Reconcile(controllerruntime.Request{
+	}).Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: resourceName,
 	})
 

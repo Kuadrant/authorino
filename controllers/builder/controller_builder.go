@@ -1,15 +1,15 @@
 package builder
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type ControllerBuilder interface {
-	For(runtime.Object, ...builder.ForOption) ControllerBuilder
+	For(client.Object, ...builder.ForOption) ControllerBuilder
 	WithEventFilter(predicate.Predicate) ControllerBuilder
 	Complete(reconcile.Reconciler) error
 }
@@ -24,7 +24,7 @@ type builderWrapper struct {
 	Builder *builder.Builder
 }
 
-func (bw *builderWrapper) For(object runtime.Object, opts ...builder.ForOption) ControllerBuilder {
+func (bw *builderWrapper) For(object client.Object, opts ...builder.ForOption) ControllerBuilder {
 	bw.Builder.For(object, opts...)
 	return bw
 }

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"reflect"
+	"strconv"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
@@ -12,11 +13,11 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -33,8 +34,7 @@ type SecretReconciler struct {
 	ServiceReconciler reconcile.Reconciler
 }
 
-func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("secret", req.NamespacedName)
 
 	var reconcile func(configv1beta1.Service)
@@ -53,7 +53,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				for _, id := range sr.Cache.Get(host).IdentityConfigs {
 					i, _ := id.(common.APIKeySecretFinder)
 					if s := i.FindSecretByName(req.NamespacedName); s != nil {
-						r.reconcileService(service)
+						r.reconcileService(ctx, service)
 						return
 					}
 				}
@@ -72,7 +72,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		reconcile = func(service configv1beta1.Service) {
 			for _, id := range service.Spec.Identity {
 				if id.GetType() == v1beta1.IdentityApiKey && reflect.DeepEqual(id.APIKey.LabelSelectors, secret.Labels) {
-					r.reconcileService(service)
+					r.reconcileService(ctx, service)
 					return
 				}
 			}
@@ -87,19 +87,36 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 }
 
-func filterByLabels(secretLabel string) func(meta metav1.Object, object runtime.Object) bool {
-	return func(meta metav1.Object, object runtime.Object) bool {
-		_, ok := meta.GetLabels()[secretLabel]
-		return ok
+func filterByLabels(secretLabel string) predicate.Funcs {
+	filter := func(object client.Object) bool {
+		if val, ok := object.GetLabels()[secretLabel]; ok {
+			enabled, _ := strconv.ParseBool(val)
+			return enabled
+		}
+		return false
+	}
+
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return filter(e.Object)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return filter(e.ObjectNew)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			_, ok := e.Object.GetLabels()[secretLabel]
+			return ok
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return filter(e.Object)
+		},
 	}
 }
 
 func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	predicate := predicate.NewPredicateFuncs(filterByLabels(r.SecretLabel))
-
 	return newController(mgr).
 		For(&v1.Secret{}).
-		WithEventFilter(predicate).
+		WithEventFilter(filterByLabels(r.SecretLabel)).
 		Complete(r)
 }
 
@@ -139,8 +156,8 @@ func (r *SecretReconciler) reconcileServicesUsingAPIKey(ctx context.Context, nam
 	}
 }
 
-func (r *SecretReconciler) reconcileService(service configv1beta1.Service) {
-	_, _ = r.ServiceReconciler.Reconcile(ctrl.Request{
+func (r *SecretReconciler) reconcileService(ctx context.Context, service configv1beta1.Service) {
+	_, _ = r.ServiceReconciler.Reconcile(ctx, ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: service.Namespace,
 			Name:      service.Name,
