@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"reflect"
-	"strconv"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
@@ -91,11 +90,8 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 func filterByLabels(secretLabel string) predicate.Funcs {
 	filter := func(object client.Object) bool {
-		if val, ok := object.GetLabels()[secretLabel]; ok {
-			enabled, _ := strconv.ParseBool(val)
-			return enabled
-		}
-		return false
+		_, ok := object.GetLabels()[secretLabel]
+		return ok
 	}
 
 	return predicate.Funcs{
@@ -106,8 +102,7 @@ func filterByLabels(secretLabel string) predicate.Funcs {
 			return filter(e.ObjectNew)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			_, ok := e.Object.GetLabels()[secretLabel]
-			return ok
+			return filter(e.Object)
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
 			return filter(e.Object)
