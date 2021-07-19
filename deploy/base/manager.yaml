@@ -35,7 +35,7 @@ spec:
         - /manager
         args:
         - --enable-leader-election
-        image: quay.io/3scale/authorino:latest
+        image: authorino:latest
         name: manager
         resources:
           limits:
