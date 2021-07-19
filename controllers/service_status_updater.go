@@ -15,8 +15,7 @@ type ServiceStatusUpdater struct {
 	client.Client
 }
 
-func (u *ServiceStatusUpdater) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (u *ServiceStatusUpdater) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	service := configv1beta1.Service{}
 	err := u.Get(ctx, req.NamespacedName, &service)
 

@@ -10,7 +10,6 @@ import (
 
 	. "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"gotest.tools/assert"
@@ -30,11 +29,11 @@ var (
 
 type MockK8sClient struct{}
 
-func (k *MockK8sClient) Get(_ context.Context, _ client.ObjectKey, _ runtime.Object) error {
+func (k *MockK8sClient) Get(_ context.Context, _ client.ObjectKey, _ client.Object) error {
 	return nil
 }
 
-func (k *MockK8sClient) List(_ context.Context, list runtime.Object, _ ...client.ListOption) error {
+func (k *MockK8sClient) List(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
 	return listSecretsFunc(list.(*v1.SecretList))
 }
 

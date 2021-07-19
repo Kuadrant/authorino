@@ -9,8 +9,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	builder "github.com/kuadrant/authorino/controllers/builder"
-	runtime "k8s.io/apimachinery/pkg/runtime"
 	builder0 "sigs.k8s.io/controller-runtime/pkg/builder"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 	predicate "sigs.k8s.io/controller-runtime/pkg/predicate"
 	reconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -53,7 +53,7 @@ func (mr *MockControllerBuilderMockRecorder) Complete(arg0 interface{}) *gomock.
 }
 
 // For mocks base method.
-func (m *MockControllerBuilder) For(arg0 runtime.Object, arg1 ...builder0.ForOption) builder.ControllerBuilder {
+func (m *MockControllerBuilder) For(arg0 client.Object, arg1 ...builder0.ForOption) builder.ControllerBuilder {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {

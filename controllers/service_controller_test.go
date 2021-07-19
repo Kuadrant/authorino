@@ -159,7 +159,7 @@ func setupEnvironment(t *testing.T, c cache.Cache) ServiceReconciler {
 func TestReconcilerOk(t *testing.T) {
 	r := setupEnvironment(t, cache.NewCache())
 
-	result, err := r.Reconcile(controllerruntime.Request{
+	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: service.Namespace,
 			Name:      service.Name,
@@ -179,7 +179,7 @@ func TestReconcilerMissingSecret(t *testing.T) {
 
 	_ = r.Client.Delete(context.TODO(), &secret)
 
-	result, err := r.Reconcile(controllerruntime.Request{
+	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: service.Namespace,
 			Name:      service.Name,
@@ -196,7 +196,7 @@ func TestReconcilerNotFound(t *testing.T) {
 	r := setupEnvironment(t, cache.NewCache())
 
 	// Let's try to reconcile a non existing object.
-	result, err := r.Reconcile(controllerruntime.Request{
+	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: service.Namespace,
 			Name:      "nonExistant",
@@ -224,7 +224,7 @@ func TestHostColllision(t *testing.T) {
 
 	c.EXPECT().FindId("echo-api").Return("other-namespace/other-service-with-same-host", true)
 
-	result, err := r.Reconcile(controllerruntime.Request{
+	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: service.Namespace,
 			Name:      service.Name,
