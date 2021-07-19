@@ -15,6 +15,9 @@ type ServiceStatusUpdater struct {
 	client.Client
 }
 
+// +kubebuilder:rbac:groups=config.authorino.3scale.net,resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
+
 func (u *ServiceStatusUpdater) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	service := configv1beta1.Service{}
 	err := u.Get(ctx, req.NamespacedName, &service)

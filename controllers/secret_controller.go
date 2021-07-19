@@ -34,6 +34,8 @@ type SecretReconciler struct {
 	ServiceReconciler reconcile.Reconciler
 }
 
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;
+
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("secret", req.NamespacedName)
 
