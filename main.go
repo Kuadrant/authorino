@@ -52,9 +52,12 @@ var (
 
 	watchNamespace              = common.FetchEnv("WATCH_NAMESPACE", "")
 	authorinoWatchedSecretLabel = common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", defaultAuthorinoWatchedSecretLabel)
-	extAuthGRPCPort             = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
-	oidcHTTPPort                = common.FetchEnv("OIDC_HTTP_PORT", "8083")
-	oidcCAPath                  = common.FetchEnv("OIDC_CA_PATH", "/etc/ssl")
+
+	extAuthGRPCPort = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
+
+	oidcHTTPPort       = common.FetchEnv("OIDC_HTTP_PORT", "8083")
+	oidcTLSCertPath    = common.FetchEnv("OIDC_TLS_CERT", "")
+	oidcTLSCertKeyPath = common.FetchEnv("OIDC_TLS_CERT_KEY", "")
 )
 
 func init() {
@@ -204,25 +207,18 @@ func startOIDCServer(serviceCache cache.Cache) {
 			Cache: serviceCache,
 		})
 
-		var fileStatErr error
-
-		tlsCertFile := oidcCAPath + "/certs/tls.crt"
-		_, fileStatErr = os.Stat(tlsCertFile)
-		tlsEnabled := fileStatErr == nil
-
-		tlsKeyFile := oidcCAPath + "/private/tls.key"
-		_, fileStatErr = os.Stat(tlsKeyFile)
-		tlsEnabled = tlsEnabled && fileStatErr == nil
-
+		tlsEnabled := oidcTLSCertPath != "" && oidcTLSCertKeyPath != ""
 		logger.Info("starting oidc service", "port", oidcHTTPPort, "tls", tlsEnabled)
 
 		go func() {
 			var err error
+
 			if tlsEnabled {
-				err = http.ServeTLS(lis, nil, tlsCertFile, tlsKeyFile)
+				err = http.ServeTLS(lis, nil, oidcTLSCertPath, oidcTLSCertKeyPath)
 			} else {
 				err = http.Serve(lis, nil)
 			}
+
 			if err != nil {
 				logger.Error(err, "failed to start oidc service")
 				os.Exit(1)

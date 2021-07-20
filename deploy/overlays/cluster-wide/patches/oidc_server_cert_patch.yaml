@@ -8,14 +8,19 @@ spec:
     spec:
       containers:
       - name: manager
+        env:
+        - name: OIDC_TLS_CERT
+          value: /etc/ssl/certs/oidc.crt
+        - name: OIDC_TLS_CERT_KEY
+          value: /etc/ssl/private/oidc.key
         volumeMounts:
         - name: oidc-cert
-          mountPath: /etc/ssl/certs/tls.crt
           subPath: tls.crt
+          mountPath: /etc/ssl/certs/oidc.crt
           readOnly: true
         - name: oidc-cert
-          mountPath: /etc/ssl/private/tls.key
           subPath: tls.key
+          mountPath: /etc/ssl/private/oidc.key
           readOnly: true
       volumes:
       - name: oidc-cert
