@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
 - issuer.yaml
+- server-cert.yaml
 - oidc-server-cert.yaml
 # - webhook-server-cert.yaml
 

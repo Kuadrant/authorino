@@ -8,4 +8,5 @@ resources:
 namespace: authorino
 
 patchesStrategicMerge:
+- patches/server_cert_patch.yaml
 - patches/oidc_server_cert_patch.yaml

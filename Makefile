@@ -177,9 +177,14 @@ namespace:
 NAMESPACE ?= $(AUTHORINO_NAMESPACE)
 DEPLOY_KEYCLOAK ?= $(DEPLOY_IDPS)
 DEPLOY_DEX ?= $(DEPLOY_IDPS)
+ifeq (,$(findstring -notls,$(AUTHORINO_DEPLOYMENT)))
+ENVOY_OVERLAY = tls
+else
+ENVOY_OVERLAY = notls
+endif
 example-apps:
 	kubectl -n $(NAMESPACE) apply -f examples/talker-api/talker-api-deploy.yaml
-	kubectl -n $(NAMESPACE) apply -f examples/envoy/envoy-deploy.yaml
+	$(KUSTOMIZE) build examples/envoy/overlays/$(ENVOY_OVERLAY) | kubectl -n $(NAMESPACE) apply -f -
 ifneq (, $(DEPLOY_KEYCLOAK))
 	kubectl -n $(NAMESPACE) apply -f examples/keycloak/keycloak-deploy.yaml
 endif

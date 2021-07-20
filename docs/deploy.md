@@ -25,7 +25,7 @@ Apart from the obvious requirement of having a running instance of a Kubernetes 
 <!-- TODO: Add minimum required Kubernetes version -->
 
 - Permission from the Kubernetes server to create Custom Resource Definitions (CRDs) during Authorino's installation. Cluster administrators can handle this requirement through the Kubernetes API Role-Based Access Control bindings.
-- [Envoy](https://www.envoyproxy.io) proxy (or, technically, any proxy that implements the client-side of the [gRPC protocol](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz)). With Envoy, ultimately, virtual hosts will be associated to the upstream APIs to protect, and the [external authorization filter](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) should point to Authorino. Check [this example](/examples/envoy/envoy-deploy.yaml) if you need to.
+- [Envoy](https://www.envoyproxy.io) proxy (or, technically, any proxy that implements the client-side of the [gRPC protocol](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz)). With Envoy, ultimately, virtual hosts will be associated to the upstream APIs to protect, and the [external authorization filter](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) should point to Authorino. Check [this example](/examples/envoy) if you need to.
 
 ### Feature-specific requirements
 

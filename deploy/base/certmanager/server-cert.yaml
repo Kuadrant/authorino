@@ -1,0 +1,17 @@
+# The following manifest contains a certificate CR for Authorino external authorization server
+# More document can be found at https://docs.cert-manager.io
+# WARNING: Targets CertManager 1.4.0 check https://docs.cert-manager.io/en/latest/tasks/upgrading/index.html for breaking changes
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: server-cert
+  namespace: system
+spec:
+  dnsNames:
+  - authorino-authorization
+  - authorino-authorization.$(AUTHORINO_NAMESPACE).svc
+  - authorino-authorization.$(AUTHORINO_NAMESPACE).svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: ca-issuer
+  secretName: authorino-server-cert # this secret will not be prefixed, since it's not managed by kustomize

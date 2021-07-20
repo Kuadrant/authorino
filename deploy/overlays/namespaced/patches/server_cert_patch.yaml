@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        env:
+        - name: TLS_CERT
+          value: /etc/ssl/certs/tls.crt
+        - name: TLS_CERT_KEY
+          value: /etc/ssl/private/tls.key
+        volumeMounts:
+        - name: tls-cert
+          subPath: tls.crt
+          mountPath: /etc/ssl/certs/tls.crt
+          readOnly: true
+        - name: tls-cert
+          subPath: tls.key
+          mountPath: /etc/ssl/private/tls.key
+          readOnly: true
+      volumes:
+      - name: tls-cert
+        secret:
+          defaultMode: 420
+          secretName: authorino-server-cert
