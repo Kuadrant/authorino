@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
@@ -54,6 +56,8 @@ var (
 	authorinoWatchedSecretLabel = common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", defaultAuthorinoWatchedSecretLabel)
 
 	extAuthGRPCPort = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
+	tlsCertPath     = common.FetchEnv("TLS_CERT", "")
+	tlsCertKeyPath  = common.FetchEnv("TLS_CERT_KEY", "")
 
 	oidcHTTPPort       = common.FetchEnv("OIDC_HTTP_PORT", "8083")
 	oidcTLSCertPath    = common.FetchEnv("OIDC_TLS_CERT", "")
@@ -175,16 +179,31 @@ func startExtAuthServerGRPC(serviceCache cache.Cache) {
 		logger.Error(err, "failed to obtain port for grpc auth service")
 		os.Exit(1)
 	} else {
-		opts := []grpc.ServerOption{grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams)}
-		s := grpc.NewServer(opts...)
+		grpcServerOpts := []grpc.ServerOption{grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams)}
 
-		envoy_auth.RegisterAuthorizationServer(s, &service.AuthService{Cache: serviceCache})
-		healthpb.RegisterHealthServer(s, &service.HealthService{})
+		tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
+		logger.Info("starting grpc service", "port", extAuthGRPCPort, "tls", tlsEnabled)
 
-		logger.Info("starting grpc service", "port", extAuthGRPCPort)
+		if tlsEnabled {
+			if tlsCert, err := tls.LoadX509KeyPair(tlsCertPath, tlsCertKeyPath); err != nil {
+				logger.Error(err, "failed to load tls cert")
+				os.Exit(1)
+			} else {
+				tlsConfig := &tls.Config{
+					Certificates: []tls.Certificate{tlsCert},
+					ClientAuth:   tls.NoClientCert,
+				}
+				grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+			}
+		}
+
+		grpcServer := grpc.NewServer(grpcServerOpts...)
+
+		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: serviceCache})
+		healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
 
 		go func() {
-			if err := s.Serve(lis); err != nil {
+			if err := grpcServer.Serve(lis); err != nil {
 				logger.Error(err, "failed to start grpc service")
 				os.Exit(1)
 			}
