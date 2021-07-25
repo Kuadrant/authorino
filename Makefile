@@ -20,12 +20,9 @@ AUTHORINO_REPLICAS ?= 1
 
 all: manager
 
-# Run tests
-ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
-test: generate fmt vet manifests
-	mkdir -p $(ENVTEST_ASSETS_DIR)
-	test -f $(ENVTEST_ASSETS_DIR)/setup-envtest.sh || curl -sSLo $(ENVTEST_ASSETS_DIR)/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.3/hack/setup-envtest.sh
-	source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+
+test: generate fmt vet manifests setup-envtest
+	KUBEBUILDER_ASSETS='$(strip $(shell $(SETUP_ENVTEST) use -p path 1.21.2))'  go test ./... -coverprofile cover.out
 
 # Show test coverage
 cover:
@@ -154,6 +151,15 @@ KIND=$(GOBIN)/kind
 else
 KIND=$(shell which kind)
 endif
+
+setup-envtest:
+ifeq (, $(shell which setup-envtest))
+	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+SETUP_ENVTEST=$(GOBIN)/setup-envtest
+else
+SETUP_ENVTEST=$(shell which setup-envtest)
+endif
+
 
 # Prints relevant environment variables
 .PHONY: envs
