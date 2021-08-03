@@ -22,18 +22,19 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	urlParts := strings.Split(req.URL.String(), "/")
 
 	realm := strings.Join(urlParts[1:3], "/")
-	path := strings.Join(urlParts[3:], "/")
+	config := urlParts[3]
+	path := strings.Join(urlParts[4:], "/")
 	if strings.HasSuffix(path, "/") {
 		path = path[:len(path)-1]
 	}
 	path = "/" + path
 
-	oidcServiceLog.Info("request received", "realm", realm, "path", path)
+	oidcServiceLog.Info("request received", "realm", realm, "config", config, "path", path)
 
 	var statusCode int
 	var responseBody string
 
-	if wristband := o.findWristbandIssuer(realm); wristband != nil {
+	if wristband := o.findWristbandIssuer(realm, config); wristband != nil {
 		var err error
 
 		switch path {
@@ -67,10 +68,16 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (o *OidcService) findWristbandIssuer(realm string) common.WristbandIssuer {
+func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) common.WristbandIssuer {
 	hosts := o.Cache.FindKeys(realm)
 	if len(hosts) > 0 {
-		return o.Cache.Get(hosts[0]).Wristband
+		for _, config := range o.Cache.Get(hosts[0]).ResponseConfigs {
+			respConfigEv, _ := config.(common.ResponseConfigEvaluator)
+			if respConfigEv.GetName() == wristbandConfigName {
+				return respConfigEv.GetWristbandIssuer()
+			}
+		}
+		return nil
 	} else {
 		return nil
 	}

@@ -15,11 +15,11 @@ import (
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
 	X_EXT_AUTH_REASON_HEADER = "X-Ext-Auth-Reason"
-	X_EXT_AUTH_WRISTBAND     = "X-Ext-Auth-Wristband"
 
 	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
 	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"
@@ -65,24 +65,32 @@ func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest
 	}
 
 	pipeline := NewAuthPipeline(ctx, req, *apiConfig)
+	result := pipeline.Evaluate()
 
-	if result := pipeline.Evaluate(); result.Success() {
-		return self.successResponse(result.Headers), nil
+	authServiceLog.Info("Check()", "result", result)
+
+	if result.Success() {
+		return self.successResponse(result), nil
 	} else {
 		return self.deniedResponse(result), nil
 	}
 }
 
-func (self *AuthService) successResponse(headers []map[string]string) *envoy_auth.CheckResponse {
+func (self *AuthService) successResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+	dynamicMetadata, err := structpb.NewStruct(authResult.Metadata)
+	if err != nil {
+		authServiceLog.Error(err, "failed to create dynamic metadata", "obj", authResult.Metadata)
+	}
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
 			Code: int32(rpc.OK),
 		},
 		HttpResponse: &envoy_auth.CheckResponse_OkResponse{
 			OkResponse: &envoy_auth.OkHttpResponse{
-				Headers: buildResponseHeaders(headers),
+				Headers: buildResponseHeaders(authResult.Headers),
 			},
 		},
+		DynamicMetadata: dynamicMetadata,
 	}
 }
 

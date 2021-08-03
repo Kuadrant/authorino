@@ -21,19 +21,24 @@ spec:
       jsonPath: .status.ready
       name: Ready
       type: boolean
-    - description: Number of identity verification policies
-      jsonPath: .status.numIdentityPolicies
-      name: Id policies
+    - description: Number of trusted identity sources
+      jsonPath: .status.numIdentitySources
+      name: Id sources
       priority: 2
       type: integer
-    - description: Number of metadata policies
-      jsonPath: .status.numMetadataPolicies
-      name: Metadata policies
+    - description: Number of external metadata sources
+      jsonPath: .status.numMetadataSources
+      name: Metadata sources
       priority: 2
       type: integer
     - description: Number of authorization policies
       jsonPath: .status.numAuthorizationPolicies
       name: Authz policies
+      priority: 2
+      type: integer
+    - description: Number of items added to the client response
+      jsonPath: .status.numResponseItems
+      name: Response items
       priority: 2
       type: integer
     - description: Whether issuing Festival Wristbands
@@ -411,73 +416,131 @@ spec:
                   - name
                   type: object
                 type: array
-              wristband:
-                description: Wristband is the opt-in configuration for issuing Authorino
-                  Festival Wristband tokens at the end of the auth pipeline.
-                properties:
-                  customClaims:
-                    description: Any claims to be added to the wristband token apart
-                      from the standard JWT claims (iss, iat, exp) added by default.
-                    items:
+              response:
+                description: List of response configs. Authorino gathers data from
+                  the auth pipeline to build custom responses for the client.
+                items:
+                  description: 'Dynamic response to return to the client. Apart from
+                    "name", one of the following parameters is required and only one
+                    of the following parameters is allowed: "wristband" or "json".'
+                  properties:
+                    json:
                       properties:
-                        name:
-                          description: The name of the claim
-                          type: string
-                        value:
-                          description: Static value of the claim
-                          type: string
-                        valueFrom:
-                          description: Dynamic value of the claim
-                          properties:
-                            authJSON:
-                              description: Selector to fill the value of claim from
-                                the authorization JSON
-                              type: string
-                          type: object
+                        properties:
+                          description: List of JSON property-value pairs to be added
+                            to the dynamic response.
+                          items:
+                            properties:
+                              name:
+                                description: The name of the claim
+                                type: string
+                              value:
+                                description: Static value of the claim
+                                type: string
+                              valueFrom:
+                                description: Dynamic value of the claim
+                                properties:
+                                  authJSON:
+                                    description: Selector to fill the value of claim
+                                      from the authorization JSON
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
                       required:
-                      - name
+                      - properties
                       type: object
-                    type: array
-                  issuer:
-                    description: 'The endpoint to the Authorino service that issues
-                      the wristband (format: <scheme>://<host>:<port>/<realm>, where
-                      <realm> = <namespace>/<authorino-service-resource-name)'
-                    type: string
-                  signingKeyRefs:
-                    description: Reference by name to Kubernetes secrets and corresponding
-                      signing algorithms. The secrets must contain a `key.pem` entry
-                      whose value is the signing key formatted as PEM.
-                    items:
+                    name:
+                      description: Name of the custom response.
+                      type: string
+                    wrapper:
+                      default: httpHeader
+                      description: How Authorino wraps the response. Use "httpHeader"
+                        (default) to wrap the response in an HTTP header; or "envoyDynamicMetadata"
+                        to wrap the response as Envoy Dynamic Metadata
+                      enum:
+                      - httpHeader
+                      - envoyDynamicMetadata
+                      type: string
+                    wrapperKey:
+                      description: The name of key used in the wrapped response (name
+                        of the HTTP header or property of the Envoy Dynamic Metadata
+                        JSON). If omitted, it will be set to the name of the configuration.
+                      type: string
+                    wristband:
                       properties:
-                        algorithm:
-                          description: Algorithm to sign the wristband token using
-                            the signing key provided
-                          enum:
-                          - ES256
-                          - ES384
-                          - ES512
-                          - RS256
-                          - RS384
-                          - RS512
+                        customClaims:
+                          description: Any claims to be added to the wristband token
+                            apart from the standard JWT claims (iss, iat, exp) added
+                            by default.
+                          items:
+                            properties:
+                              name:
+                                description: The name of the claim
+                                type: string
+                              value:
+                                description: Static value of the claim
+                                type: string
+                              valueFrom:
+                                description: Dynamic value of the claim
+                                properties:
+                                  authJSON:
+                                    description: Selector to fill the value of claim
+                                      from the authorization JSON
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
+                        issuer:
+                          description: 'The endpoint to the Authorino service that
+                            issues the wristband (format: <scheme>://<host>:<port>/<realm>,
+                            where <realm> = <namespace>/<authorino-service-resource-name)'
                           type: string
-                        name:
-                          description: Name of the signing key. The value is used
-                            to reference the Kubernetes secret that stores the key
-                            and in the `kid` claim of the wristband token header.
-                          type: string
+                        signingKeyRefs:
+                          description: Reference by name to Kubernetes secrets and
+                            corresponding signing algorithms. The secrets must contain
+                            a `key.pem` entry whose value is the signing key formatted
+                            as PEM.
+                          items:
+                            properties:
+                              algorithm:
+                                description: Algorithm to sign the wristband token
+                                  using the signing key provided
+                                enum:
+                                - ES256
+                                - ES384
+                                - ES512
+                                - RS256
+                                - RS384
+                                - RS512
+                                type: string
+                              name:
+                                description: Name of the signing key. The value is
+                                  used to reference the Kubernetes secret that stores
+                                  the key and in the `kid` claim of the wristband
+                                  token header.
+                                type: string
+                            required:
+                            - algorithm
+                            - name
+                            type: object
+                          type: array
+                        tokenDuration:
+                          description: Time span of the wristband token, in seconds.
+                          format: int64
+                          type: integer
                       required:
-                      - algorithm
-                      - name
+                      - issuer
+                      - signingKeyRefs
                       type: object
-                    type: array
-                  tokenDuration:
-                    description: Time span of the wristband token, in seconds.
-                    format: int64
-                    type: integer
-                required:
-                - issuer
-                - signingKeyRefs
-                type: object
+                  required:
+                  - name
+                  type: object
+                type: array
             required:
             - hosts
             type: object
@@ -489,10 +552,13 @@ spec:
               numAuthorizationPolicies:
                 format: int64
                 type: integer
-              numIdentityPolicies:
+              numIdentitySources:
                 format: int64
                 type: integer
-              numMetadataPolicies:
+              numMetadataSources:
+                format: int64
+                type: integer
+              numResponseItems:
                 format: int64
                 type: integer
               ready:
@@ -500,8 +566,9 @@ spec:
             required:
             - festivalWristbandEnabled
             - numAuthorizationPolicies
-            - numIdentityPolicies
-            - numMetadataPolicies
+            - numIdentitySources
+            - numMetadataSources
+            - numResponseItems
             - ready
             type: object
         type: object

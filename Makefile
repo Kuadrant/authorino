@@ -208,6 +208,12 @@ ifeq (,$(findstring -notls,$(AUTHORINO_DEPLOYMENT)))
 	kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
 endif
 
+# Install Limitador to the Kubernetes cluster
+.PHONY: limitador
+NAMESPACE ?= $(AUTHORINO_NAMESPACE)
+limitador:
+	kubectl -n $(NAMESPACE) apply -f examples/limitador/limitador-deploy.yaml
+
 # Targets with the 'local-' prefix, for trying Authorino in a local cluster spawned with Kind
 
 KIND_CLUSTER_NAME ?= authorino

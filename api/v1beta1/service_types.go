@@ -32,6 +32,8 @@ const (
 	MetadataUserinfo                 = "METADATA_USERINFO"
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
+	ResponseWristband                = "RESPONSE_WRISTBAND"
+	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -57,15 +59,18 @@ type ServiceSpec struct {
 	// List of identity sources/authentication modes.
 	// At least one config of this list MUST evaluate to a valid identity for a request to be successful in the identity verification phase.
 	Identity []*Identity `json:"identity,omitempty"`
+
 	// List of metadata source configs.
 	// Authorino fetches JSON content from sources on this list on every request.
 	Metadata []*Metadata `json:"metadata,omitempty"`
+
 	// Authorization is the list of authorization policies.
 	// All policies in this list MUST evaluate to "true" for a request be successful in the authorization phase.
 	Authorization []*Authorization `json:"authorization,omitempty"`
 
-	// Wristband is the opt-in configuration for issuing Authorino Festival Wristband tokens at the end of the auth pipeline.
-	Wristband *Wristband `json:"wristband,omitempty"`
+	// List of response configs.
+	// Authorino gathers data from the auth pipeline to build custom responses for the client.
+	Response []*Response `json:"response,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=authorization_header;custom_header;query;cookie
@@ -256,6 +261,35 @@ type Authorization_JSONPatternMatching_Rule struct {
 	Value string `json:"value"`
 }
 
+// +kubebuilder:validation:Enum:=httpHeader;envoyDynamicMetadata
+type Response_Wrapper string
+
+// Dynamic response to return to the client.
+// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "wristband" or "json".
+type Response struct {
+	// Name of the custom response.
+	Name string `json:"name"`
+	// How Authorino wraps the response.
+	// Use "httpHeader" (default) to wrap the response in an HTTP header; or "envoyDynamicMetadata" to wrap the response as Envoy Dynamic Metadata
+	// +kubebuilder:default:=httpHeader
+	Wrapper Response_Wrapper `json:"wrapper,omitempty"`
+	// The name of key used in the wrapped response (name of the HTTP header or property of the Envoy Dynamic Metadata JSON).
+	// If omitted, it will be set to the name of the configuration.
+	WrapperKey string `json:"wrapperKey,omitempty"`
+
+	Wristband *Response_Wristband   `json:"wristband,omitempty"`
+	JSON      *Response_DynamicJSON `json:"json,omitempty"`
+}
+
+func (r *Response) GetType() string {
+	if r.Wristband != nil {
+		return ResponseWristband
+	} else if r.JSON != nil {
+		return ResponseDynamicJSON
+	}
+	return TypeUnknown
+}
+
 // +kubebuilder:validation:Enum:=ES256;ES384;ES512;RS256;RS384;RS512
 type SigningKeyAlgorithm string
 
@@ -268,25 +302,25 @@ type SigningKeyRef struct {
 	Algorithm SigningKeyAlgorithm `json:"algorithm"`
 }
 
-type claimValueFrom struct {
+type valueFromAuthJSON struct {
 	// Selector to fill the value of claim from the authorization JSON
 	AuthJSON string `json:"authJSON,omitempty"`
 }
 
-type wristbandClaim struct {
+type jsonProperty struct {
 	// The name of the claim
 	Name string `json:"name"`
 	// Static value of the claim
 	Value string `json:"value,omitempty"`
 	// Dynamic value of the claim
-	ValueFrom claimValueFrom `json:"valueFrom,omitempty"`
+	ValueFrom valueFromAuthJSON `json:"valueFrom,omitempty"`
 }
 
-type Wristband struct {
+type Response_Wristband struct {
 	// The endpoint to the Authorino service that issues the wristband (format: <scheme>://<host>:<port>/<realm>, where <realm> = <namespace>/<authorino-service-resource-name)
 	Issuer string `json:"issuer"`
 	// Any claims to be added to the wristband token apart from the standard JWT claims (iss, iat, exp) added by default.
-	CustomClaims []wristbandClaim `json:"customClaims,omitempty"`
+	CustomClaims []jsonProperty `json:"customClaims,omitempty"`
 	// Time span of the wristband token, in seconds.
 	TokenDuration *int64 `json:"tokenDuration,omitempty"`
 	// Reference by name to Kubernetes secrets and corresponding signing algorithms.
@@ -294,12 +328,18 @@ type Wristband struct {
 	SigningKeyRefs []*SigningKeyRef `json:"signingKeyRefs"`
 }
 
+type Response_DynamicJSON struct {
+	// List of JSON property-value pairs to be added to the dynamic response.
+	Properties []jsonProperty `json:"properties"`
+}
+
 // ServiceStatus defines the observed state of Service
 type ServiceStatus struct {
 	Ready                    bool  `json:"ready"`
-	NumIdentityPolicies      int64 `json:"numIdentityPolicies"`
-	NumMetadataPolicies      int64 `json:"numMetadataPolicies"`
+	NumIdentitySources       int64 `json:"numIdentitySources"`
+	NumMetadataSources       int64 `json:"numMetadataSources"`
 	NumAuthorizationPolicies int64 `json:"numAuthorizationPolicies"`
+	NumResponseItems         int64 `json:"numResponseItems"`
 	FestivalWristbandEnabled bool  `json:"festivalWristbandEnabled"`
 }
 
@@ -307,9 +347,10 @@ type ServiceStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type=boolean,JSONPath=`.status.ready`,description="Ready?"
-// +kubebuilder:printcolumn:name="Id policies",type=integer,JSONPath=`.status.numIdentityPolicies`,description="Number of identity verification policies",priority=2
-// +kubebuilder:printcolumn:name="Metadata policies",type=integer,JSONPath=`.status.numMetadataPolicies`,description="Number of metadata policies",priority=2
+// +kubebuilder:printcolumn:name="Id sources",type=integer,JSONPath=`.status.numIdentitySources`,description="Number of trusted identity sources",priority=2
+// +kubebuilder:printcolumn:name="Metadata sources",type=integer,JSONPath=`.status.numMetadataSources`,description="Number of external metadata sources",priority=2
 // +kubebuilder:printcolumn:name="Authz policies",type=integer,JSONPath=`.status.numAuthorizationPolicies`,description="Number of authorization policies",priority=2
+// +kubebuilder:printcolumn:name="Response items",type=integer,JSONPath=`.status.numResponseItems`,description="Number of items added to the client response",priority=2
 // +kubebuilder:printcolumn:name="Wristband",type=boolean,JSONPath=`.status.festivalWristbandEnabled`,description="Whether issuing Festival Wristbands",priority=2
 type Service struct {
 	metav1.TypeMeta   `json:",inline"`

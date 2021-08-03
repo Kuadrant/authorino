@@ -12,6 +12,20 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// JSONProperty represents a name-value pair for a JSON property where the value can be a static value or
+// a pattern for a value fetched dynamically from the authorization JSON
+type JSONProperty struct {
+	Name  string
+	Value JSONValue
+}
+
+type JSONValue struct {
+	// Static value of the JSON property.
+	Static string
+	// Resolves the value of the JSON property by fetching the pattern from the authorization JSON.
+	Pattern string
+}
+
 // UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure
 // Pass optionally a pointer to a byte array to get the raw body of the response object written back
 func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {

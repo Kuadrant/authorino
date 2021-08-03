@@ -30,11 +30,11 @@ func TestSuccessResponse(t *testing.T) {
 
 	var resp *envoy_auth.OkHttpResponse
 
-	resp = service.successResponse(nil).GetOkResponse()
+	resp = service.successResponse(AuthResult{}).GetOkResponse()
 	assert.Equal(t, 0, len(resp.GetHeaders()))
 
 	headers := []map[string]string{{"X-Custom-Header": "some-value"}}
-	resp = service.successResponse(headers).GetOkResponse()
+	resp = service.successResponse(AuthResult{Headers: headers}).GetOkResponse()
 	assert.Equal(t, "some-value", getHeader(resp.GetHeaders(), "X-Custom-Header"))
 }
 

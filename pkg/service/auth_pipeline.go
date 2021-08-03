@@ -7,7 +7,6 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
-	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/gogo/googleapis/google/rpc"
@@ -42,9 +41,10 @@ func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}
 }
 
 type AuthResult struct {
-	Code    rpc.Code
-	Message string
-	Headers []map[string]string
+	Code     rpc.Code
+	Message  string
+	Headers  []map[string]string
+	Metadata map[string]interface{}
 }
 
 func (result *AuthResult) Success() bool {
@@ -62,6 +62,7 @@ type AuthPipeline struct {
 	Identity      map[*config.IdentityConfig]interface{}
 	Metadata      map[*config.MetadataConfig]interface{}
 	Authorization map[*config.AuthorizationConfig]interface{}
+	Response      map[*config.ResponseConfig]interface{}
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
@@ -73,6 +74,7 @@ func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, ap
 		Identity:      make(map[*config.IdentityConfig]interface{}),
 		Metadata:      make(map[*config.MetadataConfig]interface{}),
 		Authorization: make(map[*config.AuthorizationConfig]interface{}),
+		Response:      make(map[*config.ResponseConfig]interface{}),
 	}
 }
 
@@ -219,36 +221,31 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 	return EvaluationResponse{}
 }
 
-func (pipeline *AuthPipeline) issueWristband() EvaluationResponse {
-	wristbandIssuer := pipeline.API.Wristband
+func (pipeline *AuthPipeline) evaluateResponseConfigs() {
+	configs := pipeline.API.ResponseConfigs
+	respChannel := make(chan EvaluationResponse, len(configs))
 
-	if wristbandIssuer == nil {
-		return EvaluationResponse{}
-	}
+	go func() {
+		defer close(respChannel)
+		pipeline.evaluateAllAuthConfigs(configs, &respChannel)
+	}()
 
-	resolvedIdentity, _ := pipeline.GetResolvedIdentity()
-	identityEvaluator, _ := resolvedIdentity.(common.IdentityConfigEvaluator)
-	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC != nil && resolvedOIDC.Endpoint == wristbandIssuer.GetIssuer() {
-		return EvaluationResponse{}
-	}
+	for resp := range respChannel {
+		conf, _ := resp.Evaluator.(*config.ResponseConfig)
+		obj := resp.Object
 
-	if wristband, err := wristbandIssuer.Call(pipeline, *pipeline.ParentContext); err != nil {
-		authCtxLog.Error(err, "Failed to issue wristband")
-
-		return EvaluationResponse{
-			Error: err,
-		}
-	} else {
-		return EvaluationResponse{
-			Evaluator: wristbandIssuer,
-			Object:    wristband,
+		if resp.Success() {
+			pipeline.Response[conf] = obj
+			authCtxLog.Info("Response", "config", conf, "authObj", obj)
+		} else {
+			authCtxLog.Info("Response", "config", conf, "error", resp.Error)
 		}
 	}
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (pipeline *AuthPipeline) Evaluate() AuthResult {
-	// identity
+	// phase 1: identity verification
 	if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
 		return AuthResult{
 			Code:    rpc.UNAUTHENTICATED,
@@ -257,10 +254,10 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 		}
 	}
 
-	// metadata
+	// phase 2: external metadata
 	pipeline.evaluateMetadataConfigs()
 
-	// policy enforcement (authorization)
+	// phase 3: policy enforcement (authorization)
 	if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
 		return AuthResult{
 			Code:    rpc.PERMISSION_DENIED,
@@ -268,15 +265,15 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 		}
 	}
 
-	// wristband
-	wristbandHeader := make(map[string]string)
-	if wristband := pipeline.issueWristband().Object; wristband != nil {
-		wristbandHeader[X_EXT_AUTH_WRISTBAND] = fmt.Sprintf("%v", wristband)
-	}
+	// phase 4: response
+	pipeline.evaluateResponseConfigs()
 
+	// auth result
+	responseHeaders, responseMetadata := config.WrapResponses(pipeline.Response)
 	return AuthResult{
-		Code:    rpc.OK,
-		Headers: []map[string]string{wristbandHeader},
+		Code:     rpc.OK,
+		Headers:  []map[string]string{responseHeaders},
+		Metadata: responseMetadata,
 	}
 }
 
@@ -317,7 +314,12 @@ func (pipeline *AuthPipeline) GetResolvedMetadata() map[interface{}]interface{} 
 	return m
 }
 
-func (pipeline *AuthPipeline) GetDataForAuthorization() interface{} {
+type authorizationData struct {
+	Context  *envoy_auth.AttributeContext `json:"context"`
+	AuthData map[string]interface{}       `json:"auth"`
+}
+
+func (pipeline *AuthPipeline) dataForAuthorization() *authorizationData {
 	authData := make(map[string]interface{})
 	_, authData["identity"] = pipeline.GetResolvedIdentity()
 
@@ -328,13 +330,24 @@ func (pipeline *AuthPipeline) GetDataForAuthorization() interface{} {
 	}
 	authData["metadata"] = resolvedMetadata
 
-	type authorizationData struct {
-		Context  *envoy_auth.AttributeContext `json:"context"`
-		AuthData map[string]interface{}       `json:"auth"`
-	}
-
 	return &authorizationData{
 		Context:  pipeline.GetRequest().Attributes,
 		AuthData: authData,
 	}
+}
+
+func (pipeline *AuthPipeline) GetDataForAuthorization() interface{} {
+	return pipeline.dataForAuthorization()
+}
+
+func (pipeline *AuthPipeline) GetPostAuthorizationData() interface{} {
+	authData := pipeline.dataForAuthorization()
+
+	authzData := make(map[string]interface{})
+	for authzConfig, authzObj := range pipeline.Authorization {
+		authzData[authzConfig.Name] = authzObj
+	}
+
+	authData.AuthData["authorization"] = authzData
+	return &authData
 }

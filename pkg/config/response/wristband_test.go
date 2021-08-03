@@ -1,4 +1,4 @@
-package config
+package response
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kuadrant/authorino/pkg/common"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -140,14 +141,14 @@ func TestNewWristbandConfig(t *testing.T) {
 	var err error
 
 	tokenDuration := int64(500)
-	wristbandIssuer, err = NewWristbandConfig("http://authorino", []WristbandClaim{}, &tokenDuration, signingKeys)
+	wristbandIssuer, err = NewWristbandConfig("http://authorino", []common.JSONProperty{}, &tokenDuration, signingKeys)
 	assert.Check(t, wristbandIssuer == nil)
 	assert.Error(t, err, "missing at least one signing key")
 
 	signingKey, _ := NewSigningKey("my-signing-key", "ES256", []byte(ellipticCurveSigningKey))
 	signingKeys = append(signingKeys, *signingKey)
 
-	wristbandIssuer, err = NewWristbandConfig("http://authorino", []WristbandClaim{}, nil, signingKeys)
+	wristbandIssuer, err = NewWristbandConfig("http://authorino", []common.JSONProperty{}, nil, signingKeys)
 	assert.NilError(t, err)
 	assert.Equal(t, wristbandIssuer.TokenDuration, DEFAULT_WRISTBAND_DURATION)
 }
@@ -156,14 +157,14 @@ func TestWristbandCall(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	claims := []WristbandClaim{
+	claims := []common.JSONProperty{
 		{
 			Name:  "sta",
-			Value: &ClaimValue{Static: "foo"},
+			Value: common.JSONValue{Static: "foo"},
 		},
 		{
 			Name:  "dyn",
-			Value: &ClaimValue{FromJSON: "auth.identity"},
+			Value: common.JSONValue{Pattern: "auth.identity"},
 		},
 	}
 	signingKey, _ := NewSigningKey("my-signing-key", "ES256", []byte(ellipticCurveSigningKey))
@@ -174,7 +175,7 @@ func TestWristbandCall(t *testing.T) {
 		Context  *envoy_auth.AttributeContext `json:"context"`
 		AuthData map[string]interface{}       `json:"auth"`
 	}
-	dataForAuthorization := &authorizationData{
+	postAuthzData := &authorizationData{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{
@@ -192,8 +193,9 @@ func TestWristbandCall(t *testing.T) {
 
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 	identityConfigMock := mock_common.NewMockIdentityConfigEvaluator(ctrl)
+	identityConfigMock.EXPECT().GetOIDC()
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(identityConfigMock, nil)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
+	pipelineMock.EXPECT().GetPostAuthorizationData().Return(postAuthzData)
 	encodedWristband, err := wristbandIssuer.Call(pipelineMock, context.TODO())
 	assert.NilError(t, err)
 

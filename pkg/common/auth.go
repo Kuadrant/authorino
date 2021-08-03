@@ -18,6 +18,7 @@ type AuthPipeline interface {
 	GetResolvedIdentity() (interface{}, interface{})
 	GetResolvedMetadata() map[interface{}]interface{}
 	GetDataForAuthorization() interface{}
+	GetPostAuthorizationData() interface{}
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
@@ -43,4 +44,9 @@ type WristbandIssuer interface {
 	GetIssuer() string
 	OpenIDConfig() (string, error)
 	JWKS() (string, error)
+}
+
+type ResponseConfigEvaluator interface {
+	NamedConfigEvaluator
+	GetWristbandIssuer() WristbandIssuer
 }

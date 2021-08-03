@@ -1,4 +1,4 @@
-package config
+package response
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/tidwall/gjson"
@@ -59,17 +60,7 @@ func (c *Claims) Valid() error {
 	return nil
 }
 
-type ClaimValue struct {
-	Static   string
-	FromJSON string
-}
-
-type WristbandClaim struct {
-	Name  string
-	Value *ClaimValue
-}
-
-func NewWristbandConfig(issuer string, claims []WristbandClaim, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
+func NewWristbandConfig(issuer string, claims []common.JSONProperty, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
 	// token duration
 	var duration int64
 	if tokenDuration != nil {
@@ -93,15 +84,21 @@ func NewWristbandConfig(issuer string, claims []WristbandClaim, tokenDuration *i
 
 type Wristband struct {
 	Issuer        string
-	CustomClaims  []WristbandClaim
+	CustomClaims  []common.JSONProperty
 	TokenDuration int64
 	SigningKeys   []jose.JSONWebKey
 }
 
 func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// resolved identity
-	_, id := pipeline.GetResolvedIdentity()
-	idStr, _ := json.Marshal(id)
+	identityConfig, resolvedidentity := pipeline.GetResolvedIdentity()
+
+	identityEvaluator, _ := identityConfig.(common.IdentityConfigEvaluator)
+	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC != nil && resolvedOIDC.Endpoint == w.GetIssuer() {
+		return nil, nil
+	}
+
+	idStr, _ := json.Marshal(resolvedidentity)
 	hash := sha256.New()
 	hash.Write(idStr)
 	sub := fmt.Sprintf("%x", hash.Sum(nil))
@@ -119,13 +116,13 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 	}
 
 	if len(w.CustomClaims) > 0 {
-		authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+		authData, _ := json.Marshal(pipeline.GetPostAuthorizationData())
 		authJSON := string(authData)
 
 		for _, claim := range w.CustomClaims {
 			value := claim.Value
-			if value.FromJSON != "" {
-				claims[claim.Name] = gjson.Get(authJSON, value.FromJSON).String()
+			if value.Pattern != "" {
+				claims[claim.Name] = gjson.Get(authJSON, value.Pattern).String()
 			} else {
 				claims[claim.Name] = value.Static
 			}
