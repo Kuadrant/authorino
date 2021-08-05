@@ -2,34 +2,38 @@
 
 Cloud-native AuthN/AuthZ enforcer for Zero Trust API protection.
 
-- **User authentication/identity verification**<br/>
-  API key, OAuth2, OIDC, K8s-authN, mTLS, HMAC
+- **User identity verification and authentication**<br/>
+  JWTs, OIDC, OAuth2, K8s tokens, API key, mTLS, HMAC
 - **Ad hoc authorization metadata**<br/>
-  OIDC UserInfo, UMA-protected resource data, HTTP GET and GET-by-POST
+  HTTP GET and GET-by-POST, OIDC UserInfo, UMA-protected resource data
 - **Authorization policy enforcement**<br/>
-  OPA/Rego policies, JSON/JWT pattern matching policies
-- **Token normalization**<br/>
+  JSON/JWT pattern matching policies, OPA/Rego policies
+- **Token normalization / Edge Authentication**<br/>
   OIDC-compliant "Festival Wristband" ID tokens (signed JWTs)
+- **Dynamic Metadata**<br/>
+  Added HTTP headers and support for Envoy Dynamic Metadata
 
 Authorino enables hybrid API security layer, with usually no code changes required, tailor-made for your combination of authentication standards and protocols and authorization policies of choice.
 
-Authorino builds on top of [Envoy Proxy](https://www.envoyproxy.io) [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol, and complies with Red Hat [Kuadrant](https://github.com/kuadrant) architecture.
+Authorino builds on top of the [Envoy Proxy](https://www.envoyproxy.io) [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol, and complies with Red Hat [Kuadrant](https://github.com/kuadrant) architecture.
+
+----
 
 ## How it works
 
-![How it works](http://www.plantuml.com/plantuml/png/TP71JiCm38RlUGghLyGBS42hq2Gc3bHeSFSQZqLRx68xeFBqP1negTJhztz9zF_PcADwoPTWvyG3AcR8mjAVL3A1Qw4GiBXmoGVIqBJT3dfXAvcqWTjxsFAdZ707Z_jz1qeVXSp3BxocRV6JQ6AfnljBzn0ci4ZVIDDnX1I9FVcuBhOnGYR7Y8xhrfQFeZq1LlODWrnIdyZM_PrP8VZIP7v0Zk1o9fxhiwhFJt0pgLFPvdKmLy8CTQLckSaYlLwuMFFlW0sLqRz7DiInVjCF)
+![How it works](http://www.plantuml.com/plantuml/png/VP4nImD148Nx_HMFQuFOMqYYH9I0EIJQgCLwEyajtiwSixD2_FKkfaYy8ksRzp7mlNashrRIuF9dvD6hJqZ2qlKgYM1Qo3bVJBYa3rBNBDe7TCAv9D865zTOyhViSONxpQQ5qbUXREuGrkkYM2yQMMfZzzJUkfrA6VzYj76a8J8v0CVYb7eXZTizOY2sQFlpvJkohaSYyy6RFzzTybQq8_YQ_M2K8NQHyddcfiGXe2lP944fZyAP775m9yY9bFNgyd6zmXlFfj1HKVCyPbFo2TLjKw7NzUhzdqxCu4EWW9vy8CrkWjIFc0npsEFuRKuSwig_)
 
-1. An application client (_API consumer_) obtains credentials to consume resources of the _Upstream API_, and sends a request to the _Envoy_ exposed endpoint
+1. An application client (_API consumer_) obtains credentials or access token to consume resources of the _Upstream API_, and sends a request to the _Envoy_ ingress endpoint
 2. The Envoy proxy establishes fast gRPC connection with _Authorino_ carrying data of the HTTP request (context info)
-3. **Identity verification phase** - Authorino verifies the identity of the the consumer, where at least one authentication method/identity provider must thrive
-4. **Ad hoc authorization metadata phase** - Authorino integrates external sources of additional metadata (optional)
-5. **Policy enforcement phase** - Authorino takes as input a JSON composed of context information, resolved identity and fetched additional metadata from previous phases, and triggers the evaluation of configured authorization policies
-6. **Wristband phase** – Authorino issues the _Festival Wristband_ OIDC token (optional), with standard and custom claims (static and dynamic values supported), to implement token normalization and/or Edge Authentication Architecture (EAA).
+3. **Identity verification phase** - Authorino verifies the identity of the the consumer, where at least one authentication method/identity provider must succeed
+4. **Metadata phase** - Authorino fetches aditional metadata for the authorization from external sources (optional)
+5. **Policy enforcement phase** - Authorino takes as input a JSON composed of context information, resolved identity and fetched additional metadata from previous phases, and triggers the evaluation of user-defined authorization policies
+6. **Response phase** – Authorino builds user-defined custom responses (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), to be supplied back to the client and/or upstream API within added HTTP headers or as Envoy Dynamic Metadata (optional)
 7. Authorino and Envoy settle the authorization protocol with either OK/NOK response (plus extra details available in the `X-Ext-Auth-Reason` and `WWW-Authenticate` headers when NOK)
-8. If authorized, Envoy redirects to the requested _Upstream API_
+8. If authorized, Envoy triggers other HTTP filters in the chain piping dynamic metadata returned by Authorino, and ultimately redirects the request to the _Upstream API_
 9. The _Upstream API_ serves the requested resource to the consumer
 
-The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipeline) (depicted in the diagram as steps 3 to 6) rely on well-established industry standards and protocols, such as [OpenID Connect (OIDC)](https://openid.net/connect/), [User-Managed Access (UMA)](https://docs.kantarainitiative.org/uma/rec-uma-core.html), [Open Policy Agent (OPA)](https://www.openpolicyagent.org/), [mutual Transport Layer Security (mTLS)](https://www.rfc-editor.org/rfc/rfc8705.html), to enable API Zero Trust security, while allowing API developers to pick and combine protocols and settings into one cloud-native configuration (based on Kubernetes [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources)).
+The core phases of Authorino "[Auth Pipeline](docs/architecture.md#the-auth-pipeline)" (depicted in the diagram as steps 3 to 6) rely on well-established industry standards and protocols, such as [OpenID Connect (OIDC)](https://openid.net/connect/), [User-Managed Access (UMA)](https://docs.kantarainitiative.org/uma/rec-uma-core.html), [Open Policy Agent (OPA)](https://www.openpolicyagent.org/), [mutual Transport Layer Security (mTLS)](https://www.rfc-editor.org/rfc/rfc8705.html), plus Authorino-specific implementations for simpler use-cases, to enable Zero Trust security for APIs, while allowing developers to pick and combine protocols and settings into one cloud-native straighforward configuration (based on Kubernetes [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources)).
 
 ## List of features
 
@@ -44,6 +48,26 @@ The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipel
   <tbody>
     <tr>
       <td rowspan="7">Identity verification</td>
+      <td>OpenID Connect (OIDC)</td>
+      <td>Offline signature verification and time validation of OpenID Connect ID tokens (JWTs). Authorino caches the OpenID Connect configuration and JSON Web Key Set (JWKS) obtained from the OIDC Discovery well-known endpoint, and uses them to verify and validate tokens in request time.</td>
+      <td>Ready</td>
+    </tr>
+    <tr>
+      <td>OAuth 2.0 (token introspection)</td>
+      <td>Online introspection of access tokens with an OAuth 2.0 server.</td>
+      <td>Ready</td>
+    </tr>
+    <tr>
+      <td>Kubernetes authN</td>
+      <td>Online verification of Kubernetes access tokens through the Kubernetes TokenReview API. The <code>audiences</code> of the token MUST include the ones specified in the API protection state, which, when omitted, is assumed to be equal to the host name of the protected API. It can be used to authenticate Kubernetes <code>Service Account</code>s (e.g. other pods running in the cluster) and users of the cluster in general.</td>
+      <td>Ready</td>
+    </tr>
+    <tr>
+      <td>OpenShift OAuth (user-echo endpoint)</td>
+      <td>Online token introspection of OpenShift-valid access tokens based on OpenShift's user-echo endpoint.</td>
+      <td>In analysis</td>
+    </tr>
+    <tr>
       <td>API key</td>
       <td>Represented as Kubernetes <code>Secret</code> resources. The secret MUST contain an entry <code>api_key</code> that holds the value of the API key. The secret MUST also contain at least one lable <code>authorino.3scale.net/managed-by</code> with whatever value, plus any number of optional labels. The labels are used by Authorino to match corresponding API protections that accept the API key as valid credential.</td>
       <td>Ready</td>
@@ -59,26 +83,6 @@ The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipel
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/9">#9</a>)</td>
     </tr>
     <tr>
-      <td>OAuth 2.0 (token introspection)</td>
-      <td>Online introspection of access tokens with an OAuth 2.0 server.</td>
-      <td>Ready</td>
-    </tr>
-    <tr>
-      <td>OpenID Connect (OIDC)</td>
-      <td>Offline signature verification and time validation of OpenID Connect ID tokens (JWTs). Authorino caches the OpenID Connect configuration and JSON Web Key Set (JWKS) obtained from the OIDC Discovery well-known endpoint, and uses them to verify and validate tokens in request time.</td>
-      <td>Ready</td>
-    </tr>
-    <tr>
-      <td>Kubernetes authN</td>
-      <td>Online verification of Kubernetes access tokens through the Kubernetes TokenReview API. The <code>audiences</code> of the token MUST include the ones specified in the API protection state, which, when omitted, is assumed to be equal to the host name of the protected API. It can be used to authenticate Kubernetes <code>Service Account</code>s (e.g. other pods running in the cluster) and users of the cluster in general.</td>
-      <td>Ready</td>
-    </tr>
-    <tr>
-      <td>OpenShift OAuth (user-echo endpoint)</td>
-      <td>Online token introspection of OpenShift-valid access tokens based on OpenShift's user-echo endpoint.</td>
-      <td>In analysis</td>
-    </tr>
-    <tr>
       <td rowspan="3">Ad hoc authorization metadata</td>
       <td>OIDC user info</td>
       <td>Online request to OpenID Connect User Info endpoint. Requires an associated OIDC identity source.</td>
@@ -91,7 +95,7 @@ The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipel
     </tr>
     <tr>
       <td>External HTTP service</td>
-      <td>Generic online HTTP request to an external service. It can be used to fetch online metadata for the auth pipeline or as a web hook.</td>
+      <td>Generic online HTTP request to an external service (GET or POST). It can be used to fetch online metadata for the auth pipeline or as a web hook.</td>
       <td>Ready</td>
     </tr>
     <tr>
@@ -114,6 +118,17 @@ The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipel
       <td>HTTP external authorization service</td>
       <td>Generic online delegation of authorization to an external HTTP service.</td>
       <td>In analysis</td>
+    </tr>
+    <tr>
+      <td rowspan="2">Custom responses</td>
+      <td>Festival Wristbands</td>
+      <td>Signed JWTs issued by Authorino at the end of the auth pipeline and passed back to the client (usually in an added HTTP header). Opt-in feature that can be used to implement Edge Authentication Architecture (EAA) and enable token normalization, with support to static and dynamic custom claims added to the JTW. Authorino exposes the OIDC discovery endpoints to verify and validate the wristbands, including by Authorino itself (using the OIDC identity verification feature).</td>
+      <td>Ready</td>
+    </tr>
+    <tr>
+      <td>Dynamic JSON</td>
+      <td>User-defined JSON objects generated from static or dynamic data of the auth pipeline, and passed back to the client either within added HTTP headers or as <a href="https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata">Envoy Dynamic Metadata</a>.</td>
+      <td>Ready</td>
     </tr>
     <tr>
       <td rowspan="6">Caching</td>
@@ -150,11 +165,6 @@ The core phases of Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipel
       <td colspan="2">External policy registry</td>
       <td>Fetching of compatible policies from an external registry, in reconciliation-time.</td>
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/115">#115</a>)</td>
-    </tr>
-    <tr>
-      <td colspan="2">Festival Wristbands</td>
-      <td>JWTs issued by Authorino at the end of the auth pipeline and passed back to the client in the HTTP response header <code>X-Ext-Auth-Wristband</code>. Opt-in feature that can be used to enable Edge Authentication and token normalization, as well as to carry data from the external authorization back to the client (with support to static and dynamic custom claims). Authorino also exposes well-known endpoints for OpenID Connect Discovery, so the wristbands can be verified and validated, including by Authorino itself using the OIDC identity verification feature.</td>
-      <td>Ready</td>
     </tr>
     <tr>
       <td colspan="2">Multitenancy</td>
