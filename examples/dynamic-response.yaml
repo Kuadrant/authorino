@@ -1,0 +1,92 @@
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: edge
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  response:
+    - name: rate-limit
+      wrapper: envoyDynamicMetadata
+      wrapperKey: ext_auth_data
+      json:
+        properties:
+          - name: username
+            valueFrom:
+              authJSON: auth.identity.metadata.annotations.authorino\.3scale\.net/username
+    - name: wristband
+      wrapper: httpHeader
+      wrapperKey: x-ext-auth-wristband
+      wristband:
+        issuer: https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection/wristband
+        customClaims:
+          - name: aud
+            value: internal
+          - name: username
+            valueFrom:
+              authJSON: auth.identity.metadata.annotations.authorino\.3scale\.net/username
+          - name: role
+            valueFrom:
+              authJSON: auth.identity.metadata.annotations.authorino\.3scale\.net/role
+          - name: born
+            valueFrom:
+              authJSON: auth.identity.metadata.creationTimestamp
+        tokenDuration: 300
+        signingKeyRefs:
+          - name: wristband-signing-key
+            algorithm: ES256
+    - name: x-ext-auth-data
+      json:
+        properties:
+          - name: authorized
+            value: "true"
+          - name: request-time
+            valueFrom:
+              authJSON: context.request.time.seconds
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: edge-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+  annotations:
+    authorino.3scale.net/username: consumer-1
+    authorino.3scale.net/role: consumer
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: edge-api-key-2
+  labels:
+    authorino.3scale.net/managed-by: authorino
+  annotations:
+    authorino.3scale.net/username: consumer-2
+    authorino.3scale.net/role: consumer
+stringData:
+  api_key: orVKflEHd5Udtu8iFzmvQQTqN7Em7tRu
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wristband-signing-key
+stringData:
+  key.pem: |
+    -----BEGIN EC PRIVATE KEY-----
+    MHcCAQEEIDHvuf81gVlWGo0hmXGTAnA/HVxGuH8vOc7/8jewcVvqoAoGCCqGSM49
+    AwEHoUQDQgAETJf5NLVKplSYp95TOfhVPqvxvEibRyjrUZwwtpDuQZxJKDysoGwn
+    cnUvHIu23SgW+Ee9lxSmZGhO4eTdQeKxMA==
+    -----END EC PRIVATE KEY-----
+type: Opaque

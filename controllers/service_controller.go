@@ -30,6 +30,7 @@ import (
 	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
 	authorinoIdentity "github.com/kuadrant/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/kuadrant/authorino/pkg/config/metadata"
+	authorinoResponse "github.com/kuadrant/authorino/pkg/config/response"
 	"gopkg.in/square/go-jose.v2"
 
 	"github.com/go-logr/logr"
@@ -210,7 +211,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 			}
 
 		case configv1beta1.TypeUnknown:
-			return nil, fmt.Errorf("unknown identity type %v", metadata)
+			return nil, fmt.Errorf("unknown metadata type %v", metadata)
 		}
 
 		interfacedMetadataConfigs = append(interfacedMetadataConfigs, translatedMetadata)
@@ -257,10 +258,87 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 			}
 
 		case configv1beta1.TypeUnknown:
-			return nil, fmt.Errorf("unknown identity type %v", authorization)
+			return nil, fmt.Errorf("unknown authorization type %v", authorization)
 		}
 
 		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, translatedAuthorization)
+	}
+
+	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
+
+	for _, response := range service.Spec.Response {
+		translatedResponse := config.NewResponseConfig(response.Name, string(response.Wrapper), response.WrapperKey)
+
+		switch response.GetType() {
+		// wristband
+		case configv1beta1.ResponseWristband:
+			wristband := response.Wristband
+			signingKeys := make([]jose.JSONWebKey, 0)
+
+			for _, signingKeyRef := range wristband.SigningKeyRefs {
+				secret := &v1.Secret{}
+				secretName := types.NamespacedName{
+					Namespace: service.Namespace,
+					Name:      signingKeyRef.Name,
+				}
+				if err := r.Client.Get(ctx, secretName, secret); err != nil {
+					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+				} else {
+					if signingKey, err := authorinoResponse.NewSigningKey(
+						signingKeyRef.Name,
+						string(signingKeyRef.Algorithm),
+						secret.Data["key.pem"],
+					); err != nil {
+						return nil, err
+					} else {
+						signingKeys = append(signingKeys, *signingKey)
+					}
+				}
+			}
+
+			customClaims := make([]common.JSONProperty, 0)
+			for _, claim := range wristband.CustomClaims {
+				customClaims = append(customClaims, common.JSONProperty{
+					Name: claim.Name,
+					Value: common.JSONValue{
+						Static:  claim.Value,
+						Pattern: claim.ValueFrom.AuthJSON,
+					},
+				})
+			}
+
+			if authorinoWristband, err := authorinoResponse.NewWristbandConfig(
+				wristband.Issuer,
+				customClaims,
+				wristband.TokenDuration,
+				signingKeys,
+			); err != nil {
+				return nil, err
+			} else {
+				translatedResponse.Wristband = authorinoWristband
+			}
+
+		// dynamic json
+		case configv1beta1.ResponseDynamicJSON:
+			jsonProperties := make([]common.JSONProperty, 0)
+
+			for _, property := range response.JSON.Properties {
+				jsonProperties = append(jsonProperties, common.JSONProperty{
+					Name: property.Name,
+					Value: common.JSONValue{
+						Static:  property.Value,
+						Pattern: property.ValueFrom.AuthJSON,
+					},
+				})
+			}
+
+			translatedResponse.DynamicJSON = authorinoResponse.NewDynamicJSONResponse(jsonProperties)
+
+		case configv1beta1.TypeUnknown:
+			return nil, fmt.Errorf("unknown response type %v", response)
+		}
+
+		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 	}
 
 	config := make(map[string]authorinoService.APIConfig)
@@ -269,53 +347,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
-	}
-
-	if wristband := service.Spec.Wristband; wristband != nil {
-		signingKeys := make([]jose.JSONWebKey, 0)
-
-		for _, signingKeyRef := range wristband.SigningKeyRefs {
-			secret := &v1.Secret{}
-			secretName := types.NamespacedName{
-				Namespace: service.Namespace,
-				Name:      signingKeyRef.Name,
-			}
-			if err := r.Client.Get(ctx, secretName, secret); err != nil {
-				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
-			} else {
-				if signingKey, err := authorinoService.NewSigningKey(
-					signingKeyRef.Name,
-					string(signingKeyRef.Algorithm),
-					secret.Data["key.pem"],
-				); err != nil {
-					return nil, err
-				} else {
-					signingKeys = append(signingKeys, *signingKey)
-				}
-			}
-		}
-
-		customClaims := make([]authorinoService.WristbandClaim, 0)
-		for _, claim := range wristband.CustomClaims {
-			customClaims = append(customClaims, authorinoService.WristbandClaim{
-				Name: claim.Name,
-				Value: &authorinoService.ClaimValue{
-					Static:   claim.Value,
-					FromJSON: claim.ValueFrom.AuthJSON,
-				},
-			})
-		}
-
-		if authorinoWristband, err := authorinoService.NewWristbandConfig(
-			wristband.Issuer,
-			customClaims,
-			wristband.TokenDuration,
-			signingKeys,
-		); err != nil {
-			return nil, err
-		} else {
-			apiConfig.Wristband = authorinoWristband
-		}
+		ResponseConfigs:      interfacedResponseConfigs,
 	}
 
 	for _, host := range service.Spec.Hosts {

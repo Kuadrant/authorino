@@ -33,10 +33,20 @@ func (u *ServiceStatusUpdater) Reconcile(ctx context.Context, req ctrl.Request) 
 
 func (u *ServiceStatusUpdater) updateServiceStatus(ctx context.Context, service *configv1beta1.Service, ready bool) error {
 	service.Status.Ready = ready
-	service.Status.NumIdentityPolicies = int64(len(service.Spec.Identity))
-	service.Status.NumMetadataPolicies = int64(len(service.Spec.Metadata))
+	service.Status.NumIdentitySources = int64(len(service.Spec.Identity))
+	service.Status.NumMetadataSources = int64(len(service.Spec.Metadata))
 	service.Status.NumAuthorizationPolicies = int64(len(service.Spec.Authorization))
-	service.Status.FestivalWristbandEnabled = service.Spec.Wristband != nil
+	service.Status.NumResponseItems = int64(len(service.Spec.Response))
+
+	issuingWristbands := false
+	for _, responseConfig := range service.Spec.Response {
+		if responseConfig.GetType() == configv1beta1.ResponseWristband {
+			issuingWristbands = true
+			break
+		}
+	}
+	service.Status.FestivalWristbandEnabled = issuingWristbands
+
 	return u.Status().Update(ctx, service)
 }
 

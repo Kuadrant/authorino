@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: limitador
+  labels:
+    app: limitador
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: limitador
+  template:
+    metadata:
+      labels:
+        app: limitador
+    spec:
+      containers:
+        - name: limitador
+          image: quay.io/3scale/limitador:latest
+          env:
+            - name: HTTP_API_PORT
+              value: "8082"
+            - name: LIMITS_FILE
+              value: /etc/limitador/limits.yaml
+            - name: RUST_LOG
+              value: "debug"
+          ports:
+            - name: grpc
+              containerPort: 8081
+              protocol: TCP
+            - name: http
+              containerPort: 8082
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: limitador
+              mountPath: /etc/limitador
+      volumes:
+        - name: limitador
+          configMap:
+            name: limitador
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: limitador
+  labels:
+    app: limitador
+spec:
+  selector:
+    app: limitador
+  ports:
+    - name: grpc
+      port: 8081
+      protocol: TCP
+    - name: http
+      port: 8080
+      protocol: TCP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: limitador
+  labels:
+    app: limitador
+data:
+  limits.yaml: |-
+    ---
+    -
+      namespace: talker-api
+      max_value: 5
+      seconds: 60
+      conditions: []
+      variables:
+        - user_id

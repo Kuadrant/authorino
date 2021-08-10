@@ -46,6 +46,15 @@ data:
                   - match: { prefix: / }
                     route:
                       cluster: talker-api
+                  rate_limits:
+                  - actions:
+                      - metadata:
+                          metadata_key:
+                            key: "envoy.filters.http.ext_authz"
+                            path:
+                            - key: ext_auth_data
+                            - key: username
+                          descriptor_key: user_id
               http_filters:
               - name: envoy.filters.http.ext_authz
                 typed_config:
@@ -57,6 +66,17 @@ data:
                     envoy_grpc:
                       cluster_name: external_auth
                     timeout: 1s
+              - name: envoy.filters.http.ratelimit
+                typed_config:
+                  "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+                  domain: "talker-api"
+                  failure_mode_deny: false
+                  timeout: 3s
+                  rate_limit_service:
+                    transport_api_version: V3
+                    grpc_service:
+                      envoy_grpc:
+                        cluster_name: rate_limit
               - name: envoy.filters.http.router
                 typed_config: {}
               use_remote_address: true
@@ -75,6 +95,20 @@ data:
                   socket_address:
                     address: authorino-authorization
                     port_value: 50051
+      - name: rate_limit
+        connect_timeout: 1s
+        type: STRICT_DNS
+        lb_policy: round_robin
+        http2_protocol_options: {}
+        load_assignment:
+          cluster_name: rale_limit
+          endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: limitador
+                    port_value: 8081
       - name: talker-api
         connect_timeout: 0.25s
         type: strict_dns

@@ -17,6 +17,7 @@ require (
 	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.27.1
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/square/go-jose.v2 v2.5.1
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.21.2

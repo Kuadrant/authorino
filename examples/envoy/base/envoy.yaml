@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: envoy
-          image: envoyproxy/envoy:v1.17-latest
+          image: envoyproxy/envoy:v1.19-latest
           command: ["/usr/local/bin/envoy"]
           args:
             - --config-path /usr/local/etc/envoy/envoy.yaml

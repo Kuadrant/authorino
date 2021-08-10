@@ -95,6 +95,20 @@ func (mr *MockAuthPipelineMockRecorder) GetParentContext() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParentContext", reflect.TypeOf((*MockAuthPipeline)(nil).GetParentContext))
 }
 
+// GetPostAuthorizationData mocks base method.
+func (m *MockAuthPipeline) GetPostAuthorizationData() interface{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPostAuthorizationData")
+	ret0, _ := ret[0].(interface{})
+	return ret0
+}
+
+// GetPostAuthorizationData indicates an expected call of GetPostAuthorizationData.
+func (mr *MockAuthPipelineMockRecorder) GetPostAuthorizationData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostAuthorizationData", reflect.TypeOf((*MockAuthPipeline)(nil).GetPostAuthorizationData))
+}
+
 // GetRequest mocks base method.
 func (m *MockAuthPipeline) GetRequest() *envoy_service_auth_v3.CheckRequest {
 	m.ctrl.T.Helper()
@@ -299,4 +313,123 @@ func (m *MockAPIKeySecretFinder) FindSecretByName(arg0 types.NamespacedName) *v1
 func (mr *MockAPIKeySecretFinderMockRecorder) FindSecretByName(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSecretByName", reflect.TypeOf((*MockAPIKeySecretFinder)(nil).FindSecretByName), arg0)
+}
+
+// MockWristbandIssuer is a mock of WristbandIssuer interface.
+type MockWristbandIssuer struct {
+	ctrl     *gomock.Controller
+	recorder *MockWristbandIssuerMockRecorder
+}
+
+// MockWristbandIssuerMockRecorder is the mock recorder for MockWristbandIssuer.
+type MockWristbandIssuerMockRecorder struct {
+	mock *MockWristbandIssuer
+}
+
+// NewMockWristbandIssuer creates a new mock instance.
+func NewMockWristbandIssuer(ctrl *gomock.Controller) *MockWristbandIssuer {
+	mock := &MockWristbandIssuer{ctrl: ctrl}
+	mock.recorder = &MockWristbandIssuerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockWristbandIssuer) EXPECT() *MockWristbandIssuerMockRecorder {
+	return m.recorder
+}
+
+// Call mocks base method.
+func (m *MockWristbandIssuer) Call(arg0 common.AuthPipeline, arg1 context.Context) (interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Call", arg0, arg1)
+	ret0, _ := ret[0].(interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Call indicates an expected call of Call.
+func (mr *MockWristbandIssuerMockRecorder) Call(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockWristbandIssuer)(nil).Call), arg0, arg1)
+}
+
+// GetIssuer mocks base method.
+func (m *MockWristbandIssuer) GetIssuer() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIssuer")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetIssuer indicates an expected call of GetIssuer.
+func (mr *MockWristbandIssuerMockRecorder) GetIssuer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIssuer", reflect.TypeOf((*MockWristbandIssuer)(nil).GetIssuer))
+}
+
+// JWKS mocks base method.
+func (m *MockWristbandIssuer) JWKS() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "JWKS")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// JWKS indicates an expected call of JWKS.
+func (mr *MockWristbandIssuerMockRecorder) JWKS() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "JWKS", reflect.TypeOf((*MockWristbandIssuer)(nil).JWKS))
+}
+
+// OpenIDConfig mocks base method.
+func (m *MockWristbandIssuer) OpenIDConfig() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OpenIDConfig")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OpenIDConfig indicates an expected call of OpenIDConfig.
+func (mr *MockWristbandIssuerMockRecorder) OpenIDConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenIDConfig", reflect.TypeOf((*MockWristbandIssuer)(nil).OpenIDConfig))
+}
+
+// MockResponseConfigEvaluator is a mock of ResponseConfigEvaluator interface.
+type MockResponseConfigEvaluator struct {
+	ctrl     *gomock.Controller
+	recorder *MockResponseConfigEvaluatorMockRecorder
+}
+
+// MockResponseConfigEvaluatorMockRecorder is the mock recorder for MockResponseConfigEvaluator.
+type MockResponseConfigEvaluatorMockRecorder struct {
+	mock *MockResponseConfigEvaluator
+}
+
+// NewMockResponseConfigEvaluator creates a new mock instance.
+func NewMockResponseConfigEvaluator(ctrl *gomock.Controller) *MockResponseConfigEvaluator {
+	mock := &MockResponseConfigEvaluator{ctrl: ctrl}
+	mock.recorder = &MockResponseConfigEvaluatorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockResponseConfigEvaluator) EXPECT() *MockResponseConfigEvaluatorMockRecorder {
+	return m.recorder
+}
+
+// GetWristbandIssuer mocks base method.
+func (m *MockResponseConfigEvaluator) GetWristbandIssuer() common.WristbandIssuer {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWristbandIssuer")
+	ret0, _ := ret[0].(common.WristbandIssuer)
+	return ret0
+}
+
+// GetWristbandIssuer indicates an expected call of GetWristbandIssuer.
+func (mr *MockResponseConfigEvaluatorMockRecorder) GetWristbandIssuer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWristbandIssuer", reflect.TypeOf((*MockResponseConfigEvaluator)(nil).GetWristbandIssuer))
 }

@@ -13,23 +13,26 @@ spec:
       credentials:
         in: authorization_header
         keySelector: APIKEY
-    - name: wristband
+    - name: authenticated
       oidc:
-        endpoint: https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection
-  wristband:
-    issuer: https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection
-    customClaims:
-      - name: aud
-        value: internal
-      - name: born
-        valueFrom:
-          authJSON: auth.identity.metadata.creationTimestamp
-    tokenDuration: 300
-    signingKeyRefs:
-      - name: my-signing-key
-        algorithm: ES256
-      - name: my-old-signing-key
-        algorithm: RS256
+        endpoint: https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection/wristband
+  response:
+    - name: wristband
+      wrapperKey: x-ext-auth-wristband
+      wristband:
+        issuer: https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection/wristband
+        customClaims:
+          - name: aud
+            value: internal
+          - name: born
+            valueFrom:
+              authJSON: auth.identity.metadata.creationTimestamp
+        tokenDuration: 300
+        signingKeyRefs:
+          - name: my-signing-key
+            algorithm: ES256
+          - name: my-old-signing-key
+            algorithm: RS256
 ---
 apiVersion: v1
 kind: Secret

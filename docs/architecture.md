@@ -17,6 +17,7 @@
   - [External HTTP authorization metadata](#external-http-authorization-metadata)
   - [Open Policy Agent (OPA) Rego policies](#open-policy-agent-opa-rego-policies)
   - [Festival Wristbands](#festival-wristbands)
+  - [Dynamic JSON response](#dynamic-json-response)
 
 ## Architecture
 
@@ -50,17 +51,36 @@ spec:
   # List of identity sources - at least one must accept the supplied token or credential
   identity:
     - name: my-idp-users
-      oidc: # the authentication protocol (supported: apiKey, kubernetes, oidc, oauth2, mtls, hmac)
+      oidc: # the authentication protocol (supported: oidc, oauth2, kubernetes, apiKey, mtls, hmac)
         issuer: https://my-idp/realm
       credentials: # where the access token of credential must travel in the request
         in: authorization_header
         keySelector: Bearer
+
+    - name: api-key-users
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
 
   # List of external sources of authorization metadata (if you need any)
   metadata:
     - name: online-userinfo
       userInfo: # the external metadata protocol (supported: userInfo, uma, http)
         identitySource: my-idp-users
+
+    - name: external-resource-data
+      http:
+        endpoint: https://some-external-service/resource-data?id={context.request.http.path}
+        method: POST
+        sharedSecretRef:
+          name: authorino-secrets
+          key: auth-key-for-authorino-on-the-external-service
+        credentials:
+          in: authorization_header
+          keySelector: Bearer
 
   # List of authorization policies – all policies must grant access
   authorization:
@@ -75,18 +95,34 @@ spec:
             operator: eq
             value: GET
 
-  # Festival Wristband (only if you want JWTs issued by Authorino at the end of the auth pipeline)
-  wristband:
-    issuer: https://authorino-oidc.authorino.svc.cluster.local:8083/namespace/my-api-protection
-    customClaims:
-      - name: foo
-        value: bar
-      - name: exp
-        valueFrom:
-          authJSON: auth.identity.exp
-    signingKeyRefs:
-      - name: my-signing-key
-        algorithm: ES256
+    - name: my-opa-policy
+      opa:
+        inlineRego: |
+          allow { true }
+
+  # List of response configs – all items are evaluated and supplied back to the external authorization client
+  response:
+    - name: my-custom-dynamic-response-data
+      json: # the response builder type (supported: json, wristband)
+        properties:
+          - name: prop1
+            value: value1
+      wrapper: envoyDynamicMetadata
+
+    - name: my-wristband
+      wristband:
+        issuer: https://authorino-oidc.authorino.svc.cluster.local:8083/namespace/my-api-protection/my-wristband
+        customClaims:
+          - name: foo
+            value: bar
+          - name: exp
+            valueFrom:
+              authJSON: auth.identity.exp
+        signingKeyRefs:
+          - name: my-signing-key
+            algorithm: ES256
+      wrapper: httpHeader
+      wrapperKey: x-ext-auth-wristband
 ```
 
 More concrete examples focused on each individual supported feature can be found at the [Examples page](/examples).
@@ -100,9 +136,9 @@ In each request to the protected API, Authorino triggers the so-called "Auth Pip
 - **(i) Identity phase:** at least one source of identity (i.e., one identity evaluator) must resolve the supplied credential in the request into a valid identity or Authorino will otherwise reject the request as unauthenticated (401 HTTP response status).
 - **(ii) Metadata phase:** optional fetching of additional data from external sources, to add up to context and identity information, and used in authorization policies and wristband claims (phases iii and iv).
 - **(iii) Authorization phase:** all unskipped policies must evaluate to a positive result ("authorized"), or Authorino will otherwise reject the request as unauthorized (403 HTTP response code).
-- **(iv) Wristband phase:** single evaluator phase where Authorino optionally issues an OIDC-compliant JSON Web Token (JWT) called "Festival Wristband" token, used for token normalization and/or as part of an Edge Authentication Architecture (EAA).
+- **(iv) Response phase** – Authorino builds all user-defined response items (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), which are supplied back to the external authorization client within added HTTP headers or as Envoy Dynamic Metadata
 
-The evaluators set within each of the 3 first phases are triggered concurrently to each other, while the overall 4 phases are sequential. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata** and **Authorization** phases (respectively, ii and iii) can have any number of evaluators (including zero, and even be omitted in this case). The **Wristband** phase is a single-evaluator phase, and it can also be omitted if no wristband token should be issued at all.
+Each phase is sequential to the other, from (i) to (iv), while the evaluators within each phase are triggered concurrently. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
 
 ### The Authorization JSON
 
@@ -128,17 +164,52 @@ Along the auth pipeline, Authorino builds the *authorization payload*, a JSON co
       // the identity resolved, from the supplied credentials, by one of the evaluators of phase (i)
     },
     "metadata": {
-      // each metadata object/collection resolved by the evaluators of phase (ii)
+      // each metadata object/collection resolved by the evaluators of phase (ii), by name of the evaluator
     }
   }
 }
 ```
 
-The policies evaluated in phase (iii) can use any data from the authorization JSON to define authorization rules. Festival Wristbands can also include custom claims fetching values from the authorization JSON.
+The policies evaluated in phase (iii) can use any data from the authorization JSON to define authorization rules.
+
+After phase (iii), Authorino appends to the authorization JSON the results of this phase as well, and the input available for phase (iv) becomes:
+
+```jsonc
+// The authorization JSON combined along Authorino's auth pipeline for each request
+{
+  "context": { // the input from the proxy
+    "origin": {…},
+    "request": {
+      "http": {
+        "method": "…",
+        "headers": {…},
+        "path": "/…",
+        "host": "…",
+        …
+      }
+    }
+  },
+  "auth": {
+    "identity": {
+      // the identity resolved, from the supplied credentials, by one of the evaluators of phase (i)
+    },
+    "metadata": {
+      // each metadata object/collection resolved by the evaluators of phase (ii), by name of the evaluator
+    },
+    "authorization": {
+      // each authorization policy result resolved by the evaluators of phase (iii), by name of the evaluator
+    }
+  }
+}
+```
+
+[Festival Wristbands](#festival-wristbands) can include custom claims fetching values from the authorization JSON, as well as properties of [Dynamic JSON](#dynamic-json-response) responses. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata).
 
 ## Feature description
 
-This section is not an exhaustive list of features of Authorino. Rather, it describes implementation details of some of Authorino's most important features. For an updated list of all features and current state of development of each feature, please refer to the [List of features](/README.md#list-of-features) in the main page of the repo.
+This section is not an exhaustive list of features of Authorino. Rather, it describes some of Authorino's most used features, providing, in some cases, details of the implementation of these in Authorino. that can help understand how they work and to use them.
+
+For an updated list of all features and current state of development of each feature, please refer to the [List of features](/README.md#list-of-features) in the main page of the repo.
 
 ### API key authentication
 
@@ -246,7 +317,7 @@ The response returned by the OAuth2 server to the token introspection request is
 
 ### Festival Wristband authentication
 
-Authorino-issued [Festival Wristband](#festival-wristbands) tokens are valid OpenID Connect ID tokens (JWTs). To verify and validate Authorino Wristband tokens, use Authorino [OIDC authentication](#openid-connect-oidc-jwt-verification-and-validation). The value of the issuer must be the same issuer specified in the custom resource for the protected API originally issuing wristband (eventually, the same custom resource where the wristband is configured as a valid source of identity).
+Authorino-issued [Festival Wristband](#festival-wristbands) tokens are signed OpenID Connect ID tokens (JWTs). To verify and validate Authorino Wristband tokens, use Authorino [OIDC authentication](#openid-connect-oidc-jwt-verification-and-validation). The value of the issuer must be the same issuer specified in the custom resource for the protected API originally issuing wristband (eventually, the same custom resource where the wristband is configured as a valid source of identity).
 
 ### Mutual Transport Layer Security (mTLS) authentication
 
@@ -292,9 +363,9 @@ You can model authorization policies in [Rego language](https://www.openpolicyag
 
 ### Festival Wristbands
 
-Festival Wristbands are OpenID Connect JSON Web Tokens (JWTs) issued by Authorino at the end of the auth pipeline and passed back to the client in the HTTP response header `X-Ext-Auth-Wristband`. It is an opt-in feature that can be used to enable Edge Authentication and token normalization. Authorino wristbands can also be used as vessels to carry from the external authorization back to the client (with custom claims).
+Festival Wristbands are signed OpenID Connect JSON Web Tokens (JWTs) issued by Authorino at the end of the auth pipeline and passed back to the client, typically in added HTTP response header. It is an opt-in feature that can be used to implement Edge Authentication Architecture (EAA) and enable token normalization. Authorino wristbands include minimal standard JWT claims such as `iss`, `iat`, and `exp`, and optional user-defined custom claims, whose values can be static or dynamically fetched from the authorization JSON.
 
-The Authorino `Service` custom resource below sets an API protection that issues a wristband after a successful authentication via API key. The wristband contains standard JWT claims such as `iss`, `iat`, and `exp` and 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the creation timestamp of the secret that represents the API key used to authenticate.
+The Authorino `Service` custom resource below sets an API protection that issues a wristband after a successful authentication via API key. Apart from standard JWT claims, the wristband contains 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the date/time of creation of the secret that represents the API key used to authenticate.
 
 ```yaml
 apiVersion: config.authorino.3scale.net/v1beta1
@@ -313,26 +384,107 @@ spec:
       credentials:
         in: authorization_header
         keySelector: APIKEY
-  wristband:
-    issuer: https://authorino-oidc.authorino.svc:8083/my-namespace/talker-api-protection
-    customClaims:
-      - name: aud
-        value: internal
-      - name: born
-        valueFrom:
-          authJSON: auth.identity.metadata.creationTimestamp
-    tokenDuration: 300
-    signingKeyRefs:
-      - name: my-signing-key
-        algorithm: ES256
-      - name: my-old-signing-key
-        algorithm: RS256
+  response:
+    - name: my-wristband
+      wristband:
+        issuer: https://authorino-oidc.authorino.svc:8083/my-namespace/my-api-protection/my-wristband
+        customClaims:
+          - name: aud
+            value: internal
+          - name: born
+            valueFrom:
+              authJSON: auth.identity.metadata.creationTimestamp
+        tokenDuration: 300
+        signingKeyRefs:
+          - name: my-signing-key
+            algorithm: ES256
+          - name: my-old-signing-key
+            algorithm: RS256
+      wrapper: httpHeader # can be omitted
+      wrapperKey: x-ext-auth-wristband # whatever http header name desired - defaults to the name of  the response config ("my-wristband")
 ```
 
 The signing key names listed in `signingKeyRefs` must match the names of Kubernetes `Secret` resources created in the same namespace, where each secret contains a `key.pem` entry that holds the value of the private key that will be used to sign the wristbands issued, formatted as [PEM](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail). The first key in this list will be used to sign the wristbands, while the others are kept to support key rotation.
 
 For each protected API configured for the Festival Wristband issuing, Authorino exposes the following OpenID Connect Discovery well-known endpoints (available for requests within the cluster):
 - **OpenID Connect configuration:**<br/>
-  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/.well-known/openid-configuration
+  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/{response-config-name}/.well-known/openid-configuration
 - **JSON Web Key Set (JWKS) well-known endpoint:**<br/>
-  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/.well-known/openid-connect/certs
+  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/{response-config-name}/.well-known/openid-connect/certs
+
+### Dynamic JSON response
+
+Dynamic JSON response are user-defined JSON objects generated by Authorino in the response phase, from static or dynamic data of the auth pipeline (see [The Auth Pipeline](#the-auth-pipeline) and [The Authorization JSON](#the-authorization-json)), and passed back to the external authorization client within added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata).
+
+The following Authorino `Service` custom resource is an example that defines 3 dynamic JSON response items, where two items are returned to the client, stringified, in added HTTP headers, and the third is wrapped as Envoy Dynamic Metadata("emitted", in Envoy terminology). Envoy proxy can be configured to "pipe" dynamic metadata emitted by one filter into another filter – for example, from external authorization to rate limit.
+
+```yaml
+apiVersion: config.authorino.3scale.net/v1beta1
+kind: Service
+metadata:
+  namespace: my-namespace
+  name: my-api-protection
+spec:
+  hosts:
+    - my-api.io
+  identity:
+    - name: edge
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  response:
+    - name: a-json-returned-in-a-header
+      wrapper: httpHeader # can be omitted
+      wrapperKey: x-my-custom-header # if omitted, name of the header defaults to the name of the config ("a-json-returned-in-a-header")
+      json:
+        properties:
+          - name: prop1
+            value: value1
+          - name: prop2
+            valueFrom:
+              authJSON: some.path.within.auth.json
+
+    - name: another-json-returned-in-a-header
+      wrapperKey: x-ext-auth-other-json
+      json:
+        properties:
+          - name: propX
+            value: valueX
+
+    - name: a-json-returned-as-envoy-metadata
+      wrapper: envoyDynamicMetadata
+      wrapperKey: auth-data
+      json:
+        properties:
+          - name: api-key-ns
+            valueFrom:
+              authJSON: auth.identity.metadata.namespace
+          - name: api-key-name
+            valueFrom:
+              authJSON: auth.identity.metadata.name
+```
+
+The Envoy Dynamic Metadata emitted by Authorino for the response config `a-json-returned-as-envoy-metadata` can be configured in the Envoy route or virtual host setting for rate limiting:
+
+```yaml
+# Envoy config snippet to inject `user_namespace` and `username` rate limit descriptors from metadata returned by Authorino
+rate_limits:
+- actions:
+    - metadata:
+        metadata_key:
+          key: "envoy.filters.http.ext_authz"
+          path:
+          - key: auth-data
+          - key: api-key-ns
+        descriptor_key: user_namespace
+    - metadata:
+        metadata_key:
+          key: "envoy.filters.http.ext_authz"
+          path:
+          - key: auth-data
+          - key: api-key-name
+        descriptor_key: username
+```
