@@ -144,7 +144,7 @@ ifeq (, $(shell which kind))
 	KIND_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$KIND_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	GO111MODULE="on" go get sigs.k8s.io/kind@v0.9.0 ;\
+	GO111MODULE="on" go get sigs.k8s.io/kind@v0.11.1 ;\
 	rm -rf $$KIND_GEN_TMP_DIR ;\
 	}
 KIND=$(GOBIN)/kind
@@ -221,7 +221,7 @@ KIND_CLUSTER_NAME ?= authorino
 # Start a local Kubernetes cluster using Kind
 .PHONY: local-cluster-up
 local-cluster-up: kind
-	kind create cluster --name $(KIND_CLUSTER_NAME) --config ./utils/kind-cluster.yaml
+	kind create cluster --name $(KIND_CLUSTER_NAME)
 
 # Builds an image locally and pushes it to the registry of the Kind-started local Kubernetes cluster
 .PHONY: local-build-and-push
