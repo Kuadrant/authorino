@@ -63,33 +63,13 @@ var (
 				{
 					Name: "main-policy",
 					OPA: &v1beta1.Authorization_OPA{
-						InlineRego: `allow {
-            http_request.method == "GET"
-            path = ["hello"]
-          }
+						InlineRego: `
+			method = object.get(input.context.request.http, "method", "")
+			path = object.get(input.context.request.http, "path", "")
 
-          allow {
-            http_request.method == "GET"
-            own_resource
-          }
-
-          allow {
-            http_request.method == "GET"
-            path = ["bye"]
-            is_admin
-          }
-
-          own_resource {
-            some greetingid
-            path = ["greetings", greetingid]
-            resource := object.get(metadata, "resource-data", [])[0]
-            owner := object.get(object.get(resource, "owner", {}), "id", "")
-            subject := object.get(identity, "sub", object.get(identity, "username", ""))
-            owner == subject
-          }
-
-          is_admin {
-            identity.realm_access.roles[_] == "admin"
+			allow {
+              method == "GET"
+              path = "/allow"
           }`,
 					},
 				},

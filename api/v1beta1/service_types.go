@@ -234,12 +234,31 @@ func (a *Authorization) GetType() string {
 	return TypeUnknown
 }
 
+//ExternalRegistry specifies external source of data (i.e. OPA policy registry)
+type ExternalRegistry struct {
+	// Endpoint of the HTTP external registry.
+	// The endpoint must respond with either plain/text or application/json content-type.
+	// In the latter case, the JSON returned in the body must include a path `result.raw`, where the raw Rego policy will be extracted from. This complies with the specification of the OPA REST API (https://www.openpolicyagent.org/docs/latest/rest-api/#get-a-policy).
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// Reference to a Secret key whose value will be passed by Authorino in the request.
+	// The HTTP service can use the shared secret to authenticate the origin of the request.
+	SharedSecret *SecretKeyReference `json:"sharedSecretRef,omitempty"`
+
+	// Defines where client credentials will be passed in the request to the service.
+	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
+	Credentials Credentials `json:"credentials,omitempty"`
+}
+
 // Open Policy Agent (OPA) authorization policy.
 type Authorization_OPA struct {
 	// Authorization policy as a Rego language document.
 	// The Rego document must include the "allow" condition, set by Authorino to "false" by default (i.e. requests are unauthorized unless changed).
 	// The Rego document must NOT include the "package" declaration in line 1.
 	InlineRego string `json:"inlineRego,omitempty"`
+
+	// External registry of OPA policies.
+	ExternalRegistry ExternalRegistry `json:"externalRegistry,omitempty"`
 }
 
 // JSON pattern matching authorization policy.
