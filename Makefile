@@ -137,16 +137,11 @@ else
 KUSTOMIZE=$(shell which kustomize)
 endif
 
+KIND_VERSION=v0.11.1
+
 kind:
-ifeq (, $(shell which kind))
-	@{ \
-	set -e ;\
-	KIND_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$KIND_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	GO111MODULE="on" go get sigs.k8s.io/kind@v0.9.0 ;\
-	rm -rf $$KIND_GEN_TMP_DIR ;\
-	}
+ifneq ($(KIND_VERSION), $(shell kind version | cut -d' ' -f2))
+	go install sigs.k8s.io/kind@$(KIND_VERSION)
 KIND=$(GOBIN)/kind
 else
 KIND=$(shell which kind)
@@ -221,7 +216,7 @@ KIND_CLUSTER_NAME ?= authorino
 # Start a local Kubernetes cluster using Kind
 .PHONY: local-cluster-up
 local-cluster-up: kind
-	kind create cluster --name $(KIND_CLUSTER_NAME) --config ./utils/kind-cluster.yaml
+	kind create cluster --name $(KIND_CLUSTER_NAME)
 
 # Builds an image locally and pushes it to the registry of the Kind-started local Kubernetes cluster
 .PHONY: local-build-and-push
