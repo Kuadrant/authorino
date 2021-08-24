@@ -435,7 +435,7 @@ spec:
                                 type: string
                               value:
                                 description: Static value of the claim
-                                type: string
+                                x-kubernetes-preserve-unknown-fields: true
                               valueFrom:
                                 description: Dynamic value of the claim
                                 properties:
@@ -481,7 +481,7 @@ spec:
                                 type: string
                               value:
                                 description: Static value of the claim
-                                type: string
+                                x-kubernetes-preserve-unknown-fields: true
                               valueFrom:
                                 description: Dynamic value of the claim
                                 properties:

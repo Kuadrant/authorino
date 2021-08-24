@@ -19,6 +19,7 @@ package v1beta1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -311,7 +312,9 @@ type JsonProperty struct {
 	// The name of the claim
 	Name string `json:"name"`
 	// Static value of the claim
-	Value string `json:"value,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Value runtime.RawExtension `json:"value,omitempty"`
 	// Dynamic value of the claim
 	ValueFrom ValueFromAuthJSON `json:"valueFrom,omitempty"`
 }

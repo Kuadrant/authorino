@@ -21,9 +21,17 @@ type JSONProperty struct {
 
 type JSONValue struct {
 	// Static value of the JSON property.
-	Static string
+	Static interface{}
 	// Resolves the value of the JSON property by fetching the pattern from the authorization JSON.
 	Pattern string
+}
+
+func (v *JSONValue) ResolveFor(jsonData string) interface{} {
+	if v.Pattern != "" {
+		return gjson.Get(jsonData, v.Pattern).Value()
+	} else {
+		return v.Static
+	}
 }
 
 // UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure
