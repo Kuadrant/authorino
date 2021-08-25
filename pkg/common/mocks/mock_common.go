@@ -278,6 +278,21 @@ func (mr *MockIdentityConfigEvaluatorMockRecorder) GetOIDC() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOIDC", reflect.TypeOf((*MockIdentityConfigEvaluator)(nil).GetOIDC))
 }
 
+// ResolveExtendedProperties mocks base method.
+func (m *MockIdentityConfigEvaluator) ResolveExtendedProperties(arg0 common.AuthPipeline) (interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveExtendedProperties", arg0)
+	ret0, _ := ret[0].(interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveExtendedProperties indicates an expected call of ResolveExtendedProperties.
+func (mr *MockIdentityConfigEvaluatorMockRecorder) ResolveExtendedProperties(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveExtendedProperties", reflect.TypeOf((*MockIdentityConfigEvaluator)(nil).ResolveExtendedProperties), arg0)
+}
+
 // MockAPIKeySecretFinder is a mock of APIKeySecretFinder interface.
 type MockAPIKeySecretFinder struct {
 	ctrl     *gomock.Controller
@@ -418,6 +433,20 @@ func NewMockResponseConfigEvaluator(ctrl *gomock.Controller) *MockResponseConfig
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockResponseConfigEvaluator) EXPECT() *MockResponseConfigEvaluatorMockRecorder {
 	return m.recorder
+}
+
+// GetName mocks base method.
+func (m *MockResponseConfigEvaluator) GetName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetName indicates an expected call of GetName.
+func (mr *MockResponseConfigEvaluatorMockRecorder) GetName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockResponseConfigEvaluator)(nil).GetName))
 }
 
 // GetWristbandIssuer mocks base method.

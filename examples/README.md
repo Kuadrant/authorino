@@ -532,13 +532,20 @@ curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriE
 
 Festival Wristbands are OpenID Connect JSON Web Tokens (JWTs) issued and signed by Authorino at the end of the auth pipeline, and passed back to the client, usually in an added HTTP header. It is an opt-in feature that can be used to implement Edge Authentication Architecture (EAA) and enable token normalization.
 
-In this example, we set an API protection that issues a wristband after a successful authentication via API key. The wristband contains standard JWT claims such as `iss`, `iat`, and `exp`, and 2 user-defined custom claims: a static value claim `aud=internal` and a dynamic claim `born` whose value fetched from the authorization JSON corresponds to the date/time of creation of the secret that represents the API key used to authenticate.
+In this example, we set an API protection that issues a wristband after a successful authentication via API key. Two sets of API keys are accepted to authenticate: API keys defined as Kubernetes `Secret`s containing the metadata labels `authorino.3scale.net/managed-by=authorino` and `authorino.3scale.net/group=users`, and API keys defined as Kubernetes `Secret`s containing the metadata labels `authorino.3scale.net/managed-by=authorino` and `authorino.3scale.net/group=admins`. Each set of API keys represents a distinct group of users of the API.
 
-The tokens expires after 300 seconds and is signed using an elliptic curve private key stored in a Kubernetes `Secret`
+The issued wristbands include the standard JWT claims `iss`, `iat`, `exp` and `sub`, plus 3 user-defined custom claims: a static custom claim `aud=internal`, a dynamic custom claim `born` whose value (fetched from the authorization JSON) corresponds to the date/time of creation of the Kubernetes `Secret` that represents the API key used to authenticate, and another dynamic custom claim `roles` with value statically set as an extended property of each API key identity source (see the `extendedProperties` option of the Authorino `Service` CRD).
 
-The base64-encoded wristband token will be echoed back by the upstream API to the user in an added HTTP header `x-ext-auth-wristband`.
+As enforced by policy defined in the example, users must first send a request to `/auth` to obtain a wristband ("edge authentication"). The wristband will be echoed back to the user by the example upstream API in an added HTTP header `x-ext-auth-wristband`, base64-encoded. `/auth` is the only path that will accept requests authenticated via API key. Then, consecutive requests to other paths of the example API shall be sent authenticating with the obtained wristband.
 
-The example also sets the API protection to accept the same wristbands as valid authentication tokens to consume the API. This is entirely optional and relies on Authorino's OIDC identity verification feature.
+To authenticate via API key, use the HTTP header in the format `Authorization APIKEY <api-key-value>`. To authenticate via wristband, use `Authorization: Wristband <wristband-token>`.
+
+Requests to `/bye` path are reserved for users with the role `admin`.
+
+The wristband tokens are set to expire after 300 seconds. After that, users need to request another wristband by authenticating again to `/auth` via API key.
+
+Accepting the same wristbands as valid authentication method to consume the API is optional, used in this example to demonstrate the use case for token normalization and edge authentication. Authentication based on wristband tokens relies on Authorino's OIDC identity verification feature. In this example, the issued wristbands are signed using an elliptic curve private key stored in a Kubernetes `Secret`, whose public key set can be obtained from the OpenID Discovery endpoints (see details below).
+
 
 ### Deploy the example:
 
@@ -546,6 +553,7 @@ The example also sets the API protection to accept the same wristbands as valid 
 kubectl -n authorino apply -f ./examples/wristband.yaml
 # service.config.authorino.3scale.net/talker-api-protection created
 # secret/edge-api-key-1 created
+# secret/edge-api-key-2 created
 # secret/my-signing-key created
 # secret/my-old-signing-key created
 ```
@@ -555,13 +563,7 @@ kubectl -n authorino apply -f ./examples/wristband.yaml
 Obtain a wristband by successfully authenticating via API key:
 
 ```sh
-export WRISTBAND=$(curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/hello | jq -r '.headers.HTTP_X_EXT_AUTH_WRISTBAND')
-```
-
-Send requests to the same API now authenticating with the wristband:
-
-```sh
-curl -H 'Host: talker-api' -H "Authorization: Bearer $WRISTBAND" http://localhost:8000/hello -v # 200
+export WRISTBAND=$(curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/auth | jq -r '.headers.HTTP_X_EXT_AUTH_WRISTBAND')
 ```
 
 The payload of the wristband (decoded) shall look like the following:
@@ -573,9 +575,24 @@ The payload of the wristband (decoded) shall look like the following:
   "exp": 1620921395,
   "iat": 1620921095,
   "iss": "https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection",
+  "roles": ["user"],
   "sub": "84d3f3a06f5569e06a050516363f0a65c1789d3433bb4fed5d48801997d5c30e" # SHA256 of the resolved identity in the initial request (based on API key auth)
 }
 ```
+
+Send requests to the same API now authenticating with the wristband:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: Wristband $WRISTBAND" http://localhost:8000/hello -v # 200
+```
+
+Send another request to an endpoint reserved for users with `admin` role:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: Wristband $WRISTBAND" http://localhost:8000/bye -v # 403
+```
+
+You can repeat the steps above using the admin API key `Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn` to see the difference.
 
 To discover the OpenID Connect configuration and JSON Web Key Set (JWKS) to verify and validate wristbands issued on requests to this protected API:
 
@@ -584,10 +601,10 @@ kubectl -n authorino port-forward service/authorino-oidc 8083:8083
 ```
 
 OpenID Connect configuration well-known endpoint:<br/>
-http://localhost:8083/authorino/talker-api-protection/.well-known/openid-configuration
+http://localhost:8083/authorino/talker-api-protection/wristband/.well-known/openid-configuration
 
 JSON Web Key Set (JWKS) well-known endpoint:<br/>
-http://localhost:8083/authorino/talker-api-protection/.well-known/openid-connect/certs
+http://localhost:8083/authorino/talker-api-protection/wristband/.well-known/openid-connect/certs
 
 ----
 ## Dynamic JSON response

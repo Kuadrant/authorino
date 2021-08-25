@@ -99,6 +99,10 @@ type Identity struct {
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
 	Credentials Credentials `json:"credentials,omitempty"`
 
+	// Extends the resolved identity object with additional custom properties before appending to the authorization JSON.
+	// It requires the resolved identity object to always be of the JSON type 'object'. Other JSON types (array, string, etc) will break.
+	ExtendedProperties []JsonProperty `json:"extendedProperties,omitempty"`
+
 	OAuth2         *Identity_OAuth2Config   `json:"oauth2,omitempty"`
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
 	APIKey         *Identity_APIKey         `json:"apiKey,omitempty"`

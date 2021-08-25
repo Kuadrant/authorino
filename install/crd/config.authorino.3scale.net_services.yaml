@@ -233,6 +233,32 @@ spec:
                       required:
                       - keySelector
                       type: object
+                    extendedProperties:
+                      description: Extends the resolved identity object with additional
+                        custom properties before appending to the authorization JSON.
+                        It requires the resolved identity object to always be of the
+                        JSON type 'object'. Other JSON types (array, string, etc)
+                        will break.
+                      items:
+                        properties:
+                          name:
+                            description: The name of the claim
+                            type: string
+                          value:
+                            description: Static value of the claim
+                            x-kubernetes-preserve-unknown-fields: true
+                          valueFrom:
+                            description: Dynamic value of the claim
+                            properties:
+                              authJSON:
+                                description: Selector to fill the value of claim from
+                                  the authorization JSON
+                                type: string
+                            type: object
+                        required:
+                        - name
+                        type: object
+                      type: array
                     kubernetes:
                       properties:
                         audiences:

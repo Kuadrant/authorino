@@ -124,6 +124,13 @@ func (in *Credentials) DeepCopy() *Credentials {
 func (in *Identity) DeepCopyInto(out *Identity) {
 	*out = *in
 	out.Credentials = in.Credentials
+	if in.ExtendedProperties != nil {
+		in, out := &in.ExtendedProperties, &out.ExtendedProperties
+		*out = make([]JsonProperty, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.OAuth2 != nil {
 		in, out := &in.OAuth2, &out.OAuth2
 		*out = new(Identity_OAuth2Config)

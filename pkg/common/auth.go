@@ -33,6 +33,7 @@ type NamedConfigEvaluator interface {
 type IdentityConfigEvaluator interface {
 	GetAuthCredentials() auth_credentials.AuthCredentials
 	GetOIDC() interface{}
+	ResolveExtendedProperties(AuthPipeline) (interface{}, error)
 }
 
 type APIKeySecretFinder interface {
