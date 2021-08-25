@@ -89,8 +89,8 @@ func (c *AuthCredential) GetCredentialsIn() string {
 func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error) {
 	url := endpoint
 
-	// build url with creds
-	if c.In == inQuery {
+	// build url with creds (if credentialValue is not empty)
+	if c.In == inQuery && credentialValue != "" {
 		var separator string
 		if strings.Contains(url, "?") {
 			separator = "&"
@@ -104,6 +104,11 @@ func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoi
 	if req, err := http.NewRequestWithContext(ctx, method, url, body); err != nil {
 		return nil, err
 	} else {
+		// don't add creds if credentialValue is empty
+		if credentialValue == "" {
+			return req, nil
+		}
+
 		// add creds to request
 		switch c.In {
 		case inAuthHeader:

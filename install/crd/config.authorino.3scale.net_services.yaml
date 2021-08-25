@@ -372,7 +372,6 @@ spec:
                           type: object
                       required:
                       - endpoint
-                      - sharedSecretRef
                       type: object
                     name:
                       description: The name of the metadata source. Policies of te

@@ -203,7 +203,7 @@ type Metadata_GenericHTTP struct {
 
 	// Reference to a Secret key whose value will be passed by Authorino in the request.
 	// The HTTP service can use the shared secret to authenticate the origin of the request.
-	SharedSecret *SecretKeyReference `json:"sharedSecretRef"`
+	SharedSecret *SecretKeyReference `json:"sharedSecretRef,omitempty"`
 
 	// Defines where client credentials will be passed in the request to the service.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.

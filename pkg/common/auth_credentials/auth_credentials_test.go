@@ -1,6 +1,7 @@
 package auth_credentials
 
 import (
+	"context"
 	"testing"
 
 	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -181,4 +182,21 @@ func TestGetCredentialsFromQueryFail(t *testing.T) {
 	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
+}
+
+func TestBuildRequestWithCredentials(t *testing.T) {
+	creds := NewAuthCredential("", "")
+	req, err := creds.BuildRequestWithCredentials(context.TODO(), "http://example.com", "GET", "123", nil)
+
+	assert.NilError(t, err)
+	assert.Equal(t, len(req.Header.Values("Authorization")), 1)
+	assert.Equal(t, req.Header.Get("Authorization"), creds.KeySelector+" 123")
+}
+
+func TestBuildRequestWithCredentialsEmpty(t *testing.T) {
+	creds := NewAuthCredential("", "")
+	req, err := creds.BuildRequestWithCredentials(context.TODO(), "http://example.com", "GET", "", nil)
+
+	assert.NilError(t, err)
+	assert.Equal(t, len(req.Header.Values("Authorization")), 0)
 }
