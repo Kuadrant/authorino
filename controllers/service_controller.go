@@ -195,18 +195,22 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 			sharedSecretRef := genericHttp.SharedSecret
 			creds := genericHttp.Credentials
 
+			var sharedSecret string
 			secret := &v1.Secret{}
-			if err := r.Client.Get(ctx, types.NamespacedName{
-				Namespace: service.Namespace,
-				Name:      sharedSecretRef.Name},
-				secret); err != nil {
-				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			if sharedSecretRef != nil {
+				if err := r.Client.Get(ctx, types.NamespacedName{
+					Namespace: service.Namespace,
+					Name:      sharedSecretRef.Name},
+					secret); err != nil {
+					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+				}
+				sharedSecret = string(secret.Data[sharedSecretRef.Key])
 			}
 
 			translatedMetadata.GenericHTTP = &authorinoMetadata.GenericHttp{
 				Endpoint:        genericHttp.Endpoint,
 				Method:          string(genericHttp.Method),
-				SharedSecret:    string(secret.Data[sharedSecretRef.Key]),
+				SharedSecret:    sharedSecret,
 				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),
 			}
 
