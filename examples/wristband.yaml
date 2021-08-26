@@ -5,17 +5,63 @@ metadata:
 spec:
   hosts:
     - talker-api
+
   identity:
-    - name: edge
+    # edge authentication
+    - name: users
       apiKey:
         labelSelectors:
           authorino.3scale.net/managed-by: authorino
+          authorino.3scale.net/group: users
       credentials:
         in: authorization_header
         keySelector: APIKEY
-    - name: authenticated
+      extendedProperties:
+        - name: roles
+          value: ["user"]
+    - name: admins
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          authorino.3scale.net/group: admins
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+      extendedProperties:
+        - name: roles
+          value: ["user", "admin"]
+
+    # normalised token
+    - name: pre-authenticated
       oidc:
         endpoint: https://authorino-oidc.authorino.svc:8083/authorino/talker-api-protection/wristband
+      credentials:
+        in: authorization_header
+        keySelector: Wristband
+
+  authorization:
+    - name: requires-pre-auth
+      json:
+        conditions:
+          - selector: auth.identity.aud
+            operator: neq
+            value: internal
+        rules:
+          - selector: context.request.http.path
+            operator: eq
+            value: /auth
+    - name: rbac
+      opa:
+        inlineRego: |
+          identity := input.auth.identity
+          internal := identity.aud == "internal"
+          roles := object.get(identity, "roles", [])
+
+          admin { roles[_] == "admin" }
+          allow { not internal }
+          allow { internal; not admin; input.context.request.http.path != "/bye" }
+          allow { internal; admin }
+
   response:
     - name: wristband
       wrapperKey: x-ext-auth-wristband
@@ -27,6 +73,9 @@ spec:
           - name: born
             valueFrom:
               authJSON: auth.identity.metadata.creationTimestamp
+          - name: roles
+            valueFrom:
+              authJSON: auth.identity.roles
         tokenDuration: 300
         signingKeyRefs:
           - name: my-signing-key
@@ -40,8 +89,20 @@ metadata:
   name: edge-api-key-1
   labels:
     authorino.3scale.net/managed-by: authorino
+    authorino.3scale.net/group: users
 stringData:
   api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: edge-api-key-2
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    authorino.3scale.net/group: admins
+stringData:
+  api_key: Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn
 type: Opaque
 ---
 apiVersion: v1

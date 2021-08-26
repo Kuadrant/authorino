@@ -100,8 +100,20 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, identity := range service.Spec.Identity {
+		extendedProperties := make([]common.JSONProperty, 0)
+		for _, property := range identity.ExtendedProperties {
+			extendedProperties = append(extendedProperties, common.JSONProperty{
+				Name: property.Name,
+				Value: common.JSONValue{
+					Static:  property.Value,
+					Pattern: property.ValueFrom.AuthJSON,
+				},
+			})
+		}
+
 		translatedIdentity := &config.IdentityConfig{
-			Name: identity.Name,
+			Name:               identity.Name,
+			ExtendedProperties: extendedProperties,
 		}
 
 		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))

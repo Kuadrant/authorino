@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
@@ -18,7 +19,8 @@ var (
 )
 
 type IdentityConfig struct {
-	Name string `yaml:"name"`
+	Name               string                `yaml:"name"`
+	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
@@ -71,6 +73,31 @@ func (config *IdentityConfig) GetAuthCredentials() auth_credentials.AuthCredenti
 	evaluator := config.GetAuthConfigEvaluator()
 	creds := evaluator.(auth_credentials.AuthCredentials)
 	return creds
+}
+
+func (config *IdentityConfig) ResolveExtendedProperties(pipeline common.AuthPipeline) (interface{}, error) {
+	_, resolvedIdentityObj := pipeline.GetResolvedIdentity()
+
+	// return the original object if there is no extension property to resolve (to save the unnecessary json marshaling/unmarshaling overhead)
+	if len(config.ExtendedProperties) == 0 {
+		return resolvedIdentityObj, nil
+	}
+
+	identityObjAsJSON, _ := json.Marshal(resolvedIdentityObj)
+	var extendedIdentityObject map[string]interface{}
+	err := json.Unmarshal(identityObjAsJSON, &extendedIdentityObject)
+	if err != nil {
+		return nil, err
+	}
+
+	authDataObj := pipeline.GetDataForAuthorization()
+	authJSON, _ := json.Marshal(authDataObj)
+
+	for _, extendedProperty := range config.ExtendedProperties {
+		extendedIdentityObject[extendedProperty.Name] = extendedProperty.Value.ResolveFor(string(authJSON))
+	}
+
+	return extendedIdentityObject, nil
 }
 
 // impl:APIKeySecretFinder

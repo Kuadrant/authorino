@@ -13,7 +13,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/tidwall/gjson"
 	jose "gopkg.in/square/go-jose.v2"
 )
 
@@ -121,11 +120,7 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 
 		for _, claim := range w.CustomClaims {
 			value := claim.Value
-			if value.Pattern != "" {
-				claims[claim.Name] = gjson.Get(authJSON, value.Pattern).String()
-			} else {
-				claims[claim.Name] = value.Static
-			}
+			claims[claim.Name] = value.ResolveFor(authJSON)
 		}
 	}
 

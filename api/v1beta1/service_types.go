@@ -19,6 +19,7 @@ package v1beta1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -97,6 +98,10 @@ type Identity struct {
 	// Defines where client credentials are required to be passed in the request for this identity source/authentication mode.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
 	Credentials Credentials `json:"credentials,omitempty"`
+
+	// Extends the resolved identity object with additional custom properties before appending to the authorization JSON.
+	// It requires the resolved identity object to always be of the JSON type 'object'. Other JSON types (array, string, etc) will break.
+	ExtendedProperties []JsonProperty `json:"extendedProperties,omitempty"`
 
 	OAuth2         *Identity_OAuth2Config   `json:"oauth2,omitempty"`
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
@@ -311,7 +316,9 @@ type JsonProperty struct {
 	// The name of the claim
 	Name string `json:"name"`
 	// Static value of the claim
-	Value string `json:"value,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Value runtime.RawExtension `json:"value,omitempty"`
 	// Dynamic value of the claim
 	ValueFrom ValueFromAuthJSON `json:"valueFrom,omitempty"`
 }

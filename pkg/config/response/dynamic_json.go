@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/kuadrant/authorino/pkg/common"
-
-	"github.com/tidwall/gjson"
 )
 
 func NewDynamicJSONResponse(properties []common.JSONProperty) *DynamicJSON {
@@ -27,11 +25,7 @@ func (j *DynamicJSON) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 
 	for _, property := range j.Properties {
 		value := property.Value
-		if value.Pattern != "" {
-			obj[property.Name] = gjson.Get(authJSON, value.Pattern).String()
-		} else {
-			obj[property.Name] = value.Static
-		}
+		obj[property.Name] = value.ResolveFor(authJSON)
 	}
 
 	return obj, nil

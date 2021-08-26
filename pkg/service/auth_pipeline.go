@@ -154,9 +154,25 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 		obj := resp.Object
 
 		if resp.Success() {
+			// Needs to be done in 2 steps because `IdentityConfigEvaluator.ResolveExtendedProperties()` uses
+			// the resolved identity config object already stored in the auth pipeline result, to extend it.
+			// Once extended, the identity config object is stored again (replaced) in the auth pipeline result.
 			pipeline.Identity[conf] = obj
-			authCtxLog.Info("Identity", "config", conf, "authObj", obj)
-			return resp
+
+			if extendedObj, err := conf.ResolveExtendedProperties(pipeline); err != nil {
+				resp.Error = err
+				authCtxLog.Info("Identity", "config", conf, "error", err)
+				if count == 1 {
+					return resp
+				} else {
+					errors[conf.Name] = err.Error()
+				}
+			} else {
+				pipeline.Identity[conf] = extendedObj
+
+				authCtxLog.Info("Identity", "config", conf, "authObj", extendedObj)
+				return resp
+			}
 		} else {
 			err := resp.Error
 			authCtxLog.Info("Identity", "config", conf, "error", err)
