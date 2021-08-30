@@ -5,7 +5,7 @@ metadata:
   name: service-editor-role
 rules:
 - apiGroups:
-  - config.authorino.3scale.net
+  - authorino.3scale.net
   resources:
   - authconfigs
   verbs:
@@ -16,7 +16,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - config.authorino.3scale.net
+  - authorino.3scale.net
   resources:
   - authconfigs/status
   verbs:

@@ -73,7 +73,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	authConfig := v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "config.authorino.3scale.net/v1beta1",
+			APIVersion: "authorino.3scale.net/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",

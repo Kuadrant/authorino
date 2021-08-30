@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- config.authorino.3scale.net_authconfigs.yaml
+- authorino.3scale.net_authconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 # patchesStrategicMerge:
@@ -18,7 +18,7 @@ patchesJson6902:
     group: apiextensions.k8s.io
     version: v1
     kind: CustomResourceDefinition
-    name: authconfigs.config.authorino.3scale.net
+    name: authconfigs.authorino.3scale.net
 
 configurations:
 - kustomizeconfig.yaml

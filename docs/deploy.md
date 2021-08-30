@@ -54,7 +54,7 @@ Included resources:<br/>
 - **Talker API**<br/>
     Just a simple rack application that echoes back in a JSON whatever it gets in the request. You can control the response by passing the custom HTTP headers X-Echo-Status and X-Echo-Message (both optional).
 - **Authorino**<br/>
-    The Cloud-native AuthN/AuthZ enforcer that looks for `config.authorino.3scale.net/AuthConfig` custom resources in the Kubernetes server to add protection to your APIs.
+    The Cloud-native AuthN/AuthZ enforcer that looks for `authorino.3scale.net/AuthConfig` custom resources in the Kubernetes server to add protection to your APIs.
 - **Envoy proxy**<br/>
     Serving requests to the Talker API virtual host and configured with the ext_authz http filter pointing to the Authorino service.
 
@@ -297,6 +297,6 @@ make deploy AUTHORINO_REPLICAS=4 AUTHORINO_DEPLOYMENT=namespaced AUTHORINO_IMAGE
 
 #### Next steps
 
-Finish the setup by deploying Envoy, upstream APIs to be protected with Authorino and possibly any required identity providers and authentication servers. You will then be ready to start creating `config.authorino.3scale.net/AuthConfig` custom resources representing the authN/authZ protection configs for your APIs.
+Finish the setup by deploying Envoy, upstream APIs to be protected with Authorino and possibly any required identity providers and authentication servers. You will then be ready to start creating `authorino.3scale.net/AuthConfig` custom resources representing the authN/authZ protection configs for your APIs.
 
 Please check out as well the provided [examples](/examples) for more details about what can be done and the possible next steps to protect your APIs.

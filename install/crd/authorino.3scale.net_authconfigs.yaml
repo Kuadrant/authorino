@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: authconfigs.config.authorino.3scale.net
+  name: authconfigs.authorino.3scale.net
 spec:
-  group: config.authorino.3scale.net
+  group: authorino.3scale.net
   names:
     kind: AuthConfig
     listKind: AuthConfigList

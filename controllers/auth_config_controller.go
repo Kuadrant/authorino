@@ -50,7 +50,7 @@ type AuthConfigReconciler struct {
 	Cache  cache.Cache
 }
 
-// +kubebuilder:rbac:groups=config.authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("authConfig", req.NamespacedName)

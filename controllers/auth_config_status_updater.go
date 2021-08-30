@@ -15,7 +15,7 @@ type AuthConfigStatusUpdater struct {
 	client.Client
 }
 
-// +kubebuilder:rbac:groups=config.authorino.3scale.net,resources=authconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
 
 func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

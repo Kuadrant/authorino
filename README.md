@@ -186,7 +186,7 @@ You will also find in that section information about the Authorino [Auth Pipelin
 
 1. [Deploy](docs/deploy.md) Authorino to the Kubernetes server
 2. Have your upstream API [ready](docs/architecture.md#protecting-upstream-apis-with-envoy-and-authorino) to be protected
-3. [Write](docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) and apply a `config.authorino.3scale.net`/`AuthConfig` custom resource declaring the desired state of the protection of your API
+3. [Write](docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) and apply a `authorino.3scale.net`/`AuthConfig` custom resource declaring the desired state of the protection of your API
 
 ## Examples and Tutorials
 
