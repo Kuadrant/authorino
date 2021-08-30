@@ -49,11 +49,11 @@ type SecretKeyReference struct {
 	Key string `json:"key"`
 }
 
-// Specifies the desired state of the Service resource, i.e. the authencation/authorization scheme to be applied to protect the matching HTTP services.
-type ServiceSpec struct {
+// Specifies the desired state of the AuthConfig resource, i.e. the authencation/authorization scheme to be applied to protect the matching service hosts.
+type AuthConfigSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// The list of public host names of the HTTP services protected by this authentication/authorization scheme.
+	// The list of public host names of the services protected by this authentication/authorization scheme.
 	// Authorino uses the requested host to lookup for the corresponding authentication/authorization configs to enforce.
 	Hosts []string `json:"hosts"`
 
@@ -324,7 +324,7 @@ type JsonProperty struct {
 }
 
 type Response_Wristband struct {
-	// The endpoint to the Authorino service that issues the wristband (format: <scheme>://<host>:<port>/<realm>, where <realm> = <namespace>/<authorino-service-resource-name)
+	// The endpoint to the Authorino service that issues the wristband (format: <scheme>://<host>:<port>/<realm>, where <realm> = <namespace>/<authorino-auth-config-resource-name/wristband-config-name)
 	Issuer string `json:"issuer"`
 	// Any claims to be added to the wristband token apart from the standard JWT claims (iss, iat, exp) added by default.
 	CustomClaims []JsonProperty `json:"customClaims,omitempty"`
@@ -340,8 +340,8 @@ type Response_DynamicJSON struct {
 	Properties []JsonProperty `json:"properties"`
 }
 
-// ServiceStatus defines the observed state of Service
-type ServiceStatus struct {
+// AuthConfigStatus defines the observed state of AuthConfig
+type AuthConfigStatus struct {
 	Ready                    bool  `json:"ready"`
 	NumIdentitySources       int64 `json:"numIdentitySources"`
 	NumMetadataSources       int64 `json:"numMetadataSources"`
@@ -350,7 +350,7 @@ type ServiceStatus struct {
 	FestivalWristbandEnabled bool  `json:"festivalWristbandEnabled"`
 }
 
-// Service is the schema for Authorino's services API
+// AuthConfig is the schema for Authorino's AuthConfig API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type=boolean,JSONPath=`.status.ready`,description="Ready?"
@@ -359,23 +359,23 @@ type ServiceStatus struct {
 // +kubebuilder:printcolumn:name="Authz policies",type=integer,JSONPath=`.status.numAuthorizationPolicies`,description="Number of authorization policies",priority=2
 // +kubebuilder:printcolumn:name="Response items",type=integer,JSONPath=`.status.numResponseItems`,description="Number of items added to the client response",priority=2
 // +kubebuilder:printcolumn:name="Wristband",type=boolean,JSONPath=`.status.festivalWristbandEnabled`,description="Whether issuing Festival Wristbands",priority=2
-type Service struct {
+type AuthConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceSpec   `json:"spec,omitempty"`
-	Status ServiceStatus `json:"status,omitempty"`
+	Spec   AuthConfigSpec   `json:"spec,omitempty"`
+	Status AuthConfigStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// ServiceList contains a list of Service
-type ServiceList struct {
+// AuthConfigList contains a list of AuthConfig
+type AuthConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Service `json:"items"`
+	Items           []AuthConfig `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Service{}, &ServiceList{})
+	SchemeBuilder.Register(&AuthConfig{}, &AuthConfigList{})
 }

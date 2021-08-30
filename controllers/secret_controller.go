@@ -27,10 +27,10 @@ var newController = controller_builder.NewControllerManagedBy
 // SecretReconciler reconciles k8s Secret objects
 type SecretReconciler struct {
 	client.Client
-	Log               logr.Logger
-	Scheme            *runtime.Scheme
-	SecretLabel       string
-	ServiceReconciler reconcile.Reconciler
+	Log                  logr.Logger
+	Scheme               *runtime.Scheme
+	SecretLabel          string
+	AuthConfigReconciler reconcile.Reconciler
 }
 
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;
@@ -38,7 +38,7 @@ type SecretReconciler struct {
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("secret", req.NamespacedName)
 
-	var reconcile func(configv1beta1.Service)
+	var reconcile func(configv1beta1.AuthConfig)
 
 	secret := v1.Secret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
@@ -47,14 +47,14 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	} else if errors.IsNotFound(err) {
 		// could not find the secret: 404 Not found (secret must have been deleted)
-		// try to find a secret with same name by digging into the cache of services
-		reconcile = func(service configv1beta1.Service) {
-			for _, host := range service.Spec.Hosts {
-				sr, _ := r.ServiceReconciler.(*ServiceReconciler)
+		// try to find a secret with same name by digging into the cache of auth configs
+		reconcile = func(authConfig configv1beta1.AuthConfig) {
+			for _, host := range authConfig.Spec.Hosts {
+				sr, _ := r.AuthConfigReconciler.(*AuthConfigReconciler)
 				for _, id := range sr.Cache.Get(host).IdentityConfigs {
 					i, _ := id.(common.APIKeySecretFinder)
 					if s := i.FindSecretByName(req.NamespacedName); s != nil {
-						r.reconcileService(ctx, service)
+						r.reconcileAuthConfig(ctx, authConfig)
 						return
 					}
 				}
@@ -69,19 +69,19 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, nil
 		}
 
-		// straightforward – if the API key labels match, reconcile the service
-		reconcile = func(service configv1beta1.Service) {
-			for _, id := range service.Spec.Identity {
+		// straightforward – if the API key labels match, reconcile the auth config
+		reconcile = func(authConfig configv1beta1.AuthConfig) {
+			for _, id := range authConfig.Spec.Identity {
 				if id.GetType() == v1beta1.IdentityApiKey && reflect.DeepEqual(id.APIKey.LabelSelectors, secret.Labels) {
-					r.reconcileService(ctx, service)
+					r.reconcileAuthConfig(ctx, authConfig)
 					return
 				}
 			}
 		}
 	}
 
-	if err := r.reconcileServicesUsingAPIKey(ctx, req.Namespace, reconcile); err != nil {
-		log.Info("could not reconcile services", "req", req)
+	if err := r.reconcileAuthConfigsUsingAPIKey(ctx, req.Namespace, reconcile); err != nil {
+		log.Info("could not reconcile auth configs", "req", req)
 		return ctrl.Result{}, err
 	} else {
 		return ctrl.Result{}, nil
@@ -117,34 +117,34 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *SecretReconciler) getServicesUsingAPIKey(ctx context.Context, namespace string) ([]configv1beta1.Service, error) {
-	var existingServices = &configv1beta1.ServiceList{}
-	selectedServices := make([]configv1beta1.Service, 0)
+func (r *SecretReconciler) getAuthConfigsUsingAPIKey(ctx context.Context, namespace string) ([]configv1beta1.AuthConfig, error) {
+	var existingAuthConfigs = &configv1beta1.AuthConfigList{}
+	selectedAuthConfigs := make([]configv1beta1.AuthConfig, 0)
 
-	if err := r.List(ctx, existingServices, &client.ListOptions{
+	if err := r.List(ctx, existingAuthConfigs, &client.ListOptions{
 		Namespace: namespace,
 	}); err != nil {
 		return nil, err
 	} else {
-		for _, service := range existingServices.Items {
-			for _, id := range service.Spec.Identity {
+		for _, authConfig := range existingAuthConfigs.Items {
+			for _, id := range authConfig.Spec.Identity {
 				if id.GetType() == v1beta1.IdentityApiKey {
-					selectedServices = append(selectedServices, service)
+					selectedAuthConfigs = append(selectedAuthConfigs, authConfig)
 					break
 				}
 			}
 		}
-		return selectedServices, nil
+		return selectedAuthConfigs, nil
 	}
 }
 
-// reconcileServicesUsingAPIKey invokes the reconcile(service) func asynchronously, for each service using API key identity
-func (r *SecretReconciler) reconcileServicesUsingAPIKey(ctx context.Context, namespace string, reconcile func(configv1beta1.Service)) error {
-	if services, err := r.getServicesUsingAPIKey(ctx, namespace); err != nil {
+// reconcileAuthConfigsUsingAPIKey invokes the reconcile(authConfig) func asynchronously, for each authConfig using API key identity
+func (r *SecretReconciler) reconcileAuthConfigsUsingAPIKey(ctx context.Context, namespace string, reconcile func(configv1beta1.AuthConfig)) error {
+	if authConfigs, err := r.getAuthConfigsUsingAPIKey(ctx, namespace); err != nil {
 		return err
 	} else {
-		for _, service := range services {
-			s := service
+		for _, authConfig := range authConfigs {
+			s := authConfig
 			go func() {
 				reconcile(s)
 			}()
@@ -153,11 +153,11 @@ func (r *SecretReconciler) reconcileServicesUsingAPIKey(ctx context.Context, nam
 	}
 }
 
-func (r *SecretReconciler) reconcileService(ctx context.Context, service configv1beta1.Service) {
-	_, _ = r.ServiceReconciler.Reconcile(ctx, ctrl.Request{
+func (r *SecretReconciler) reconcileAuthConfig(ctx context.Context, authConfig configv1beta1.AuthConfig) {
+	_, _ = r.AuthConfigReconciler.Reconcile(ctx, ctrl.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: service.Namespace,
-			Name:      service.Name,
+			Namespace: authConfig.Namespace,
+			Name:      authConfig.Name,
 		},
 	})
 }

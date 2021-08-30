@@ -16,36 +16,36 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestServiceStatusUpdaterReconcile(t *testing.T) {
-	service := v1beta1.Service{
+func TestAuthConfigStatusUpdaterReconcile(t *testing.T) {
+	authConfig := v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
+			Kind:       "AuthConfig",
 			APIVersion: "config.authorino.3scale.net/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "service1",
+			Name:      "auth-config-1",
 			Namespace: "authorino",
 		},
-		Spec: v1beta1.ServiceSpec{
+		Spec: v1beta1.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
 		},
-		Status: v1beta1.ServiceStatus{
+		Status: v1beta1.AuthConfigStatus{
 			Ready: false,
 		},
 	}
 
-	// Create a fake client with a service
+	// Create a fake client with an auth config
 	scheme := runtime.NewScheme()
 	_ = v1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
-	client := fake.NewFakeClientWithScheme(scheme, &service)
+	client := fake.NewFakeClientWithScheme(scheme, &authConfig)
 
 	resourceName := types.NamespacedName{
-		Namespace: service.Namespace,
-		Name:      service.Name,
+		Namespace: authConfig.Namespace,
+		Name:      authConfig.Name,
 	}
 
-	result, err := (&ServiceStatusUpdater{
+	result, err := (&AuthConfigStatusUpdater{
 		Client: client,
 	}).Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: resourceName,
@@ -54,7 +54,7 @@ func TestServiceStatusUpdaterReconcile(t *testing.T) {
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
 
-	serviceCheck := v1beta1.Service{}
-	_ = client.Get(context.TODO(), resourceName, &serviceCheck)
-	assert.Check(t, serviceCheck.Status.Ready)
+	authConfigCheck := v1beta1.AuthConfig{}
+	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
+	assert.Check(t, authConfigCheck.Status.Ready)
 }

@@ -29,7 +29,7 @@ The following applications compose the stack for this tutorial:
 - **Envoy proxy**<br/>
     Serving the Talker API, configured with the ext_authz http filter pointing to Authorino.
 - **Authorino**<br/>
-    The AuthN/AuthZ enforcer that will watch and apply Authorino `Service` custom resources in the Kubernetes/OpenShift server.
+    The AuthN/AuthZ enforcer that will watch and apply Authorino `AuthConfig` custom resources in the Kubernetes/OpenShift server.
 
 ## Deploy
 
@@ -80,7 +80,7 @@ Follow the instructions below to deploy the stack of resources and applications 
 
     ```sh
     $ kubectl apply -f authorino.yaml
-    customresourcedefinition.apiextensions.k8s.io/services.config.authorino.3scale.net created
+    customresourcedefinition.apiextensions.k8s.io/authconfigs.config.authorino.3scale.net created
     role.rbac.authorization.k8s.io/authorino-leader-election-role created
     clusterrole.rbac.authorization.k8s.io/authorino-manager-role created
     clusterrole.rbac.authorization.k8s.io/authorino-metrics-reader created
@@ -120,7 +120,7 @@ Apply the CR:
 ```yaml
 # talker-api-protection-1.yaml
 apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
@@ -155,7 +155,7 @@ Apply the CR:
 ```yaml
 # talker-api-protection-2.yaml
 apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
@@ -220,7 +220,7 @@ Apply the CR:
 ```yaml
 # talker-api-protection-3.yaml
 apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
@@ -285,7 +285,7 @@ $ curl -k -H "Authorization: APIKEY $API_KEY" https://$TALKER_API_HOST/only-exte
 
 ```sh
 $ kubectl delete -f authorino.yaml
-customresourcedefinition.apiextensions.k8s.io "services.config.authorino.3scale.net" deleted
+customresourcedefinition.apiextensions.k8s.io "authconfigs.config.authorino.3scale.net" deleted
 role.rbac.authorization.k8s.io "authorino-leader-election-role" deleted
 clusterrole.rbac.authorization.k8s.io "authorino-manager-role" deleted
 clusterrole.rbac.authorization.k8s.io "authorino-metrics-reader" deleted

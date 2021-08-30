@@ -29,7 +29,7 @@ Instead of the behaviour...
 **Environment (please complete the following information):**
 - Cluster information
 - Authorino version
-- Link to the Authorino `Service` resource (e.g. in some GitHub gist)
+- Link to the Authorino `AuthConfig` resource (e.g. in some GitHub gist)
 
 **Additional context**
 

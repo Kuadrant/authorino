@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - config.authorino.3scale.net
   resources:
-  - services
+  - authconfigs
   verbs:
   - create
   - delete
@@ -21,7 +21,7 @@ rules:
 - apiGroups:
   - config.authorino.3scale.net
   resources:
-  - services/status
+  - authconfigs/status
   verbs:
   - get
   - patch

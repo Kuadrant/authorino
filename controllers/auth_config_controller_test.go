@@ -23,16 +23,16 @@ import (
 )
 
 var (
-	service = v1beta1.Service{
+	authConfig = v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
+			Kind:       "AuthConfig",
 			APIVersion: "config.authorino.3scale.net/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "service1",
+			Name:      "auth-config-1",
 			Namespace: "authorino",
 		},
-		Spec: v1beta1.ServiceSpec{
+		Spec: v1beta1.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
 			Identity: []*v1beta1.Identity{
 				{
@@ -111,7 +111,7 @@ var (
 					}},
 			},
 		},
-		Status: v1beta1.ServiceStatus{
+		Status: v1beta1.AuthConfigStatus{
 			Ready: false,
 		},
 	}
@@ -141,14 +141,14 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func setupEnvironment(t *testing.T, c cache.Cache) ServiceReconciler {
+func setupEnvironment(t *testing.T, c cache.Cache) AuthConfigReconciler {
 	scheme := runtime.NewScheme()
 	_ = v1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
-	// Create a fake client with a service and a secret.
-	client := fake.NewFakeClientWithScheme(scheme, &service, &secret)
+	// Create a fake client with an auth config and a secret.
+	client := fake.NewFakeClientWithScheme(scheme, &authConfig, &secret)
 
-	return ServiceReconciler{
+	return AuthConfigReconciler{
 		Client: client,
 		Log:    ctrl.Log.WithName("reconcilerTest"),
 		Scheme: nil,
@@ -161,8 +161,8 @@ func TestReconcilerOk(t *testing.T) {
 
 	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: service.Namespace,
-			Name:      service.Name,
+			Namespace: authConfig.Namespace,
+			Name:      authConfig.Name,
 		},
 	})
 
@@ -181,8 +181,8 @@ func TestReconcilerMissingSecret(t *testing.T) {
 
 	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: service.Namespace,
-			Name:      service.Name,
+			Namespace: authConfig.Namespace,
+			Name:      authConfig.Name,
 		},
 	})
 
@@ -198,7 +198,7 @@ func TestReconcilerNotFound(t *testing.T) {
 	// Let's try to reconcile a non existing object.
 	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: service.Namespace,
+			Namespace: authConfig.Namespace,
 			Name:      "nonExistant",
 		},
 	})
@@ -211,7 +211,7 @@ func TestReconcilerNotFound(t *testing.T) {
 	assert.DeepEqual(t, result, ctrl.Result{})
 }
 
-func TestTranslateService(t *testing.T) {
+func TestTranslateAuthConfig(t *testing.T) {
 	// TODO
 }
 
@@ -222,12 +222,12 @@ func TestHostColllision(t *testing.T) {
 	c := mock_cache.NewMockCache(mockController)
 	r := setupEnvironment(t, c)
 
-	c.EXPECT().FindId("echo-api").Return("other-namespace/other-service-with-same-host", true)
+	c.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 
 	result, err := r.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: service.Namespace,
-			Name:      service.Name,
+			Namespace: authConfig.Namespace,
+			Name:      authConfig.Name,
 		},
 	})
 

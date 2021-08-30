@@ -1,5 +1,5 @@
 apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:

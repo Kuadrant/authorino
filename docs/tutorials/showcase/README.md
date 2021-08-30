@@ -41,7 +41,7 @@ On top of this platform, the following applications compose the stack for this t
 - **Envoy proxy**<br/>
     Serving the Talker API, configured with the ext_authz http filter pointing to Authorino.
 - **Authorino**<br/>
-    The AuthN/AuthZ enforcer that will watch and apply Authorino `Service` custom resources in the Kubernetes/OpenShift server.
+    The AuthN/AuthZ enforcer that will watch and apply Authorino `AuthConfig` custom resources in the Kubernetes/OpenShift server.
 - **Keycloak**<br/>
     To issue OIDC access tokens and to provide ad hoc resource data for the authorization payload. The server is bundled with the following preloaded settings and realm resources:
     - Admin console: http://localhost:8080/auth/admin (admin/p)

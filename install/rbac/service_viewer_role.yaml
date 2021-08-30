@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - config.authorino.3scale.net
   resources:
-  - services
+  - authconfigs
   verbs:
   - get
   - list
@@ -15,6 +15,6 @@ rules:
 - apiGroups:
   - config.authorino.3scale.net
   resources:
-  - services/status
+  - authconfigs/status
   verbs:
   - get

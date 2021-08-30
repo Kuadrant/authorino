@@ -4,7 +4,7 @@ projectName: authorino
 repo: github.com/kuadrant/authorino/
 resources:
 - group: config
-  kind: Service
+  kind: AuthConfig
   version: v1beta1
 version: 3-alpha
 plugins:
