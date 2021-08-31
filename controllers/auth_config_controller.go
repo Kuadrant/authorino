@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// AuthConfigReconciler reconciles a AuthConfig object
+// AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
 	Log    logr.Logger
@@ -60,7 +60,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if err != nil && errors.IsNotFound(err) {
 
 		// As we can't get the object, that means it was deleted.
-		// Delete all the auth configs related to this k8s object.
+		// Delete all the authconfigs related to this k8s object.
 		log.Info("object has been deleted, deleted related configs", "object", req)
 
 		//Cleanup all the hosts related to this CRD object.

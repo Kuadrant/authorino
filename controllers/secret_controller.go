@@ -47,7 +47,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	} else if errors.IsNotFound(err) {
 		// could not find the secret: 404 Not found (secret must have been deleted)
-		// try to find a secret with same name by digging into the cache of auth configs
+		// try to find a secret with same name by digging into the cache of authconfigs
 		reconcile = func(authConfig configv1beta1.AuthConfig) {
 			for _, host := range authConfig.Spec.Hosts {
 				sr, _ := r.AuthConfigReconciler.(*AuthConfigReconciler)
@@ -81,7 +81,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	if err := r.reconcileAuthConfigsUsingAPIKey(ctx, req.Namespace, reconcile); err != nil {
-		log.Info("could not reconcile auth configs", "req", req)
+		log.Info("could not reconcile authconfigs using api key authentication", "req", req)
 		return ctrl.Result{}, err
 	} else {
 		return ctrl.Result{}, nil
