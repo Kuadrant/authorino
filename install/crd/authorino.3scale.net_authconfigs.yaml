@@ -6,14 +6,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: services.config.authorino.3scale.net
+  name: authconfigs.authorino.3scale.net
 spec:
-  group: config.authorino.3scale.net
+  group: authorino.3scale.net
   names:
-    kind: Service
-    listKind: ServiceList
-    plural: services
-    singular: service
+    kind: AuthConfig
+    listKind: AuthConfigList
+    plural: authconfigs
+    singular: authconfig
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -49,7 +49,7 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Service is the schema for Authorino's services API
+        description: AuthConfig is the schema for Authorino's AuthConfig API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -64,9 +64,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: Specifies the desired state of the Service resource, i.e.
+            description: Specifies the desired state of the AuthConfig resource, i.e.
               the authencation/authorization scheme to be applied to protect the matching
-              HTTP services.
+              service hosts.
             properties:
               authorization:
                 description: Authorization is the list of authorization policies.
@@ -174,7 +174,7 @@ spec:
                   type: object
                 type: array
               hosts:
-                description: The list of public host names of the HTTP services protected
+                description: The list of public host names of the services protected
                   by this authentication/authorization scheme. Authorino uses the
                   requested host to lookup for the corresponding authentication/authorization
                   configs to enforce.
@@ -523,7 +523,7 @@ spec:
                         issuer:
                           description: 'The endpoint to the Authorino service that
                             issues the wristband (format: <scheme>://<host>:<port>/<realm>,
-                            where <realm> = <namespace>/<authorino-service-resource-name)'
+                            where <realm> = <namespace>/<authorino-auth-config-resource-name/wristband-config-name)'
                           type: string
                         signingKeyRefs:
                           description: Reference by name to Kubernetes secrets and
@@ -570,7 +570,7 @@ spec:
             - hosts
             type: object
           status:
-            description: ServiceStatus defines the observed state of Service
+            description: AuthConfigStatus defines the observed state of AuthConfig
             properties:
               festivalWristbandEnabled:
                 type: boolean

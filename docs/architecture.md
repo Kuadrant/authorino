@@ -1,7 +1,7 @@
 # Authorino architecture and Feature description
 - [Architecture](#architecture)
   - [Protecting upstream APIs with Envoy and Authorino](#protecting-upstream-apis-with-envoy-and-authorino)
-  - [The Authorino `Service` Custom Resource Definition (CRD)](#the-authorino-service-custom-resource-definition-crd)
+  - [The Authorino `AuthConfig` Custom Resource Definition (CRD)](#the-authorino-authconfig-custom-resource-definition-crd)
   - [The "Auth Pipeline"](#the-auth-pipeline)
   - [The Authorization JSON](#the-authorization-json)
 - [Feature description](#feature-description)
@@ -25,23 +25,23 @@
 
 Typically, upstream APIs are deployed to the same Kubernetes cluster and namespace where the Envoy proxy and Authorino is running (although not necessarily). Whatever is the case, Envoy proxy must be serving the upstream API (see Envoy's [HTTP route components](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto) and virtual hosts) and pointing to Authorino in the external authorization filter.
 
-An `Ingress` resource exposing Envoy service on a host name that must resolves to the Kubernetes cluster and identifies the API for external users. This host name is important as well for Authorino as it goes in the Authorino `Service` custom resource that declares the protection to the API.
+An `Ingress` resource exposing Envoy service on a host name that must resolves to the Kubernetes cluster and identifies the API for external users. This host name is important as well for Authorino as it goes in the Authorino `AuthConfig` custom resource that declares the protection to the API.
 
 You must then be ready to write and apply the custom resource that describes the desired state of the protection for the API.
 
-There is no need to redeploy neither Authorino nor Envoy after applying a protection config. Authorino controller will automatically detect any changes relative to `config.authorino.3scale.net`/`Service` resources and reconcile them inside the running instances.
+There is no need to redeploy neither Authorino nor Envoy after applying a protection config. Authorino controller will automatically detect any changes relative to `authorino.3scale.net`/`AuthConfig` resources and reconcile them inside the running instances.
 
-### The Authorino `Service` Custom Resource Definition (CRD)
+### The Authorino `AuthConfig` Custom Resource Definition (CRD)
 
 Each API protection is declared in the form a [Kubernetes Custom Resource](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources).
 
-Please check out the [spec](/config/crd/bases/config.authorino.3scale.net_services.yaml) of Authorino's `Service` custom resource for the details of how to configure **identity** verification, external authorization **metadata**, **authorization** policies and optional **wristband** token issuing on requests to you API.
+Please check out the [spec](/install/crd/authorino.3scale.net_authconfigs.yaml) of Authorino's `AuthConfig` custom resource for the details of how to configure **identity** verification, external authorization **metadata**, **authorization** policies and optional **wristband** token issuing on requests to you API.
 
-A typical Authorino's `Service` custom resource looks like the following:
+A typical Authorino's `AuthConfig` custom resource looks like the following:
 
 ```yaml
-apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
@@ -213,13 +213,13 @@ For an updated list of all features and current state of development of each fea
 
 ### API key authentication
 
-Authorino relies on Kubernetes `Secret` resources to represent API keys. To define an API key, create a `Secret` in the cluster containing an `api_key` entry that holds the value of the API key. The resource must also include the same `labels` listed in the Authorino `Service` custom resource for the protected API that accepts the API key as a valid credential. For example:
+Authorino relies on Kubernetes `Secret` resources to represent API keys. To define an API key, create a `Secret` in the cluster containing an `api_key` entry that holds the value of the API key. The resource must also include the same `labels` listed in the Authorino `AuthConfig` custom resource for the protected API that accepts the API key as a valid credential. For example:
 
 For the following custom resource:
 
 ```yaml
-apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
@@ -256,13 +256,13 @@ Authorino can verify Kubernetes-valid access tokens (using Kubernetes [TokenRevi
 
 These tokens can be either `ServiceAccount` tokens such as the ones issued by kubelet as part of Kubernetes [Service Account Token Volume Projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection), or any valid user access tokens issued to users of the Kubernetes server API.
 
-The list of `audiences` of the token must include the requested host of the protected API (default), or all the audiences specified in the Authorino `Service` custom resource. For example:
+The list of `audiences` of the token must include the requested host of the protected API (default), or all the audiences specified in the Authorino `AuthConfig` custom resource. For example:
 
 For the following custom resource, the Kubernetes token must include the audience **my-api.io**:
 
 ```yaml
-apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
@@ -276,8 +276,8 @@ spec:
 Whereas for the following custom resource, the Kubernetes token audiences must include **foo** and **bar**:
 
 ```yaml
-apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
@@ -309,7 +309,7 @@ For bare OAuth 2.0 implementations, Authorino can perform token introspection on
 
 Authorino does not implement any of OAuth 2.0 grants for the applications to obtain the token. However, it can verify supplied tokens with the OAuth server, including opaque tokens, as long as the server exposes the `token_introspect` endpoint ([RFC 7662](https://tools.ietf.org/html/rfc7662)).
 
-Developers must set the token introspection endpoint in the [CR spec](#the-authorino-service-custom-resource-definition-crd), as well as a reference to the Kubernetes secret storing the credentials of the OAuth client to be used by Authorino when requesting the introspect.
+Developers must set the token introspection endpoint in the [CR spec](#the-authorino-service-authconfig-resource-definition-crd), as well as a reference to the Kubernetes secret storing the credentials of the OAuth client to be used by Authorino when requesting the introspect.
 
 ![OAuth 2.0 Token Introspect](http://www.plantuml.com/plantuml/png/NP1DJiD038NtSmehQuQgsr4R5TZ0gXLaHwHgD779g8aTF1xAZv0u3GVZ9BHH18YbttkodxzLKY-Q-ywaVQJ1Y--XP-BG2lS8AXcDkRSbN6HjMIAnWrjyp9ZK_4Xmz8lrQOI4yeHIW8CRKk4qO51GtYCPOaMG-D2gWytwhe9P_8rSLzLcDZ-VrtJ5f4XggvS17VXXw6Bm6fbcp_PmEDWTIs-pT4Y16sngccgyZY47b-W51HQJRqCNJ-k2O9FAcceQsomNsgBr8M1ATbJAoTdgyV2sZQJBHKueji5T96nAy-z5-vSAE7Y38gbNBDo8xGo-FZxXtQoGcYFVRm00)
 
@@ -365,11 +365,11 @@ You can model authorization policies in [Rego language](https://www.openpolicyag
 
 Festival Wristbands are signed OpenID Connect JSON Web Tokens (JWTs) issued by Authorino at the end of the auth pipeline and passed back to the client, typically in added HTTP response header. It is an opt-in feature that can be used to implement Edge Authentication Architecture (EAA) and enable token normalization. Authorino wristbands include minimal standard JWT claims such as `iss`, `iat`, and `exp`, and optional user-defined custom claims, whose values can be static or dynamically fetched from the authorization JSON.
 
-The Authorino `Service` custom resource below sets an API protection that issues a wristband after a successful authentication via API key. Apart from standard JWT claims, the wristband contains 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the date/time of creation of the secret that represents the API key used to authenticate.
+The Authorino `AuthConfig` custom resource below sets an API protection that issues a wristband after a successful authentication via API key. Apart from standard JWT claims, the wristband contains 2 custom claims: a static value `aud=internal` and a dynamic value `born` that fetches from the authorization JSON the date/time of creation of the secret that represents the API key used to authenticate.
 
 ```yaml
-apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
 metadata:
   namespace: my-namespace
   name: my-api-protection
@@ -416,11 +416,11 @@ For each protected API configured for the Festival Wristband issuing, Authorino 
 
 Dynamic JSON response are user-defined JSON objects generated by Authorino in the response phase, from static or dynamic data of the auth pipeline (see [The Auth Pipeline](#the-auth-pipeline) and [The Authorization JSON](#the-authorization-json)), and passed back to the external authorization client within added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata).
 
-The following Authorino `Service` custom resource is an example that defines 3 dynamic JSON response items, where two items are returned to the client, stringified, in added HTTP headers, and the third is wrapped as Envoy Dynamic Metadata("emitted", in Envoy terminology). Envoy proxy can be configured to "pipe" dynamic metadata emitted by one filter into another filter – for example, from external authorization to rate limit.
+The following Authorino `AuthConfig` custom resource is an example that defines 3 dynamic JSON response items, where two items are returned to the client, stringified, in added HTTP headers, and the third is wrapped as Envoy Dynamic Metadata("emitted", in Envoy terminology). Envoy proxy can be configured to "pipe" dynamic metadata emitted by one filter into another filter – for example, from external authorization to rate limit.
 
 ```yaml
-apiVersion: config.authorino.3scale.net/v1beta1
-kind: Service
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
 metadata:
   namespace: my-namespace
   name: my-api-protection

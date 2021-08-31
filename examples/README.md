@@ -93,7 +93,7 @@ stringData:
 
 ```sh
 kubectl -n authorino apply -f ./examples/simple-api-key.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/friend-1-api-key-1 created
 ```
 
@@ -139,7 +139,7 @@ identity:
 
 ```sh
 kubectl -n authorino apply -f ./examples/alternative-credentials-location.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/friend-1-api-key-1 created
 ```
 
@@ -160,7 +160,7 @@ Uses Authorino's JSON pattern matching authorization for block requestes from a 
 
 ```sh
 kubectl -n authorino apply -f ./examples/forbidden-ip.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/friend-1-api-key-1 created
 ```
 
@@ -180,7 +180,7 @@ Similar to the [Forbidden IP example](#forbidden-ip), to show how Authorino's JS
 
 ```sh
 kubectl -n authorino apply -f ./examples/ip-range-allow-list.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/friend-1-api-key-1 created
 ```
 
@@ -201,7 +201,7 @@ Based on Authorino OPA implementation. The examples uses the `creationTimestamp`
 
 ```sh
 kubectl -n authorino apply -f ./examples/short-lived-api-keys.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/friend-1-api-key-1 created
 # secret/beta-tester-1-api-key-1 created
 ```
@@ -225,7 +225,7 @@ It authorizes only GET requests whenever the source IP is not the one of a local
 
 ```sh
 kubectl -n authorino apply -f ./examples/read-only-outside.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/friend-1-api-key-1 created
 ```
 
@@ -260,7 +260,7 @@ identity:
 
 ```sh
 sed -e "s/\${AUTHORINO_NAMESPACE}/authorino/g" ./examples/kubernetes-auth.yaml | kubectl -n authorino apply -f -
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # serviceaccount/sa-token-issuer created
 # clusterrolebinding.rbac.authorization.k8s.io/sa-token-issuer created
 # serviceaccount/api-consumer created
@@ -297,7 +297,7 @@ Introspection of supplied OAuth2 access tokens with Keycloak.
 
 ```sh
 kubectl -n authorino apply -f ./examples/simple-oauth2.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/oauth2-token-introspection-credentials created
 ```
 
@@ -330,7 +330,7 @@ The example connects Authorino to a Keycloak realm as source of identities via O
 
 ```sh
 kubectl -n authorino apply -f ./examples/simple-oidc.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 ```
 
 ### Try it out:
@@ -360,7 +360,7 @@ It leverages OIDC UserInfo requests during Authorino metadata phase to validate 
 
 ```sh
 kubectl -n authorino apply -f ./examples/oidc-active-tokens-only.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 ```
 
 ### Try it out:
@@ -392,7 +392,7 @@ The example sets two sources of identity to verify OIDC tokens (JWTs) – i.e., 
 
 ```sh
 kubectl -n authorino apply -f ./examples/oidc-multiple-sources.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 ```
 
 ### Try it out:
@@ -437,7 +437,7 @@ According to the policy, everyone can send either GET or POST requests to `/gree
 
 ```sh
 kubectl -n authorino apply -f ./examples/resource-level-authz.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/talker-api-uma-credentials created
 ```
 
@@ -486,7 +486,7 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_PETER" http:/
 
 ```sh
 kubectl -n authorino apply -f ./examples/keycloak-rbac.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 ```
 
 ### Try it out:
@@ -516,7 +516,7 @@ curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN_JANE" http://
 
 ```sh
 kubectl -n authorino apply -f ./examples/ext-http-metadata.yaml
-# service.config.authorino.3scale.net/talker-api-protection configured
+# service.authorino.3scale.net/talker-api-protection configured
 # secret/echo-metadata-shared-auth configured
 # secret/friend-1-api-key-1 configured
 ```
@@ -534,7 +534,7 @@ Festival Wristbands are OpenID Connect JSON Web Tokens (JWTs) issued and signed 
 
 In this example, we set an API protection that issues a wristband after a successful authentication via API key. Two sets of API keys are accepted to authenticate: API keys defined as Kubernetes `Secret`s containing the metadata labels `authorino.3scale.net/managed-by=authorino` and `authorino.3scale.net/group=users`, and API keys defined as Kubernetes `Secret`s containing the metadata labels `authorino.3scale.net/managed-by=authorino` and `authorino.3scale.net/group=admins`. Each set of API keys represents a distinct group of users of the API.
 
-The issued wristbands include the standard JWT claims `iss`, `iat`, `exp` and `sub`, plus 3 user-defined custom claims: a static custom claim `aud=internal`, a dynamic custom claim `born` whose value (fetched from the authorization JSON) corresponds to the date/time of creation of the Kubernetes `Secret` that represents the API key used to authenticate, and another dynamic custom claim `roles` with value statically set as an extended property of each API key identity source (see the `extendedProperties` option of the Authorino `Service` CRD).
+The issued wristbands include the standard JWT claims `iss`, `iat`, `exp` and `sub`, plus 3 user-defined custom claims: a static custom claim `aud=internal`, a dynamic custom claim `born` whose value (fetched from the authorization JSON) corresponds to the date/time of creation of the Kubernetes `Secret` that represents the API key used to authenticate, and another dynamic custom claim `roles` with value statically set as an extended property of each API key identity source (see the `extendedProperties` option of the Authorino `AuthConfig` CRD).
 
 As enforced by policy defined in the example, users must first send a request to `/auth` to obtain a wristband ("edge authentication"). The wristband will be echoed back to the user by the example upstream API in an added HTTP header `x-ext-auth-wristband`, base64-encoded. `/auth` is the only path that will accept requests authenticated via API key. Then, consecutive requests to other paths of the example API shall be sent authenticating with the obtained wristband.
 
@@ -551,7 +551,7 @@ Accepting the same wristbands as valid authentication method to consume the API 
 
 ```sh
 kubectl -n authorino apply -f ./examples/wristband.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/edge-api-key-1 created
 # secret/edge-api-key-2 created
 # secret/my-signing-key created
@@ -615,7 +615,7 @@ This example defines a JSON object response to be generated by Authorino after t
 
 ```sh
 kubectl -n authorino apply -f ./examples/dynamic-response.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/edge-api-key-1 created
 # secret/edge-api-key-2 created
 # secret/wristband-signing-key created
@@ -663,7 +663,7 @@ make limitador
 
 ```sh
 kubectl -n authorino apply -f ./examples/dynamic-response.yaml
-# service.config.authorino.3scale.net/talker-api-protection created
+# service.authorino.3scale.net/talker-api-protection created
 # secret/edge-api-key-1 created
 # secret/edge-api-key-2 created
 # secret/wristband-signing-key created

@@ -178,7 +178,7 @@ For a detailed description of the features above, refer to the [Architecture](/d
 
 ## Architecture
 
-The [Architecture](docs/architecture.md) section of the docs covers the details of [protecting your APIs](docs/architecture.md#protecting-upstream-apis-with-envoy-and-authorino) with Envoy and Authorino, including a description of the components involved and specification of the [Authorino `Service` Custom Resource Definition (CRD)](docs/architecture.md#the-authorino-service-custom-resource-definition-crd).
+The [Architecture](docs/architecture.md) section of the docs covers the details of [protecting your APIs](docs/architecture.md#protecting-upstream-apis-with-envoy-and-authorino) with Envoy and Authorino, including a description of the components involved and specification of the [Authorino `AuthConfig` Custom Resource Definition (CRD)](docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd).
 
 You will also find in that section information about the Authorino [Auth Pipeline](docs/architecture.md#the-auth-pipeline), and detailed [description of features](docs/architecture.md#feature-description).
 
@@ -186,7 +186,7 @@ You will also find in that section information about the Authorino [Auth Pipelin
 
 1. [Deploy](docs/deploy.md) Authorino to the Kubernetes server
 2. Have your upstream API [ready](docs/architecture.md#protecting-upstream-apis-with-envoy-and-authorino) to be protected
-3. [Write](docs/architecture.md#the-authorino-service-custom-resource-definition-crd) and apply a `config.authorino.3scale.net`/`Service` custom resource declaring the desired state of the protection of your API
+3. [Write](docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) and apply a `authorino.3scale.net`/`AuthConfig` custom resource declaring the desired state of the protection of your API
 
 ## Examples and Tutorials
 

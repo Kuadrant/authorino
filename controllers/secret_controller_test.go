@@ -48,10 +48,10 @@ func (c *isPredicate) String() string {
 }
 
 type secretReconcilerTest struct {
-	secret            v1.Secret
-	service           v1beta1.Service
-	serviceReconciler *fakeReconciler
-	secretReconciler  *SecretReconciler
+	secret               v1.Secret
+	authConfig           v1beta1.AuthConfig
+	authConfigReconciler *fakeReconciler
+	secretReconciler     *SecretReconciler
 }
 
 func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTest {
@@ -70,16 +70,16 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		},
 	}
 
-	service := v1beta1.Service{
+	authConfig := v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "config.authorino.3scale.net/v1beta1",
+			Kind:       "AuthConfig",
+			APIVersion: "authorino.3scale.net/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "service1",
+			Name:      "auth-config-1",
 			Namespace: "authorino",
 		},
-		Spec: v1beta1.ServiceSpec{
+		Spec: v1beta1.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
 			Identity: []*v1beta1.Identity{
 				{
@@ -95,7 +95,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 			Metadata:      []*v1beta1.Metadata{},
 			Authorization: []*v1beta1.Authorization{},
 		},
-		Status: v1beta1.ServiceStatus{
+		Status: v1beta1.AuthConfigStatus{
 			Ready: false,
 		},
 	}
@@ -103,24 +103,24 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	scheme := runtime.NewScheme()
 	_ = v1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
-	// Create a fake client with a service and a secret.
-	client := fake.NewFakeClientWithScheme(scheme, &service, &secret)
+	// Create a fake client with an auth config and a secret.
+	client := fake.NewFakeClientWithScheme(scheme, &authConfig, &secret)
 
-	serviceReconciler := &fakeReconciler{
+	authConfigReconciler := &fakeReconciler{
 		Finished: make(chan bool),
 	}
 	secretReconciler := &SecretReconciler{
-		Client:            client,
-		Log:               ctrl.Log.WithName("reconcilerTest"),
-		Scheme:            nil,
-		SecretLabel:       "authorino.3scale.net/managed-by",
-		ServiceReconciler: serviceReconciler,
+		Client:               client,
+		Log:                  ctrl.Log.WithName("reconcilerTest"),
+		Scheme:               nil,
+		SecretLabel:          "authorino.3scale.net/managed-by",
+		AuthConfigReconciler: authConfigReconciler,
 	}
 
 	t := secretReconcilerTest{
 		secret,
-		service,
-		serviceReconciler,
+		authConfig,
+		authConfigReconciler,
 		secretReconciler,
 	}
 
@@ -166,12 +166,12 @@ func TestMissingAuthorinoLabel(t *testing.T) {
 
 	_, err := reconcilerTest.reconcile()
 
-	assert.Check(t, !reconcilerTest.serviceReconciler.Reconciled)
+	assert.Check(t, !reconcilerTest.authConfigReconciler.Reconciled)
 	assert.NilError(t, err)
 }
 
-func TestSameLabelsAsService(t *testing.T) {
-	// secret with the authorino "managed-by" label and the same labels as the service
+func TestSameLabelsAsAuthConfig(t *testing.T) {
+	// secret with the authorino "managed-by" label and the same labels as specified in the auth config
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
 		"authorino.3scale.net/managed-by": "authorino",
 		"target":                          "echo-api",
@@ -179,21 +179,21 @@ func TestSameLabelsAsService(t *testing.T) {
 
 	_, err := reconcilerTest.reconcile()
 
-	finished := <-reconcilerTest.serviceReconciler.Finished
+	finished := <-reconcilerTest.authConfigReconciler.Finished
 
 	assert.Check(t, finished)
-	assert.Check(t, reconcilerTest.serviceReconciler.Reconciled)
+	assert.Check(t, reconcilerTest.authConfigReconciler.Reconciled)
 	assert.NilError(t, err)
 }
 
 func TestUnmatchingLabels(t *testing.T) {
-	// secret with the authorino "managed-by" label but not the same labels as the service
+	// secret with the authorino "managed-by" label but not the same labels as specified in the auth config
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
 		"authorino.3scale.net/managed-by": "authorino",
 	})
 
 	_, err := reconcilerTest.reconcile()
 
-	assert.Check(t, !reconcilerTest.serviceReconciler.Reconciled)
+	assert.Check(t, !reconcilerTest.authConfigReconciler.Reconciled)
 	assert.NilError(t, err)
 }

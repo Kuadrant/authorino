@@ -102,25 +102,25 @@ func main() {
 
 	cache := cache.NewCache()
 
-	// sets up the service reconciler
-	serviceReconciler := &controllers.ServiceReconciler{
+	// sets up the auth config reconciler
+	authConfigReconciler := &controllers.AuthConfigReconciler{
 		Client: mgr.GetClient(),
 		Cache:  cache,
-		Log:    ctrl.Log.WithName("authorino").WithName("controller").WithName("Service"),
+		Log:    ctrl.Log.WithName("authorino").WithName("controller").WithName("AuthConfig"),
 		Scheme: mgr.GetScheme(),
 	}
-	if err = serviceReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Service")
+	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "AuthConfig")
 		os.Exit(1)
 	}
 
 	// sets up secret reconciler
 	if err = (&controllers.SecretReconciler{
-		Client:            mgr.GetClient(),
-		Log:               ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
-		Scheme:            mgr.GetScheme(),
-		SecretLabel:       authorinoWatchedSecretLabel,
-		ServiceReconciler: serviceReconciler,
+		Client:               mgr.GetClient(),
+		Log:                  ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
+		Scheme:               mgr.GetScheme(),
+		SecretLabel:          authorinoWatchedSecretLabel,
+		AuthConfigReconciler: authConfigReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
@@ -152,11 +152,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// sets up service status update controller
-	if err = (&controllers.ServiceStatusUpdater{
+	// sets up auth config status update controller
+	if err = (&controllers.AuthConfigStatusUpdater{
 		Client: statusUpdateManager.GetClient(),
 	}).SetupWithManager(statusUpdateManager); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ServiceStatusUpdate")
+		setupLog.Error(err, "unable to create controller", "controller", "AuthConfigStatusUpdate")
 	}
 
 	setupLog.Info("Starting status update manager")
@@ -167,12 +167,12 @@ func main() {
 	}
 }
 
-func startExtAuthServer(serviceCache cache.Cache) {
-	startExtAuthServerGRPC(serviceCache)
-	startExtAuthServerHTTP(serviceCache)
+func startExtAuthServer(authConfigCache cache.Cache) {
+	startExtAuthServerGRPC(authConfigCache)
+	startExtAuthServerHTTP(authConfigCache)
 }
 
-func startExtAuthServerGRPC(serviceCache cache.Cache) {
+func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 	logger := ctrl.Log.WithName("authorino").WithName("auth")
 
 	if lis, err := net.Listen("tcp", ":"+extAuthGRPCPort); err != nil {
@@ -199,7 +199,7 @@ func startExtAuthServerGRPC(serviceCache cache.Cache) {
 
 		grpcServer := grpc.NewServer(grpcServerOpts...)
 
-		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: serviceCache})
+		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache})
 		healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
 
 		go func() {
@@ -211,11 +211,11 @@ func startExtAuthServerGRPC(serviceCache cache.Cache) {
 	}
 }
 
-func startExtAuthServerHTTP(serviceCache cache.Cache) {
+func startExtAuthServerHTTP(authConfigCache cache.Cache) {
 	// TODO
 }
 
-func startOIDCServer(serviceCache cache.Cache) {
+func startOIDCServer(authConfigCache cache.Cache) {
 	logger := ctrl.Log.WithName("authorino").WithName("oidc")
 
 	if lis, err := net.Listen("tcp", ":"+oidcHTTPPort); err != nil {
@@ -223,7 +223,7 @@ func startOIDCServer(serviceCache cache.Cache) {
 		os.Exit(1)
 	} else {
 		http.Handle("/", &service.OidcService{
-			Cache: serviceCache,
+			Cache: authConfigCache,
 		})
 
 		tlsEnabled := oidcTLSCertPath != "" && oidcTLSCertKeyPath != ""

@@ -42,25 +42,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ServiceReconciler reconciles a Service object
-type ServiceReconciler struct {
+// AuthConfigReconciler reconciles an AuthConfig object
+type AuthConfigReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	Cache  cache.Cache
 }
 
-// +kubebuilder:rbac:groups=config.authorino.3scale.net,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
-func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("service", req.NamespacedName)
+func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("authConfig", req.NamespacedName)
 
-	service := configv1beta1.Service{}
-	err := r.Get(ctx, req.NamespacedName, &service)
+	authConfig := configv1beta1.AuthConfig{}
+	err := r.Get(ctx, req.NamespacedName, &authConfig)
 	if err != nil && errors.IsNotFound(err) {
 
 		// As we can't get the object, that means it was deleted.
-		// Delete all the services related to this k8s object.
+		// Delete all the authconfigs related to this k8s object.
 		log.Info("object has been deleted, deleted related configs", "object", req)
 
 		//Cleanup all the hosts related to this CRD object.
@@ -73,21 +73,21 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// The object exists so we need to either create it or update
-	serviceConfigByHost, err := r.translateService(ctx, &service)
+	authConfigByHost, err := r.translateAuthConfig(ctx, &authConfig)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	for serviceHost, apiConfig := range serviceConfigByHost {
+	for host, apiConfig := range authConfigByHost {
 		// Check for host collision with another namespace
-		if cachedKey, found := r.Cache.FindId(serviceHost); found {
+		if cachedKey, found := r.Cache.FindId(host); found {
 			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
-				log.Info("host already taken in another namespace", "host", serviceHost)
+				log.Info("host already taken in another namespace", "host", host)
 				return ctrl.Result{}, nil
 			}
 		}
 
-		if err := r.Cache.Set(req.String(), serviceHost, apiConfig, true); err != nil {
+		if err := r.Cache.Set(req.String(), host, apiConfig, true); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -95,11 +95,11 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceReconciler) translateService(ctx context.Context, service *configv1beta1.Service) (map[string]authorinoService.APIConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *configv1beta1.AuthConfig) (map[string]authorinoService.APIConfig, error) {
 	identityConfigs := make([]config.IdentityConfig, 0)
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
 
-	for _, identity := range service.Spec.Identity {
+	for _, identity := range authConfig.Spec.Identity {
 		extendedProperties := make([]common.JSONProperty, 0)
 		for _, property := range identity.ExtendedProperties {
 			extendedProperties = append(extendedProperties, common.JSONProperty{
@@ -125,7 +125,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 
 			secret := &v1.Secret{}
 			if err := r.Client.Get(ctx, types.NamespacedName{
-				Namespace: service.Namespace,
+				Namespace: authConfig.Namespace,
 				Name:      oauth2Identity.Credentials.Name},
 				secret); err != nil {
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
@@ -165,7 +165,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 
 	interfacedMetadataConfigs := make([]common.AuthConfigEvaluator, 0)
 
-	for _, metadata := range service.Spec.Metadata {
+	for _, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &config.MetadataConfig{
 			Name: metadata.Name,
 		}
@@ -175,7 +175,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 		case configv1beta1.MetadataUma:
 			secret := &v1.Secret{}
 			if err := r.Client.Get(ctx, types.NamespacedName{
-				Namespace: service.Namespace,
+				Namespace: authConfig.Namespace,
 				Name:      metadata.UMA.Credentials.Name},
 				secret); err != nil {
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
@@ -211,7 +211,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 			secret := &v1.Secret{}
 			if sharedSecretRef != nil {
 				if err := r.Client.Get(ctx, types.NamespacedName{
-					Namespace: service.Namespace,
+					Namespace: authConfig.Namespace,
 					Name:      sharedSecretRef.Name},
 					secret); err != nil {
 					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
@@ -235,7 +235,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
 
-	for index, authorization := range service.Spec.Authorization {
+	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
 			Name: authorization.Name,
 		}
@@ -243,7 +243,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 		switch authorization.GetType() {
 		// opa
 		case configv1beta1.AuthorizationOPA:
-			policyName := service.GetNamespace() + "/" + service.GetName() + "/" + authorization.Name
+			policyName := authConfig.GetNamespace() + "/" + authConfig.GetName() + "/" + authorization.Name
 			translatedAuthorization.OPA = authorinoAuthorization.NewOPAAuthorization(policyName, authorization.OPA.InlineRego, index)
 
 		// json
@@ -282,7 +282,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 
 	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
 
-	for _, response := range service.Spec.Response {
+	for _, response := range authConfig.Spec.Response {
 		translatedResponse := config.NewResponseConfig(response.Name, string(response.Wrapper), response.WrapperKey)
 
 		switch response.GetType() {
@@ -294,7 +294,7 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 			for _, signingKeyRef := range wristband.SigningKeyRefs {
 				secret := &v1.Secret{}
 				secretName := types.NamespacedName{
-					Namespace: service.Namespace,
+					Namespace: authConfig.Namespace,
 					Name:      signingKeyRef.Name,
 				}
 				if err := r.Client.Get(ctx, secretName, secret); err != nil {
@@ -366,15 +366,15 @@ func (r *ServiceReconciler) translateService(ctx context.Context, service *confi
 		ResponseConfigs:      interfacedResponseConfigs,
 	}
 
-	for _, host := range service.Spec.Hosts {
+	for _, host := range authConfig.Spec.Hosts {
 		config[host] = apiConfig
 	}
 	return config, nil
 }
 
-func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&configv1beta1.Service{}).
+		For(&configv1beta1.AuthConfig{}).
 		Complete(r)
 }
 
