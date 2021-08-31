@@ -54,7 +54,6 @@ Follow the instructions below to deploy the stack of resources and applications 
     ```sh
     $ export OPENSHIFT_TOKEN=my-openshift-access-token \
              AUTHORINO_NAMESPACE=authorino-demo \
-             AUTHORINO_IMAGE=quay.io/3scale/authorino:20210415 \
              TALKER_API_HOST=talker-api.apps.my-openshift-server
     ```
 
@@ -73,7 +72,7 @@ Follow the instructions below to deploy the stack of resources and applications 
 5. Patch the resources replacing the parameters to your env values:
 
    ```sh
-   $ sed -i -e "s/\${AUTHORINO_NAMESPACE}/$AUTHORINO_NAMESPACE/g;s/\${AUTHORINO_IMAGE}/$(print $AUTHORINO_IMAGE | sed -e 's/\//\\\//g')/g;s/\${TALKER_API_HOST}/$(print $TALKER_API_HOST | sed -e 's/\./\\\./g')/g" *.yaml
+   $ sed -i -e "s/\${AUTHORINO_NAMESPACE}/$AUTHORINO_NAMESPACE/g;s/\${TALKER_API_HOST}/$(print $TALKER_API_HOST | sed -e 's/\./\\\./g')/g" *.yaml
    ```
 
 6. Deploy Authorino:
