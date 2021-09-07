@@ -3,9 +3,14 @@ package authorization
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"regexp"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 
 	"github.com/open-policy-agent/opa/rego"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,29 +24,43 @@ default allow = false
 	policyUIDHashSeparator = "|"
 
 	opaPolicyPrecompileErrorMsg = "Failed to precompile OPA policy"
+	regoDownloadErrorMsg        = "Failed to download Rego data"
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
 var (
-	opaLog = ctrl.Log.WithName("Authorino").WithName("ApiKey")
+	opaLog = ctrl.Log.WithName("Authorino").WithName("OPA")
 )
 
-func NewOPAAuthorization(policyName string, rego string, nonce int) *OPA {
+func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int) (*OPA, error) {
+	if rego == "" && externalSource.Endpoint != "" {
+		downloadedRego, err := externalSource.downloadRegoDataFromUrl()
+		if err != nil {
+			opaLog.Error(err, regoDownloadErrorMsg, "secret", policyName)
+			return nil, err
+		}
+		rego = downloadedRego
+	}
+
+	rego = cleanUpRegoDocument(rego)
+
 	o := &OPA{
-		Rego:       rego,
-		policyUID:  generatePolicyUID(policyName, rego, nonce),
-		opaContext: context.TODO(),
+		Rego:              rego,
+		OPAExternalSource: externalSource,
+		policyUID:         generatePolicyUID(policyName, rego, nonce),
+		opaContext:        context.TODO(),
 	}
 	if err := o.precompilePolicy(); err != nil {
 		opaLog.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
-		return nil
+		return nil, err
 	} else {
-		return o
+		return o, nil
 	}
 }
 
 type OPA struct {
-	Rego string `yaml:"rego"`
+	Rego              string `yaml:"rego"`
+	OPAExternalSource OPAExternalSource
 
 	opaContext context.Context
 	policy     *rego.PreparedEvalQuery
@@ -80,4 +99,56 @@ func (opa *OPA) precompilePolicy() error {
 func generatePolicyUID(policyName string, policyContent string, nonce int) string {
 	data := []byte(fmt.Sprint(nonce) + policyUIDHashSeparator + policyName + policyUIDHashSeparator + policyContent)
 	return fmt.Sprintf("%x", md5.Sum(data))
+}
+
+type responseOpaJson struct {
+	Result resultJson `json:"result"`
+}
+
+type resultJson struct {
+	Raw string `json:"raw"`
+}
+
+func cleanUpRegoDocument(rego string) string {
+	r, _ := regexp.Compile("(\\s)*package.*[;\\n]+")
+	return r.ReplaceAllString(rego, "")
+}
+
+type OPAExternalSource struct {
+	Endpoint     string
+	SharedSecret string
+	auth_credentials.AuthCredentials
+}
+
+func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
+	req, err := ext.BuildRequestWithCredentials(context.TODO(), ext.Endpoint, "GET", ext.SharedSecret, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if resp, err := http.DefaultClient.Do(req); err != nil {
+		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
+	} else {
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("unable to read response body: %v", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("%s: %s", resp.Status, body)
+		}
+
+		result := string(body)
+		//json
+		if resp.Header["Content-Type"][0] == "application/json" {
+			var jsonResponse responseOpaJson
+			if err := json.Unmarshal(body, &jsonResponse); err != nil {
+				return "", fmt.Errorf("unable to unmarshal json response: %v", err)
+			}
+			result = jsonResponse.Result.Raw
+		}
+		return result, nil
+	}
 }

@@ -244,7 +244,32 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		// opa
 		case configv1beta1.AuthorizationOPA:
 			policyName := authConfig.GetNamespace() + "/" + authConfig.GetName() + "/" + authorization.Name
-			translatedAuthorization.OPA = authorinoAuthorization.NewOPAAuthorization(policyName, authorization.OPA.InlineRego, index)
+			opa := authorization.OPA
+			externalRegistry := opa.ExternalRegistry
+			secret := &v1.Secret{}
+			var sharedSecret string
+
+			if externalRegistry.SharedSecret != nil {
+				if err := r.Client.Get(ctx, types.NamespacedName{
+					Namespace: authConfig.Namespace,
+					Name:      externalRegistry.SharedSecret.Name},
+					secret); err != nil {
+					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+				}
+				sharedSecret = string(secret.Data[externalRegistry.SharedSecret.Key])
+			}
+
+			externalSource := authorinoAuthorization.OPAExternalSource{
+				Endpoint:        externalRegistry.Endpoint,
+				SharedSecret:    sharedSecret,
+				AuthCredentials: auth_credentials.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
+			}
+
+			var err error
+			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, index)
+			if err != nil {
+				return nil, err
+			}
 
 		// json
 		case configv1beta1.AuthorizationJSONPatternMatching:

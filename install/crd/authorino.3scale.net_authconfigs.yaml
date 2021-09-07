@@ -161,6 +161,68 @@ spec:
                     opa:
                       description: Open Policy Agent (OPA) authorization policy.
                       properties:
+                        externalRegistry:
+                          description: External registry of OPA policies.
+                          properties:
+                            credentials:
+                              description: Defines where client credentials will be
+                                passed in the request to the service. If omitted,
+                                it defaults to client credentials passed in the HTTP
+                                Authorization header and the "Bearer" prefix expected
+                                prepended to the secret value.
+                              properties:
+                                in:
+                                  default: authorization_header
+                                  description: The location in the request where client
+                                    credentials shall be passed on requests authenticating
+                                    with this identity source/authentication mode.
+                                  enum:
+                                  - authorization_header
+                                  - custom_header
+                                  - query
+                                  - cookie
+                                  type: string
+                                keySelector:
+                                  description: Used in conjunction with the `in` parameter.
+                                    When used with `authorization_header`, the value
+                                    is the prefix of the client credentials string,
+                                    separated by a white-space, in the HTTP Authorization
+                                    header (e.g. "Bearer", "Basic"). When used with
+                                    `custom_header`, `query` or `cookie`, the value
+                                    is the name of the HTTP header, query string parameter
+                                    or cookie key, respectively.
+                                  type: string
+                              required:
+                              - keySelector
+                              type: object
+                            endpoint:
+                              description: Endpoint of the HTTP external registry.
+                                The endpoint must respond with either plain/text or
+                                application/json content-type. In the latter case,
+                                the JSON returned in the body must include a path
+                                `result.raw`, where the raw Rego policy will be extracted
+                                from. This complies with the specification of the
+                                OPA REST API (https://www.openpolicyagent.org/docs/latest/rest-api/#get-a-policy).
+                              type: string
+                            sharedSecretRef:
+                              description: Reference to a Secret key whose value will
+                                be passed by Authorino in the request. The HTTP service
+                                can use the shared secret to authenticate the origin
+                                of the request.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  description: The name of the secret in the Authorino's
+                                    namespace to select from.
+                                  type: string
+                              required:
+                              - key
+                              - name
+                              type: object
+                          type: object
                         inlineRego:
                           description: Authorization policy as a Rego language document.
                             The Rego document must include the "allow" condition,
