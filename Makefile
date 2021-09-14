@@ -8,6 +8,8 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+
 # Image URL to use all building/pushing image targets
 DEFAULT_AUTHORINO_IMAGE = quay.io/3scale/authorino:latest
 AUTHORINO_IMAGE ?= $(DEFAULT_AUTHORINO_IMAGE)
@@ -37,11 +39,11 @@ run: generate fmt vet manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
-install: manifests kustomize
+install: manifests $(KUSTOMIZE)
 	$(KUSTOMIZE) build install | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
-uninstall: manifests kustomize
+uninstall: manifests $(KUSTOMIZE)
 	$(KUSTOMIZE) build install | kubectl delete -f -
 
 # Requests TLS certificates for services if cert-manager.io is installed, the secret is not already present and TLS is enabled
@@ -65,8 +67,37 @@ else
 	echo "tls disabled."
 endif
 
+CONTROLLER_GEN=$(PROJECT_DIR)/bin/controller-gen
+# find or download controller-gen
+# download controller-gen if necessary
+$(CONTROLLER_GEN):
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+
+controller-gen: $(CONTROLLER_GEN)
+
+KUSTOMIZE = $(PROJECT_DIR)/bin/kustomize
+# Download kustomize locally if necessary
+$(KUSTOMIZE):
+	@{ \
+	set -e ;\
+	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
+	}
+
+kustomize: $(KUSTOMIZE)
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
+deploy: manifests $(KUSTOMIZE)
 	$(MAKE) certs AUTHORINO_NAMESPACE=$(AUTHORINO_NAMESPACE) AUTHORINO_DEPLOYMENT=$(AUTHORINO_DEPLOYMENT)
 	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE) && $(KUSTOMIZE) edit set replicas authorino-controller-manager=$(AUTHORINO_REPLICAS)
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
@@ -76,7 +107,7 @@ deploy: manifests kustomize
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace authorino
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
+manifests: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd  output:rbac:artifacts:config=install/rbac
 
 # Download vendor dependencies
@@ -94,7 +125,7 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: vendor controller-gen
+generate: vendor $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
@@ -105,37 +136,6 @@ docker-build: vendor
 docker-push:
 	docker push ${AUTHORINO_IMAGE}
 
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
-kustomize:
-ifeq (, $(shell which kustomize))
-	@{ \
-	set -e ;\
-	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
-	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
-	}
-KUSTOMIZE=$(GOBIN)/kustomize
-else
-KUSTOMIZE=$(shell which kustomize)
-endif
 
 KIND_VERSION=v0.11.1
 
