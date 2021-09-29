@@ -1,0 +1,89 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: api-key-users
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  authorization:
+    - name: kubernetes-rbac
+      kubernetes:
+        user:
+          valueFrom:
+            authJSON: auth.identity.metadata.annotations.userid
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+  annotations:
+    userid: john
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-2
+  labels:
+    authorino.3scale.net/managed-by: authorino
+  annotations:
+    userid: jane
+stringData:
+  api_key: Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn
+type: Opaque
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: talker-api-greeter-role
+rules:
+- nonResourceURLs: ["/hello"]
+  verbs: ["get"]
+- nonResourceURLs: ["/hey"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: talker-api-speaker-role
+rules:
+- nonResourceURLs: ["/say/*"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: talker-api-greeter-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: talker-api-greeter-role
+subjects:
+- kind: User
+  name: john
+- kind: User
+  name: jane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: talker-api-speaker-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: talker-api-speaker-role
+subjects:
+- kind: User
+  name: john

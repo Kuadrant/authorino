@@ -16,6 +16,7 @@
   - [User-Managed Access (UMA) resource data](#user-managed-access-uma-resource-data)
   - [External HTTP authorization metadata](#external-http-authorization-metadata)
   - [Open Policy Agent (OPA) Rego policies](#open-policy-agent-opa-rego-policies)
+  - [Kubernetes authorization](#kubernetes-authorization)
   - [Festival Wristbands](#festival-wristbands)
   - [Dynamic JSON response](#dynamic-json-response)
 
@@ -360,6 +361,14 @@ A shared secret between Authorino and the external HTTP service must be defined 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs. Authorino reconciliation cycle keeps track of any changes in the custom resources affecting the written policies and automatically recompiles them with built-in OPA module, and cache them for fast evaluation during request-time.
 
 ![OPA](http://www.plantuml.com/plantuml/png/ZSv1IiH048NXVPsYc7tYVY0oeuYB0IFUeEcKfh2xAdPUATxUB4GG5B9_F-yxhKWDKGkjhsfBQgboTVCyDw_2Q254my1Fajso5arGjmvQXOU1pe7PcvfpTys7cz22Jet7n_E1ZrlqeYkayU95yoVz7loPt7fTjCX_nPRyN98vX8iyuyWvvLc8-hx_rhw5hDZ9l1Vmv3cg6FX3CRFQ4jZ3lNjF9H9sURVvUBbw62zq4fkYbYy0)
+
+### Kubernetes authorization
+
+Access control enforcement based on rules defined in the Kubernetes authorization system (e.g. as `ClusterRole` and `ClusterRoleBinding` resources of Kubernetes RBAC authorization).
+
+Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#subjectaccessreview-v1-authorization-k8s-io) inquiry checking with the underlying Kubernetes cluster whether the user can access the requested HTTP method (verb) and path ("non-resource URLs").
+
+The user can be specified as a fixed value or pattern to fetch from the Authorization JSON. An array of required groups can as well be specified.
 
 ### Festival Wristbands
 

@@ -298,6 +298,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				Rules:      rules,
 			}
 
+		case configv1beta1.AuthorizationKubernetesAuthz:
+			user := authorization.KubernetesAuthz.User
+			groups := authorization.KubernetesAuthz.Groups
+			var err error
+			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}, groups)
+			if err != nil {
+				return nil, err
+			}
+
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown authorization type %v", authorization)
 		}

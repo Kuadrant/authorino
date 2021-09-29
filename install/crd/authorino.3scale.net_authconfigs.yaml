@@ -75,7 +75,7 @@ spec:
                 items:
                   description: 'Authorization policy to be enforced. Apart from "name",
                     one of the following parameters is required and only one of the
-                    following parameters is allowed: "opa" or "json".'
+                    following parameters is allowed: "opa", "json" or "kubernetes".'
                   properties:
                     json:
                       description: JSON pattern matching authorization policy.
@@ -154,6 +154,34 @@ spec:
                             - value
                             type: object
                           type: array
+                      type: object
+                    kubernetes:
+                      description: Kubernetes authorization policy based on (non-resource)
+                        `SubjectAccessReview` Path and Verb are inferred from the
+                        request.
+                      properties:
+                        groups:
+                          description: Groups to test for.
+                          items:
+                            type: string
+                          type: array
+                        user:
+                          description: User to test for. If without "Groups", then
+                            is it interpreted as "What if User were not a member of
+                            any groups"
+                          properties:
+                            value:
+                              type: string
+                            valueFrom:
+                              properties:
+                                authJSON:
+                                  description: Selector to fill the value of claim
+                                    from the authorization JSON
+                                  type: string
+                              type: object
+                          type: object
+                      required:
+                      - user
                       type: object
                     name:
                       description: Name of the authorization policy.

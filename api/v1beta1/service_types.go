@@ -33,6 +33,7 @@ const (
 	MetadataUserinfo                 = "METADATA_USERINFO"
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
+	AuthorizationKubernetesAuthz     = "AUTHORIZATION_KUBERNETESAUTHZ"
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
 )
@@ -216,13 +217,14 @@ type Metadata_GenericHTTP struct {
 }
 
 // Authorization policy to be enforced.
-// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "opa" or "json".
+// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "opa", "json" or "kubernetes".
 type Authorization struct {
 	// Name of the authorization policy.
 	Name string `json:"name"`
 
-	OPA  *Authorization_OPA                 `json:"opa,omitempty"`
-	JSON *Authorization_JSONPatternMatching `json:"json,omitempty"`
+	OPA             *Authorization_OPA                 `json:"opa,omitempty"`
+	JSON            *Authorization_JSONPatternMatching `json:"json,omitempty"`
+	KubernetesAuthz *Authorization_KubernetesAuthz     `json:"kubernetes,omitempty"`
 }
 
 func (a *Authorization) GetType() string {
@@ -230,6 +232,8 @@ func (a *Authorization) GetType() string {
 		return AuthorizationOPA
 	} else if a.JSON != nil {
 		return AuthorizationJSONPatternMatching
+	} else if a.KubernetesAuthz != nil {
+		return AuthorizationKubernetesAuthz
 	}
 	return TypeUnknown
 }
@@ -283,6 +287,22 @@ type Authorization_JSONPatternMatching_Rule struct {
 	// The value of reference for the comparison with the content fetched from the authorization policy.
 	// If used with the "matches" operator, the value must compile to a valid Golang regex.
 	Value string `json:"value"`
+}
+
+type Authorization_KubernetesAuthz_User struct {
+	Value     string            `json:"value,omitempty"`
+	ValueFrom ValueFromAuthJSON `json:"valueFrom,omitempty"`
+}
+
+// Kubernetes authorization policy based on (non-resource) `SubjectAccessReview`
+// Path and Verb are inferred from the request.
+type Authorization_KubernetesAuthz struct {
+	// User to test for.
+	// If without "Groups", then is it interpreted as "What if User were not a member of any groups"
+	User Authorization_KubernetesAuthz_User `json:"user"`
+
+	// Groups to test for.
+	Groups []string `json:"groups,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=httpHeader;envoyDynamicMetadata

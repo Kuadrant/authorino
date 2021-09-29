@@ -14,9 +14,10 @@ var (
 )
 
 type AuthorizationConfig struct {
-	Name string                             `yaml:"name"`
-	OPA  *authorization.OPA                 `yaml:"opa,omitempty"`
-	JSON *authorization.JSONPatternMatching `yaml:"json,omitempty"`
+	Name            string                             `yaml:"name"`
+	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
+	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
+	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
 }
 
 func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
@@ -25,6 +26,8 @@ func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, ctx contex
 		return config.OPA.Call(pipeline, ctx)
 	case config.JSON != nil:
 		return config.JSON.Call(pipeline, ctx)
+	case config.KubernetesAuthz != nil:
+		return config.KubernetesAuthz.Call(pipeline, ctx)
 	default:
 		return false, fmt.Errorf("invalid authorization configs")
 	}

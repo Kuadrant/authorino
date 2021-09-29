@@ -51,6 +51,7 @@ For more information on the deployment options and resources included in the loc
 - [Short-lived API keys (the non-OIDC “beta-testers” use case)](#short-lived-api-keys-the-non-oidc-beta-testers-use-case)
 - [Read-only outside](#read-only-outside)
 - [Kubernetes authentication](#kubernetes-authentication)
+- [Kubernetes authorization](#kubernetes-authorization)
 - [Simple OAuth2 (token introspection)](#simple-oauth2-token-introspection)
 - [Simple OIDC (with Keycloak)](#simple-oidc-with-keycloak)
 - [OIDC UserInfo](#oidc-userinfo)
@@ -285,6 +286,62 @@ Send requests to the API:
 
 ```sh
 curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" http://localhost:8000/hello # 200
+```
+
+----
+## Kubernetes authorization
+
+It demonstrates Authorino authorization based on Kubernetes [SubjectAccessReview](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#subjectaccessreview-v1-authorization-k8s-io) API.
+
+Config:
+
+```yaml
+authorization:
+  - name: kubernetes-rbac
+    kubernetes:
+      user:
+        valueFrom:
+          authJSON: auth.identity.metadata.annotations.userid
+    […]
+```
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/kubernetes-authz.yaml
+# authconfig.authorino.3scale.net/talker-api-protection created
+# secret/api-key-1 created
+# secret/api-key-2 created
+# clusterrole.rbac.authorization.k8s.io/talker-api-greeter-role created
+# clusterrole.rbac.authorization.k8s.io/talker-api-speaker-role created
+# clusterrolebinding.rbac.authorization.k8s.io/talker-api-greeter-rolebinding created
+# clusterrolebinding.rbac.authorization.k8s.io/talker-api-speaker-rolebinding created
+```
+
+### Try it out:
+
+User _John_ can greet:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" http://localhost:8000/hello # 200
+```
+
+So does user _Jane_:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" http://localhost:8000/hello # 200
+```
+
+_John_ can use the `/say/*` endpoint of the API:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" http://localhost:8000/say/blah # 200
+```
+
+Whereas _Jane_ cannot:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" http://localhost:8000/say/blah # 403
 ```
 
 ----
