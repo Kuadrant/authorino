@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"gotest.tools/assert"
+
+	"github.com/tidwall/gjson"
 )
 
 func TestJSONValueResolveFor(t *testing.T) {
@@ -56,4 +58,27 @@ func TestJSONValueResolveFor(t *testing.T) {
 	var resolvedRoles []string
 	_ = json.Unmarshal(resolvedValueAsJSON, &resolvedRoles)
 	assert.DeepEqual(t, resolvedRoles, []string{"user", "admin"})
+}
+
+func TestExtractJSONStr(t *testing.T) {
+	const jsonData = `{"auth":{"identity":{"serviceaccount":{"name":"my:ns:sa","long-name":"SA in the NS namespace"}}}}`
+
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.serviceaccount.long-name.@extract`).String(), "SA")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.serviceaccount.long-name.@extract:{"pos":0}`).String(), "SA")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.serviceaccount.long-name.@extract:{"pos":8}`).String(), "")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.serviceaccount.name.@extract:{"sep":":","pos":1}`).String(), "ns")
+}
+
+func TestReplaceJSONStr(t *testing.T) {
+	const jsonData = `{"auth":{"identity":{"fullname":"John Doe"}}}`
+
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@replace:{"old":"John","new":"Jane"}`).String(), "Jane Doe")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@replace:{"old":"Peter","new":"Jane"}`).String(), "John Doe")
+}
+
+func TestCaseJSONStr(t *testing.T) {
+	const jsonData = `{"auth":{"identity":{"fullname":"John Doe"}}}`
+
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@case:upper`).String(), "JOHN DOE")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@case:lower`).String(), "john doe")
 }

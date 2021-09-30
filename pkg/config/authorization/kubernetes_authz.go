@@ -19,7 +19,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(user common.JSONValue, groups []string) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user common.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -31,15 +31,26 @@ func NewKubernetesAuthz(user common.JSONValue, groups []string) (*KubernetesAuth
 	}
 
 	return &KubernetesAuthz{
-		User:       user,
-		Groups:     groups,
-		authorizer: k8sClient.AuthorizationV1(),
+		User:               user,
+		Groups:             groups,
+		ResourceAttributes: resourceAttributes,
+		authorizer:         k8sClient.AuthorizationV1(),
 	}, nil
 }
 
+type KubernetesAuthzResourceAttributes struct {
+	Namespace   common.JSONValue
+	Group       common.JSONValue
+	Resource    common.JSONValue
+	Name        common.JSONValue
+	SubResource common.JSONValue
+	Verb        common.JSONValue
+}
+
 type KubernetesAuthz struct {
-	User   common.JSONValue
-	Groups []string
+	User               common.JSONValue
+	Groups             []string
+	ResourceAttributes *KubernetesAuthzResourceAttributes
 
 	authorizer kubernetesSubjectAccessReviewer
 }
@@ -49,23 +60,38 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 		return false, err
 	}
 
-	request := pipeline.GetHttp()
-	path := request.Path
-	verb := strings.ToLower(request.Method)
-
 	data := pipeline.GetDataForAuthorization()
 	dataJSON, _ := json.Marshal(data)
 	dataStr := string(dataJSON)
-	user := fmt.Sprintf("%s", k.User.ResolveFor(dataStr))
+
+	jsonValueToStr := func(value common.JSONValue) string {
+		return fmt.Sprintf("%s", value.ResolveFor(dataStr))
+	}
 
 	subjectAccessReview := kubeAuthz.SubjectAccessReview{
 		Spec: kubeAuthz.SubjectAccessReviewSpec{
-			User: user,
-			NonResourceAttributes: &kubeAuthz.NonResourceAttributes{
-				Path: path,
-				Verb: verb,
-			},
+			User: jsonValueToStr(k.User),
 		},
+	}
+
+	if k.ResourceAttributes != nil {
+		resourceAttributes := k.ResourceAttributes
+
+		subjectAccessReview.Spec.ResourceAttributes = &kubeAuthz.ResourceAttributes{
+			Namespace:   jsonValueToStr(resourceAttributes.Namespace),
+			Group:       jsonValueToStr(resourceAttributes.Group),
+			Resource:    jsonValueToStr(resourceAttributes.Resource),
+			Name:        jsonValueToStr(resourceAttributes.Name),
+			Subresource: jsonValueToStr(resourceAttributes.SubResource),
+			Verb:        jsonValueToStr(resourceAttributes.Verb),
+		}
+	} else {
+		request := pipeline.GetHttp()
+
+		subjectAccessReview.Spec.NonResourceAttributes = &kubeAuthz.NonResourceAttributes{
+			Path: request.Path,
+			Verb: strings.ToLower(request.Method),
+		}
 	}
 
 	if len(k.Groups) > 0 {

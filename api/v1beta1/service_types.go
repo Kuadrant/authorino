@@ -289,20 +289,33 @@ type Authorization_JSONPatternMatching_Rule struct {
 	Value string `json:"value"`
 }
 
-type Authorization_KubernetesAuthz_User struct {
+type Authorization_KubernetesAuthz_Attribute struct {
 	Value     string            `json:"value,omitempty"`
 	ValueFrom ValueFromAuthJSON `json:"valueFrom,omitempty"`
 }
 
-// Kubernetes authorization policy based on (non-resource) `SubjectAccessReview`
+type Authorization_KubernetesAuthz_ResourceAttributes struct {
+	Namespace   Authorization_KubernetesAuthz_Attribute `json:"namespace,omitempty"`
+	Group       Authorization_KubernetesAuthz_Attribute `json:"group,omitempty"`
+	Resource    Authorization_KubernetesAuthz_Attribute `json:"resource,omitempty"`
+	Name        Authorization_KubernetesAuthz_Attribute `json:"name,omitempty"`
+	SubResource Authorization_KubernetesAuthz_Attribute `json:"subresource,omitempty"`
+	Verb        Authorization_KubernetesAuthz_Attribute `json:"verb,omitempty"`
+}
+
+// Kubernetes authorization policy based on `SubjectAccessReview`
 // Path and Verb are inferred from the request.
 type Authorization_KubernetesAuthz struct {
 	// User to test for.
 	// If without "Groups", then is it interpreted as "What if User were not a member of any groups"
-	User Authorization_KubernetesAuthz_User `json:"user"`
+	User Authorization_KubernetesAuthz_Attribute `json:"user"`
 
 	// Groups to test for.
 	Groups []string `json:"groups,omitempty"`
+
+	// Use ResourceAttributes for checking permissions on Kubernetes resources
+	// If omitted, it performs a non-resource `SubjectAccessReview`, with verb and path inferred from the request.
+	ResourceAttributes *Authorization_KubernetesAuthz_ResourceAttributes `json:"resourceAttributes,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=httpHeader;envoyDynamicMetadata

@@ -77,3 +77,66 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 	}
 	return replaced
 }
+
+var extractJSONStr = func(json, arg string) string {
+	var sep string = " "
+	var pos int64 = 0
+
+	if arg != "" {
+		gjson.Parse(arg).ForEach(func(key, value gjson.Result) bool {
+			switch key.String() {
+			case "sep":
+				sep = value.String()
+			case "pos":
+				pos = value.Int()
+			}
+			return true
+		})
+	}
+
+	str := gjson.Parse(json).String()
+	parts := strings.Split(str, sep)
+
+	if pos >= int64(len(parts)) {
+		return "n"
+	}
+
+	return fmt.Sprintf("\"%s\"", parts[pos])
+}
+
+var replaceJSONStr = func(json, arg string) string {
+	if arg == "" {
+		return json
+	}
+
+	var old, new string
+
+	gjson.Parse(arg).ForEach(func(key, value gjson.Result) bool {
+		switch key.String() {
+		case "old":
+			old = value.String()
+		case "new":
+			new = value.String()
+		}
+		return true
+	})
+
+	str := gjson.Parse(json).String()
+	return fmt.Sprintf("\"%s\"", strings.ReplaceAll(str, old, new))
+}
+
+var caseJSONStr = func(json, arg string) string {
+	switch arg {
+	case "upper":
+		return strings.ToUpper(json)
+	case "lower":
+		return strings.ToLower(json)
+	}
+	return json
+}
+
+func init() {
+	gjson.AddModifier("extract", extractJSONStr)
+	gjson.AddModifier("replace", replaceJSONStr)
+	gjson.AddModifier("case", caseJSONStr)
+}

@@ -156,15 +156,93 @@ spec:
                           type: array
                       type: object
                     kubernetes:
-                      description: Kubernetes authorization policy based on (non-resource)
-                        `SubjectAccessReview` Path and Verb are inferred from the
-                        request.
+                      description: Kubernetes authorization policy based on `SubjectAccessReview`
+                        Path and Verb are inferred from the request.
                       properties:
                         groups:
                           description: Groups to test for.
                           items:
                             type: string
                           type: array
+                        resourceAttributes:
+                          description: Use ResourceAttributes for checking permissions
+                            on Kubernetes resources If omitted, it performs a non-resource
+                            `SubjectAccessReview`, with verb and path inferred from
+                            the request.
+                          properties:
+                            group:
+                              properties:
+                                value:
+                                  type: string
+                                valueFrom:
+                                  properties:
+                                    authJSON:
+                                      description: Selector to fill the value of claim
+                                        from the authorization JSON
+                                      type: string
+                                  type: object
+                              type: object
+                            name:
+                              properties:
+                                value:
+                                  type: string
+                                valueFrom:
+                                  properties:
+                                    authJSON:
+                                      description: Selector to fill the value of claim
+                                        from the authorization JSON
+                                      type: string
+                                  type: object
+                              type: object
+                            namespace:
+                              properties:
+                                value:
+                                  type: string
+                                valueFrom:
+                                  properties:
+                                    authJSON:
+                                      description: Selector to fill the value of claim
+                                        from the authorization JSON
+                                      type: string
+                                  type: object
+                              type: object
+                            resource:
+                              properties:
+                                value:
+                                  type: string
+                                valueFrom:
+                                  properties:
+                                    authJSON:
+                                      description: Selector to fill the value of claim
+                                        from the authorization JSON
+                                      type: string
+                                  type: object
+                              type: object
+                            subresource:
+                              properties:
+                                value:
+                                  type: string
+                                valueFrom:
+                                  properties:
+                                    authJSON:
+                                      description: Selector to fill the value of claim
+                                        from the authorization JSON
+                                      type: string
+                                  type: object
+                              type: object
+                            verb:
+                              properties:
+                                value:
+                                  type: string
+                                valueFrom:
+                                  properties:
+                                    authJSON:
+                                      description: Selector to fill the value of claim
+                                        from the authorization JSON
+                                      type: string
+                                  type: object
+                              type: object
+                          type: object
                         user:
                           description: User to test for. If without "Groups", then
                             is it interpreted as "What if User were not a member of

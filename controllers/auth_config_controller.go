@@ -300,9 +300,23 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		case configv1beta1.AuthorizationKubernetesAuthz:
 			user := authorization.KubernetesAuthz.User
-			groups := authorization.KubernetesAuthz.Groups
+			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
+
+			var authorinoResourceAttributes *authorinoAuthorization.KubernetesAuthzResourceAttributes
+			resourceAttributes := authorization.KubernetesAuthz.ResourceAttributes
+			if resourceAttributes != nil {
+				authorinoResourceAttributes = &authorinoAuthorization.KubernetesAuthzResourceAttributes{
+					Namespace:   common.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
+					Group:       common.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
+					Resource:    common.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
+					Name:        common.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
+					SubResource: common.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
+					Verb:        common.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
+				}
+			}
+
 			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}, groups)
+			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}

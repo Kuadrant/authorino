@@ -366,7 +366,7 @@ You can model authorization policies in [Rego language](https://www.openpolicyag
 
 Access control enforcement based on rules defined in the Kubernetes authorization system (e.g. as `ClusterRole` and `ClusterRoleBinding` resources of Kubernetes RBAC authorization).
 
-Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#subjectaccessreview-v1-authorization-k8s-io) inquiry checking with the underlying Kubernetes cluster whether the user can access the requested HTTP method (verb) and path ("non-resource URLs").
+Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#subjectaccessreview-v1-authorization-k8s-io) inquiry checking with the underlying Kubernetes cluster whether the user can access the requested API resouce. It can be used with `resourceAttributes` or `nonResourceAttributes` (the latter inferring HTTP verb and method from the original request).
 
 The user can be specified as a fixed value or pattern to fetch from the Authorization JSON. An array of required groups can as well be specified.
 

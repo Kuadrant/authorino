@@ -19,6 +19,19 @@ spec:
         user:
           valueFrom:
             authJSON: auth.identity.metadata.annotations.userid
+        resourceAttributes: # Comment to try for non-resource `SubjectAccessReview`
+          namespace:
+            valueFrom:
+              authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
+          resource:
+            valueFrom:
+              authJSON: context.request.http.path.@extract:{"sep":"/","pos":3}
+          name:
+            valueFrom:
+              authJSON: context.request.http.path.@extract:{"sep":"/","pos":4}
+          verb:
+            valueFrom:
+              authJSON: context.request.http.method.@case:lower|@replace:{"old":"post","new":"create"}|@replace:{"old":"put","new":"update"}
 ---
 apiVersion: v1
 kind: Secret
@@ -45,9 +58,35 @@ stringData:
 type: Opaque
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: talker-api-cm-reader
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: talker-api-cm-reader-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: talker-api-cm-reader
+subjects:
+- kind: User
+  name: john
+  namespace: authorino
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: talker-api-greeter-role
+  name: talker-api-greeter
 rules:
 - nonResourceURLs: ["/hello"]
   verbs: ["get"]
@@ -57,7 +96,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: talker-api-speaker-role
+  name: talker-api-speaker
 rules:
 - nonResourceURLs: ["/say/*"]
   verbs: ["get"]
@@ -69,7 +108,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: talker-api-greeter-role
+  name: talker-api-greeter
 subjects:
 - kind: User
   name: john
@@ -83,7 +122,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: talker-api-speaker-role
+  name: talker-api-speaker
 subjects:
 - kind: User
   name: john
