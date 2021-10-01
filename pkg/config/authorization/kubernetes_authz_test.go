@@ -59,8 +59,9 @@ func (client *k8sAuthorizationClientMock) GetRequest() kubeAuthz.SubjectAccessRe
 	return client.request
 }
 
-func newKubernetesAuthz(user common.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes, subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus) *KubernetesAuthz {
+func newKubernetesAuthz(conditions []common.JSONPatternMatchingRule, user common.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes, subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus) *KubernetesAuthz {
 	return &KubernetesAuthz{
+		Conditions:         conditions,
 		User:               user,
 		Groups:             groups,
 		ResourceAttributes: resourceAttributes,
@@ -84,6 +85,7 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
 	kubernetesAuth := newKubernetesAuthz(
+		[]common.JSONPatternMatchingRule{},
 		common.JSONValue{Pattern: "auth.identity.username"},
 		[]string{},
 		nil,
@@ -115,6 +117,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
 	kubernetesAuth := newKubernetesAuthz(
+		[]common.JSONPatternMatchingRule{},
 		common.JSONValue{Pattern: "auth.identity.username"},
 		[]string{},
 		nil,
@@ -143,6 +146,7 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
+		[]common.JSONPatternMatchingRule{},
 		common.JSONValue{Pattern: "auth.identity.username"},
 		[]string{},
 		&KubernetesAuthzResourceAttributes{Namespace: common.JSONValue{Static: "default"}},
@@ -170,6 +174,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
+		[]common.JSONPatternMatchingRule{},
 		common.JSONValue{Pattern: "auth.identity.username"},
 		[]string{},
 		&KubernetesAuthzResourceAttributes{Namespace: common.JSONValue{Static: "default"}},
@@ -184,4 +189,29 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	requestData := client.GetRequest()
 	assert.Equal(t, requestData.User, "john")
 	assert.Equal(t, requestData.ResourceAttributes.Namespace, "default")
+}
+
+func TestKubernetesAuthzWithConditions(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+
+	var authData interface{}
+	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
+	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
+
+	kubernetesAuth := newKubernetesAuthz(
+		[]common.JSONPatternMatchingRule{
+			{Selector: "context.request.http.method", Operator: "eq", Value: "DELETE"},
+		},
+		common.JSONValue{Pattern: "auth.identity.username"},
+		[]string{},
+		nil,
+		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: ""},
+	)
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+
+	assert.Check(t, authorized)
+	assert.NilError(t, err)
 }

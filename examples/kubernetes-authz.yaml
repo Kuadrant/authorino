@@ -6,20 +6,36 @@ spec:
   hosts:
     - talker-api
   identity:
+    - name: service-accounts
+      kubernetes:
+        audiences:
+          - talker-api
+      extendedProperties:
+        - name: username
+          valueFrom:
+            authJSON: auth.identity.sub
     - name: api-key-users
       apiKey:
         labelSelectors:
           authorino.3scale.net/managed-by: authorino
+      extendedProperties:
+        - name: username
+          valueFrom:
+            authJSON: auth.identity.metadata.annotations.userid
       credentials:
         in: authorization_header
         keySelector: APIKEY
   authorization:
     - name: kubernetes-rbac
       kubernetes:
+        conditions: # Comment to enforce this policy for users authenticating with api-key as well
+          - selector: auth.identity.iss
+            operator: eq
+            value: https://kubernetes.default.svc.cluster.local
         user:
           valueFrom:
-            authJSON: auth.identity.metadata.annotations.userid
-        resourceAttributes: # Comment to try for non-resource `SubjectAccessReview`
+            authJSON: auth.identity.username
+        resourceAttributes: # Comment for non-resource `SubjectAccessReview`
           namespace:
             valueFrom:
               authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
@@ -32,6 +48,16 @@ spec:
           verb:
             valueFrom:
               authJSON: context.request.http.method.@case:lower|@replace:{"old":"post","new":"create"}|@replace:{"old":"put","new":"update"}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-consumer-1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-consumer-2
 ---
 apiVersion: v1
 kind: Secret
@@ -79,6 +105,9 @@ roleRef:
   kind: Role
   name: talker-api-cm-reader
 subjects:
+- kind: ServiceAccount
+  name: api-consumer-1
+  namespace: authorino
 - kind: User
   name: john
   namespace: authorino
@@ -110,6 +139,12 @@ roleRef:
   kind: ClusterRole
   name: talker-api-greeter
 subjects:
+- kind: ServiceAccount
+  name: api-consumer-1
+  namespace: authorino
+- kind: ServiceAccount
+  name: api-consumer-2
+  namespace: authorino
 - kind: User
   name: john
 - kind: User
@@ -124,5 +159,8 @@ roleRef:
   kind: ClusterRole
   name: talker-api-speaker
 subjects:
+- kind: ServiceAccount
+  name: api-consumer-1
+  namespace: authorino
 - kind: User
   name: john

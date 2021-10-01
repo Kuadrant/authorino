@@ -306,6 +306,9 @@ type Authorization_KubernetesAuthz_ResourceAttributes struct {
 // Kubernetes authorization policy based on `SubjectAccessReview`
 // Path and Verb are inferred from the request.
 type Authorization_KubernetesAuthz struct {
+	// Conditions that must match for Authorino to enforce this policy; otherwise, the policy will be skipped.
+	Conditions []Authorization_JSONPatternMatching_Rule `json:"conditions,omitempty"`
+
 	// User to test for.
 	// If without "Groups", then is it interpreted as "What if User were not a member of any groups"
 	User Authorization_KubernetesAuthz_Attribute `json:"user"`

@@ -15,6 +15,7 @@
   - [OpenID Connect (OIDC) User Info](#openid-connect-oidc-user-info)
   - [User-Managed Access (UMA) resource data](#user-managed-access-uma-resource-data)
   - [External HTTP authorization metadata](#external-http-authorization-metadata)
+  - [JSON pattern-matching authorization](#json-pattern-matching-authorization)
   - [Open Policy Agent (OPA) Rego policies](#open-policy-agent-opa-rego-policies)
   - [Kubernetes authorization](#kubernetes-authorization)
   - [Festival Wristbands](#festival-wristbands)
@@ -356,6 +357,26 @@ The adapter allows fecthing auth metadata from external HTTP services by GET or 
 
 A shared secret between Authorino and the external HTTP service must be defined (`sharedSecretRef` property), and the  service can use such secret to authenticate the origin of the request. The location where the secret travels in the request performed by Authorino to the HTTP service can be specified in a typical "credentials" property.
 
+### JSON pattern-matching authorization
+
+Grant/deny access based on simple pattern-matching rules comparing values from the Authorization JSON.
+
+A typical configuration contains a `conditions` array and a `rules` array, and looks like the following:
+
+```yaml
+authorization:
+  - name: my-simple-json-pattern-matching-policy
+    json:
+      conditions: # (Optional) Allows to establish conditions for the policy to be enforced or skipped
+        - selector: context.request.http.method
+          operator: eq # Other operators include neq, incl, excl, matches
+          value: DELETE
+      rules: # All rules must match for access to be granted
+        - selector: auth.identity.group
+          operator: incl
+          value: admin
+```
+
 ### Open Policy Agent (OPA) Rego policies
 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs. Authorino reconciliation cycle keeps track of any changes in the custom resources affecting the written policies and automatically recompiles them with built-in OPA module, and cache them for fast evaluation during request-time.
@@ -368,7 +389,30 @@ Access control enforcement based on rules defined in the Kubernetes authorizatio
 
 Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#subjectaccessreview-v1-authorization-k8s-io) inquiry checking with the underlying Kubernetes cluster whether the user can access the requested API resouce. It can be used with `resourceAttributes` or `nonResourceAttributes` (the latter inferring HTTP verb and method from the original request).
 
-The user can be specified as a fixed value or pattern to fetch from the Authorization JSON. An array of required groups can as well be specified.
+A Kubernetes authorization policy config looks like the following in an Authorino `AuthConfig`:
+
+```yaml
+authorization:
+  - name: kubernetes-rbac
+    kubernetes:
+      user:
+        valueFrom: # It can be a fixed value as well, by using `value` instead
+          authJSON: auth.identity.metadata.annotations.userid
+
+      groups: [] # User groups to test for.
+
+      resourceAttributes: # Omit it to perform a non-resource `SubjectAccessReview` based on the request's path and method (verb) instead
+        namespace: # other supported resource attributes are: group, resource, name, subresource and verb
+          value: default
+
+      conditions: [] # Allows to establish conditions for the policy to be enforced or skipped
+```
+
+`user` and `resourceAttributes` can be specified as a fixed value or patterns to fetch from the Authorization JSON.
+
+An array of required `groups` can as well be specified and it will be used in the `SubjectAccessReview`.
+
+`conditions` works exactly like in [JSON pattern-matching authorization](#json-pattern-matching-authorization). It allows to specify conditions for the policy to be enforced or skipped, based on values of the Authorization JSON.
 
 ### Festival Wristbands
 

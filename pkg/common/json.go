@@ -12,6 +12,16 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const (
+	operatorEq    = "eq"
+	operatorNeq   = "neq"
+	operatorIncl  = "incl"
+	operatorExcl  = "excl"
+	operatorRegex = "matches"
+
+	unsupportedOperatorErrorMsg = "Unsupported operator for JSON authorization"
+)
+
 // JSONProperty represents a name-value pair for a JSON property where the value can be a static value or
 // a pattern for a value fetched dynamically from the authorization JSON
 type JSONProperty struct {
@@ -31,6 +41,51 @@ func (v *JSONValue) ResolveFor(jsonData string) interface{} {
 		return gjson.Get(jsonData, v.Pattern).Value()
 	} else {
 		return v.Static
+	}
+}
+
+type JSONPatternMatchingRule struct {
+	Selector string
+	Operator string
+	Value    string
+}
+
+func (rule *JSONPatternMatchingRule) EvaluateFor(jsonData string) (bool, error) {
+	expectedValue := rule.Value
+	obtainedValue := gjson.Get(jsonData, rule.Selector)
+
+	switch rule.Operator {
+	case operatorEq:
+		return (expectedValue == obtainedValue.String()), nil
+
+	case operatorNeq:
+		return (expectedValue != obtainedValue.String()), nil
+
+	case operatorIncl:
+		for _, item := range obtainedValue.Array() {
+			if expectedValue == item.String() {
+				return true, nil
+			}
+		}
+		return false, nil
+
+	case operatorExcl:
+		for _, item := range obtainedValue.Array() {
+			if expectedValue == item.String() {
+				return false, nil
+			}
+		}
+		return true, nil
+
+	case operatorRegex:
+		if re, err := regexp.Compile(expectedValue); err != nil {
+			return false, err
+		} else {
+			return re.MatchString(obtainedValue.String()), nil
+		}
+
+	default:
+		return false, fmt.Errorf(unsupportedOperatorErrorMsg)
 	}
 }
 

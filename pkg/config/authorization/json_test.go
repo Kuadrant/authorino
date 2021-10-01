@@ -3,6 +3,7 @@ package authorization
 import (
 	"testing"
 
+	"github.com/kuadrant/authorino/pkg/common"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -48,7 +49,7 @@ func TestCall(t *testing.T) {
 
 	// eq with same value than expected
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",
@@ -63,7 +64,7 @@ func TestCall(t *testing.T) {
 
 	// eq with different value than expected
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",
@@ -78,7 +79,7 @@ func TestCall(t *testing.T) {
 
 	// neq with same value than expected
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "neq",
@@ -93,7 +94,7 @@ func TestCall(t *testing.T) {
 
 	// neq with different value than expected
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "neq",
@@ -108,7 +109,7 @@ func TestCall(t *testing.T) {
 
 	// incl with value found
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "auth.metadata.letters",
 				Operator: "incl",
@@ -123,7 +124,7 @@ func TestCall(t *testing.T) {
 
 	// incl with value not found
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "auth.metadata.letters",
 				Operator: "incl",
@@ -138,7 +139,7 @@ func TestCall(t *testing.T) {
 
 	// excl with value not found
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "auth.metadata.letters",
 				Operator: "excl",
@@ -153,7 +154,7 @@ func TestCall(t *testing.T) {
 
 	// excl with value found
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "auth.metadata.letters",
 				Operator: "excl",
@@ -168,7 +169,7 @@ func TestCall(t *testing.T) {
 
 	// regex matches value
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "matches",
@@ -183,7 +184,7 @@ func TestCall(t *testing.T) {
 
 	// regex does not match value
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "matches",
@@ -198,7 +199,7 @@ func TestCall(t *testing.T) {
 
 	// invalid regex
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "matches",
@@ -213,7 +214,7 @@ func TestCall(t *testing.T) {
 
 	// multiple rules
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",
@@ -248,7 +249,7 @@ func TestCall(t *testing.T) {
 
 	// multiple rules with at least one unauthorized
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",
@@ -283,7 +284,7 @@ func TestCall(t *testing.T) {
 
 	// rules empty
 	jsonAuth = &JSONPatternMatching{
-		Rules: []JSONPatternMatchingRule{},
+		Rules: []common.JSONPatternMatchingRule{},
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
@@ -292,14 +293,14 @@ func TestCall(t *testing.T) {
 
 	// with all conditions matching and value equal than expected
 	jsonAuth = &JSONPatternMatching{
-		Conditions: []JSONPatternMatchingRule{
+		Conditions: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-origin",
 				Operator: "eq",
 				Value:    "some-origin",
 			},
 		},
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",
@@ -314,14 +315,14 @@ func TestCall(t *testing.T) {
 
 	// with all conditions matching and value other than expected
 	jsonAuth = &JSONPatternMatching{
-		Conditions: []JSONPatternMatchingRule{
+		Conditions: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-origin",
 				Operator: "eq",
 				Value:    "some-origin",
 			},
 		},
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",
@@ -336,14 +337,14 @@ func TestCall(t *testing.T) {
 
 	// with unmatching condition
 	jsonAuth = &JSONPatternMatching{
-		Conditions: []JSONPatternMatchingRule{
+		Conditions: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-origin",
 				Operator: "eq",
 				Value:    "other-origin",
 			},
 		},
-		Rules: []JSONPatternMatchingRule{
+		Rules: []common.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.headers.x-secret-header",
 				Operator: "eq",

@@ -273,9 +273,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// json
 		case configv1beta1.AuthorizationJSONPatternMatching:
-			conditions := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			conditions := make([]common.JSONPatternMatchingRule, 0)
 			for _, c := range authorization.JSON.Conditions {
-				condition := &authorinoAuthorization.JSONPatternMatchingRule{
+				condition := &common.JSONPatternMatchingRule{
 					Selector: c.Selector,
 					Operator: string(c.Operator),
 					Value:    c.Value,
@@ -283,9 +283,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				conditions = append(conditions, *condition)
 			}
 
-			rules := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			rules := make([]common.JSONPatternMatchingRule, 0)
 			for _, r := range authorization.JSON.Rules {
-				rule := &authorinoAuthorization.JSONPatternMatchingRule{
+				rule := &common.JSONPatternMatchingRule{
 					Selector: r.Selector,
 					Operator: string(r.Operator),
 					Value:    r.Value,
@@ -299,6 +299,16 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		case configv1beta1.AuthorizationKubernetesAuthz:
+			conditions := make([]common.JSONPatternMatchingRule, 0)
+			for _, c := range authorization.KubernetesAuthz.Conditions {
+				condition := &common.JSONPatternMatchingRule{
+					Selector: c.Selector,
+					Operator: string(c.Operator),
+					Value:    c.Value,
+				}
+				conditions = append(conditions, *condition)
+			}
+
 			user := authorization.KubernetesAuthz.User
 			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
 
@@ -316,7 +326,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
+			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(conditions, authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}

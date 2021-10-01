@@ -159,6 +159,43 @@ spec:
                       description: Kubernetes authorization policy based on `SubjectAccessReview`
                         Path and Verb are inferred from the request.
                       properties:
+                        conditions:
+                          description: Conditions that must match for Authorino to
+                            enforce this policy; otherwise, the policy will be skipped.
+                          items:
+                            properties:
+                              operator:
+                                description: 'The binary operator to be applied to
+                                  the content fetched from the authorization JSON,
+                                  for comparison with "value". Possible values are:
+                                  "eq" (equal to), "neq" (not equal to), "incl" (includes;
+                                  for arrays), "excl" (excludes; for arrays), "matches"
+                                  (regex)'
+                                enum:
+                                - eq
+                                - neq
+                                - incl
+                                - excl
+                                - matches
+                                type: string
+                              selector:
+                                description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                                  The value is used to fetch content from the input
+                                  authorization JSON built by Authorino along the
+                                  identity and metadata phases.
+                                type: string
+                              value:
+                                description: The value of reference for the comparison
+                                  with the content fetched from the authorization
+                                  policy. If used with the "matches" operator, the
+                                  value must compile to a valid Golang regex.
+                                type: string
+                            required:
+                            - operator
+                            - selector
+                            - value
+                            type: object
+                          type: array
                         groups:
                           description: Groups to test for.
                           items:
