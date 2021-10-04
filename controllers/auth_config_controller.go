@@ -273,9 +273,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// json
 		case configv1beta1.AuthorizationJSONPatternMatching:
-			conditions := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			conditions := make([]common.JSONPatternMatchingRule, 0)
 			for _, c := range authorization.JSON.Conditions {
-				condition := &authorinoAuthorization.JSONPatternMatchingRule{
+				condition := &common.JSONPatternMatchingRule{
 					Selector: c.Selector,
 					Operator: string(c.Operator),
 					Value:    c.Value,
@@ -283,9 +283,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				conditions = append(conditions, *condition)
 			}
 
-			rules := make([]authorinoAuthorization.JSONPatternMatchingRule, 0)
+			rules := make([]common.JSONPatternMatchingRule, 0)
 			for _, r := range authorization.JSON.Rules {
-				rule := &authorinoAuthorization.JSONPatternMatchingRule{
+				rule := &common.JSONPatternMatchingRule{
 					Selector: r.Selector,
 					Operator: string(r.Operator),
 					Value:    r.Value,
@@ -296,6 +296,39 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
 				Conditions: conditions,
 				Rules:      rules,
+			}
+
+		case configv1beta1.AuthorizationKubernetesAuthz:
+			conditions := make([]common.JSONPatternMatchingRule, 0)
+			for _, c := range authorization.KubernetesAuthz.Conditions {
+				condition := &common.JSONPatternMatchingRule{
+					Selector: c.Selector,
+					Operator: string(c.Operator),
+					Value:    c.Value,
+				}
+				conditions = append(conditions, *condition)
+			}
+
+			user := authorization.KubernetesAuthz.User
+			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
+
+			var authorinoResourceAttributes *authorinoAuthorization.KubernetesAuthzResourceAttributes
+			resourceAttributes := authorization.KubernetesAuthz.ResourceAttributes
+			if resourceAttributes != nil {
+				authorinoResourceAttributes = &authorinoAuthorization.KubernetesAuthzResourceAttributes{
+					Namespace:   common.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
+					Group:       common.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
+					Resource:    common.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
+					Name:        common.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
+					SubResource: common.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
+					Verb:        common.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
+				}
+			}
+
+			var err error
+			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(conditions, authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
+			if err != nil {
+				return nil, err
 			}
 
 		case configv1beta1.TypeUnknown:

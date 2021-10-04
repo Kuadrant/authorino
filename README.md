@@ -110,6 +110,11 @@ The core phases of Authorino "[Auth Pipeline](docs/architecture.md#the-auth-pipe
       <td>Ready</td>
     </tr>
     <tr>
+      <td>Kubernetes authZ</td>
+      <td>Checks with the underlying Kubernetes cluster about whether the user can access the requested API resource, according to the authorization rules defined in the cluster's RBAC. Based on Kubernetes <code>SubjectAccessReview</code></td>
+      <td>Ready</td>
+    </tr>
+    <tr>
       <td>Keycloak (UMA-compliant Authorization API)</td>
       <td>Online delegation of authorization to a Keycloak server.</td>
       <td>In analysis</td>

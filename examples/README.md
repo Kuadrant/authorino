@@ -51,6 +51,7 @@ For more information on the deployment options and resources included in the loc
 - [Short-lived API keys (the non-OIDC “beta-testers” use case)](#short-lived-api-keys-the-non-oidc-beta-testers-use-case)
 - [Read-only outside](#read-only-outside)
 - [Kubernetes authentication](#kubernetes-authentication)
+- [Kubernetes authorization](#kubernetes-authorization)
 - [Simple OAuth2 (token introspection)](#simple-oauth2-token-introspection)
 - [Simple OIDC (with Keycloak)](#simple-oidc-with-keycloak)
 - [OIDC UserInfo](#oidc-userinfo)
@@ -285,6 +286,135 @@ Send requests to the API:
 
 ```sh
 curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" http://localhost:8000/hello # 200
+```
+
+----
+## Kubernetes authorization
+
+It demonstrates Authorino authorization based on Kubernetes [SubjectAccessReview](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#subjectaccessreview-v1-authorization-k8s-io) API.
+
+Config:
+
+```yaml
+identity:
+  - name: service-accounts
+    kubernetes: # You can combine Kubernetes authorization with identity sources other than just Kubernetes authentication too
+      audiences: ["talker-api"]
+
+authorization:
+  - name: kubernetes-rbac
+    kubernetes:
+      conditions: # Optional. Allows to establish conditions for the policy to be enforced or skipped
+        - selector: auth.identity.iss
+          operator: eq
+          value: https://kubernetes.default.svc.cluster.local
+      user:
+        valueFrom: # It can be a fixed value as well, by using `value` instead
+          authJSON: auth.identity.metadata.annotations.userid
+      resourceAttributes: # Omit it to perform a non-resource `SubjectAccessReview` based on the request's path and method (verb) instead
+        namespace: # other supported resource attributes are: group, resource, name, subresource and verb
+          valueFrom:
+            authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
+    […]
+```
+
+
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/kubernetes-authz.yaml
+# authconfig.authorino.3scale.net/talker-api-protection created
+# serviceaccount/api-consumer-1 created
+# serviceaccount/api-consumer-2 created
+# secret/api-key-1 created
+# secret/api-key-2 created
+# role.rbac.authorization.k8s.io/talker-api-cm-reader created
+# rolebinding.rbac.authorization.k8s.io/talker-api-cm-reader-rolebinding created
+# clusterrole.rbac.authorization.k8s.io/talker-api-greeter created
+# clusterrole.rbac.authorization.k8s.io/talker-api-speaker created
+# clusterrolebinding.rbac.authorization.k8s.io/talker-api-greeter-rolebinding created
+# clusterrolebinding.rbac.authorization.k8s.io/talker-api-speaker-rolebinding created
+```
+
+### Try it out:
+
+Get the Kubernetes API base endpoint:
+
+```sh
+CURRENT_K8S_CONTEXT=$(kubectl config view -o json | jq -r '."current-context"')
+CURRENT_K8S_CLUSTER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.cluster')
+KUBERNETES_API=$(kubectl config view -o json | jq -r --arg K8S_CLUSTER "${CURRENT_K8S_CLUSTER}" '.clusters[] | select(.name == $K8S_CLUSTER) | .cluster.server')
+```
+
+Consume the API as `api-consumer-1`, which is bound to the `talker-api-cm-reader` role:
+
+```sh
+export API_CONSUMER_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-1/token" \
+     --cert tmp/kind-cluster-user-cert.pem --key tmp/kind-cluster-user-cert.key \
+     -H 'Content-Type: application/json; charset=utf-8' \
+     -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
+
+curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" "http://localhost:8000/v2/authorino/configmaps" # 200
+```
+
+Consume the API as `api-consumer-2`, which is NOT bound to the `talker-api-cm-reader` role:
+
+```sh
+export API_CONSUMER_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-2/token" \
+     --cert tmp/kind-cluster-user-cert.pem --key tmp/kind-cluster-user-cert.key \
+     -H 'Content-Type: application/json; charset=utf-8' \
+     -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
+
+curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" "http://localhost:8000/v2/authorino/configmaps" # 403
+```
+
+To try Kubernetes authorization for API keys as well, edit `examples/kubernetes-authz.yaml` and comment the `spec.authorization.kubernetes.condition` option. Re-apply the `AuthConfig`:
+
+```sh
+kubectl -n authorino apply -f ./examples/kubernetes-authz.yaml
+```
+
+Send another `GET` request now authenticating with John's API key, which is bound to `talker-api-cm-reader` role:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" "http://localhost:8000/v2/authorino/configmaps" # 200
+```
+
+Send a `GET` request with Jane's API key, which is NOT bound to `talker-api-cm-reader` role:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" "http://localhost:8000/v2/authorino/configmaps" # 403
+```
+
+To try non-resource `SubjectAccessReview`, edit again `examples/kubernetes-authz.yaml` and comment the `spec.authorization.kubernetes.resourceAttributes` option. Re-apply the `AuthConfig`:
+
+```sh
+kubectl -n authorino apply -f ./examples/kubernetes-authz.yaml
+```
+
+User _John_ can greet:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" http://localhost:8000/hello # 200
+```
+
+So does _Jane_:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" http://localhost:8000/hello # 200
+```
+
+_John_ can use the `/say/*` endpoint of the API:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" http://localhost:8000/say/blah # 200
+```
+
+Whereas _Jane_ cannot:
+
+```sh
+curl -H 'Host: talker-api' -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" http://localhost:8000/say/blah # 403
 ```
 
 ----

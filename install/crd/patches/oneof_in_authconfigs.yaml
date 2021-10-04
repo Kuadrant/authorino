@@ -51,3 +51,7 @@
         name: {}
         json: {}
       required: [name, json]
+    - properties:
+        name: {}
+        kubernetes: {}
+      required: [name, kubernetes]

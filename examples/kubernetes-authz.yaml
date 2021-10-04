@@ -1,0 +1,166 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: service-accounts
+      kubernetes:
+        audiences:
+          - talker-api
+      extendedProperties:
+        - name: username
+          valueFrom:
+            authJSON: auth.identity.sub
+    - name: api-key-users
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+      extendedProperties:
+        - name: username
+          valueFrom:
+            authJSON: auth.identity.metadata.annotations.userid
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  authorization:
+    - name: kubernetes-rbac
+      kubernetes:
+        conditions: # Comment to enforce this policy for users authenticating with api-key as well
+          - selector: auth.identity.iss
+            operator: eq
+            value: https://kubernetes.default.svc.cluster.local
+        user:
+          valueFrom:
+            authJSON: auth.identity.username
+        resourceAttributes: # Comment for non-resource `SubjectAccessReview`
+          namespace:
+            valueFrom:
+              authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
+          resource:
+            valueFrom:
+              authJSON: context.request.http.path.@extract:{"sep":"/","pos":3}
+          name:
+            valueFrom:
+              authJSON: context.request.http.path.@extract:{"sep":"/","pos":4}
+          verb:
+            valueFrom:
+              authJSON: context.request.http.method.@case:lower|@replace:{"old":"post","new":"create"}|@replace:{"old":"put","new":"update"}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-consumer-1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-consumer-2
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+  annotations:
+    userid: john
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-2
+  labels:
+    authorino.3scale.net/managed-by: authorino
+  annotations:
+    userid: jane
+stringData:
+  api_key: Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn
+type: Opaque
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: talker-api-cm-reader
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: talker-api-cm-reader-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: talker-api-cm-reader
+subjects:
+- kind: ServiceAccount
+  name: api-consumer-1
+  namespace: authorino
+- kind: User
+  name: john
+  namespace: authorino
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: talker-api-greeter
+rules:
+- nonResourceURLs: ["/hello"]
+  verbs: ["get"]
+- nonResourceURLs: ["/hey"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: talker-api-speaker
+rules:
+- nonResourceURLs: ["/say/*"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: talker-api-greeter-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: talker-api-greeter
+subjects:
+- kind: ServiceAccount
+  name: api-consumer-1
+  namespace: authorino
+- kind: ServiceAccount
+  name: api-consumer-2
+  namespace: authorino
+- kind: User
+  name: john
+- kind: User
+  name: jane
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: talker-api-speaker-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: talker-api-speaker
+subjects:
+- kind: ServiceAccount
+  name: api-consumer-1
+  namespace: authorino
+- kind: User
+  name: john
