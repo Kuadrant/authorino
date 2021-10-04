@@ -195,6 +195,9 @@ type Metadata_UMA struct {
 // +kubebuilder:validation:Enum:=GET;POST
 type GenericHTTP_Method string
 
+// +kubebuilder:validation:Enum:=application/x-www-form-urlencoded;application/json
+type Metadata_GenericHTTP_ContentType string
+
 // Generic HTTP interface to obtain authorization metadata from a HTTP service.
 type Metadata_GenericHTTP struct {
 	// Endpoint of the HTTP service.
@@ -206,6 +209,14 @@ type Metadata_GenericHTTP struct {
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
 	// When the request method is POST, the authorization JSON is passed in the body of the request.
 	Method GenericHTTP_Method `json:"method,omitempty"`
+
+	// Custom parameters to encode in the body of the HTTP request.
+	// Use it with method=POST; for GET requests, specify parameters using placeholders in the endpoint.
+	Parameters []JsonProperty `json:"bodyParameters,omitempty"`
+
+	// Content-Type of the request body.
+	// +kubebuilder:default:=application/x-www-form-urlencoded
+	ContentType Metadata_GenericHTTP_ContentType `json:"contentType,omitempty"`
 
 	// Reference to a Secret key whose value will be passed by Authorino in the request.
 	// The HTTP service can use the shared secret to authenticate the origin of the request.

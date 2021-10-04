@@ -537,6 +537,37 @@ spec:
                       description: Generic HTTP interface to obtain authorization
                         metadata from a HTTP service.
                       properties:
+                        bodyParameters:
+                          description: Custom parameters to encode in the body of
+                            the HTTP request. Use it with method=POST; for GET requests,
+                            specify parameters using placeholders in the endpoint.
+                          items:
+                            properties:
+                              name:
+                                description: The name of the claim
+                                type: string
+                              value:
+                                description: Static value of the claim
+                                x-kubernetes-preserve-unknown-fields: true
+                              valueFrom:
+                                description: Dynamic value of the claim
+                                properties:
+                                  authJSON:
+                                    description: Selector to fill the value of claim
+                                      from the authorization JSON
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
+                        contentType:
+                          default: application/x-www-form-urlencoded
+                          description: Content-Type of the request body.
+                          enum:
+                          - application/x-www-form-urlencoded
+                          - application/json
+                          type: string
                         credentials:
                           description: Defines where client credentials will be passed
                             in the request to the service. If omitted, it defaults

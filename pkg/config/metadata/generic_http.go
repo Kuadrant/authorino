@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
@@ -15,6 +16,8 @@ import (
 type GenericHttp struct {
 	Endpoint     string
 	Method       string
+	Parameters   []common.JSONProperty
+	ContentType  string
 	SharedSecret string
 	auth_credentials.AuthCredentials
 }
@@ -28,13 +31,20 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, string(authData))
 
 	var requestBody io.Reader
+	var contentType string
 
 	method := h.Method
 	switch method {
 	case "GET":
+		contentType = "text/plain"
 		requestBody = nil
 	case "POST":
-		requestBody = bytes.NewBuffer(authData)
+		var err error
+		contentType = h.ContentType
+		requestBody, err = h.buildRequestBody(string(authData))
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unsupported method")
 	}
@@ -43,6 +53,8 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Set("Content-Type", contentType)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -58,4 +70,34 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	}
 
 	return claims, nil
+}
+
+func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
+	data := make(map[string]interface{})
+	for _, param := range h.Parameters {
+		data[param.Name] = param.Value.ResolveFor(authData)
+	}
+
+	switch h.ContentType {
+	case "application/x-www-form-urlencoded":
+		formData := url.Values{}
+		for key, value := range data {
+			if valueAsStr, err := common.StringifyJSON(value); err != nil {
+				return nil, fmt.Errorf("failed to encode http request")
+			} else {
+				formData.Set(key, valueAsStr)
+			}
+		}
+		return bytes.NewBufferString(formData.Encode()), nil
+
+	case "application/json":
+		if dataJSON, err := json.Marshal(data); err != nil {
+			return nil, err
+		} else {
+			return bytes.NewBuffer(dataJSON), nil
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported content-type")
+	}
 }
