@@ -16,11 +16,13 @@ spec:
       containers:
       - name: talker-api
         image: quay.io/3scale/authorino:talker-api
+        imagePullPolicy: Always
         env:
         - name: PORT
           value: "3000"
         ports:
         - containerPort: 3000
+        tty: true
   replicas: 1
 ---
 apiVersion: v1
