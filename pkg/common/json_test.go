@@ -82,3 +82,88 @@ func TestCaseJSONStr(t *testing.T) {
 	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@case:upper`).String(), "JOHN DOE")
 	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@case:lower`).String(), "john doe")
 }
+
+func TestStringifyJSON(t *testing.T) {
+	var source interface{}
+	var str string
+	var err error
+
+	_ = json.Unmarshal([]byte(`"this is a json string"`), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, "this is a json string")
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte("123"), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, "123")
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte("true"), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, "true")
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte("false"), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, "false")
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte("null"), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, "")
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte(`{"a_prop":"a_value"}`), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, `{"a_prop":"a_value"}`)
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte(`["a","b","c"]`), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, `["a","b","c"]`)
+	assert.NilError(t, err)
+
+	_ = json.Unmarshal([]byte(`{"prop_str":"str","prop_num":123,"prop_bool":false,"prop_null":null,"prop_obj":{"a_prop":"a_value"},"prop_arr":["a","b","c"]}`), &source)
+	str, err = StringifyJSON(source)
+	assert.Equal(t, str, `{"prop_arr":["a","b","c"],"prop_bool":false,"prop_null":null,"prop_num":123,"prop_obj":{"a_prop":"a_value"},"prop_str":"str"}`)
+	assert.NilError(t, err)
+
+	str, err = StringifyJSON(true)
+	assert.Equal(t, str, "true")
+	assert.NilError(t, err)
+
+	str, err = StringifyJSON(false)
+	assert.Equal(t, str, "false")
+	assert.NilError(t, err)
+
+	str, err = StringifyJSON(nil)
+	assert.Equal(t, str, "")
+	assert.NilError(t, err)
+
+	str, err = StringifyJSON([]string{"a", "b", "c"})
+	assert.Equal(t, str, `["a","b","c"]`)
+	assert.NilError(t, err)
+
+	type inner struct {
+		AProp string `json:"a_prop"`
+	}
+	type outer struct {
+		Str  string      `json:"prop_str"`
+		Num  int64       `json:"prop_num"`
+		Bool bool        `json:"prop_bool"`
+		Null interface{} `json:"prop_null"`
+		Arr  []string    `json:"prop_arr"`
+		Obj  inner       `json:"prop_obj"`
+	}
+
+	str, err = StringifyJSON(outer{
+		Str:  "str",
+		Num:  123,
+		Bool: false,
+		Null: nil,
+		Arr:  []string{"a", "b", "c"},
+		Obj:  inner{AProp: "a_value"},
+	})
+	assert.Equal(t, str, `{"prop_str":"str","prop_num":123,"prop_bool":false,"prop_null":null,"prop_arr":["a","b","c"],"prop_obj":{"a_prop":"a_value"}}`)
+	assert.NilError(t, err)
+}
