@@ -693,7 +693,7 @@ kubectl -n authorino apply -f ./examples/wristband.yaml
 Obtain a wristband by successfully authenticating via API key:
 
 ```sh
-export WRISTBAND=$(curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/auth | jq -r '.headers.HTTP_X_EXT_AUTH_WRISTBAND')
+export WRISTBAND=$(curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://localhost:8000/auth | jq -r '.headers["X-Ext-Auth-Wristband"]')
 ```
 
 The payload of the wristband (decoded) shall look like the following:
