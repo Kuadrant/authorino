@@ -133,6 +133,14 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 	return replaced
 }
 
+func StringifyJSON(data interface{}) (string, error) {
+	if dataAsJSON, err := json.Marshal(data); err != nil {
+		return "", err
+	} else {
+		return gjson.ParseBytes(dataAsJSON).String(), nil
+	}
+}
+
 var extractJSONStr = func(json, arg string) string {
 	var sep string = " "
 	var pos int64 = 0

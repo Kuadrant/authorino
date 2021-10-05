@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
@@ -98,8 +97,7 @@ func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders m
 	for responseConfig, authObj := range responses {
 		switch responseConfig.Wrapper {
 		case HTTP_HEADER_WRAPPER:
-			jsonObj, _ := json.Marshal(authObj)
-			responseHeaders[responseConfig.WrapperKey] = string(jsonObj)
+			responseHeaders[responseConfig.WrapperKey], _ = common.StringifyJSON(authObj)
 		case ENVOY_DYNAMIC_METADATA_WRAPPER:
 			responseMetadata[responseConfig.WrapperKey] = authObj
 		}
