@@ -62,6 +62,7 @@ For more information on the deployment options and resources included in the loc
 - [Festival Wristbands](#festival-wristbands)
 - [Dynamic JSON response](#dynamic-json-response)
 - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
+- [Custom Denial Status Messages](#custom-denial-status-messages)
 
 ----
 ## Simple API key authentication
@@ -818,3 +819,47 @@ Though requests with user `consumer-2` should still work:
 ```sh
 curl -H 'Host: talker-api' -H "Authorization: APIKEY orVKflEHd5Udtu8iFzmvQQTqN7Em7tRu" http://localhost:8000/hello -v # 200
 ```
+
+----
+## Custom Denial Status Messages
+
+### Deploy the example:
+
+```sh
+kubectl -n authorino apply -f ./examples/deny-with.yaml
+# authconfig.authorino.3scale.net/talker-api-protection created
+# secret/friend-1-api-key-1 created
+```
+
+### Try it out:
+
+Send a request missing the API key to authenticate:
+
+```sh
+curl -H 'Host: talker-api' http://localhost:8000/hello -i
+# HTTP/1.1 302 Found
+# location: http://echo-api.3scale.net/login?redirect_to=https://talker-api/hello
+# x-ext-auth-reason: Login required
+# date: Tue, 05 Oct 2021 22:45:45 GMT
+# server: envoy
+# content-length: 0
+```
+
+Without the customization, the response status code would be `401 Unauthorized`, the `x-ext-auth-reason` header _"credential not found"_, and the `WWW-Authenticate` challenge headers would be present. Instead, status `302 Found` and the `Location` response header are returned.
+
+Send a request forcing an authorization failure:
+
+```sh
+curl -H 'Host: talker-api' -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' -H 'X-Mock-Unauthorized: 1' http://localhost:8000/hello -i
+# HTTP/1.1 302 Found
+# location: http://echo-api.3scale.net/not-found
+# x-requested-path: /hello
+# x-ext-auth-reason: Unauthorized
+# date: Tue, 05 Oct 2021 22:46:16 GMT
+# server: envoy
+# content-length: 0
+```
+
+Without the customization, the response status code would be `403 Forbidden`. Instead, status `302 Found` and the `Location` response header are returned.
+
+Notice as well the presence of a custom HTTP header `x-requested-path`, with value dynamically set to the path of the original request.

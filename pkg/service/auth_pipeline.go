@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/config"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	"golang.org/x/net/context"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -42,6 +43,7 @@ func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}
 
 type AuthResult struct {
 	Code     rpc.Code
+	Status   envoy_type.StatusCode
 	Message  string
 	Headers  []map[string]string
 	Metadata map[string]interface{}
@@ -263,11 +265,11 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 func (pipeline *AuthPipeline) Evaluate() AuthResult {
 	// phase 1: identity verification
 	if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
-		return AuthResult{
+		return pipeline.customizeDenyWith(AuthResult{
 			Code:    rpc.UNAUTHENTICATED,
 			Message: resp.GetErrorMessage(),
 			Headers: pipeline.API.GetChallengeHeaders(),
-		}
+		}, pipeline.API.Unauthenticated)
 	}
 
 	// phase 2: external metadata
@@ -275,10 +277,10 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 
 	// phase 3: policy enforcement (authorization)
 	if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
-		return AuthResult{
+		return pipeline.customizeDenyWith(AuthResult{
 			Code:    rpc.PERMISSION_DENIED,
 			Message: resp.GetErrorMessage(),
-		}
+		}, pipeline.API.Unauthorized)
 	}
 
 	// phase 4: response
@@ -366,4 +368,29 @@ func (pipeline *AuthPipeline) GetPostAuthorizationData() interface{} {
 
 	authData.AuthData["authorization"] = authzData
 	return &authData
+}
+
+func (pipeline *AuthPipeline) customizeDenyWith(authResult AuthResult, denyWith *config.DenyWithValues) AuthResult {
+	if denyWith != nil {
+		if denyWith.Code != 0 {
+			authResult.Status = envoy_type.StatusCode(denyWith.Code)
+		}
+
+		if denyWith.Message != "" {
+			authResult.Message = denyWith.Message
+		}
+
+		jsonData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+
+		if len(denyWith.Headers) > 0 {
+			headers := make([]map[string]string, 0)
+			for _, header := range denyWith.Headers {
+				value, _ := common.StringifyJSON(header.Value.ResolveFor(string(jsonData)))
+				headers = append(headers, map[string]string{header.Name: value})
+			}
+			authResult.Headers = headers
+		}
+	}
+
+	return authResult
 }

@@ -96,6 +96,12 @@ func (self *AuthService) successResponse(authResult AuthResult) *envoy_auth.Chec
 
 func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
+
+	httpCode := authResult.Status
+	if httpCode == 0 {
+		httpCode = statusCodeMapping[code]
+	}
+
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
 			Code: int32(code),
@@ -103,7 +109,7 @@ func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.Check
 		HttpResponse: &envoy_auth.CheckResponse_DeniedResponse{
 			DeniedResponse: &envoy_auth.DeniedHttpResponse{
 				Status: &envoy_type.HttpStatus{
-					Code: statusCodeMapping[code],
+					Code: httpCode,
 				},
 				Headers: buildResponseHeadersWithReason(authResult.Message, authResult.Headers),
 			},

@@ -1,0 +1,54 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: friends
+      apiKey:
+        labelSelectors:
+          authorino.3scale.net/managed-by: authorino
+          group: friends
+      credentials:
+        in: authorization_header
+        keySelector: APIKEY
+  authorization:
+    - name: mock-unauthorized
+      json:
+        conditions:
+          - selector: context.request.http.headers.x-mock-unauthorized
+            operator: neq
+            value: ""
+        rules:
+          - selector: context.request.http.headers.x-mock-unauthorized
+            operator: eq
+            value: "0"
+  denyWith:
+    unauthenticated:
+      code: 302
+      message: Login required
+      headers:
+        - name: Location
+          valueFrom:
+            authJSON: http://echo-api.3scale.net/login?redirect_to=https://{context.request.http.host}{context.request.http.path}
+    unauthorized:
+      code: 302
+      headers:
+        - name: Location
+          value: http://echo-api.3scale.net/not-found
+        - name: X-Requested-Path
+          valueFrom:
+            authJSON: context.request.http.path
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: friend-1-api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque

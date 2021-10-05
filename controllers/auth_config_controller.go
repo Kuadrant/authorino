@@ -437,6 +437,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		ResponseConfigs:      interfacedResponseConfigs,
 	}
 
+	// denyWith
+	if denyWith := authConfig.Spec.DenyWith; denyWith != nil {
+		apiConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
+		apiConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
+	}
+
 	for _, host := range authConfig.Spec.Hosts {
 		config[host] = apiConfig
 	}
@@ -456,4 +462,21 @@ func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name stri
 		}
 	}
 	return nil, fmt.Errorf("missing identity config %v", name)
+}
+
+func buildAuthorinoDenyWithValues(denyWithSpec *configv1beta1.DenyWithSpec) *authorinoService.DenyWithValues {
+	if denyWithSpec == nil {
+		return nil
+	}
+
+	headers := make([]common.JSONProperty, 0, len(denyWithSpec.Headers))
+	for _, header := range denyWithSpec.Headers {
+		headers = append(headers, common.JSONProperty{Name: header.Name, Value: common.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
+	}
+
+	return &authorinoService.DenyWithValues{
+		Code:    int32(denyWithSpec.Code),
+		Message: denyWithSpec.Message,
+		Headers: headers,
+	}
 }
