@@ -3,11 +3,11 @@
 Cloud-native AuthN/AuthZ enforcer for Zero Trust API protection.
 
 - **User identity verification and authentication**<br/>
-  JWTs, OIDC, OAuth2, K8s tokens, API key, mTLS, HMAC
+  JWTs, OIDC, OAuth2, K8s TokenReview, API key, mTLS, HMAC
 - **Ad hoc authorization metadata**<br/>
   HTTP GET and GET-by-POST, OIDC UserInfo, UMA-protected resource data
 - **Authorization policy enforcement**<br/>
-  JSON/JWT pattern matching policies, OPA/Rego policies
+  JSON/JWT pattern matching policies, OPA/Rego policies, K8s SubjectAccessReview
 - **Token normalization / Edge Authentication**<br/>
   OIDC-compliant "Festival Wristband" ID tokens (signed JWTs)
 - **Dynamic Metadata**<br/>
