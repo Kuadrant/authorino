@@ -22,6 +22,31 @@ AUTHORINO_REPLICAS ?= 1
 
 all: manager
 
+CONTROLLER_GEN=bin/controller-gen
+bin/controller-gen:
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+
+controller-gen: $(CONTROLLER_GEN)
+
+KUSTOMIZE=bin/kustomize
+bin/kustomize:
+	@{ \
+	set -e ;\
+	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
+	}
+
+kustomize: $(KUSTOMIZE)
 
 test: generate fmt vet manifests setup-envtest
 	KUBEBUILDER_ASSETS='$(strip $(shell $(SETUP_ENVTEST) use -p path 1.21.2))'  go test ./... -coverprofile cover.out
@@ -67,34 +92,6 @@ else
 	echo "tls disabled."
 endif
 
-CONTROLLER_GEN=$(PROJECT_DIR)/bin/controller-gen
-# find or download controller-gen
-# download controller-gen if necessary
-$(CONTROLLER_GEN):
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-
-controller-gen: $(CONTROLLER_GEN)
-
-KUSTOMIZE = $(PROJECT_DIR)/bin/kustomize
-# Download kustomize locally if necessary
-$(KUSTOMIZE):
-	@{ \
-	set -e ;\
-	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
-	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
-	}
-
-kustomize: $(KUSTOMIZE)
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests $(KUSTOMIZE)
