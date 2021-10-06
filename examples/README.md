@@ -767,7 +767,7 @@ Notice that the response returned by the API includes the HTTP header added by A
   "body": "",
   "headers": {
     …
-    "HTTP_X_EXT_AUTH_DATA": "{\"authorized\":\"true\",\"request-time\":\"1628097734\"}",
+    "X-Ext-Auth-Data": "{\"authorized\":\"true\",\"geeting-message\":\"Hello, John Doe!\",\"request-time\":\"1628097734\"}",
   },
   …
 }
