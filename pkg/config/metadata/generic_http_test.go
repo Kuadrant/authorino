@@ -3,10 +3,10 @@ package metadata
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
+	"github.com/kuadrant/authorino/pkg/common"
 	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
 	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
@@ -72,14 +72,15 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
-	identityObjectMockJSON, _ := json.Marshal(dataForAuthorization)
-	requestBody := bytes.NewBuffer(identityObjectMockJSON)
+	requestBody := bytes.NewBuffer([]byte("user=mock"))
 	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
 	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
 		Method:          "POST",
+		Parameters:      []common.JSONProperty{{Name: "user", Value: common.JSONValue{Pattern: "auth.identity.user"}}},
+		ContentType:     "application/x-www-form-urlencoded",
 		SharedSecret:    "secret",
 		AuthCredentials: sharedCredsMock,
 	}

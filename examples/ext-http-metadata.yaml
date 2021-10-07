@@ -15,23 +15,68 @@ spec:
         in: authorization_header
         keySelector: APIKEY
   metadata:
-    - name: echo-api
+    - name: echo-api-get
       http:
-        endpoint: http://talker-api.authorino.svc.cluster.local:3000/authz?requested_path={context.request.http.path}
-        method: POST
+        endpoint: http://talker-api.authorino.svc.cluster.local:3000/metadata?encoding=text/plain&original_path={context.request.http.path}
+        method: GET
         sharedSecretRef:
           name: talker-api-protection-secret
           key: echo-metadata-shared-auth
         credentials:
           in: authorization_header
           keySelector: Bearer
-  authorization:
-    - name: validate-echo-response
+    - name: echo-api-post-form
+      http:
+        endpoint: http://talker-api.authorino.svc.cluster.local:3000/metadata?encoding=form-data
+        method: POST
+        bodyParameters:
+          - name: original_path
+            valueFrom:
+              authJSON: context.request.http.path
+          - name: my_str
+            value: foo
+          - name: my_num
+            value: 123
+          - name: my_bool
+            value: true
+          - name: my_arr
+            value: ["a", "b", "c"]
+          - name: my_obj
+            value:
+              a_prop: "a value"
+    - name: echo-api-post-json
+      http:
+        endpoint: http://talker-api.authorino.svc.cluster.local:3000/metadata?encoding=json
+        method: POST
+        contentType: application/json
+        bodyParameters:
+          - name: original_path
+            valueFrom:
+              authJSON: context.request.http.path
+          - name: my_str
+            value: foo
+          - name: my_num
+            value: 123
+          - name: my_bool
+            value: true
+          - name: my_arr
+            value: ["a", "b", "c"]
+          - name: my_obj
+            value:
+              a_prop: "a value"
+  response:
+    - name: echo-api-metadata
       json:
-        rules:
-          - selector: auth.metadata.echo-api.path
-            operator: eq
-            value: /authz
+        properties:
+          - name: get-request
+            valueFrom:
+              authJSON: auth.metadata.echo-api-get
+          - name: post-request-form
+            valueFrom:
+              authJSON: auth.metadata.echo-api-post-form
+          - name: post-request-json
+            valueFrom:
+              authJSON: auth.metadata.echo-api-post-json
 ---
 apiVersion: v1
 kind: Secret
