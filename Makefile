@@ -23,7 +23,7 @@ AUTHORINO_REPLICAS ?= 1
 all: manager
 
 CONTROLLER_GEN=bin/controller-gen
-bin/controller-gen:
+$(CONTROLLER_GEN):
 	@{ \
 	set -e ;\
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
@@ -36,7 +36,7 @@ bin/controller-gen:
 controller-gen: $(CONTROLLER_GEN)
 
 KUSTOMIZE=bin/kustomize
-bin/kustomize:
+$(KUSTOMIZE):
 	@{ \
 	set -e ;\
 	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
@@ -64,11 +64,11 @@ run: generate fmt vet manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
-install: manifests $(KUSTOMIZE)
+install: manifests kustomize
 	$(KUSTOMIZE) build install | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
-uninstall: manifests $(KUSTOMIZE)
+uninstall: manifests kustomize
 	$(KUSTOMIZE) build install | kubectl delete -f -
 
 # Requests TLS certificates for services if cert-manager.io is installed, the secret is not already present and TLS is enabled
@@ -94,7 +94,7 @@ endif
 
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests $(KUSTOMIZE)
+deploy: manifests kustomize
 	$(MAKE) certs AUTHORINO_NAMESPACE=$(AUTHORINO_NAMESPACE) AUTHORINO_DEPLOYMENT=$(AUTHORINO_DEPLOYMENT)
 	cd deploy/base && ../../$(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && ../../$(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE) && ../../$(KUSTOMIZE) edit set replicas authorino-controller-manager=$(AUTHORINO_REPLICAS)
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && ../../../$(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
@@ -104,7 +104,7 @@ deploy: manifests $(KUSTOMIZE)
 	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && ../../../$(KUSTOMIZE) edit set namespace authorino
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: $(CONTROLLER_GEN)
+manifests: controller-gen
 	$(CONTROLLER_GEN) crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd  output:rbac:artifacts:config=install/rbac
 
 # Download vendor dependencies
@@ -122,7 +122,7 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: vendor $(CONTROLLER_GEN)
+generate: vendor controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
