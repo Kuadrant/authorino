@@ -22,6 +22,11 @@ const (
 	unsupportedOperatorErrorMsg = "Unsupported operator for JSON authorization"
 )
 
+var (
+	allCurlyBracesRegex          = regexp.MustCompile("{")
+	curlyBracesForModifiersRegex = regexp.MustCompile(`[^@]+@\w+:{`)
+)
+
 // JSONProperty represents a name-value pair for a JSON property where the value can be a static value or
 // a pattern for a value fetched dynamically from the authorization JSON
 type JSONProperty struct {
@@ -36,12 +41,31 @@ type JSONValue struct {
 	Pattern string
 }
 
+// ResolveFor resolves a value for a given input JSON.
+// For static values, it returns the value right away; for patterns, it magically decides whether to process as a
+// simple pattern or as a template that mixes static value with variable placeholders that resolve to patterns.
+// In case of a template that mixes no variable placeholder, but it contains nothing but a static string value, users
+// should use `JSONValue.Static` instead of `JSONValue.Pattern`.
 func (v *JSONValue) ResolveFor(jsonData string) interface{} {
 	if v.Pattern != "" {
-		return gjson.Get(jsonData, v.Pattern).Value()
+		// If all curly braces in the pattern are for passing arguments to modifiers, then it's likely NOT a template.
+		// To be a template, the pattern must contain at least one curly brace delimiting a variable placeholder.
+		if v.IsTemplate() {
+			return ReplaceJSONPlaceholders(v.Pattern, jsonData)
+		} else {
+			return gjson.Get(jsonData, v.Pattern).Value()
+		}
 	} else {
 		return v.Static
 	}
+}
+
+// IsTemplate tells whether a pattern is as a simple pattern or a template that mixes static value with variable
+// placeholders that resolve to patterns.
+// In case of a template that mixes no variable placeholder, but it contains nothing but a static string value, users
+// should use `JSONValue.Static` instead of `JSONValue.Pattern`.
+func (v *JSONValue) IsTemplate() bool {
+	return len(curlyBracesForModifiersRegex.FindAllStringSubmatch(v.Pattern, -1)) != len(allCurlyBracesRegex.FindAllStringSubmatch(v.Pattern, -1))
 }
 
 type JSONPatternMatchingRule struct {
@@ -123,14 +147,58 @@ func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {
 }
 
 func ReplaceJSONPlaceholders(source string, jsonData string) string {
-	replaced := source
-	regex := regexp.MustCompile("{([^}]*)}")
-	matches := regex.FindAllStringSubmatch(source, -1)
-	for _, selector := range matches {
-		value := gjson.Get(jsonData, selector[1]).String()
-		replaced = strings.ReplaceAll(replaced, "{"+selector[1]+"}", value)
+	var replaced, buffer []byte
+	var escaping, insidePlaceholder bool
+	var nestedCurlyBraces int
+
+	for _, b := range []byte(source) {
+		switch b {
+		case 123: // '{'
+			if escaping {
+				replaced = append(replaced, b)
+			} else {
+				if insidePlaceholder {
+					buffer = append(buffer, b)
+					nestedCurlyBraces = nestedCurlyBraces + 1
+				} else {
+					insidePlaceholder = true
+				}
+			}
+			escaping = false
+		case 125: // '}'
+			if insidePlaceholder {
+				if nestedCurlyBraces > 0 {
+					buffer = append(buffer, b)
+					nestedCurlyBraces = nestedCurlyBraces - 1
+				} else {
+					if len(buffer) > 0 {
+						replaced = append(replaced, []byte(gjson.Get(jsonData, string(buffer)).String())...)
+						buffer = []byte{}
+					}
+					insidePlaceholder = false
+				}
+			} else {
+				replaced = append(replaced, b)
+			}
+			escaping = false
+		case 92: // '\'
+			if insidePlaceholder {
+				buffer = append(buffer, b)
+			} else {
+				replaced = append(replaced, b)
+				escaping = !escaping
+			}
+		default:
+			if insidePlaceholder {
+				buffer = append(buffer, b)
+			} else {
+				replaced = append(replaced, b)
+			}
+			escaping = false
+		}
 	}
-	return replaced
+
+	return string(replaced)
 }
 
 func StringifyJSON(data interface{}) (string, error) {

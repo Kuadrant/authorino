@@ -10,7 +10,7 @@ import (
 )
 
 func TestJSONValueResolveFor(t *testing.T) {
-	jsonData := `{
+	const jsonData = `{
 		"auth": {
 			"identity": {
 				"username": "john",
@@ -58,6 +58,86 @@ func TestJSONValueResolveFor(t *testing.T) {
 	var resolvedRoles []string
 	_ = json.Unmarshal(resolvedValueAsJSON, &resolvedRoles)
 	assert.DeepEqual(t, resolvedRoles, []string{"user", "admin"})
+
+	// pattern mixing static and variable placeholders ("template")
+	value = JSONValue{Pattern: "Hello, {auth.identity.username}!"}
+	assert.Equal(t, value.ResolveFor(jsonData), "Hello, john!")
+
+	// template with inner patterns passing arguments to modifier
+	value = JSONValue{Pattern: `Email domain: {auth.identity.email.@extract:{"sep":"@","pos":1}}`}
+	assert.Equal(t, value.ResolveFor(jsonData), "Email domain: test")
+
+	// simple pattern passing arguments to modifier (not a template)
+	value = JSONValue{Pattern: `auth.identity.email.@extract:{"sep":"@","pos":1}`}
+	assert.Equal(t, value.ResolveFor(jsonData), "test")
+}
+
+func TestReplaceJSONPlaceholders(t *testing.T) {
+	const jsonData = `{
+		"auth": {
+			"identity": {
+				"username": "john",
+				"email": "john@test",
+				"email_verified": true,
+				"address": {
+					"line_1": "123 Test St",
+					"postal_code": 987654
+				},
+				"roles": [
+					"user",
+					"admin"
+				],
+				"exp": 1629884250,
+				"github.com": "https://github.com/john",
+			}
+		}
+	}`
+
+	var replaced string
+
+	replaced = ReplaceJSONPlaceholders("Nothing to replace", jsonData)
+	assert.Equal(t, replaced, "Nothing to replace")
+
+	replaced = ReplaceJSONPlaceholders("Username: {auth.identity.username}", jsonData)
+	assert.Equal(t, replaced, "Username: john")
+
+	replaced = ReplaceJSONPlaceholders("Username: {auth.identity.username.@case:upper}", jsonData)
+	assert.Equal(t, replaced, "Username: JOHN")
+
+	replaced = ReplaceJSONPlaceholders(`Domain: {auth.identity.email.@extract:{"sep":"@","pos":1}}`, jsonData)
+	assert.Equal(t, replaced, "Domain: test")
+
+	replaced = ReplaceJSONPlaceholders("Username: {auth.identity.username}, Email: {auth.identity.email}", jsonData)
+	assert.Equal(t, replaced, "Username: john, Email: john@test")
+
+	replaced = ReplaceJSONPlaceholders("{auth.identity.email_verified} (bool)", jsonData)
+	assert.Equal(t, replaced, "true (bool)")
+
+	replaced = ReplaceJSONPlaceholders(`Github.com: {auth.identity.github\.com}`, jsonData)
+	assert.Equal(t, replaced, "Github.com: https://github.com/john")
+
+	replaced = ReplaceJSONPlaceholders(`Github username: {auth.identity.github\.com|@extract:{"sep":"/","pos":3}|@case:upper}`, jsonData)
+	assert.Equal(t, replaced, "Github username: JOHN")
+
+	replaced = ReplaceJSONPlaceholders(`This is NOT a \{variable placeholder\}`, jsonData)
+	assert.Equal(t, replaced, `This is NOT a \{variable placeholder\}`)
+
+	replaced = ReplaceJSONPlaceholders("{auth.identity.username}", jsonData)
+	assert.Equal(t, replaced, "john")
+
+	replaced = ReplaceJSONPlaceholders(`\\{auth.identity.username}`, jsonData)
+	assert.Equal(t, replaced, `\\john`)
+
+	replaced = ReplaceJSONPlaceholders(`\\\{auth.identity.username\}`, jsonData)
+	assert.Equal(t, replaced, `\\\{auth.identity.username\}`)
+
+	// invalid placeholder
+	replaced = ReplaceJSONPlaceholders("username: {auth.identity.username", jsonData)
+	assert.Equal(t, replaced, "username: ")
+
+	// valid placeholder, yet with invalid json pattern
+	replaced = ReplaceJSONPlaceholders(`username: {auth.ide{ntit/y.u\sername}`, jsonData)
+	assert.Equal(t, replaced, "username: ")
 }
 
 func TestExtractJSONStr(t *testing.T) {

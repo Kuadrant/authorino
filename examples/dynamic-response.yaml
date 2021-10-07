@@ -32,7 +32,7 @@ spec:
             value: internal
           - name: username
             valueFrom:
-              authJSON: auth.identity.metadata.annotations.authorino\.3scale\.net/username
+              authJSON: auth.identity.metadata.annotations.authorino\.3scale\.net/username|@case:lower
           - name: roles
             value: ["consumer"]
           - name: born
@@ -50,6 +50,9 @@ spec:
           - name: request-time
             valueFrom:
               authJSON: context.request.time.seconds
+          - name: geeting-message
+            valueFrom:
+              authJSON: Hello, {auth.identity.metadata.annotations.authorino\.3scale\.net/name}!
 ---
 apiVersion: v1
 kind: Secret
@@ -59,6 +62,7 @@ metadata:
     authorino.3scale.net/managed-by: authorino
   annotations:
     authorino.3scale.net/username: consumer-1
+    authorino.3scale.net/name: John Doe
 stringData:
   api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
 type: Opaque
@@ -70,7 +74,8 @@ metadata:
   labels:
     authorino.3scale.net/managed-by: authorino
   annotations:
-    authorino.3scale.net/username: consumer-2
+    authorino.3scale.net/username: Consumer-2
+    authorino.3scale.net/name: Jane Smith
 stringData:
   api_key: orVKflEHd5Udtu8iFzmvQQTqN7Em7tRu
 type: Opaque
