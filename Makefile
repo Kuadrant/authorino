@@ -8,6 +8,9 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+export PATH := $(PROJECT_DIR)/bin:$(PATH)
+
 # Image URL to use all building/pushing image targets
 DEFAULT_AUTHORINO_IMAGE = quay.io/3scale/authorino:latest
 AUTHORINO_IMAGE ?= $(DEFAULT_AUTHORINO_IMAGE)
@@ -20,6 +23,29 @@ AUTHORINO_REPLICAS ?= 1
 
 all: manager
 
+bin/controller-gen:
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+
+controller-gen: bin/controller-gen
+
+bin/kustomize:
+	@{ \
+	set -e ;\
+	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GOBIN=$(PROJECT_DIR)/bin go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
+	}
+
+kustomize: bin/kustomize
 
 test: generate fmt vet manifests setup-envtest
 	KUBEBUILDER_ASSETS='$(strip $(shell $(SETUP_ENVTEST) use -p path 1.21.2))'  go test ./... -coverprofile cover.out
@@ -38,11 +64,11 @@ run: generate fmt vet manifests
 
 # Install CRDs into a cluster
 install: manifests kustomize
-	$(KUSTOMIZE) build install | kubectl apply -f -
+	kustomize build install | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
 uninstall: manifests kustomize
-	$(KUSTOMIZE) build install | kubectl delete -f -
+	kustomize build install | kubectl delete -f -
 
 # Requests TLS certificates for services if cert-manager.io is installed, the secret is not already present and TLS is enabled
 .PHONY: certs
@@ -52,9 +78,9 @@ certs:
 ifeq (,$(findstring -notls,$(AUTHORINO_DEPLOYMENT)))
 ifeq (,$(TLS_CERT_SECRET_CHECK))
 ifneq (, $(CERT_MANAGER_CHECK))
-	cd deploy/base/certmanager && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
-	$(KUSTOMIZE) build deploy/base/certmanager | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
-	cd deploy/base/certmanager && $(KUSTOMIZE) edit set namespace authorino
+	cd deploy/base/certmanager && kustomize edit set namespace $(AUTHORINO_NAMESPACE)
+	kustomize build deploy/base/certmanager | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
+	cd deploy/base/certmanager && kustomize edit set namespace authorino
 else
 	echo "cert-manager not installed."
 endif
@@ -68,16 +94,16 @@ endif
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	$(MAKE) certs AUTHORINO_NAMESPACE=$(AUTHORINO_NAMESPACE) AUTHORINO_DEPLOYMENT=$(AUTHORINO_DEPLOYMENT)
-	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE) && $(KUSTOMIZE) edit set replicas authorino-controller-manager=$(AUTHORINO_REPLICAS)
-	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace $(AUTHORINO_NAMESPACE)
-	$(KUSTOMIZE) build deploy/overlays/$(AUTHORINO_DEPLOYMENT) | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
+	cd deploy/base && kustomize edit set image authorino=$(AUTHORINO_IMAGE) && kustomize edit set namespace $(AUTHORINO_NAMESPACE) && kustomize edit set replicas authorino-controller-manager=$(AUTHORINO_REPLICAS)
+	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && kustomize edit set namespace $(AUTHORINO_NAMESPACE)
+	kustomize build deploy/overlays/$(AUTHORINO_DEPLOYMENT) | kubectl -n $(AUTHORINO_NAMESPACE) apply -f -
 # rollback kustomize edit
-	cd deploy/base && $(KUSTOMIZE) edit set image authorino=$(DEFAULT_AUTHORINO_IMAGE) && $(KUSTOMIZE) edit set namespace authorino && $(KUSTOMIZE) edit set replicas authorino-controller-manager=1
-	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && $(KUSTOMIZE) edit set namespace authorino
+	cd deploy/base && kustomize edit set image authorino=$(DEFAULT_AUTHORINO_IMAGE) && kustomize edit set namespace authorino && kustomize edit set replicas authorino-controller-manager=1
+	cd deploy/overlays/$(AUTHORINO_DEPLOYMENT) && kustomize edit set namespace authorino
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd  output:rbac:artifacts:config=install/rbac
+	controller-gen crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd  output:rbac:artifacts:config=install/rbac
 
 # Download vendor dependencies
 .PHONY: vendor
@@ -95,7 +121,7 @@ vet:
 
 # Generate code
 generate: vendor controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
 docker-build: vendor
@@ -104,38 +130,6 @@ docker-build: vendor
 # Push the docker image
 docker-push:
 	docker push ${AUTHORINO_IMAGE}
-
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
-kustomize:
-ifeq (, $(shell which kustomize))
-	@{ \
-	set -e ;\
-	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
-	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
-	}
-KUSTOMIZE=$(GOBIN)/kustomize
-else
-KUSTOMIZE=$(shell which kustomize)
-endif
 
 KIND_VERSION=v0.11.1
 
@@ -155,13 +149,12 @@ else
 SETUP_ENVTEST=$(shell which setup-envtest)
 endif
 
-
 # Prints relevant environment variables
 .PHONY: envs
 envs:
 	@{ \
-	echo "CONTROLLER_GEN=$(CONTROLLER_GEN)"; \
-	echo "KUSTOMIZE=$(KUSTOMIZE)"; \
+	echo "CONTROLLER_GEN=$$(which controller-gen)"; \
+	echo "KUSTOMIZE=$$(which kustomize)"; \
 	echo "AUTHORINO_IMAGE=$(AUTHORINO_IMAGE)"; \
 	echo "AUTHORINO_NAMESPACE=$(AUTHORINO_NAMESPACE)"; \
 	echo "AUTHORINO_DEPLOYMENT=$(AUTHORINO_DEPLOYMENT)"; \
@@ -185,7 +178,7 @@ ENVOY_OVERLAY = notls
 endif
 example-apps:
 	kubectl -n $(NAMESPACE) apply -f examples/talker-api/talker-api-deploy.yaml
-	$(KUSTOMIZE) build examples/envoy/overlays/$(ENVOY_OVERLAY) | kubectl -n $(NAMESPACE) apply -f -
+	kustomize build examples/envoy/overlays/$(ENVOY_OVERLAY) | kubectl -n $(NAMESPACE) apply -f -
 ifneq (, $(DEPLOY_KEYCLOAK))
 	kubectl -n $(NAMESPACE) apply -f examples/keycloak/keycloak-deploy.yaml
 endif
