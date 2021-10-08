@@ -36,6 +36,28 @@ var (
 	}
 )
 
+// AuthResult holds the result data for building the response to an auth check
+type AuthResult struct {
+	// Code is gRPC response code to the auth check
+	Code rpc.Code
+	// Status is HTTP status code to override the default mapping between gRPC response codes and HTTP status messages
+	// for auth
+	Status envoy_type.StatusCode
+	// Message is X-Ext-Auth-Reason message returned in an injected HTTP response header, to explain the reason of the
+	// auth check result
+	Message string
+	// Headers are other HTTP headers to inject in the response
+	Headers []map[string]string
+	// Metadata are Envoy dynamic metadata content
+	Metadata map[string]interface{}
+}
+
+// Success tells whether the auth check result was successful and therefore access can be granted to the requested
+// resource or it has failed (deny access)
+func (result *AuthResult) Success() bool {
+	return result.Code == rpc.OK
+}
+
 // AuthService is the server API for the authorization service.
 type AuthService struct {
 	Cache cache.Cache
