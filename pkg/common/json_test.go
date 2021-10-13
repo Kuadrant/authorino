@@ -163,6 +163,13 @@ func TestCaseJSONStr(t *testing.T) {
 	assert.Equal(t, gjson.Get(jsonData, `auth.identity.fullname.@case:lower`).String(), "john doe")
 }
 
+func TestBase64JSONStr(t *testing.T) {
+	const jsonData = `{"auth":{"identity":{"username":{"encoded":"am9obg==","decoded":"john"}}}}`
+
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.encoded.@base64:decode`).String(), "john")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.decoded.@base64:encode`).String(), "am9obg==")
+}
+
 func TestStringifyJSON(t *testing.T) {
 	var source interface{}
 	var str string

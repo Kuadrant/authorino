@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -266,8 +267,24 @@ var caseJSONStr = func(json, arg string) string {
 	return json
 }
 
+var base64JSONStr = func(json, arg string) string {
+	str := gjson.Parse(json).String()
+
+	switch arg {
+	case "encode":
+		encoded := base64.URLEncoding.EncodeToString([]byte(str))
+		return fmt.Sprintf("\"%s\"", encoded)
+	case "decode":
+		decoded, _ := base64.URLEncoding.DecodeString(str)
+		return fmt.Sprintf("\"%s\"", decoded)
+	default:
+		return json
+	}
+}
+
 func init() {
 	gjson.AddModifier("extract", extractJSONStr)
 	gjson.AddModifier("replace", replaceJSONStr)
 	gjson.AddModifier("case", caseJSONStr)
+	gjson.AddModifier("base64", base64JSONStr)
 }
