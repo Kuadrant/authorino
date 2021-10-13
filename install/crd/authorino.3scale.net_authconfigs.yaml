@@ -441,6 +441,103 @@ spec:
                   - name
                   type: object
                 type: array
+              denyWith:
+                description: Custom denial response codes, statuses and headers to
+                  override default 40x's.
+                properties:
+                  unauthenticated:
+                    description: Denial status customization when the request is unauthenticated.
+                    properties:
+                      code:
+                        description: HTTP status code to override the default denial
+                          status code.
+                        format: int64
+                        maximum: 599
+                        minimum: 300
+                        type: integer
+                      headers:
+                        description: HTTP response headers to override the default
+                          denial headers.
+                        items:
+                          properties:
+                            name:
+                              description: The name of the claim
+                              type: string
+                            value:
+                              description: Static value of the claim
+                              x-kubernetes-preserve-unknown-fields: true
+                            valueFrom:
+                              description: Dynamic value of the claim
+                              properties:
+                                authJSON:
+                                  description: 'Selector to fill the value from the
+                                    authorization JSON. Any patterns supported by
+                                    https://pkg.go.dev/github.com/tidwall/gjson can
+                                    be used. The value can be just the pattern with
+                                    the path to fetch from the authorization JSON
+                                    (e.g. ''context.request.http.host'') or a string
+                                    template with variable placeholders that resolve
+                                    to patterns (e.g. "Hello, {auth.identity.name}!")
+                                    The following string modifiers are available:
+                                    @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    @case:upper|lower.'
+                                  type: string
+                              type: object
+                          required:
+                          - name
+                          type: object
+                        type: array
+                      message:
+                        description: HTTP message to override the default denial message.
+                        type: string
+                    type: object
+                  unauthorized:
+                    description: Denial status customization when the request is unauthorized.
+                    properties:
+                      code:
+                        description: HTTP status code to override the default denial
+                          status code.
+                        format: int64
+                        maximum: 599
+                        minimum: 300
+                        type: integer
+                      headers:
+                        description: HTTP response headers to override the default
+                          denial headers.
+                        items:
+                          properties:
+                            name:
+                              description: The name of the claim
+                              type: string
+                            value:
+                              description: Static value of the claim
+                              x-kubernetes-preserve-unknown-fields: true
+                            valueFrom:
+                              description: Dynamic value of the claim
+                              properties:
+                                authJSON:
+                                  description: 'Selector to fill the value from the
+                                    authorization JSON. Any patterns supported by
+                                    https://pkg.go.dev/github.com/tidwall/gjson can
+                                    be used. The value can be just the pattern with
+                                    the path to fetch from the authorization JSON
+                                    (e.g. ''context.request.http.host'') or a string
+                                    template with variable placeholders that resolve
+                                    to patterns (e.g. "Hello, {auth.identity.name}!")
+                                    The following string modifiers are available:
+                                    @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    @case:upper|lower.'
+                                  type: string
+                              type: object
+                          required:
+                          - name
+                          type: object
+                        type: array
+                      message:
+                        description: HTTP message to override the default denial message.
+                        type: string
+                    type: object
+                type: object
               hosts:
                 description: The list of public host names of the services protected
                   by this authentication/authorization scheme. Authorino uses the

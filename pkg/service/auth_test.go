@@ -31,11 +31,11 @@ func TestSuccessResponse(t *testing.T) {
 	var resp *envoy_auth.OkHttpResponse
 
 	resp = service.successResponse(AuthResult{}).GetOkResponse()
-	assert.Equal(t, 0, len(resp.GetHeaders()))
+	assert.Equal(t, len(resp.GetHeaders()), 0)
 
 	headers := []map[string]string{{"X-Custom-Header": "some-value"}}
 	resp = service.successResponse(AuthResult{Headers: headers}).GetOkResponse()
-	assert.Equal(t, "some-value", getHeader(resp.GetHeaders(), "X-Custom-Header"))
+	assert.Equal(t, getHeader(resp.GetHeaders(), "X-Custom-Header"), "some-value")
 }
 
 func TestDeniedResponse(t *testing.T) {
@@ -44,22 +44,30 @@ func TestDeniedResponse(t *testing.T) {
 	}
 
 	var resp *envoy_auth.DeniedHttpResponse
+	var extraHeaders []map[string]string
 
 	resp = service.deniedResponse(AuthResult{Code: rpc.FAILED_PRECONDITION, Message: "Invalid request"}).GetDeniedResponse()
-	assert.Equal(t, envoy_type.StatusCode_BadRequest, resp.Status.Code)
-	assert.Equal(t, "Invalid request", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
+	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_BadRequest)
+	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Invalid request")
 
 	resp = service.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: "Service not found"}).GetDeniedResponse()
-	assert.Equal(t, envoy_type.StatusCode_NotFound, resp.Status.Code)
-	assert.Equal(t, "Service not found", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
+	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_NotFound)
+	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Service not found")
 
-	extraHeaders := []map[string]string{{"WWW-Authenticate": "Bearer"}}
+	extraHeaders = []map[string]string{{"WWW-Authenticate": "Bearer"}}
 	resp = service.deniedResponse(AuthResult{Code: rpc.UNAUTHENTICATED, Message: "Unauthenticated", Headers: extraHeaders}).GetDeniedResponse()
-	assert.Equal(t, envoy_type.StatusCode_Unauthorized, resp.Status.Code)
-	assert.Equal(t, "Unauthenticated", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
-	assert.Equal(t, "Bearer", getHeader(resp.GetHeaders(), "WWW-Authenticate"))
+	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_Unauthorized)
+	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Unauthenticated")
+	assert.Equal(t, getHeader(resp.GetHeaders(), "WWW-Authenticate"), "Bearer")
 
 	resp = service.deniedResponse(AuthResult{Code: rpc.PERMISSION_DENIED, Message: "Unauthorized"}).GetDeniedResponse()
-	assert.Equal(t, envoy_type.StatusCode_Forbidden, resp.Status.Code)
-	assert.Equal(t, "Unauthorized", getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER))
+	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_Forbidden)
+	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Unauthorized")
+
+	extraHeaders = []map[string]string{{"Location": "http://my-app.io/login"}}
+	resp = service.deniedResponse(AuthResult{Code: rpc.UNAUTHENTICATED, Status: envoy_type.StatusCode_Found, Message: "Please login", Headers: extraHeaders}).GetDeniedResponse()
+	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_Found)
+	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Please login")
+	assert.Equal(t, getHeader(resp.GetHeaders(), "Location"), "http://my-app.io/login")
+	assert.Equal(t, len(resp.GetHeaders()), 2)
 }

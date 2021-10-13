@@ -12,6 +12,8 @@ type APIConfig struct {
 	MetadataConfigs      []common.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []common.AuthConfigEvaluator `yaml:"authorization,omitempty"`
 	ResponseConfigs      []common.AuthConfigEvaluator `yaml:"response,omitempty"`
+
+	DenyWith
 }
 
 func (config *APIConfig) GetChallengeHeaders() []map[string]string {
@@ -24,4 +26,15 @@ func (config *APIConfig) GetChallengeHeaders() []map[string]string {
 	}
 
 	return challengeHeaders
+}
+
+type DenyWith struct {
+	Unauthenticated *DenyWithValues
+	Unauthorized    *DenyWithValues
+}
+
+type DenyWithValues struct {
+	Code    int32
+	Message string
+	Headers []common.JSONProperty
 }

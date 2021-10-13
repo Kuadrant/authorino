@@ -73,6 +73,9 @@ type AuthConfigSpec struct {
 	// List of response configs.
 	// Authorino gathers data from the auth pipeline to build custom responses for the client.
 	Response []*Response `json:"response,omitempty"`
+
+	// Custom denial response codes, statuses and headers to override default 40x's.
+	DenyWith *DenyWith `json:"denyWith,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=authorization_header;custom_header;query;cookie
@@ -408,6 +411,29 @@ type Response_Wristband struct {
 type Response_DynamicJSON struct {
 	// List of JSON property-value pairs to be added to the dynamic response.
 	Properties []JsonProperty `json:"properties"`
+}
+
+// +kubebuilder:validation:Minimum:=300
+// +kubebuilder:validation:Maximum:=599
+type DenyWith_Code int64
+
+type DenyWithSpec struct {
+	// HTTP status code to override the default denial status code.
+	Code DenyWith_Code `json:"code,omitempty"`
+
+	// HTTP message to override the default denial message.
+	Message string `json:"message,omitempty"`
+
+	// HTTP response headers to override the default denial headers.
+	Headers []JsonProperty `json:"headers,omitempty"`
+}
+
+type DenyWith struct {
+	// Denial status customization when the request is unauthenticated.
+	Unauthenticated *DenyWithSpec `json:"unauthenticated,omitempty"`
+
+	// Denial status customization when the request is unauthorized.
+	Unauthorized *DenyWithSpec `json:"unauthorized,omitempty"`
 }
 
 // AuthConfigStatus defines the observed state of AuthConfig
