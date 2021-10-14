@@ -480,7 +480,7 @@ spec:
                                     to patterns (e.g. "Hello, {auth.identity.name}!")
                                     The following string modifiers are available:
                                     @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower.'
+                                    @case:upper|lower, and @base64:encode|decode.'
                                   type: string
                               type: object
                           required:
@@ -526,7 +526,7 @@ spec:
                                     to patterns (e.g. "Hello, {auth.identity.name}!")
                                     The following string modifiers are available:
                                     @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower.'
+                                    @case:upper|lower, and @base64:encode|decode.'
                                   type: string
                               type: object
                           required:
