@@ -72,6 +72,67 @@ func TestJSONValueResolveFor(t *testing.T) {
 	assert.Equal(t, value.ResolveFor(jsonData), "test")
 }
 
+func TestIsTemplate(t *testing.T) {
+	var value *JSONValue
+
+	// static string
+	value = &JSONValue{Pattern: "Just a static string"}
+	assert.Check(t, !value.IsTemplate())
+
+	// template
+	value = &JSONValue{Pattern: `Hello, {auth.identity.username}!`}
+	assert.Check(t, value.IsTemplate())
+
+	value = &JSONValue{Pattern: `http://talker-api.authorino.svc.cluster.local:3000/metadata?encoding=text/plain&original_path={context.request.http.path}`}
+	assert.Check(t, value.IsTemplate())
+
+	// json path
+	value = &JSONValue{Pattern: `auth.identity.metadata.annotations.authorino\.3scale\.net/username`}
+	assert.Check(t, !value.IsTemplate())
+
+	value = &JSONValue{Pattern: `auth.identity.metadata.annotations.authorino\.3scale\.net/username|@case:lower`}
+	assert.Check(t, !value.IsTemplate())
+
+	value = &JSONValue{Pattern: `auth.identity.metadata.creationTimestamp`}
+	assert.Check(t, !value.IsTemplate())
+
+	// json path with modifier
+	value = &JSONValue{Pattern: `auth.identity.metadata.name.@replace:{"old":"john","new":"John"}`}
+	assert.Check(t, !value.IsTemplate())
+
+	// technically a template
+	value = &JSONValue{Pattern: `{auth.identity.metadata.creationTimestamp}`}
+	assert.Check(t, value.IsTemplate())
+
+	// template with modifier
+	value = &JSONValue{Pattern: `Hello, {auth.identity.metadata.annotations.authorino\.3scale\.net/name|@extract:{"pos":1}}!`}
+	assert.Check(t, value.IsTemplate())
+
+	value = &JSONValue{Pattern: `Hello, \{auth.identity.metadata.annotations.authorino\.3scale\.net/name|@extract:\{"pos":1}}!`}
+	assert.Check(t, value.IsTemplate())
+
+	value = &JSONValue{Pattern: `Email domain: {auth.identity.email.@extract:{"sep":"@","pos":1}}`}
+	assert.Check(t, value.IsTemplate())
+
+	value = &JSONValue{Pattern: `Email username: {auth.identity.email.@extract:{"sep":"@","pos":0}} | Email domain: {auth.identity.email.@extract:{"sep":"@","pos":1}}`}
+	assert.Check(t, value.IsTemplate())
+
+	// template with escaping
+	value = &JSONValue{Pattern: `The JSON path is \{auth.identity.metadata.annotations.name.@replace:\{"old":"john","new":"John"\}\}!`}
+	assert.Check(t, value.IsTemplate())
+
+	value = &JSONValue{Pattern: `Hello, {auth.identity.metadata.annotations.authorino\.3scale\.net/name}!`}
+	assert.Check(t, value.IsTemplate())
+
+	// template with more than one variable placeholder
+	value = &JSONValue{Pattern: `http://echo-api.3scale.net/login?redirect_to=https://{context.request.http.host}{context.request.http.path}`}
+	assert.Check(t, value.IsTemplate())
+
+	// invalid template
+	value = &JSONValue{Pattern: `Not a valid {template!`}
+	assert.Check(t, value.IsTemplate())
+}
+
 func TestReplaceJSONPlaceholders(t *testing.T) {
 	const jsonData = `{
 		"auth": {
