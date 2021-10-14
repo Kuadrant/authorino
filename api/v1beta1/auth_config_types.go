@@ -381,7 +381,8 @@ type ValueFromAuthJSON struct {
 	// Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The value can be just the pattern with the path to fetch from the authorization JSON (e.g. 'context.request.http.host')
 	// or a string template with variable placeholders that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-	// The following string modifiers are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower.
+	// The following string modifiers are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower,
+	// and @base64:encode|decode.
 	AuthJSON string `json:"authJSON,omitempty"`
 }
 
