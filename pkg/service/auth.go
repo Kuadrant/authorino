@@ -1,13 +1,12 @@
 package service
 
 import (
-	"encoding/json"
 	"strings"
 
 	"golang.org/x/net/context"
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -26,30 +25,30 @@ const (
 )
 
 var (
-	authServiceLog = ctrl.Log.WithName("Authorino").WithName("AuthService")
-
 	statusCodeMapping = map[rpc.Code]envoy_type.StatusCode{
 		rpc.FAILED_PRECONDITION: envoy_type.StatusCode_BadRequest,
 		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
 		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
 		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
 	}
+
+	authServiceLogger = log.WithName("service").WithName("auth")
 )
 
 // AuthResult holds the result data for building the response to an auth check
 type AuthResult struct {
 	// Code is gRPC response code to the auth check
-	Code rpc.Code
+	Code rpc.Code `json:"code,omitempty"`
 	// Status is HTTP status code to override the default mapping between gRPC response codes and HTTP status messages
 	// for auth
-	Status envoy_type.StatusCode
+	Status envoy_type.StatusCode `json:"status,omitempty"`
 	// Message is X-Ext-Auth-Reason message returned in an injected HTTP response header, to explain the reason of the
 	// auth check result
-	Message string
+	Message string `json:"message,omitempty"`
 	// Headers are other HTTP headers to inject in the response
-	Headers []map[string]string
+	Headers []map[string]string `json:"headers,omitempty"`
 	// Metadata are Envoy dynamic metadata content
-	Metadata map[string]interface{}
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Success tells whether the auth check result was successful and therefore access can be granted to the requested
@@ -65,43 +64,43 @@ type AuthService struct {
 
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
-func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
-	reqJSON, err := json.MarshalIndent(req, "", "  ")
-	if err != nil {
-		return self.deniedResponse(AuthResult{Code: rpc.FAILED_PRECONDITION, Message: RESPONSE_MESSAGE_INVALID_REQUEST}), nil
-	}
-	authServiceLog.Info("Check()", "reqJSON", string(reqJSON))
+func (a *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
+	a.logAuthRequest(req)
+
+	requestData := req.Attributes.Request.Http
 
 	// service config
-	host := req.Attributes.Request.Http.Host
+	host := requestData.Host
 	var apiConfig *config.APIConfig
-	apiConfig = self.Cache.Get(host)
+	apiConfig = a.Cache.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
 	if apiConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
-		apiConfig = self.Cache.Get(splitHost[0])
+		apiConfig = a.Cache.Get(splitHost[0])
 	}
 	// If we couldn't find the APIConfig in the config, we return and deny.
 	if apiConfig == nil {
-		return self.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}), nil
+		result := AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
+		a.logAuthResult(requestData.Id, result)
+		return a.deniedResponse(result), nil
 	}
 
 	pipeline := NewAuthPipeline(ctx, req, *apiConfig)
 	result := pipeline.Evaluate()
 
-	authServiceLog.Info("Check()", "result", result)
+	a.logAuthResult(requestData.Id, result)
 
 	if result.Success() {
-		return self.successResponse(result), nil
+		return a.successResponse(result), nil
 	} else {
-		return self.deniedResponse(result), nil
+		return a.deniedResponse(result), nil
 	}
 }
 
-func (self *AuthService) successResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult AuthResult) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := structpb.NewStruct(authResult.Metadata)
 	if err != nil {
-		authServiceLog.Error(err, "failed to create dynamic metadata", "obj", authResult.Metadata)
+		authServiceLogger.Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
@@ -116,7 +115,7 @@ func (self *AuthService) successResponse(authResult AuthResult) *envoy_auth.Chec
 	}
 }
 
-func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
 
 	httpCode := authResult.Status
@@ -137,6 +136,77 @@ func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.Check
 			},
 		},
 	}
+}
+
+func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest) {
+	var obj interface{}
+	var level int
+
+	requestId := req.Attributes.Request.Http.Id
+
+	if log.Level.Debug() {
+		obj = &req.Attributes
+		level = 1
+	} else {
+		reqAttrs := req.Attributes
+		httpAttrs := reqAttrs.Request.Http
+		obj = &struct {
+			Source      *envoy_auth.AttributeContext_Peer `json:"source,omitempty"`
+			Destination *envoy_auth.AttributeContext_Peer `json:"destination,omitempty"`
+			Request     interface{}                       `json:"request,omitempty"`
+		}{
+			Source:      reqAttrs.Source,
+			Destination: reqAttrs.Destination,
+			Request: struct {
+				Http interface{} `json:"http,omitempty"`
+			}{
+				Http: struct {
+					Id     string `json:"id,omitempty"`
+					Method string `json:"method,omitempty"`
+					Path   string `json:"path,omitempty"`
+					Host   string `json:"host,omitempty"`
+					Scheme string `json:"scheme,omitempty"`
+				}{
+					Id:     httpAttrs.Id,
+					Method: httpAttrs.Method,
+					Path:   strings.Split(httpAttrs.Path, "?")[0],
+					Host:   httpAttrs.Host,
+					Scheme: httpAttrs.Scheme,
+				},
+			},
+		}
+		level = 0
+	}
+
+	authServiceLogger.V(level).Info("Check() request", "request id", requestId, "object", obj)
+}
+
+func (a *AuthService) logAuthResult(requestId string, result AuthResult) {
+	success := result.Success()
+	logData := []interface{}{"request id", requestId, "success", success}
+
+	var level int
+	if log.Level.Debug() {
+		level = 1
+	} else {
+		level = 0
+	}
+
+	if !success {
+		var obj interface{}
+		if log.Level.Debug() {
+			obj = result
+		} else {
+			obj = AuthResult{
+				Code:    result.Code,
+				Status:  result.Status,
+				Message: result.Message,
+			}
+		}
+		logData = append(logData, "object", obj)
+	}
+
+	authServiceLogger.V(level).Info("Check() response", logData...)
 }
 
 func buildResponseHeaders(headers []map[string]string) []*envoy_core.HeaderValueOption {

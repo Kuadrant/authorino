@@ -7,8 +7,11 @@ import (
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 )
+
+var userInfoLogger = log.WithName("metadata").WithName("userinfo").V(1)
 
 type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
@@ -42,6 +45,8 @@ func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Cont
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
+
+	userInfoLogger.Info("fetching user info", "endpoint", userInfoEndpoint)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

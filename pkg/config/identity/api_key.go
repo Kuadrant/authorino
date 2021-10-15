@@ -6,20 +6,20 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	apiKeySelector              = "api_key"
 	invalidApiKeyMsg            = "the API Key provided is invalid"
-	noApiKeysFoundMsg           = "no API Keys were found on the request"
-	authSuccessfulMsg           = "Successfully authenticated with the provided API key"
 	credentialsFetchingErrorMsg = "Something went wrong fetching the authorized credentials"
 )
+
+var apiKeyLogger = log.WithName("identity").WithName("apikey").V(1)
 
 type apiKeyDetails struct {
 	Name                  string            `yaml:"name"`
@@ -34,10 +34,6 @@ type APIKey struct {
 	apiKeyDetails
 }
 
-var (
-	apiKeyLog = ctrl.Log.WithName("Authorino").WithName("ApiKey")
-)
-
 // NewApiKeyIdentity creates a new instance of APIKey
 func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred auth_credentials.AuthCredentials, k8sClient client.Reader) *APIKey {
 	apiKey := &APIKey{
@@ -50,7 +46,7 @@ func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred a
 		},
 	}
 	if err := apiKey.GetCredentialsFromCluster(context.TODO()); err != nil {
-		apiKeyLog.Error(err, credentialsFetchingErrorMsg)
+		apiKeyLogger.Error(err, credentialsFetchingErrorMsg)
 	}
 	return apiKey
 }
@@ -74,18 +70,15 @@ func (apiKey *APIKey) GetCredentialsFromCluster(ctx context.Context) error {
 // Call will evaluate the credentials within the request against the authorized ones
 func (apiKey *APIKey) Call(pipeline common.AuthPipeline, _ context.Context) (interface{}, error) {
 	if reqKey, err := apiKey.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
-		apiKeyLog.Error(err, noApiKeysFoundMsg)
 		return nil, err
 	} else {
 		for key, secret := range apiKey.authorizedCredentials {
 			if key == reqKey {
-				apiKeyLog.Info(authSuccessfulMsg, "secret", secret)
 				return secret, nil
 			}
 		}
 	}
 	err := fmt.Errorf(invalidApiKeyMsg)
-	apiKeyLog.Error(err, invalidApiKeyMsg)
 	return nil, err
 }
 

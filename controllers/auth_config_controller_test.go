@@ -8,6 +8,7 @@ import (
 	"github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	mocks "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	"github.com/golang/mock/gomock"
@@ -130,7 +131,7 @@ func setupEnvironment(t *testing.T, c cache.Cache) AuthConfigReconciler {
 
 	return AuthConfigReconciler{
 		Client: client,
-		Log:    ctrl.Log.WithName("reconcilerTest"),
+		Logger: log.WithName("test").WithName("authconfigreconciler"),
 		Scheme: nil,
 		Cache:  c,
 	}

@@ -45,7 +45,7 @@ import (
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	Log    logr.Logger
+	Logger logr.Logger
 	Scheme *runtime.Scheme
 	Cache  cache.Cache
 }
@@ -53,7 +53,7 @@ type AuthConfigReconciler struct {
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("authConfig", req.NamespacedName)
+	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 
 	authConfig := configv1beta1.AuthConfig{}
 	err := r.Get(ctx, req.NamespacedName, &authConfig)
@@ -61,7 +61,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// As we can't get the object, that means it was deleted.
 		// Delete all the authconfigs related to this k8s object.
-		log.Info("object has been deleted, deleted related configs", "object", req)
+		logger.Info("object has been deleted, deleted related configs")
 
 		//Cleanup all the hosts related to this CRD object.
 		r.Cache.Delete(req.String())
@@ -82,7 +82,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// Check for host collision with another namespace
 		if cachedKey, found := r.Cache.FindId(host); found {
 			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
-				log.Info("host already taken in another namespace", "host", host)
+				logger.Info("host already taken in another namespace", "host", host)
 				return ctrl.Result{}, nil
 			}
 		}
@@ -91,6 +91,8 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 	}
+
+	logger.Info("resource reconciled")
 
 	return ctrl.Result{}, nil
 }

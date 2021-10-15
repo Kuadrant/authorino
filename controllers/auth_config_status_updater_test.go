@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"
@@ -47,6 +48,7 @@ func TestAuthConfigStatusUpdaterReconcile(t *testing.T) {
 
 	result, err := (&AuthConfigStatusUpdater{
 		Client: client,
+		Logger: log.WithName("test").WithName("authconfigstatusupdater"),
 	}).Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: resourceName,
 	})

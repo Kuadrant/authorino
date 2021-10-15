@@ -11,9 +11,9 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	"github.com/open-policy-agent/opa/rego"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -28,15 +28,13 @@ default allow = false
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
-var (
-	opaLog = ctrl.Log.WithName("Authorino").WithName("OPA")
-)
+var opaLogger = log.WithName("authorization").WithName("opa").V(1)
 
 func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int) (*OPA, error) {
 	if rego == "" && externalSource.Endpoint != "" {
 		downloadedRego, err := externalSource.downloadRegoDataFromUrl()
 		if err != nil {
-			opaLog.Error(err, regoDownloadErrorMsg, "secret", policyName)
+			opaLogger.Error(err, regoDownloadErrorMsg, "secret", policyName)
 			return nil, err
 		}
 		rego = downloadedRego
@@ -51,7 +49,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource OPAExter
 		opaContext:        context.TODO(),
 	}
 	if err := o.precompilePolicy(); err != nil {
-		opaLog.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
+		opaLogger.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
 		return nil, err
 	} else {
 		return o, nil

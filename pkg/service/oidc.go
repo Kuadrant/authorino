@@ -7,11 +7,10 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
-
-	ctrl "sigs.k8s.io/controller-runtime"
+	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
-var oidcServiceLog = ctrl.Log.WithName("authorino").WithName("OidcService")
+var oidcServiceLogger = log.WithName("service").WithName("oidc")
 
 // OidcService implements an HTTP server for OpenID Connect Discovery
 type OidcService struct {
@@ -29,7 +28,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	}
 	path = "/" + path
 
-	oidcServiceLog.Info("request received", "realm", realm, "config", config, "path", path)
+	oidcServiceLogger.Info("request received", "realm", realm, "config", config, "path", path)
 
 	var statusCode int
 	var responseBody string
@@ -64,7 +63,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	writer.WriteHeader(statusCode)
 
 	if _, err := writer.Write([]byte(responseBody)); err != nil {
-		oidcServiceLog.Error(err, "failed to serve oidc request")
+		oidcServiceLogger.Error(err, "failed to serve oidc request")
 	}
 }
 

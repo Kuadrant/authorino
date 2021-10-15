@@ -5,6 +5,7 @@ import (
 
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -13,12 +14,15 @@ import (
 // AuthConfigStatusUpdater updates the status of a newly reconciled auth config
 type AuthConfigStatusUpdater struct {
 	client.Client
+	Logger logr.Logger
 }
 
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
 
 func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := u.Logger.WithValues("authconfig/status", req.NamespacedName)
+
 	authConfig := configv1beta1.AuthConfig{}
 	err := u.Get(ctx, req.NamespacedName, &authConfig)
 
@@ -27,6 +31,8 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	} else if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	logger.Info("resource status updated")
 
 	return ctrl.Result{}, u.updateAuthConfigStatus(ctx, &authConfig, true)
 }

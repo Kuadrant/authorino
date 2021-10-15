@@ -10,7 +10,10 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 )
+
+var umaLogger = log.WithName("metadata").WithName("uma").V(1)
 
 type providerJSON struct {
 	Issuer                  string `json:"issuer"`
@@ -50,6 +53,8 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 
 	queryResourcesURL, _ := url.Parse(provider.resourceRegistrationURL)
 	queryResourcesURL.RawQuery = "uri=" + uri
+
+	umaLogger.Info("querying resources by uri", "url", queryResourcesURL.String())
 
 	var resourceIDs []string
 	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs); err != nil {
@@ -96,6 +101,9 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx contex
 
 	resourceURL, _ := url.Parse(provider.resourceRegistrationURL)
 	resourceURL.Path += "/" + resourceID
+
+	umaLogger.Info("getting resource data", "url", resourceURL.String())
+
 	var data interface{}
 	if err := pat.Get(resourceURL.String(), ctx, &data); err != nil {
 		return nil, err
@@ -228,6 +236,8 @@ func (uma *UMA) requestPAT(ctx context.Context, pat *PAT) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	umaLogger.Info("requesting pat", "url", tokenURL.String(), "data", encodedData, "headers", req.Header)
 
 	// get the response
 	resp, err := http.DefaultClient.Do(req)

@@ -6,12 +6,12 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	goidc "github.com/coreos/go-oidc"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var oidcLogger = ctrl.Log.WithName("authorino").WithName("identity").WithName("oidc")
+var oidcLogger = log.WithName("identity").WithName("oidc").V(1)
 
 type OIDC struct {
 	auth_credentials.AuthCredentials

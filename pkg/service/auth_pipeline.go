@@ -6,18 +6,16 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	"golang.org/x/net/context"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var (
-	authCtxLog = ctrl.Log.WithName("Authorino").WithName("AuthPipeline")
-)
+var authPipelineLogger = log.WithName("service").WithName("authpipeline").V(1)
 
 type EvaluationResponse struct {
 	Evaluator common.AuthConfigEvaluator
@@ -70,14 +68,12 @@ func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, ap
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	if err := common.CheckContext(ctx); err != nil {
-		authCtxLog.Info("Skipping auth config", "config", config, "reason", err)
+		authPipelineLogger.Info("skipping config", "config", config, "reason", err)
 		return
 	}
 
 	if authObj, err := config.Call(pipeline, ctx); err != nil {
 		*respChannel <- newEvaluationResponse(config, nil, err)
-
-		authCtxLog.Info("Failed to evaluate auth object", "config", config, "error", err)
 
 		if failureCallback != nil {
 			failureCallback()
@@ -128,6 +124,7 @@ func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthCon
 }
 
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
+	logger := authPipelineLogger.WithName("identity").V(1)
 	configs := pipeline.API.IdentityConfigs
 	count := len(configs)
 	respChannel := make(chan EvaluationResponse, count)
@@ -151,7 +148,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 
 			if extendedObj, err := conf.ResolveExtendedProperties(pipeline); err != nil {
 				resp.Error = err
-				authCtxLog.Info("Identity", "config", conf, "error", err)
+				logger.Error(err, "failed to extend identity object", "config", conf, "object", obj)
 				if count == 1 {
 					return resp
 				} else {
@@ -160,12 +157,12 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 			} else {
 				pipeline.Identity[conf] = extendedObj
 
-				authCtxLog.Info("Identity", "config", conf, "authObj", extendedObj)
+				logger.Info("identity validated", "config", conf, "object", extendedObj)
 				return resp
 			}
 		} else {
 			err := resp.Error
-			authCtxLog.Info("Identity", "config", conf, "error", err)
+			logger.Info("cannot validate identity", "config", conf, "reason", err)
 			if count == 1 {
 				return resp
 			} else {
@@ -181,6 +178,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 }
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
+	logger := authPipelineLogger.WithName("metadata").V(1)
 	configs := pipeline.API.MetadataConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -195,16 +193,21 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 
 		if resp.Success() {
 			pipeline.Metadata[conf] = obj
-			authCtxLog.Info("Metadata", "config", conf, "authObj", obj)
+			logger.Info("fetched auth metadata", "config", conf, "object", obj)
 		} else {
-			authCtxLog.Info("Metadata", "config", conf, "error", resp.Error)
+			logger.Info("cannot fetch metadata", "config", conf, "reason", resp.Error)
 		}
 	}
 }
 
 func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse {
+	logger := authPipelineLogger.WithName("authorization").V(1)
 	configs := pipeline.API.AuthorizationConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
+
+	if log.Level.Debug() {
+		logger.Info("evaluating for input", "input", pipeline.GetDataForAuthorization())
+	}
 
 	go func() {
 		defer close(respChannel)
@@ -217,9 +220,9 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 
 		if resp.Success() {
 			pipeline.Authorization[conf] = obj
-			authCtxLog.Info("Authorization", "config", conf, "authObj", obj)
+			logger.Info("access granted", "config", conf, "object", obj)
 		} else {
-			authCtxLog.Info("Authorization", "config", conf, "error", resp.Error)
+			logger.Info("access denied", "config", conf, "reason", resp.Error)
 			return resp
 		}
 	}
@@ -228,6 +231,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 }
 
 func (pipeline *AuthPipeline) evaluateResponseConfigs() {
+	logger := authPipelineLogger.WithName("response").V(1)
 	configs := pipeline.API.ResponseConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -242,9 +246,9 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 
 		if resp.Success() {
 			pipeline.Response[conf] = obj
-			authCtxLog.Info("Response", "config", conf, "authObj", obj)
+			logger.Info("dynamic response built", "config", conf, "object", obj)
 		} else {
-			authCtxLog.Info("Response", "config", conf, "error", resp.Error)
+			logger.Info("cannot build dynamic response", "config", conf, "reason", resp.Error)
 		}
 	}
 }

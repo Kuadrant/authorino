@@ -46,8 +46,6 @@ func mockAuthPipeline(ctrl *Controller) (pipelineMock *MockAuthPipeline) {
 func TestConstants(t *testing.T) {
 	assert.Check(t, "api_key" == apiKeySelector)
 	assert.Check(t, "the API Key provided is invalid" == invalidApiKeyMsg)
-	assert.Check(t, "no API Keys were found on the request" == noApiKeysFoundMsg)
-	assert.Check(t, "Successfully authenticated with the provided API key" == authSuccessfulMsg)
 }
 
 func TestNewApiKeyIdentity(t *testing.T) {
