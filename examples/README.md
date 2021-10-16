@@ -319,8 +319,6 @@ authorization:
     […]
 ```
 
-
-
 ### Deploy the example:
 
 ```sh
@@ -340,30 +338,38 @@ kubectl -n authorino apply -f ./examples/kubernetes-authz.yaml
 
 ### Try it out:
 
-Get the Kubernetes API base endpoint:
+Get the Kubernetes API base endpoint and Kubernetes user that is currently logged in the CLI:
 
 ```sh
 CURRENT_K8S_CONTEXT=$(kubectl config view -o json | jq -r '."current-context"')
+CURRENT_K8S_USER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.user')
 CURRENT_K8S_CLUSTER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.cluster')
 KUBERNETES_API=$(kubectl config view -o json | jq -r --arg K8S_CLUSTER "${CURRENT_K8S_CLUSTER}" '.clusters[] | select(.name == $K8S_CLUSTER) | .cluster.server')
 ```
 
-Consume the API as `api-consumer-1`, which is bound to the `talker-api-cm-reader` role:
+Save the Kubernetes user's TLS certificate and TLS key to authenticate to the Kubernetes API (requires [yq](https://github.com/mikefarah/yq)):
+
+```sh
+yq r ~/.kube/config "users(name==$CURRENT_K8S_USER).user.client-certificate-data" | base64 -d > /tmp/kind-cluster-user-cert.pem
+yq r ~/.kube/config "users(name==$CURRENT_K8S_USER).user.client-key-data" | base64 -d > /tmp/kind-cluster-user-cert.key
+```
+
+Use the CLI user's TLS certificate to obtain a short-lived for the `api-consumer-1` `ServiceAccount` and consume the protected API as `api-consumer-1`, which is bound to the `talker-api-cm-reader` role:
 
 ```sh
 export API_CONSUMER_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-1/token" \
-     --cert tmp/kind-cluster-user-cert.pem --key tmp/kind-cluster-user-cert.key \
+     --cert /tmp/kind-cluster-user-cert.pem --key /tmp/kind-cluster-user-cert.key \
      -H 'Content-Type: application/json; charset=utf-8' \
      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
 
 curl -H 'Host: talker-api' -H "Authorization: Bearer $API_CONSUMER_TOKEN" "http://localhost:8000/v2/authorino/configmaps" # 200
 ```
 
-Consume the API as `api-consumer-2`, which is NOT bound to the `talker-api-cm-reader` role:
+Use the CLI user's TLS certificate to obtain a short-lived for the `api-consumer-2` `ServiceAccount` and consume the protected API as `api-consumer-2`, which is NOT bound to the `talker-api-cm-reader` role:
 
 ```sh
 export API_CONSUMER_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-2/token" \
-     --cert tmp/kind-cluster-user-cert.pem --key tmp/kind-cluster-user-cert.key \
+     --cert /tmp/kind-cluster-user-cert.pem --key /tmp/kind-cluster-user-cert.key \
      -H 'Content-Type: application/json; charset=utf-8' \
      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
 
