@@ -139,74 +139,63 @@ func (a *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckRes
 }
 
 func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest) {
-	var obj interface{}
-	var level int
+	reqAttrs := req.Attributes
+	httpAttrs := reqAttrs.Request.Http
+	requestId := httpAttrs.Id
 
-	requestId := req.Attributes.Request.Http.Id
+	reducedReq := &struct {
+		Source      *envoy_auth.AttributeContext_Peer `json:"source,omitempty"`
+		Destination *envoy_auth.AttributeContext_Peer `json:"destination,omitempty"`
+		Request     interface{}                       `json:"request,omitempty"`
+	}{
+		Source:      reqAttrs.Source,
+		Destination: reqAttrs.Destination,
+		Request: struct {
+			Http interface{} `json:"http,omitempty"`
+		}{
+			Http: struct {
+				Id     string `json:"id,omitempty"`
+				Method string `json:"method,omitempty"`
+				Path   string `json:"path,omitempty"`
+				Host   string `json:"host,omitempty"`
+				Scheme string `json:"scheme,omitempty"`
+			}{
+				Id:     httpAttrs.Id,
+				Method: httpAttrs.Method,
+				Path:   strings.Split(httpAttrs.Path, "?")[0],
+				Host:   httpAttrs.Host,
+				Scheme: httpAttrs.Scheme,
+			},
+		},
+	}
+	authServiceLogger.Info("incoming authorization request", "request id", requestId, "object", reducedReq) // info
 
 	if log.Level.Debug() {
-		obj = &req.Attributes
-		level = 1
-	} else {
-		reqAttrs := req.Attributes
-		httpAttrs := reqAttrs.Request.Http
-		obj = &struct {
-			Source      *envoy_auth.AttributeContext_Peer `json:"source,omitempty"`
-			Destination *envoy_auth.AttributeContext_Peer `json:"destination,omitempty"`
-			Request     interface{}                       `json:"request,omitempty"`
-		}{
-			Source:      reqAttrs.Source,
-			Destination: reqAttrs.Destination,
-			Request: struct {
-				Http interface{} `json:"http,omitempty"`
-			}{
-				Http: struct {
-					Id     string `json:"id,omitempty"`
-					Method string `json:"method,omitempty"`
-					Path   string `json:"path,omitempty"`
-					Host   string `json:"host,omitempty"`
-					Scheme string `json:"scheme,omitempty"`
-				}{
-					Id:     httpAttrs.Id,
-					Method: httpAttrs.Method,
-					Path:   strings.Split(httpAttrs.Path, "?")[0],
-					Host:   httpAttrs.Host,
-					Scheme: httpAttrs.Scheme,
-				},
-			},
-		}
-		level = 0
+		authServiceLogger.V(1).Info("incoming authorization request", "request id", requestId, "object", reqAttrs) // debug
 	}
-
-	authServiceLogger.V(level).Info("Check() request", "request id", requestId, "object", obj)
 }
 
 func (a *AuthService) logAuthResult(requestId string, result AuthResult) {
 	success := result.Success()
-	logData := []interface{}{"request id", requestId, "success", success}
+	baseLogData := []interface{}{"request id", requestId, "authorized", success, "response", result.Code.String()}
 
-	var level int
-	if log.Level.Debug() {
-		level = 1
-	} else {
-		level = 0
-	}
-
+	logData := baseLogData
 	if !success {
-		var obj interface{}
-		if log.Level.Debug() {
-			obj = result
-		} else {
-			obj = AuthResult{
-				Code:    result.Code,
-				Status:  result.Status,
-				Message: result.Message,
-			}
+		reducedResult := AuthResult{
+			Code:    result.Code,
+			Status:  result.Status,
+			Message: result.Message,
 		}
-		logData = append(logData, "object", obj)
+		logData = append(logData, "object", reducedResult)
 	}
+	authServiceLogger.Info("outgoing authorization response", logData...) // info
 
-	authServiceLogger.V(level).Info("Check() response", logData...)
+	if log.Level.Debug() {
+		if !success {
+			baseLogData = append(baseLogData, "object", result)
+		}
+		authServiceLogger.V(1).Info("outgoing authorization response", baseLogData...) // debug
+	}
 }
 
 func buildResponseHeaders(headers []map[string]string) []*envoy_core.HeaderValueOption {
