@@ -26,6 +26,8 @@ type GenericHttp struct {
 }
 
 func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+	logger := genericHttpLogger.WithValues("request id", pipeline.GetTraceId()).V(1)
+
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -70,7 +72,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 			_, _ = requestBody.Read(b)
 			logData = append(logData, "body", string(b))
 		}
-		genericHttpLogger.Info("sending request", logData...)
+		logger.Info("sending request", logData...)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

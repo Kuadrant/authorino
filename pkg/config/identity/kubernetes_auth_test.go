@@ -94,6 +94,7 @@ func TestAuthenticatedToken(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
@@ -116,6 +117,7 @@ func TestUnauthenticatedToken(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
@@ -137,6 +139,7 @@ func TestOpaqueToken(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
@@ -160,6 +163,7 @@ func TestCustomAudiences(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
@@ -182,6 +186,7 @@ func TestCustomAudiencesUnmatch(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 

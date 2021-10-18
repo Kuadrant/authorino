@@ -62,6 +62,8 @@ type KubernetesAuthz struct {
 }
 
 func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
+	logger := kubernetesAuthzLogger.WithValues("request id", pipeline.GetTraceId()).V(1)
+
 	if err := common.CheckContext(ctx); err != nil {
 		return false, err
 	}
@@ -112,7 +114,7 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 		subjectAccessReview.Spec.Groups = k.Groups
 	}
 
-	kubernetesAuthzLogger.Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)
+	logger.Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)
 
 	if result, err := k.authorizer.SubjectAccessReviews().Create(ctx, &subjectAccessReview, metav1.CreateOptions{}); err != nil {
 		return false, err

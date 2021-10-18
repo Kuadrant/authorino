@@ -39,6 +39,20 @@ func (m *MockAuthPipeline) EXPECT() *MockAuthPipelineMockRecorder {
 	return m.recorder
 }
 
+// Evaluate mocks base method.
+func (m *MockAuthPipeline) Evaluate() common.AuthResult {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Evaluate")
+	ret0, _ := ret[0].(common.AuthResult)
+	return ret0
+}
+
+// Evaluate indicates an expected call of Evaluate.
+func (mr *MockAuthPipelineMockRecorder) Evaluate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Evaluate", reflect.TypeOf((*MockAuthPipeline)(nil).Evaluate))
+}
+
 // GetAPI mocks base method.
 func (m *MockAuthPipeline) GetAPI() interface{} {
 	m.ctrl.T.Helper()
@@ -150,6 +164,20 @@ func (m *MockAuthPipeline) GetResolvedMetadata() map[interface{}]interface{} {
 func (mr *MockAuthPipelineMockRecorder) GetResolvedMetadata() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedMetadata", reflect.TypeOf((*MockAuthPipeline)(nil).GetResolvedMetadata))
+}
+
+// GetTraceId mocks base method.
+func (m *MockAuthPipeline) GetTraceId() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTraceId")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetTraceId indicates an expected call of GetTraceId.
+func (mr *MockAuthPipelineMockRecorder) GetTraceId() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTraceId", reflect.TypeOf((*MockAuthPipeline)(nil).GetTraceId))
 }
 
 // MockAuthConfigEvaluator is a mock of AuthConfigEvaluator interface.

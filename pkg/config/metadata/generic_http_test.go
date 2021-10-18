@@ -34,6 +34,7 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 
 	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
@@ -69,6 +70,7 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 
 	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
@@ -108,6 +110,7 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 
 	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)

@@ -79,6 +79,7 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
@@ -111,6 +112,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
@@ -143,6 +145,7 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
@@ -171,6 +174,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
@@ -199,6 +203,7 @@ func TestKubernetesAuthzWithConditions(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(

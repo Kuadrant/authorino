@@ -39,6 +39,20 @@ func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}
 	}
 }
 
+// NewAuthPipeline creates an AuthPipeline instance
+func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) common.AuthPipeline {
+	return &AuthPipeline{
+		ParentContext: &parentCtx,
+		Request:       req,
+		API:           &apiConfig,
+		Identity:      make(map[*config.IdentityConfig]interface{}),
+		Metadata:      make(map[*config.MetadataConfig]interface{}),
+		Authorization: make(map[*config.AuthorizationConfig]interface{}),
+		Response:      make(map[*config.ResponseConfig]interface{}),
+		TraceId:       req.Attributes.Request.Http.Id,
+	}
+}
+
 // AuthPipeline evaluates the context of an auth request upon the authconfigs defined for the requested API
 // Throughout the pipeline, user identity, ad hoc metadata and authorization policies are evaluated and their
 // corresponding resulting objects stored in the respective maps.
@@ -51,24 +65,13 @@ type AuthPipeline struct {
 	Metadata      map[*config.MetadataConfig]interface{}
 	Authorization map[*config.AuthorizationConfig]interface{}
 	Response      map[*config.ResponseConfig]interface{}
-}
 
-// NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) AuthPipeline {
-	return AuthPipeline{
-		ParentContext: &parentCtx,
-		Request:       req,
-		API:           &apiConfig,
-		Identity:      make(map[*config.IdentityConfig]interface{}),
-		Metadata:      make(map[*config.MetadataConfig]interface{}),
-		Authorization: make(map[*config.AuthorizationConfig]interface{}),
-		Response:      make(map[*config.ResponseConfig]interface{}),
-	}
+	TraceId string
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	if err := common.CheckContext(ctx); err != nil {
-		authPipelineLogger.Info("skipping config", "config", config, "reason", err)
+		authPipelineLogger.WithValues("request id", pipeline.GetTraceId()).V(1).Info("skipping config", "config", config, "reason", err)
 		return
 	}
 
@@ -124,7 +127,7 @@ func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthCon
 }
 
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
-	logger := authPipelineLogger.WithName("identity").V(1)
+	logger := authPipelineLogger.WithName("identity").WithValues("request id", pipeline.GetTraceId()).V(1)
 	configs := pipeline.API.IdentityConfigs
 	count := len(configs)
 	respChannel := make(chan EvaluationResponse, count)
@@ -178,7 +181,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 }
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
-	logger := authPipelineLogger.WithName("metadata").V(1)
+	logger := authPipelineLogger.WithName("metadata").WithValues("request id", pipeline.GetTraceId()).V(1)
 	configs := pipeline.API.MetadataConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -201,7 +204,7 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 }
 
 func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse {
-	logger := authPipelineLogger.WithName("authorization").V(1)
+	logger := authPipelineLogger.WithName("authorization").WithValues("request id", pipeline.GetTraceId()).V(1)
 	configs := pipeline.API.AuthorizationConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -231,7 +234,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 }
 
 func (pipeline *AuthPipeline) evaluateResponseConfigs() {
-	logger := authPipelineLogger.WithName("response").V(1)
+	logger := authPipelineLogger.WithName("response").WithValues("request id", pipeline.GetTraceId()).V(1)
 	configs := pipeline.API.ResponseConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -254,10 +257,10 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
-func (pipeline *AuthPipeline) Evaluate() AuthResult {
+func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 	// phase 1: identity verification
 	if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
-		return pipeline.customizeDenyWith(AuthResult{
+		return pipeline.customizeDenyWith(common.AuthResult{
 			Code:    rpc.UNAUTHENTICATED,
 			Message: resp.GetErrorMessage(),
 			Headers: pipeline.API.GetChallengeHeaders(),
@@ -269,7 +272,7 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 
 	// phase 3: policy enforcement (authorization)
 	if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
-		return pipeline.customizeDenyWith(AuthResult{
+		return pipeline.customizeDenyWith(common.AuthResult{
 			Code:    rpc.PERMISSION_DENIED,
 			Message: resp.GetErrorMessage(),
 		}, pipeline.API.Unauthorized)
@@ -280,11 +283,15 @@ func (pipeline *AuthPipeline) Evaluate() AuthResult {
 
 	// auth result
 	responseHeaders, responseMetadata := config.WrapResponses(pipeline.Response)
-	return AuthResult{
+	return common.AuthResult{
 		Code:     rpc.OK,
 		Headers:  []map[string]string{responseHeaders},
 		Metadata: responseMetadata,
 	}
+}
+
+func (pipeline *AuthPipeline) GetTraceId() string {
+	return pipeline.TraceId
 }
 
 func (pipeline *AuthPipeline) GetParentContext() *context.Context {
@@ -362,7 +369,7 @@ func (pipeline *AuthPipeline) GetPostAuthorizationData() interface{} {
 	return &authData
 }
 
-func (pipeline *AuthPipeline) customizeDenyWith(authResult AuthResult, denyWith *config.DenyWithValues) AuthResult {
+func (pipeline *AuthPipeline) customizeDenyWith(authResult common.AuthResult, denyWith *config.DenyWithValues) common.AuthResult {
 	if denyWith != nil {
 		if denyWith.Code != 0 {
 			authResult.Status = envoy_type.StatusCode(denyWith.Code)

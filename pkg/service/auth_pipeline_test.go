@@ -33,6 +33,11 @@ const rawRequest string = `{
 	}
 }`
 
+var (
+	requestMock = envoy_auth.CheckRequest{}
+	_           = json.Unmarshal([]byte(rawRequest), &requestMock)
+)
+
 type successConfig struct{}
 type failConfig struct{}
 
@@ -45,13 +50,15 @@ func (c *failConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (in
 }
 
 func newTestAuthPipeline(apiConfig config.APIConfig, req *envoy_auth.CheckRequest) AuthPipeline {
-	return NewAuthPipeline(context.TODO(), req, apiConfig)
+	p := NewAuthPipeline(context.TODO(), req, apiConfig)
+	pipeline, _ := p.(*AuthPipeline)
+	return *pipeline
 }
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -73,7 +80,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -99,7 +106,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -125,7 +132,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 func TestEvaluateAllAuthConfigs(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -151,7 +158,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	var err error
@@ -173,7 +180,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -199,7 +206,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 func TestEvaluateAnyAuthConfig(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -225,7 +232,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -251,7 +258,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
-	}, nil)
+	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
 	swap := false
@@ -275,18 +282,15 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 }
 
 func TestGetDataForAuthorization(t *testing.T) {
-	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
-
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
-	}, &request)
+	}, &requestMock)
 
 	data := pipeline.GetDataForAuthorization()
 	if dataJSON, err := json.Marshal(&data); err != nil {
 		t.Error(err)
 	} else {
-		requestJSON, _ := json.Marshal(request.GetAttributes())
+		requestJSON, _ := json.Marshal(requestMock.GetAttributes())
 		expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"identity":null,"metadata":{}}}`, requestJSON)
 		assert.Equal(t, expectedJSON, string(dataJSON))
 	}

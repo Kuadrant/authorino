@@ -29,6 +29,7 @@ func TestOAuth2Call(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("oauth-opaque-token", nil).AnyTimes()
 
 	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id").Times(2)
 	pipelineMock.EXPECT().GetHttp().Return(nil).AnyTimes()
 
 	ctx := context.Background()

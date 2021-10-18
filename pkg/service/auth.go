@@ -6,6 +6,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 
@@ -35,28 +36,6 @@ var (
 	authServiceLogger = log.WithName("service").WithName("auth")
 )
 
-// AuthResult holds the result data for building the response to an auth check
-type AuthResult struct {
-	// Code is gRPC response code to the auth check
-	Code rpc.Code `json:"code,omitempty"`
-	// Status is HTTP status code to override the default mapping between gRPC response codes and HTTP status messages
-	// for auth
-	Status envoy_type.StatusCode `json:"status,omitempty"`
-	// Message is X-Ext-Auth-Reason message returned in an injected HTTP response header, to explain the reason of the
-	// auth check result
-	Message string `json:"message,omitempty"`
-	// Headers are other HTTP headers to inject in the response
-	Headers []map[string]string `json:"headers,omitempty"`
-	// Metadata are Envoy dynamic metadata content
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-}
-
-// Success tells whether the auth check result was successful and therefore access can be granted to the requested
-// resource or it has failed (deny access)
-func (result *AuthResult) Success() bool {
-	return result.Code == rpc.OK
-}
-
 // AuthService is the server API for the authorization service.
 type AuthService struct {
 	Cache cache.Cache
@@ -65,7 +44,8 @@ type AuthService struct {
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
-	a.logAuthRequest(req)
+	traceId := req.Attributes.Request.Http.GetId()
+	a.logAuthRequest(req, traceId)
 
 	requestData := req.Attributes.Request.Http
 
@@ -80,27 +60,27 @@ func (a *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (
 	}
 	// If we couldn't find the APIConfig in the config, we return and deny.
 	if apiConfig == nil {
-		result := AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
-		a.logAuthResult(requestData.Id, result)
+		result := common.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
+		a.logAuthResult(result, traceId)
 		return a.deniedResponse(result), nil
 	}
 
 	pipeline := NewAuthPipeline(ctx, req, *apiConfig)
 	result := pipeline.Evaluate()
 
-	a.logAuthResult(requestData.Id, result)
+	a.logAuthResult(result, traceId)
 
 	if result.Success() {
-		return a.successResponse(result), nil
+		return a.successResponse(result, traceId), nil
 	} else {
 		return a.deniedResponse(result), nil
 	}
 }
 
-func (a *AuthService) successResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult common.AuthResult, traceId string) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := structpb.NewStruct(authResult.Metadata)
 	if err != nil {
-		authServiceLogger.Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
+		authServiceLogger.WithValues("request id", traceId).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
@@ -115,7 +95,7 @@ func (a *AuthService) successResponse(authResult AuthResult) *envoy_auth.CheckRe
 	}
 }
 
-func (a *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
 
 	httpCode := authResult.Status
@@ -138,10 +118,9 @@ func (a *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckRes
 	}
 }
 
-func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest) {
+func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, traceId string) {
 	reqAttrs := req.Attributes
 	httpAttrs := reqAttrs.Request.Http
-	requestId := httpAttrs.Id
 
 	reducedReq := &struct {
 		Source      *envoy_auth.AttributeContext_Peer `json:"source,omitempty"`
@@ -168,20 +147,20 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest) {
 			},
 		},
 	}
-	authServiceLogger.Info("incoming authorization request", "request id", requestId, "object", reducedReq) // info
+	authServiceLogger.Info("incoming authorization request", "request id", traceId, "object", reducedReq) // info
 
 	if log.Level.Debug() {
-		authServiceLogger.V(1).Info("incoming authorization request", "request id", requestId, "object", reqAttrs) // debug
+		authServiceLogger.V(1).Info("incoming authorization request", "request id", traceId, "object", reqAttrs) // debug
 	}
 }
 
-func (a *AuthService) logAuthResult(requestId string, result AuthResult) {
+func (a *AuthService) logAuthResult(result common.AuthResult, traceId string) {
 	success := result.Success()
-	baseLogData := []interface{}{"request id", requestId, "authorized", success, "response", result.Code.String()}
+	baseLogData := []interface{}{"request id", traceId, "authorized", success, "response", result.Code.String()}
 
 	logData := baseLogData
 	if !success {
-		reducedResult := AuthResult{
+		reducedResult := common.AuthResult{
 			Code:    result.Code,
 			Status:  result.Status,
 			Message: result.Message,

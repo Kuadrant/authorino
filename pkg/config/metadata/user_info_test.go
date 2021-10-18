@@ -66,6 +66,7 @@ func TestUserInfoCall(t *testing.T) {
 
 	ta.authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", nil)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
+	ta.pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
@@ -84,6 +85,7 @@ func TestUserInfoCanceledContext(t *testing.T) {
 
 	ta.authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", nil)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
+	ta.pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 

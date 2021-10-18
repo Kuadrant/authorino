@@ -71,6 +71,7 @@ func TestUMACall(t *testing.T) {
 
 	pipelineMock := NewMockAuthPipeline(ctrl)
 	request := &envoy_auth.AttributeContext_HttpRequest{Path: "/someresource"}
+	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
 	uma, _ := NewUMAMetadata(umaIssuer, "client-id", "client-secret")

@@ -37,16 +37,18 @@ func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context
 	if userInfoURL, err := oidc.GetURL("userinfo_endpoint"); err != nil {
 		return nil, err
 	} else {
-		return fetchUserInfo(userInfoURL.String(), accessToken, ctx)
+		return fetchUserInfo(userInfoURL.String(), accessToken, ctx, pipeline)
 	}
 }
 
-func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context) (interface{}, error) {
+func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context, pipeline common.AuthPipeline) (interface{}, error) {
+	logger := userInfoLogger.WithValues("request id", pipeline.GetTraceId()).V(1)
+
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	userInfoLogger.Info("fetching user info", "endpoint", userInfoEndpoint)
+	logger.Info("fetching user info", "endpoint", userInfoEndpoint)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
