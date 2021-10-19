@@ -8,6 +8,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
@@ -41,16 +42,16 @@ var (
 type successConfig struct{}
 type failConfig struct{}
 
-func (c *successConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (c *successConfig) Call(_ common.AuthPipeline, _ context.Context, _ log.Logger) (interface{}, error) {
 	return nil, nil
 }
 
-func (c *failConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (c *failConfig) Call(_ common.AuthPipeline, _ context.Context, _ log.Logger) (interface{}, error) {
 	return nil, fmt.Errorf("Failed")
 }
 
 func newTestAuthPipeline(apiConfig config.APIConfig, req *envoy_auth.CheckRequest) AuthPipeline {
-	p := NewAuthPipeline(context.TODO(), req, apiConfig)
+	p := NewAuthPipeline(context.TODO(), req, apiConfig, log.Log)
 	pipeline, _ := p.(*AuthPipeline)
 	return *pipeline
 }

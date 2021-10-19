@@ -13,8 +13,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
-var umaLogger = log.WithName("metadata").WithName("uma").V(1)
-
 type providerJSON struct {
 	Issuer                  string `json:"issuer"`
 	TokenURL                string `json:"token_endpoint"`
@@ -34,21 +32,19 @@ func (provider *Provider) GetTokenURL() string {
 	return provider.tokenURL
 }
 
-func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Context, traceId string) ([]interface{}, error) {
+func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Context, logger log.Logger) ([]interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx, traceId)
+	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx, logger)
 	if err != nil {
 		return nil, err
 	}
-	return provider.getResourcesByIDs(resourceIDs, pat, ctx, traceId)
+	return provider.getResourcesByIDs(resourceIDs, pat, ctx, logger)
 }
 
-func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.Context, traceId string) ([]string, error) {
-	logger := umaLogger.WithValues("request id", traceId).V(1)
-
+func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.Context, logger log.Logger) ([]string, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -56,7 +52,7 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 	queryResourcesURL, _ := url.Parse(provider.resourceRegistrationURL)
 	queryResourcesURL.RawQuery = "uri=" + uri
 
-	logger.Info("querying resources by uri", "url", queryResourcesURL.String())
+	logger.V(1).Info("querying resources by uri", "url", queryResourcesURL.String())
 
 	var resourceIDs []string
 	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs); err != nil {
@@ -66,7 +62,7 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 	}
 }
 
-func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context, traceId string) ([]interface{}, error) {
+func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context, logger log.Logger) ([]interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -80,7 +76,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx c
 		go func(id string) {
 			defer waitGroup.Done()
 
-			if data, err := provider.getResourceByID(id, pat, ctx, traceId); err == nil {
+			if data, err := provider.getResourceByID(id, pat, ctx, logger); err == nil {
 				buf <- data
 			}
 		}(resourceID)
@@ -96,9 +92,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx c
 	return resourceData, nil
 }
 
-func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx context.Context, traceId string) (interface{}, error) {
-	logger := umaLogger.WithValues("request id", traceId).V(1)
-
+func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx context.Context, logger log.Logger) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -106,7 +100,7 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx contex
 	resourceURL, _ := url.Parse(provider.resourceRegistrationURL)
 	resourceURL.Path += "/" + resourceID
 
-	logger.Info("getting resource data", "url", resourceURL.String())
+	logger.V(1).Info("getting resource data", "url", resourceURL.String())
 
 	var data interface{}
 	if err := pat.Get(resourceURL.String(), ctx, &data); err != nil {
@@ -199,18 +193,18 @@ func (uma *UMA) discover() error {
 	}
 }
 
-func (uma *UMA) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
-	traceId := pipeline.GetTraceId()
+func (uma *UMA) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+	logger := parentLogger.WithName("uma")
 
 	// get the protection API token (PAT)
 	var pat PAT
-	if err := uma.requestPAT(ctx, traceId, &pat); err != nil {
+	if err := uma.requestPAT(ctx, logger, &pat); err != nil {
 		return nil, err
 	}
 
 	// get resource data
 	uri := pipeline.GetHttp().GetPath()
-	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx, traceId)
+	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx, logger)
 
 	if err != nil {
 		return nil, err
@@ -228,9 +222,7 @@ func (uma *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
-func (uma *UMA) requestPAT(ctx context.Context, traceId string, pat *PAT) error {
-	logger := umaLogger.WithValues("request id", traceId).V(1)
-
+func (uma *UMA) requestPAT(ctx context.Context, logger log.Logger, pat *PAT) error {
 	if err := common.CheckContext(ctx); err != nil {
 		return err
 	}
@@ -245,7 +237,7 @@ func (uma *UMA) requestPAT(ctx context.Context, traceId string, pat *PAT) error 
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	logger.Info("requesting pat", "url", tokenURL.String(), "data", encodedData, "headers", req.Header)
+	logger.V(1).Info("requesting pat", "url", tokenURL.String(), "data", encodedData, "headers", req.Header)
 
 	// get the response
 	resp, err := http.DefaultClient.Do(req)

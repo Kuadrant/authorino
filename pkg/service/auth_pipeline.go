@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-logr/logr"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
@@ -14,8 +15,6 @@ import (
 	"github.com/gogo/googleapis/google/rpc"
 	"golang.org/x/net/context"
 )
-
-var authPipelineLogger = log.WithName("service").WithName("authpipeline").V(1)
 
 type EvaluationResponse struct {
 	Evaluator common.AuthConfigEvaluator
@@ -40,7 +39,7 @@ func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) common.AuthPipeline {
+func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig, parentLogger log.Logger) common.AuthPipeline {
 	return &AuthPipeline{
 		ParentContext: &parentCtx,
 		Request:       req,
@@ -49,7 +48,7 @@ func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, ap
 		Metadata:      make(map[*config.MetadataConfig]interface{}),
 		Authorization: make(map[*config.AuthorizationConfig]interface{}),
 		Response:      make(map[*config.ResponseConfig]interface{}),
-		TraceId:       req.Attributes.Request.Http.Id,
+		Logger:        parentLogger.WithName("authpipeline"),
 	}
 }
 
@@ -66,16 +65,16 @@ type AuthPipeline struct {
 	Authorization map[*config.AuthorizationConfig]interface{}
 	Response      map[*config.ResponseConfig]interface{}
 
-	TraceId string
+	Logger logr.Logger
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	if err := common.CheckContext(ctx); err != nil {
-		authPipelineLogger.WithValues("request id", pipeline.GetTraceId()).V(1).Info("skipping config", "config", config, "reason", err)
+		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
 		return
 	}
 
-	if authObj, err := config.Call(pipeline, ctx); err != nil {
+	if authObj, err := config.Call(pipeline, ctx, pipeline.Logger); err != nil {
 		*respChannel <- newEvaluationResponse(config, nil, err)
 
 		if failureCallback != nil {
@@ -127,7 +126,7 @@ func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthCon
 }
 
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
-	logger := authPipelineLogger.WithName("identity").WithValues("request id", pipeline.GetTraceId()).V(1)
+	logger := pipeline.Logger.WithName("identity").V(1)
 	configs := pipeline.API.IdentityConfigs
 	count := len(configs)
 	respChannel := make(chan EvaluationResponse, count)
@@ -181,7 +180,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 }
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
-	logger := authPipelineLogger.WithName("metadata").WithValues("request id", pipeline.GetTraceId()).V(1)
+	logger := pipeline.Logger.WithName("metadata").V(1)
 	configs := pipeline.API.MetadataConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -204,7 +203,7 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 }
 
 func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse {
-	logger := authPipelineLogger.WithName("authorization").WithValues("request id", pipeline.GetTraceId()).V(1)
+	logger := pipeline.Logger.WithName("authorization").V(1)
 	configs := pipeline.API.AuthorizationConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -234,7 +233,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 }
 
 func (pipeline *AuthPipeline) evaluateResponseConfigs() {
-	logger := authPipelineLogger.WithName("response").WithValues("request id", pipeline.GetTraceId()).V(1)
+	logger := pipeline.Logger.WithName("response").V(1)
 	configs := pipeline.API.ResponseConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
@@ -288,10 +287,6 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 		Headers:  []map[string]string{responseHeaders},
 		Metadata: responseMetadata,
 	}
-}
-
-func (pipeline *AuthPipeline) GetTraceId() string {
-	return pipeline.TraceId
 }
 
 func (pipeline *AuthPipeline) GetParentContext() *context.Context {

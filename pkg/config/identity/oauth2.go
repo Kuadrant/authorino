@@ -12,8 +12,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
-var oauth2Logger = log.WithName("identity").WithName("oauth2").V(1)
-
 type OAuth2 struct {
 	auth_credentials.AuthCredentials
 
@@ -40,9 +38,7 @@ func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clien
 	}
 }
 
-func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
-	logger := oauth2Logger.WithValues("request id", pipeline.GetTraceId()).V(1)
-
+func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -69,7 +65,7 @@ func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (in
 		return nil, err
 	}
 
-	logger.Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
+	parentLogger.WithName("oauth2").V(1).Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

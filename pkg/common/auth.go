@@ -4,6 +4,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
@@ -22,12 +23,11 @@ type AuthPipeline interface {
 	GetResolvedMetadata() map[interface{}]interface{}
 	GetDataForAuthorization() interface{}
 	GetPostAuthorizationData() interface{}
-	GetTraceId() string
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
 type AuthConfigEvaluator interface {
-	Call(AuthPipeline, context.Context) (interface{}, error)
+	Call(AuthPipeline, context.Context, log.Logger) (interface{}, error)
 }
 
 type NamedConfigEvaluator interface {

@@ -19,8 +19,6 @@ const (
 	credentialsFetchingErrorMsg = "Something went wrong fetching the authorized credentials"
 )
 
-var apiKeyLogger = log.WithName("identity").WithName("apikey").V(1)
-
 type apiKeyDetails struct {
 	Name                  string            `yaml:"name"`
 	LabelSelectors        map[string]string `yaml:"labelSelectors"`
@@ -35,7 +33,7 @@ type APIKey struct {
 }
 
 // NewApiKeyIdentity creates a new instance of APIKey
-func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred auth_credentials.AuthCredentials, k8sClient client.Reader) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred auth_credentials.AuthCredentials, k8sClient client.Reader, parentLogger log.Logger) *APIKey {
 	apiKey := &APIKey{
 		authCred,
 		apiKeyDetails{
@@ -46,7 +44,7 @@ func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred a
 		},
 	}
 	if err := apiKey.GetCredentialsFromCluster(context.TODO()); err != nil {
-		apiKeyLogger.Error(err, credentialsFetchingErrorMsg)
+		parentLogger.WithName("apikey").Error(err, credentialsFetchingErrorMsg)
 	}
 	return apiKey
 }
@@ -68,7 +66,7 @@ func (apiKey *APIKey) GetCredentialsFromCluster(ctx context.Context) error {
 }
 
 // Call will evaluate the credentials within the request against the authorized ones
-func (apiKey *APIKey) Call(pipeline common.AuthPipeline, _ context.Context) (interface{}, error) {
+func (apiKey *APIKey) Call(pipeline common.AuthPipeline, _ context.Context, _ log.Logger) (interface{}, error) {
 	if reqKey, err := apiKey.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
 		return nil, err
 	} else {

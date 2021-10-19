@@ -7,6 +7,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	v1 "k8s.io/api/core/v1"
@@ -55,9 +56,9 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 
 // impl:AuthConfigEvaluator
 
-func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx)
+		return evaluator.Call(pipeline, ctx, parentLogger.WithName("identity"))
 	} else {
 		return nil, fmt.Errorf("invalid identity config")
 	}

@@ -16,8 +16,6 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var kubernetesAuthzLogger = log.WithName("authorization").WithName("kubernetesauthz").V(1)
-
 type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
@@ -61,9 +59,7 @@ type KubernetesAuthz struct {
 	authorizer kubernetesSubjectAccessReviewer
 }
 
-func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
-	logger := kubernetesAuthzLogger.WithValues("request id", pipeline.GetTraceId()).V(1)
-
+func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (bool, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return false, err
 	}
@@ -114,7 +110,7 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 		subjectAccessReview.Spec.Groups = k.Groups
 	}
 
-	logger.Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)
+	parentLogger.WithName("kubernetesauthz").V(1).Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)
 
 	if result, err := k.authorizer.SubjectAccessReviews().Create(ctx, &subjectAccessReview, metav1.CreateOptions{}); err != nil {
 		return false, err

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/authorization"
 )
 
@@ -20,14 +21,16 @@ type AuthorizationConfig struct {
 	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
 }
 
-func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+	logger := parentLogger.WithName("authorization")
+
 	switch {
 	case config.OPA != nil:
-		return config.OPA.Call(pipeline, ctx)
+		return config.OPA.Call(pipeline, ctx, logger)
 	case config.JSON != nil:
-		return config.JSON.Call(pipeline, ctx)
+		return config.JSON.Call(pipeline, ctx, logger)
 	case config.KubernetesAuthz != nil:
-		return config.KubernetesAuthz.Call(pipeline, ctx)
+		return config.KubernetesAuthz.Call(pipeline, ctx, logger)
 	default:
 		return false, fmt.Errorf("invalid authorization configs")
 	}

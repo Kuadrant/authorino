@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	envoyAuth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	mockCommon "github.com/kuadrant/authorino/pkg/common/mocks"
@@ -36,7 +37,7 @@ type authorizationData struct {
 }
 
 func TestNewOPAAuthorizationInlineRego(t *testing.T) {
-	opa, err := NewOPAAuthorization("test-opa", regoData, OPAExternalSource{}, 0)
+	opa, err := NewOPAAuthorization("test-opa", regoData, OPAExternalSource{}, 0, log.Log)
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -54,7 +55,7 @@ func TestNewOPAAuthorizationExternalUrl(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0)
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0, log.Log)
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -72,7 +73,7 @@ func TestNewOPAAuthorizationBoth(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", regoData, externalSource, 0)
+	opa, err := NewOPAAuthorization("test-opa", regoData, externalSource, 0, log.Log)
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -80,7 +81,7 @@ func TestNewOPAAuthorizationBoth(t *testing.T) {
 
 func TestNewOPAAuthorizationWithPackageInRego(t *testing.T) {
 	data := fmt.Sprintf("package my-rego-123\n%s", regoData)
-	opa, err := NewOPAAuthorization("test-opa", data, OPAExternalSource{}, 0)
+	opa, err := NewOPAAuthorization("test-opa", data, OPAExternalSource{}, 0, log.Log)
 
 	assert.NilError(t, err)
 	assert.Assert(t, !strings.Contains(opa.Rego, "package"))
@@ -99,7 +100,7 @@ func TestNewOPAAuthorizationJsonResponse(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0)
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0, log.Log)
 
 	assert.NilError(t, err)
 	assert.Assert(t, !strings.Contains(opa.Rego, "package"))
@@ -118,13 +119,13 @@ func assertOPAAuthorization(t *testing.T, opa *OPA) {
 	pipelineMock := mockCommon.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuth("/allow", "GET")).Times(1)
 
-	authorized, err = opa.Call(pipelineMock, nil)
+	authorized, err = opa.Call(pipelineMock, nil, log.Log)
 	assert.Assert(t, authorized)
 	assert.NilError(t, err)
 
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuth("/allow", "POST")).AnyTimes()
 
-	authorized, err = opa.Call(pipelineMock, nil)
+	authorized, err = opa.Call(pipelineMock, nil, log.Log)
 	assert.Assert(t, !authorized)
 	assert.Error(t, err, unauthorizedErrorMsg)
 }

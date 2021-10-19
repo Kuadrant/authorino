@@ -14,8 +14,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
-var genericHttpLogger = log.WithName("metadata").WithName("http").V(1)
-
 type GenericHttp struct {
 	Endpoint     string
 	Method       string
@@ -25,9 +23,7 @@ type GenericHttp struct {
 	auth_credentials.AuthCredentials
 }
 
-func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
-	logger := genericHttpLogger.WithValues("request id", pipeline.GetTraceId()).V(1)
-
+func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -72,7 +68,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 			_, _ = requestBody.Read(b)
 			logData = append(logData, "body", string(b))
 		}
-		logger.Info("sending request", logData...)
+		parentLogger.WithName("http").V(1).Info("sending request", logData...)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

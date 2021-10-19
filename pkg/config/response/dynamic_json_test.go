@@ -37,7 +37,7 @@ func TestDynamicJSONCall(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetPostAuthorizationData().Return(data)
 
-	response, err := jsonResponseEvaluator.Call(pipelineMock, context.TODO())
+	response, err := jsonResponseEvaluator.Call(pipelineMock, context.TODO(), nil)
 	responseJSON, _ := json.Marshal(response)
 
 	assert.Equal(t, `{"prop1":"value1","prop2":"john"}`, string(responseJSON))

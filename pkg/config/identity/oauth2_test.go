@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	. "github.com/golang/mock/gomock"
@@ -29,14 +30,13 @@ func TestOAuth2Call(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("oauth-opaque-token", nil).AnyTimes()
 
 	pipelineMock := NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id").Times(2)
 	pipelineMock.EXPECT().GetHttp().Return(nil).AnyTimes()
 
 	ctx := context.Background()
 
 	{
 		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-active", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
-		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
+		obj, err := oauthEvaluator.Call(pipelineMock, ctx, log.Log)
 		assert.NilError(t, err)
 		claims := obj.(map[string]interface{})
 		assert.Assert(t, claims["active"])
@@ -44,7 +44,7 @@ func TestOAuth2Call(t *testing.T) {
 
 	{
 		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-inactive", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
-		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
+		obj, err := oauthEvaluator.Call(pipelineMock, ctx, log.Log)
 		assert.NilError(t, err)
 		claims := obj.(map[string]interface{})
 		assert.Assert(t, claims["active"] == false)

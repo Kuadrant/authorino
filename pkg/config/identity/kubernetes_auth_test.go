@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -94,12 +95,11 @@ func TestAuthenticatedToken(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, true, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.NilError(t, err)
 
@@ -117,12 +117,11 @@ func TestUnauthenticatedToken(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, false, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.Check(t, ret == nil)
 	assert.Error(t, err, "Not authenticated")
@@ -139,12 +138,11 @@ func TestOpaqueToken(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, true, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.NilError(t, err)
 
@@ -163,12 +161,11 @@ func TestCustomAudiences(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{"custom-audience"}, tokenReviewData{requestToken, true, []string{"custom-audience"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.NilError(t, err)
 
@@ -186,12 +183,11 @@ func TestCustomAudiencesUnmatch(t *testing.T) {
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{"expected-audience"}, tokenReviewData{requestToken, false, []string{"custom-audience"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.Check(t, ret == nil)
 	assert.Error(t, err, "Not authenticated")

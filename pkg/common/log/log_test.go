@@ -76,10 +76,10 @@ func TestWithName(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer func() {
 		mockController.Finish()
-		Logger = ctrl.Log
+		Log = ctrl.Log
 	}()
 	loggerMock := mock_logr.NewMockLogger(mockController)
-	Logger = loggerMock
+	Log = loggerMock
 
 	loggerMock.EXPECT().WithName("test").Return(loggerMock)
 	WithName("test")
@@ -89,10 +89,10 @@ func TestWithValues(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer func() {
 		mockController.Finish()
-		Logger = ctrl.Log
+		Log = ctrl.Log
 	}()
 	loggerMock := mock_logr.NewMockLogger(mockController)
-	Logger = loggerMock
+	Log = loggerMock
 
 	loggerMock.EXPECT().WithValues("key", "value").Return(loggerMock)
 	WithValues("key", "value")

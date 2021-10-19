@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -79,7 +80,6 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
@@ -92,7 +92,7 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 		nil,
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
 	requestData := client.GetRequest()
@@ -112,7 +112,6 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
@@ -125,7 +124,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 		nil,
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
 	requestData := client.GetRequest()
@@ -145,7 +144,6 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
@@ -155,7 +153,7 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 		&KubernetesAuthzResourceAttributes{Namespace: common.JSONValue{Static: "default"}},
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.Check(t, authorized)
 	assert.NilError(t, err)
@@ -174,7 +172,6 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
@@ -184,7 +181,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 		&KubernetesAuthzResourceAttributes{Namespace: common.JSONValue{Static: "default"}},
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.Check(t, !authorized)
 	assert.ErrorContains(t, err, "Not authorized: some-reason")
@@ -203,7 +200,6 @@ func TestKubernetesAuthzWithConditions(t *testing.T) {
 
 	var authData interface{}
 	_ = json.Unmarshal([]byte(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`), &authData)
-	pipelineMock.EXPECT().GetTraceId().Return("trace-id")
 	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
 
 	kubernetesAuth := newKubernetesAuthz(
@@ -215,7 +211,7 @@ func TestKubernetesAuthzWithConditions(t *testing.T) {
 		nil,
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: ""},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
 
 	assert.Check(t, authorized)
 	assert.NilError(t, err)

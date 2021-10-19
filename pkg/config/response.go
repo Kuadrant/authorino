@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/response"
 )
 
@@ -70,9 +71,9 @@ func (config *ResponseConfig) GetType() (string, error) {
 
 // impl:AuthConfigEvaluator
 
-func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx)
+		return evaluator.Call(pipeline, ctx, parentLogger.WithName("response"))
 	} else {
 		return nil, fmt.Errorf("invalid response config")
 	}

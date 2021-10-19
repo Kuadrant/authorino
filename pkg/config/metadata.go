@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/metadata"
 )
 
@@ -30,17 +31,11 @@ func init() {
 	MetadataEvaluator = &MetadataConfig{}
 }
 
-func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
-	t, _ := config.GetType()
-	switch t {
-	case metadataUserInfo:
-		return config.UserInfo.Call(pipeline, ctx)
-	case metadataUMA:
-		return config.UMA.Call(pipeline, ctx)
-	case metadataGenericHTTP:
-		return config.GenericHTTP.Call(pipeline, ctx)
-	default:
-		return "", fmt.Errorf("invalid metadata config")
+func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
+		return evaluator.Call(pipeline, ctx, parentLogger.WithName("metadata"))
+	} else {
+		return nil, fmt.Errorf("invalid metadata config")
 	}
 }
 
@@ -54,6 +49,20 @@ func (config *MetadataConfig) GetType() (string, error) {
 		return metadataGenericHTTP, nil
 	default:
 		return "", fmt.Errorf("invalid metadata config")
+	}
+}
+
+func (config *MetadataConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
+	t, _ := config.GetType()
+	switch t {
+	case metadataUserInfo:
+		return config.UserInfo
+	case metadataUMA:
+		return config.UMA
+	case metadataGenericHTTP:
+		return config.GenericHTTP
+	default:
+		return nil
 	}
 }
 

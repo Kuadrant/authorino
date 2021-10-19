@@ -11,15 +11,23 @@ import (
 )
 
 var (
-	// For mocking the default logger in the tests
-	Logger logr.Logger = ctrl.Log
+	// Log is a singleton base logger that can be used across the system,
+	// either directly or to create other loggers with name, with values,
+	// and/or locked to a given log level.
+	// It is initialized to the promise delegation log provided by
+	// sigs.k8s.io/controller-runtime, which points to a no-op (null) logger
+	// until `SetLogger` is called.
+	// This is also useful for mocking the default logger tests.
+	Log logr.Logger = ctrl.Log
 
 	// Level holds the minimum level of messages that should be logged.
-	// It is useful for checking the log level in the code and thus avoid expensive
+	// It is useful for checking the log level in the code and avoid expensive
 	// tasks only required for some specific levels.
-	// Level is setup by the `Setup` function.
+	// It is setup by the `SetLogger` function.
 	Level LogLevel
 )
+
+type Logger = logr.Logger
 
 type LogLevel zapcore.Level
 
@@ -73,38 +81,91 @@ func ToLogMode(mode string) LogMode {
 	}
 }
 
-// Setup sets up a logger with the given level and output mode.
-func Setup(level LogLevel, mode LogMode) logr.Logger {
-	logger := NewLogger(level, mode)
+// Options is a set of options for a configured logger.
+type Options struct {
+	Level LogLevel
+	Mode  LogMode
+}
+
+// SetLogger sets up a logger.
+func SetLogger(logger logr.Logger) {
+	opts := extractOptions(logger)
+
+	Log = logger
+	Level = opts.Level
 
 	ctrl.SetLogger(logger) // fulfills `logger` as the de facto logger used by controller-runtime
 	klog.SetLogger(logger)
-	Level = level
 
-	Logger.Info("setting instance base logger", "min level", level.String(), "mode", mode.String())
-
-	return logger
+	logger.Info("setting instance base logger", "min level", opts.Level.String(), "mode", opts.Mode.String())
 }
 
-// NewLogger returns a new logger with the given level and output mode.
-func NewLogger(level LogLevel, mode LogMode) logr.Logger {
-	return zap.New(
-		zap.Level(zapcore.Level(level)),
-		zap.UseDevMode(mode == LogModeDev),
-	)
-}
-
-// WithName adds a new element to the logger's name.
-// Successive calls with WithName continue to append
-// suffixes to the logger's name.  It's strongly recommended
-// that name segments contain only letters, digits, and hyphens
-// (see the github.com/go-logr/logr package documentation for more information).
+// WithName uses the singleton logger to create a new logger with the given name.
 func WithName(name string) logr.Logger {
-	return Logger.WithName(name)
+	return Log.WithName(name)
 }
 
-// WithValues adds some key-value pairs of context to a logger.
-// See Info for documentation on how key/value pairs work.
+// WithName uses the singleton logger to create a new logger with the given values.
 func WithValues(keysAndValues ...interface{}) logr.Logger {
-	return Logger.WithValues(keysAndValues...)
+	return Log.WithValues(keysAndValues...)
+}
+
+// NewLogger returns a new logger with the given options.
+// `logger` param is the actual logger implementation; when omitted, a new
+// logger based on sigs.k8s.io/controller-runtime/pkg/log/zap is created.
+func NewLogger(opts Options, logger logr.Logger) logr.Logger {
+	l := &configuredLogger{Options: opts}
+
+	if logger != nil {
+		l.Logger = logger
+	} else {
+		l.Logger = zap.New(
+			zap.Level(zapcore.Level(opts.Level)),
+			zap.UseDevMode(opts.Mode == LogModeDev),
+		)
+	}
+
+	return l
+}
+
+// configuredLogger is a delegation logger that holds information about the log options.
+type configuredLogger struct {
+	Options Options
+	Logger  logr.Logger
+}
+
+// Enabled returns always true.
+func (l *configuredLogger) Enabled() bool {
+	return true
+}
+
+func (l *configuredLogger) Info(msg string, keysAndValues ...interface{}) {
+	l.Logger.Info(msg, keysAndValues...)
+}
+
+func (l *configuredLogger) Error(err error, msg string, keysAndValues ...interface{}) {
+	l.Logger.Error(err, msg, keysAndValues...)
+}
+
+func (l *configuredLogger) V(level int) logr.Logger {
+	return NewLogger(l.Options, l.Logger.V(level))
+}
+
+func (l *configuredLogger) WithValues(keysAndValues ...interface{}) logr.Logger {
+	return NewLogger(l.Options, l.Logger.WithValues(keysAndValues...))
+}
+
+func (l *configuredLogger) WithName(name string) logr.Logger {
+	return NewLogger(l.Options, l.Logger.WithName(name))
+}
+
+func extractOptions(l logr.Logger) Options {
+	if cl, ok := l.(*configuredLogger); ok {
+		return cl.Options
+	} else {
+		return Options{
+			Level: LogLevel(zapcore.InfoLevel),
+			Mode:  LogModeProd,
+		}
+	}
 }

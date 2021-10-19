@@ -28,13 +28,13 @@ default allow = false
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
-var opaLogger = log.WithName("authorization").WithName("opa").V(1)
+func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int, parentLogger log.Logger) (*OPA, error) {
+	logger := parentLogger.WithName("opa")
 
-func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int) (*OPA, error) {
 	if rego == "" && externalSource.Endpoint != "" {
 		downloadedRego, err := externalSource.downloadRegoDataFromUrl()
 		if err != nil {
-			opaLogger.Error(err, regoDownloadErrorMsg, "secret", policyName)
+			logger.Error(err, regoDownloadErrorMsg, "secret", policyName)
 			return nil, err
 		}
 		rego = downloadedRego
@@ -49,7 +49,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource OPAExter
 		opaContext:        context.TODO(),
 	}
 	if err := o.precompilePolicy(); err != nil {
-		opaLogger.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
+		logger.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
 		return nil, err
 	} else {
 		return o, nil
@@ -65,7 +65,7 @@ type OPA struct {
 	policyUID  string
 }
 
-func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
+func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (bool, error) {
 	options := rego.EvalInput(pipeline.GetDataForAuthorization())
 	results, err := opa.policy.Eval(opa.opaContext, options)
 

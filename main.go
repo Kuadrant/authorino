@@ -64,7 +64,7 @@ var (
 	oidcTLSCertPath    = common.FetchEnv("OIDC_TLS_CERT", "")
 	oidcTLSCertKeyPath = common.FetchEnv("OIDC_TLS_CERT_KEY", "")
 
-	logger = log.Setup(log.ToLogLevel(logLevel), log.ToLogMode(logMode)).WithName("main")
+	logger = log.NewLogger(log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}, nil).WithName("authorino")
 )
 
 func init() {
@@ -72,6 +72,8 @@ func init() {
 
 	utilruntime.Must(configv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+
+	log.SetLogger(logger)
 }
 
 func main() {

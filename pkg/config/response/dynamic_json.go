@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 func NewDynamicJSONResponse(properties []common.JSONProperty) *DynamicJSON {
@@ -17,7 +18,7 @@ type DynamicJSON struct {
 	Properties []common.JSONProperty
 }
 
-func (j *DynamicJSON) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (j *DynamicJSON) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (interface{}, error) {
 	obj := make(map[string]interface{})
 
 	authData, _ := json.Marshal(pipeline.GetPostAuthorizationData())

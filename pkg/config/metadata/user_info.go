@@ -11,13 +11,11 @@ import (
 	"github.com/kuadrant/authorino/pkg/config/identity"
 )
 
-var userInfoLogger = log.WithName("metadata").WithName("userinfo").V(1)
-
 type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
-func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
 	oidc := userinfo.OIDC
 
 	// check if corresponding oidc identity was resolved
@@ -33,22 +31,22 @@ func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context
 		return nil, err
 	}
 
+	logger := parentLogger.WithName("userinfo")
+
 	// fetch user info
-	if userInfoURL, err := oidc.GetURL("userinfo_endpoint"); err != nil {
+	if userInfoURL, err := oidc.GetURL("userinfo_endpoint", logger); err != nil {
 		return nil, err
 	} else {
-		return fetchUserInfo(userInfoURL.String(), accessToken, ctx, pipeline)
+		return fetchUserInfo(userInfoURL.String(), accessToken, ctx, logger)
 	}
 }
 
-func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context, pipeline common.AuthPipeline) (interface{}, error) {
-	logger := userInfoLogger.WithValues("request id", pipeline.GetTraceId()).V(1)
-
+func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context, logger log.Logger) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	logger.Info("fetching user info", "endpoint", userInfoEndpoint)
+	logger.V(1).Info("fetching user info", "endpoint", userInfoEndpoint)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

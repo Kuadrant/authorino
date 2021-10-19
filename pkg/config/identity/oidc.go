@@ -11,25 +11,23 @@ import (
 	goidc "github.com/coreos/go-oidc"
 )
 
-var oidcLogger = log.WithName("identity").WithName("oidc").V(1)
-
 type OIDC struct {
 	auth_credentials.AuthCredentials
 	Endpoint string `yaml:"endpoint"`
 	provider *goidc.Provider
 }
 
-func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials) *OIDC {
+func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials, parentLogger log.Logger) *OIDC {
 	oidc := &OIDC{
 		AuthCredentials: creds,
 		Endpoint:        endpoint,
 	}
-	_ = oidc.getProvider()
+	_ = oidc.getProvider(parentLogger.WithName("oidc"))
 
 	return oidc
 }
 
-func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
 	// retrieve access token
 	accessToken, err := oidc.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
@@ -38,18 +36,18 @@ func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context) (inter
 
 	// verify jwt and extract claims
 	var claims interface{}
-	if _, err := oidc.decodeAndVerifyToken(accessToken, ctx, &claims); err != nil {
+	if _, err := oidc.decodeAndVerifyToken(accessToken, ctx, parentLogger.WithName("oidc"), &claims); err != nil {
 		return nil, err
 	} else {
 		return claims, nil
 	}
 }
 
-func (oidc *OIDC) getProvider() *goidc.Provider {
+func (oidc *OIDC) getProvider(logger log.Logger) *goidc.Provider {
 	if oidc.provider == nil {
 		endpoint := oidc.Endpoint
 		if provider, err := goidc.NewProvider(context.TODO(), endpoint); err != nil {
-			oidcLogger.Error(err, "failed to discovery openid connect configuration", "endpoint", endpoint)
+			logger.Error(err, "failed to discovery openid connect configuration", "endpoint", endpoint)
 		} else {
 			oidc.provider = provider
 		}
@@ -58,13 +56,13 @@ func (oidc *OIDC) getProvider() *goidc.Provider {
 	return oidc.provider
 }
 
-func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, claims *interface{}) (*goidc.IDToken, error) {
+func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, logger log.Logger, claims *interface{}) (*goidc.IDToken, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
 	// verify jwt
-	idToken, err := oidc.verifyToken(accessToken, ctx)
+	idToken, err := oidc.verifyToken(accessToken, ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -77,19 +75,19 @@ func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, 
 	return idToken, nil
 }
 
-func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.IDToken, error) {
+func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context, logger log.Logger) (*goidc.IDToken, error) {
 	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
 
-	if idToken, err := oidc.getProvider().Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
+	if idToken, err := oidc.getProvider(logger).Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
 		return nil, err
 	} else {
 		return idToken, nil
 	}
 }
 
-func (oidc *OIDC) GetURL(name string) (*url.URL, error) {
+func (oidc *OIDC) GetURL(name string, logger log.Logger) (*url.URL, error) {
 	var providerClaims map[string]interface{}
-	_ = oidc.getProvider().Claims(&providerClaims)
+	_ = oidc.getProvider(logger).Claims(&providerClaims)
 
 	if endpoint, err := url.Parse(providerClaims[name].(string)); err != nil {
 		return nil, err
