@@ -19,21 +19,11 @@ var (
 	// until `SetLogger` is called.
 	// This is also useful for mocking the default logger tests.
 	Log logr.Logger = ctrl.Log
-
-	// Level holds the minimum level of messages that should be logged.
-	// It is useful for checking the log level in the code and avoid expensive
-	// tasks only required for some specific levels.
-	// It is setup by the `SetLogger` function.
-	Level LogLevel
 )
 
 type Logger = logr.Logger
 
 type LogLevel zapcore.Level
-
-func (l *LogLevel) IsDebug() bool {
-	return *l == LogLevel(zapcore.DebugLevel)
-}
 
 func (l *LogLevel) String() string {
 	return zapcore.Level(*l).String()
@@ -92,7 +82,6 @@ func SetLogger(logger logr.Logger) {
 	opts := extractOptions(logger)
 
 	Log = logger
-	Level = opts.Level
 
 	ctrl.SetLogger(logger) // fulfills `logger` as the de facto logger used by controller-runtime
 	klog.SetLogger(logger)
@@ -110,10 +99,9 @@ func WithValues(keysAndValues ...interface{}) logr.Logger {
 	return Log.WithValues(keysAndValues...)
 }
 
-// IsDebug returns true if the setup logger is lower limited to debug level
-// and false in case of info or higher.
-func IsDebug() bool {
-	return Level.IsDebug()
+// V uses the singleton logger to create a new logger for the given log level.
+func V(level int) logr.Logger {
+	return Log.V(level)
 }
 
 // NewLogger returns a new logger with the given options.
@@ -140,9 +128,8 @@ type configuredLogger struct {
 	Logger  logr.Logger
 }
 
-// Enabled returns always true.
 func (l *configuredLogger) Enabled() bool {
-	return true
+	return l.Logger.Enabled()
 }
 
 func (l *configuredLogger) Info(msg string, keysAndValues ...interface{}) {

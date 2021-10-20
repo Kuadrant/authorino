@@ -207,7 +207,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 	configs := pipeline.API.AuthorizationConfigs
 	respChannel := make(chan EvaluationResponse, len(configs))
 
-	if log.IsDebug() {
+	if logger.Enabled() {
 		logger.Info("evaluating for input", "input", pipeline.GetDataForAuthorization())
 	}
 

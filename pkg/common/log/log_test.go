@@ -10,14 +10,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func TestLogLevelIsDebug(t *testing.T) {
-	level := LogLevel(-1)
-	assert.Check(t, level.IsDebug())
-
-	level = LogLevel(0)
-	assert.Check(t, !level.IsDebug())
-}
-
 func TestLogLevelToString(t *testing.T) {
 	level := LogLevel(-1)
 	assert.Equal(t, level.String(), "debug")
@@ -96,4 +88,17 @@ func TestWithValues(t *testing.T) {
 
 	loggerMock.EXPECT().WithValues("key", "value").Return(loggerMock)
 	WithValues("key", "value")
+}
+
+func TestV(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer func() {
+		mockController.Finish()
+		Log = ctrl.Log
+	}()
+	loggerMock := mock_logr.NewMockLogger(mockController)
+	Log = loggerMock
+
+	loggerMock.EXPECT().V(1).Return(loggerMock)
+	V(1)
 }

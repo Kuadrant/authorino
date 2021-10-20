@@ -57,7 +57,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context, pa
 
 	req.Header.Set("Content-Type", contentType)
 
-	if log.IsDebug() {
+	if logger := parentLogger.WithName("http").V(1); logger.Enabled() {
 		logData := []interface{}{
 			"method", method,
 			"url", endpoint,
@@ -68,7 +68,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context, pa
 			_, _ = requestBody.Read(b)
 			logData = append(logData, "body", string(b))
 		}
-		parentLogger.WithName("http").V(1).Info("sending request", logData...)
+		logger.Info("sending request", logData...)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
