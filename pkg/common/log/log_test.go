@@ -10,12 +10,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func TestLogLevelDebug(t *testing.T) {
+func TestLogLevelIsDebug(t *testing.T) {
 	level := LogLevel(-1)
-	assert.Check(t, level.Debug())
+	assert.Check(t, level.IsDebug())
 
 	level = LogLevel(0)
-	assert.Check(t, !level.Debug())
+	assert.Check(t, !level.IsDebug())
 }
 
 func TestLogLevelToString(t *testing.T) {

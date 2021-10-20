@@ -57,7 +57,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context, pa
 
 	req.Header.Set("Content-Type", contentType)
 
-	if log.Level.Debug() {
+	if log.IsDebug() {
 		logData := []interface{}{
 			"method", method,
 			"url", endpoint,

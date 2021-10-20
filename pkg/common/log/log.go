@@ -31,7 +31,7 @@ type Logger = logr.Logger
 
 type LogLevel zapcore.Level
 
-func (l *LogLevel) Debug() bool {
+func (l *LogLevel) IsDebug() bool {
 	return *l == LogLevel(zapcore.DebugLevel)
 }
 
@@ -108,6 +108,12 @@ func WithName(name string) logr.Logger {
 // WithName uses the singleton logger to create a new logger with the given values.
 func WithValues(keysAndValues ...interface{}) logr.Logger {
 	return Log.WithValues(keysAndValues...)
+}
+
+// IsDebug returns true if the setup logger is lower limited to debug level
+// and false in case of info or higher.
+func IsDebug() bool {
+	return Level.IsDebug()
 }
 
 // NewLogger returns a new logger with the given options.

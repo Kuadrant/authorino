@@ -146,7 +146,7 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, logger log.Lo
 	}
 	logger.Info("incoming authorization request", "object", reducedReq) // info
 
-	if log.Level.Debug() {
+	if log.IsDebug() {
 		logger.V(1).Info("incoming authorization request", "object", reqAttrs) // debug
 	}
 }
@@ -166,7 +166,7 @@ func (a *AuthService) logAuthResult(result common.AuthResult, logger log.Logger)
 	}
 	logger.Info("outgoing authorization response", logData...) // info
 
-	if log.Level.Debug() {
+	if log.IsDebug() {
 		if !success {
 			baseLogData = append(baseLogData, "object", result)
 		}
