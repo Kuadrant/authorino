@@ -62,7 +62,8 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `info` | "resource status updated" | |
 | `authorino.controller-runtime.manager.controller.secret` | `info` | "resource reconciled" | |
 | `authorino.controller-runtime.manager.controller.secret` | `info` | "could not reconcile authconfigs using api key autauthorino.hentication" | |
-| `authorino.service.oidc` | `info` | "request received" | `realm`, `config`, `path` |
+| `authorino.service.oidc` | `info` | "request received" | `request id`, `url`, `realm`, `config`, `path` |
+| `authorino.service.oidc` | `info` | "response sent" | `request id` |
 | `authorino.service.oidc` | `error` | "failed to serve oidc request" | |
 | `authorino.service.auth` | `info` | "incoming authorization request" | `request id`, `object` |
 | `authorino.service.auth` | `debug` | "incoming authorization request" | `request id`, `object` |
