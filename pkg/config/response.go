@@ -46,6 +46,17 @@ type ResponseConfig struct {
 	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`
 }
 
+func (config *ResponseConfig) GetType() (string, error) {
+	switch {
+	case config.Wristband != nil:
+		return RESPONSE_WRISTBAND, nil
+	case config.DynamicJSON != nil:
+		return RESPONSE_DYNAMIC_JSON, nil
+	default:
+		return "", fmt.Errorf("invalid response config")
+	}
+}
+
 func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
 	t, _ := config.GetType()
 	switch t {
@@ -55,17 +66,6 @@ func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 		return config.DynamicJSON
 	default:
 		return nil
-	}
-}
-
-func (config *ResponseConfig) GetType() (string, error) {
-	switch {
-	case config.Wristband != nil:
-		return RESPONSE_WRISTBAND, nil
-	case config.DynamicJSON != nil:
-		return RESPONSE_DYNAMIC_JSON, nil
-	default:
-		return "", fmt.Errorf("invalid response config")
 	}
 }
 

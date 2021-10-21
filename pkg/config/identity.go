@@ -14,11 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var (
-	// IdentityEvaluator represents the identityConfig struct implementing its Call method
-	IdentityEvaluator common.AuthConfigEvaluator
-)
-
 type IdentityConfig struct {
 	Name               string                `yaml:"name"`
 	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
@@ -29,10 +24,6 @@ type IdentityConfig struct {
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
 	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
-}
-
-func init() {
-	IdentityEvaluator = &IdentityConfig{}
 }
 
 func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {

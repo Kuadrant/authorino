@@ -9,17 +9,14 @@ import (
 	"github.com/kuadrant/authorino/pkg/config/authorization"
 )
 
-var (
-	// AuthorizationEvaluator represents the authorizationConfig struct implementing its Call method
-	AuthorizationEvaluator common.AuthConfigEvaluator
-)
-
 type AuthorizationConfig struct {
 	Name            string                             `yaml:"name"`
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
 	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
 }
+
+// impl:AuthConfigEvaluator
 
 func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
 	logger := log.FromContext(parentCtx).WithName("authorization")
@@ -33,6 +30,6 @@ func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, parentCtx 
 	case config.KubernetesAuthz != nil:
 		return config.KubernetesAuthz.Call(pipeline, ctx)
 	default:
-		return false, fmt.Errorf("invalid authorization configs")
+		return false, fmt.Errorf("invalid authorization config")
 	}
 }

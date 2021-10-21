@@ -41,9 +41,11 @@ type AuthService struct {
 
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
-func (a *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
+func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", req.Attributes.Request.Http.GetId())
-	a.logAuthRequest(req, requestLogger)
+	ctx := log.IntoContext(parentContext, requestLogger)
+
+	a.logAuthRequest(req, ctx)
 
 	requestData := req.Attributes.Request.Http
 
@@ -59,25 +61,26 @@ func (a *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (
 	// If we couldn't find the APIConfig in the config, we return and deny.
 	if apiConfig == nil {
 		result := common.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
-		a.logAuthResult(result, requestLogger)
+		a.logAuthResult(result, ctx)
 		return a.deniedResponse(result), nil
 	}
 
-	result := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *apiConfig).Evaluate()
+	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *apiConfig)
+	result := pipeline.Evaluate()
 
-	a.logAuthResult(result, requestLogger)
+	a.logAuthResult(result, ctx)
 
 	if result.Success() {
-		return a.successResponse(result, requestLogger), nil
+		return a.successResponse(result, ctx), nil
 	} else {
 		return a.deniedResponse(result), nil
 	}
 }
 
-func (a *AuthService) successResponse(authResult common.AuthResult, logger log.Logger) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := structpb.NewStruct(authResult.Metadata)
 	if err != nil {
-		logger.V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
+		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
@@ -115,7 +118,8 @@ func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.C
 	}
 }
 
-func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, logger log.Logger) {
+func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx context.Context) {
+	logger := log.FromContext(ctx)
 	reqAttrs := req.Attributes
 	httpAttrs := reqAttrs.Request.Http
 
@@ -147,11 +151,12 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, logger log.Lo
 	logger.Info("incoming authorization request", "object", reducedReq) // info
 
 	if logger.V(1).Enabled() {
-		logger.V(1).Info("incoming authorization request", "object", reqAttrs) // debug
+		logger.V(1).Info("incoming authorization request", "object", &reqAttrs) // debug
 	}
 }
 
-func (a *AuthService) logAuthResult(result common.AuthResult, logger log.Logger) {
+func (a *AuthService) logAuthResult(result common.AuthResult, ctx context.Context) {
+	logger := log.FromContext(ctx)
 	success := result.Success()
 	baseLogData := []interface{}{"authorized", success, "response", result.Code.String()}
 

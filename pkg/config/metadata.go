@@ -15,29 +15,11 @@ const (
 	metadataGenericHTTP = "METADATA_GENERIC_HTTP"
 )
 
-var (
-	// MetadataEvaluator represents the metadataStruct implementing its Call method
-	MetadataEvaluator common.AuthConfigEvaluator
-)
-
 type MetadataConfig struct {
 	Name        string                `yaml:"name"`
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
-}
-
-func init() {
-	MetadataEvaluator = &MetadataConfig{}
-}
-
-func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
-	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		logger := log.FromContext(ctx).WithName("metadata")
-		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
-	} else {
-		return nil, fmt.Errorf("invalid metadata config")
-	}
 }
 
 func (config *MetadataConfig) GetType() (string, error) {
@@ -66,6 +48,19 @@ func (config *MetadataConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 		return nil
 	}
 }
+
+// impl:AuthConfigEvaluator
+
+func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
+		logger := log.FromContext(ctx).WithName("metadata")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+	} else {
+		return nil, fmt.Errorf("invalid metadata config")
+	}
+}
+
+// impl:NamedConfigEvaluator
 
 func (config *MetadataConfig) GetName() string {
 	return config.Name
