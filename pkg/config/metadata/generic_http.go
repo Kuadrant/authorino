@@ -23,7 +23,7 @@ type GenericHttp struct {
 	auth_credentials.AuthCredentials
 }
 
-func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context, pa
 
 	req.Header.Set("Content-Type", contentType)
 
-	if logger := parentLogger.WithName("http").V(1); logger.Enabled() {
+	if logger := log.FromContext(ctx).WithName("http").V(1); logger.Enabled() {
 		logData := []interface{}{
 			"method", method,
 			"url", endpoint,

@@ -38,7 +38,7 @@ func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clien
 	}
 }
 
-func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context, par
 		return nil, err
 	}
 
-	parentLogger.WithName("oauth2").V(1).Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
+	log.FromContext(ctx).WithName("oauth2").V(1).Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

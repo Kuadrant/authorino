@@ -15,7 +15,8 @@ type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
-func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("userinfo"))
 	oidc := userinfo.OIDC
 
 	// check if corresponding oidc identity was resolved
@@ -31,22 +32,20 @@ func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context
 		return nil, err
 	}
 
-	logger := parentLogger.WithName("userinfo")
-
 	// fetch user info
-	if userInfoURL, err := oidc.GetURL("userinfo_endpoint", logger); err != nil {
+	if userInfoURL, err := oidc.GetURL("userinfo_endpoint", ctx); err != nil {
 		return nil, err
 	} else {
-		return fetchUserInfo(userInfoURL.String(), accessToken, ctx, logger)
+		return fetchUserInfo(userInfoURL.String(), accessToken, ctx)
 	}
 }
 
-func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context, logger log.Logger) (interface{}, error) {
+func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	logger.V(1).Info("fetching user info", "endpoint", userInfoEndpoint)
+	log.FromContext(ctx).V(1).Info("fetching user info", "endpoint", userInfoEndpoint)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

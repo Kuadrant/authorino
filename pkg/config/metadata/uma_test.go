@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kuadrant/authorino/pkg/common/log"
 	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -76,7 +75,7 @@ func TestUMACall(t *testing.T) {
 
 	uma, _ := NewUMAMetadata(umaIssuer, "client-id", "client-secret")
 
-	obj, err := uma.Call(pipelineMock, context.TODO(), log.Log)
+	obj, err := uma.Call(pipelineMock, context.TODO())
 
 	data, _ := json.Marshal(obj)
 	assert.Equal(t, "["+resourceData+"]", string(data))

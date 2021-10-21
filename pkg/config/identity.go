@@ -56,9 +56,10 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 
 // impl:AuthConfigEvaluator
 
-func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx, parentLogger.WithName("identity"))
+		logger := log.FromContext(ctx).WithName("identity")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
 	} else {
 		return nil, fmt.Errorf("invalid identity config")
 	}

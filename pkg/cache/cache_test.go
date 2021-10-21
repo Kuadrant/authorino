@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 
 	"gotest.tools/assert"
@@ -14,7 +13,7 @@ import (
 
 type BogusIdentity struct{}
 
-func (f *BogusIdentity) Call(_ common.AuthPipeline, _ context.Context, _ log.Logger) (interface{}, error) {
+func (f *BogusIdentity) Call(_ common.AuthPipeline, _ context.Context) (interface{}, error) {
 	return true, nil
 }
 

@@ -71,9 +71,10 @@ func (config *ResponseConfig) GetType() (string, error) {
 
 // impl:AuthConfigEvaluator
 
-func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx, parentLogger.WithName("response"))
+		logger := log.FromContext(ctx).WithName("response")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
 	} else {
 		return nil, fmt.Errorf("invalid response config")
 	}

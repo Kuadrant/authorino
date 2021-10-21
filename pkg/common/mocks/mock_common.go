@@ -11,7 +11,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	common "github.com/kuadrant/authorino/pkg/common"
 	auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials"
-	log "github.com/kuadrant/authorino/pkg/common/log"
 	context "golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -96,20 +95,6 @@ func (mr *MockAuthPipelineMockRecorder) GetHttp() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHttp", reflect.TypeOf((*MockAuthPipeline)(nil).GetHttp))
 }
 
-// GetParentContext mocks base method.
-func (m *MockAuthPipeline) GetParentContext() *context.Context {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetParentContext")
-	ret0, _ := ret[0].(*context.Context)
-	return ret0
-}
-
-// GetParentContext indicates an expected call of GetParentContext.
-func (mr *MockAuthPipelineMockRecorder) GetParentContext() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParentContext", reflect.TypeOf((*MockAuthPipeline)(nil).GetParentContext))
-}
-
 // GetPostAuthorizationData mocks base method.
 func (m *MockAuthPipeline) GetPostAuthorizationData() interface{} {
 	m.ctrl.T.Helper()
@@ -191,18 +176,18 @@ func (m *MockAuthConfigEvaluator) EXPECT() *MockAuthConfigEvaluatorMockRecorder 
 }
 
 // Call mocks base method.
-func (m *MockAuthConfigEvaluator) Call(arg0 common.AuthPipeline, arg1 context.Context, arg2 log.Logger) (interface{}, error) {
+func (m *MockAuthConfigEvaluator) Call(arg0 common.AuthPipeline, arg1 context.Context) (interface{}, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Call", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Call", arg0, arg1)
 	ret0, _ := ret[0].(interface{})
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Call indicates an expected call of Call.
-func (mr *MockAuthConfigEvaluatorMockRecorder) Call(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockAuthConfigEvaluatorMockRecorder) Call(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockAuthConfigEvaluator)(nil).Call), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockAuthConfigEvaluator)(nil).Call), arg0, arg1)
 }
 
 // MockNamedConfigEvaluator is a mock of NamedConfigEvaluator interface.
@@ -369,18 +354,18 @@ func (m *MockWristbandIssuer) EXPECT() *MockWristbandIssuerMockRecorder {
 }
 
 // Call mocks base method.
-func (m *MockWristbandIssuer) Call(arg0 common.AuthPipeline, arg1 context.Context, arg2 log.Logger) (interface{}, error) {
+func (m *MockWristbandIssuer) Call(arg0 common.AuthPipeline, arg1 context.Context) (interface{}, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Call", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Call", arg0, arg1)
 	ret0, _ := ret[0].(interface{})
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Call indicates an expected call of Call.
-func (mr *MockWristbandIssuerMockRecorder) Call(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockWristbandIssuerMockRecorder) Call(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockWristbandIssuer)(nil).Call), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockWristbandIssuer)(nil).Call), arg0, arg1)
 }
 
 // GetIssuer mocks base method.

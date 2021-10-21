@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-logr/logr"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
@@ -39,16 +38,18 @@ func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig, parentLogger log.Logger) common.AuthPipeline {
+func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) common.AuthPipeline {
+	logger := log.FromContext(parentCtx).WithName("authpipeline")
+
 	return &AuthPipeline{
-		ParentContext: &parentCtx,
+		Context:       log.IntoContext(parentCtx, logger),
 		Request:       req,
 		API:           &apiConfig,
 		Identity:      make(map[*config.IdentityConfig]interface{}),
 		Metadata:      make(map[*config.MetadataConfig]interface{}),
 		Authorization: make(map[*config.AuthorizationConfig]interface{}),
 		Response:      make(map[*config.ResponseConfig]interface{}),
-		Logger:        parentLogger.WithName("authpipeline"),
+		Logger:        logger,
 	}
 }
 
@@ -56,16 +57,16 @@ func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, ap
 // Throughout the pipeline, user identity, ad hoc metadata and authorization policies are evaluated and their
 // corresponding resulting objects stored in the respective maps.
 type AuthPipeline struct {
-	ParentContext *context.Context
-	Request       *envoy_auth.CheckRequest
-	API           *config.APIConfig
+	Context context.Context
+	Request *envoy_auth.CheckRequest
+	API     *config.APIConfig
 
 	Identity      map[*config.IdentityConfig]interface{}
 	Metadata      map[*config.MetadataConfig]interface{}
 	Authorization map[*config.AuthorizationConfig]interface{}
 	Response      map[*config.ResponseConfig]interface{}
 
-	Logger logr.Logger
+	Logger log.Logger
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
@@ -74,7 +75,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 		return
 	}
 
-	if authObj, err := config.Call(pipeline, ctx, pipeline.Logger); err != nil {
+	if authObj, err := config.Call(pipeline, ctx); err != nil {
 		*respChannel <- newEvaluationResponse(config, nil, err)
 
 		if failureCallback != nil {
@@ -92,7 +93,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
 
 func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
-	ctx, cancel := context.WithCancel(*pipeline.ParentContext)
+	ctx, cancel := context.WithCancel(pipeline.Context)
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
 
@@ -287,10 +288,6 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 		Headers:  []map[string]string{responseHeaders},
 		Metadata: responseMetadata,
 	}
-}
-
-func (pipeline *AuthPipeline) GetParentContext() *context.Context {
-	return pipeline.ParentContext
 }
 
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {

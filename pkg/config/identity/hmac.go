@@ -5,7 +5,6 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
-	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 type HMAC struct {
@@ -14,6 +13,6 @@ type HMAC struct {
 	Secret string `yaml:"secret"`
 }
 
-func (self *HMAC) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (interface{}, error) {
+func (self *HMAC) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return "Authenticated with HMAC", nil // TODO: implement
 }

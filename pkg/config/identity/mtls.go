@@ -5,7 +5,6 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
-	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 type MTLS struct {
@@ -14,6 +13,6 @@ type MTLS struct {
 	PEM string `yaml:"pem"`
 }
 
-func (self *MTLS) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (interface{}, error) {
+func (self *MTLS) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return "Authenticated with mTLS", nil // TODO: implement
 }

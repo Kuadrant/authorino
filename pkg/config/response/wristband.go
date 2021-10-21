@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -89,7 +88,7 @@ type Wristband struct {
 	SigningKeys   []jose.JSONWebKey
 }
 
-func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (interface{}, error) {
+func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// resolved identity
 	identityConfig, resolvedidentity := pipeline.GetResolvedIdentity()
 

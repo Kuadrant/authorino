@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -99,7 +98,7 @@ func TestAuthenticatedToken(t *testing.T) {
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, true, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 
@@ -121,7 +120,7 @@ func TestUnauthenticatedToken(t *testing.T) {
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, false, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
 	assert.Error(t, err, "Not authenticated")
@@ -142,7 +141,7 @@ func TestOpaqueToken(t *testing.T) {
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{}, tokenReviewData{requestToken, true, []string{"echo-api"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 
@@ -165,7 +164,7 @@ func TestCustomAudiences(t *testing.T) {
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{"custom-audience"}, tokenReviewData{requestToken, true, []string{"custom-audience"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
 
@@ -187,7 +186,7 @@ func TestCustomAudiencesUnmatch(t *testing.T) {
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
 	kubernetesAuth := newKubernetesAuth(authCredsMock, []string{"expected-audience"}, tokenReviewData{requestToken, false, []string{"custom-audience"}})
-	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
 	assert.Error(t, err, "Not authenticated")

@@ -52,7 +52,7 @@ func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audien
 	}, nil
 }
 
-func (kubeAuth *KubernetesAuth) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (kubeAuth *KubernetesAuth) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (kubeAuth *KubernetesAuth) Call(pipeline common.AuthPipeline, ctx context.C
 			},
 		}
 
-		parentLogger.WithName("kubernetesauth").V(1).Info("calling kubernetes token review api", "tokenreview", tr)
+		log.FromContext(ctx).WithName("kubernetesauth").V(1).Info("calling kubernetes token review api", "tokenreview", tr)
 
 		if result, err := kubeAuth.authenticator.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{}); err != nil {
 			return nil, err

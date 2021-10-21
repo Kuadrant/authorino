@@ -74,7 +74,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// The object exists so we need to either create it or update
-	authConfigByHost, err := r.translateAuthConfig(ctx, &authConfig, logger)
+	authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -98,9 +98,12 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
-func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *configv1beta1.AuthConfig, logger log.Logger) (map[string]authorinoService.APIConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *configv1beta1.AuthConfig) (map[string]authorinoService.APIConfig, error) {
+	var ctxWithLogger context.Context
+
 	identityConfigs := make([]config.IdentityConfig, 0)
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
+	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
 	for _, identity := range authConfig.Spec.Identity {
 		extendedProperties := make([]common.JSONProperty, 0)
@@ -144,11 +147,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// oidc
 		case configv1beta1.IdentityOidc:
-			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, logger.WithName("identity"))
+			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, ctxWithLogger)
 
 		// apiKey
 		case configv1beta1.IdentityApiKey:
-			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client, logger.WithName("identity"))
+			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client, ctxWithLogger)
 
 		// kubernetes auth
 		case configv1beta1.IdentityKubernetesAuth:
@@ -250,6 +253,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
+	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
 	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
@@ -282,7 +286,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			var err error
-			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, index, logger.WithName("authorization"))
+			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, index, ctxWithLogger)
 			if err != nil {
 				return nil, err
 			}

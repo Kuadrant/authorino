@@ -196,7 +196,7 @@ func TestWristbandCall(t *testing.T) {
 	identityConfigMock.EXPECT().GetOIDC()
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(identityConfigMock, nil)
 	pipelineMock.EXPECT().GetPostAuthorizationData().Return(postAuthzData)
-	encodedWristband, err := wristbandIssuer.Call(pipelineMock, context.TODO(), nil)
+	encodedWristband, err := wristbandIssuer.Call(pipelineMock, context.TODO())
 	assert.NilError(t, err)
 
 	type wristbandData struct {

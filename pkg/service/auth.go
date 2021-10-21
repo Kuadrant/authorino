@@ -63,7 +63,7 @@ func (a *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (
 		return a.deniedResponse(result), nil
 	}
 
-	result := NewAuthPipeline(ctx, req, *apiConfig, requestLogger).Evaluate()
+	result := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *apiConfig).Evaluate()
 
 	a.logAuthResult(result, requestLogger)
 

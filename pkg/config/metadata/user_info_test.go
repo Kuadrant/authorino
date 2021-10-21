@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	. "github.com/golang/mock/gomock"
@@ -39,7 +38,7 @@ type userInfoTestData struct {
 
 func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 	authCredMock := NewMockAuthCredentials(ctrl)
-	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, log.Log)
+	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, context.TODO())
 	ctx, cancel := context.WithCancel(context.TODO())
 	return userInfoTestData{
 		ctx,
@@ -70,7 +69,7 @@ func TestUserInfoCall(t *testing.T) {
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
-	obj, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx, log.Log)
+	obj, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 
 	assert.NilError(t, err)
 
@@ -89,7 +88,7 @@ func TestUserInfoCanceledContext(t *testing.T) {
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
 	ta.cancel()
-	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx, log.Log)
+	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 
 	assert.Error(t, err, "context canceled")
 }
@@ -99,10 +98,10 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	otherOidcEvaluator := identity.NewOIDC("http://wrongServer", ta.authCredMock, log.Log)
+	otherOidcEvaluator := identity.NewOIDC("http://wrongServer", ta.authCredMock, context.TODO())
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(otherOidcEvaluator)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
-	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx, log.Log)
+	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 	assert.Error(t, err, "Missing identity for OIDC issuer http://127.0.0.1:9002. Skipping related UserInfo metadata.")
 }

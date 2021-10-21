@@ -31,9 +31,10 @@ func init() {
 	MetadataEvaluator = &MetadataConfig{}
 }
 
-func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context, parentLogger log.Logger) (interface{}, error) {
+func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx, parentLogger.WithName("metadata"))
+		logger := log.FromContext(ctx).WithName("metadata")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
 	} else {
 		return nil, fmt.Errorf("invalid metadata config")
 	}

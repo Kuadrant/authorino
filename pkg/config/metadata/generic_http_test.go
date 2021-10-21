@@ -8,7 +8,6 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -48,7 +47,7 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 		AuthCredentials: sharedCredsMock,
 	}
 
-	obj, err := metadata.Call(pipelineMock, ctx, log.Log)
+	obj, err := metadata.Call(pipelineMock, ctx)
 
 	assert.NilError(t, err)
 
@@ -86,7 +85,7 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 		AuthCredentials: sharedCredsMock,
 	}
 
-	obj, err := metadata.Call(pipelineMock, ctx, log.Log)
+	obj, err := metadata.Call(pipelineMock, ctx)
 
 	assert.NilError(t, err)
 
@@ -122,7 +121,7 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 		AuthCredentials: sharedCredsMock,
 	}
 
-	obj, err := metadata.Call(pipelineMock, ctx, log.Log)
+	obj, err := metadata.Call(pipelineMock, ctx)
 
 	assert.NilError(t, err)
 

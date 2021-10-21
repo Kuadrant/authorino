@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -92,7 +91,7 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 		nil,
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
 	requestData := client.GetRequest()
@@ -124,7 +123,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 		nil,
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
 	requestData := client.GetRequest()
@@ -153,7 +152,7 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 		&KubernetesAuthzResourceAttributes{Namespace: common.JSONValue{Static: "default"}},
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, authorized)
 	assert.NilError(t, err)
@@ -181,7 +180,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 		&KubernetesAuthzResourceAttributes{Namespace: common.JSONValue{Static: "default"}},
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, !authorized)
 	assert.ErrorContains(t, err, "Not authorized: some-reason")
@@ -211,7 +210,7 @@ func TestKubernetesAuthzWithConditions(t *testing.T) {
 		nil,
 		kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: ""},
 	)
-	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO(), log.Log)
+	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, authorized)
 	assert.NilError(t, err)

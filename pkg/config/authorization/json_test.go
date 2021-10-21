@@ -58,7 +58,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -73,7 +73,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -88,7 +88,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -103,7 +103,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -118,7 +118,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -133,7 +133,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -148,7 +148,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -163,7 +163,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -178,7 +178,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -193,7 +193,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -208,7 +208,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.ErrorContains(t, err, "error parsing regexp")
 
@@ -243,7 +243,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -278,7 +278,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -287,7 +287,7 @@ func TestCall(t *testing.T) {
 		Rules: []common.JSONPatternMatchingRule{},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -309,7 +309,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 
@@ -331,7 +331,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, !authorized)
 	assert.Error(t, err, "Unauthorized")
 
@@ -353,7 +353,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	authorized, err = jsonAuth.Call(pipelineMock, nil, nil)
+	authorized, err = jsonAuth.Call(pipelineMock, nil)
 	assert.Check(t, authorized)
 	assert.Check(t, err == nil)
 }

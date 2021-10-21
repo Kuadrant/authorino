@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -102,6 +103,23 @@ func WithValues(keysAndValues ...interface{}) logr.Logger {
 // V uses the singleton logger to create a new logger for the given log level.
 func V(level int) logr.Logger {
 	return Log.V(level)
+}
+
+// IntoContext takes a context and sets the logger as one of its values.
+// Use FromContext function to retrieve the logger.
+func IntoContext(ctx context.Context, log logr.Logger) context.Context {
+	return logr.NewContext(ctx, log)
+}
+
+// FromContext returns a logger with predefined values from a context.Context.
+func FromContext(ctx context.Context, keysAndValues ...interface{}) logr.Logger {
+	var log logr.Logger = Log
+	if ctx != nil {
+		if logger := logr.FromContext(ctx); logger != nil {
+			log = logger
+		}
+	}
+	return log.WithValues(keysAndValues...)
 }
 
 // NewLogger returns a new logger with the given options.

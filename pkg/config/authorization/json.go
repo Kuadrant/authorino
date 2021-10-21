@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 type JSONPatternMatching struct {
@@ -14,7 +13,7 @@ type JSONPatternMatching struct {
 	Rules      []common.JSONPatternMatchingRule
 }
 
-func (jsonAuth *JSONPatternMatching) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (bool, error) {
+func (jsonAuth *JSONPatternMatching) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
 	data := pipeline.GetDataForAuthorization()
 	dataJSON, _ := json.Marshal(data)
 	dataStr := string(dataJSON)

@@ -28,8 +28,8 @@ default allow = false
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
-func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int, parentLogger log.Logger) (*OPA, error) {
-	logger := parentLogger.WithName("opa")
+func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int, ctx context.Context) (*OPA, error) {
+	logger := log.FromContext(ctx).WithName("opa")
 
 	if rego == "" && externalSource.Endpoint != "" {
 		downloadedRego, err := externalSource.downloadRegoDataFromUrl()
@@ -65,7 +65,7 @@ type OPA struct {
 	policyUID  string
 }
 
-func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context, _ log.Logger) (bool, error) {
+func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
 	options := rego.EvalInput(pipeline.GetDataForAuthorization())
 	results, err := opa.policy.Eval(opa.opaContext, options)
 
