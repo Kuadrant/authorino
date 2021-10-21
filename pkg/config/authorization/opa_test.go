@@ -1,6 +1,7 @@
 package authorization
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -36,7 +37,7 @@ type authorizationData struct {
 }
 
 func TestNewOPAAuthorizationInlineRego(t *testing.T) {
-	opa, err := NewOPAAuthorization("test-opa", regoData, OPAExternalSource{}, 0)
+	opa, err := NewOPAAuthorization("test-opa", regoData, OPAExternalSource{}, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -54,7 +55,7 @@ func TestNewOPAAuthorizationExternalUrl(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0)
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -72,7 +73,7 @@ func TestNewOPAAuthorizationBoth(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", regoData, externalSource, 0)
+	opa, err := NewOPAAuthorization("test-opa", regoData, externalSource, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -80,7 +81,7 @@ func TestNewOPAAuthorizationBoth(t *testing.T) {
 
 func TestNewOPAAuthorizationWithPackageInRego(t *testing.T) {
 	data := fmt.Sprintf("package my-rego-123\n%s", regoData)
-	opa, err := NewOPAAuthorization("test-opa", data, OPAExternalSource{}, 0)
+	opa, err := NewOPAAuthorization("test-opa", data, OPAExternalSource{}, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assert.Assert(t, !strings.Contains(opa.Rego, "package"))
@@ -99,7 +100,7 @@ func TestNewOPAAuthorizationJsonResponse(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0)
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assert.Assert(t, !strings.Contains(opa.Rego, "package"))

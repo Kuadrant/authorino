@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/api/v1beta1"
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	mock_controller_builder "github.com/kuadrant/authorino/controllers/builder/mocks"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	"github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
@@ -111,7 +112,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	}
 	secretReconciler := &SecretReconciler{
 		Client:               client,
-		Log:                  ctrl.Log.WithName("reconcilerTest"),
+		Logger:               log.WithName("test").WithName("secretreconciler"),
 		Scheme:               nil,
 		SecretLabel:          "authorino.3scale.net/managed-by",
 		AuthConfigReconciler: authConfigReconciler,

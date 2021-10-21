@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 type providerJSON struct {
@@ -50,6 +51,8 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 
 	queryResourcesURL, _ := url.Parse(provider.resourceRegistrationURL)
 	queryResourcesURL.RawQuery = "uri=" + uri
+
+	log.FromContext(ctx).V(1).Info("querying resources by uri", "url", queryResourcesURL.String())
 
 	var resourceIDs []string
 	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs); err != nil {
@@ -96,6 +99,9 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx contex
 
 	resourceURL, _ := url.Parse(provider.resourceRegistrationURL)
 	resourceURL.Path += "/" + resourceID
+
+	log.FromContext(ctx).V(1).Info("getting resource data", "url", resourceURL.String())
+
 	var data interface{}
 	if err := pat.Get(resourceURL.String(), ctx, &data); err != nil {
 		return nil, err
@@ -187,7 +193,9 @@ func (uma *UMA) discover() error {
 	}
 }
 
-func (uma *UMA) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (uma *UMA) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("uma"))
+
 	// get the protection API token (PAT)
 	var pat PAT
 	if err := uma.requestPAT(ctx, &pat); err != nil {
@@ -228,6 +236,8 @@ func (uma *UMA) requestPAT(ctx context.Context, pat *PAT) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	log.FromContext(ctx).V(1).Info("requesting pat", "url", tokenURL.String(), "data", encodedData, "headers", req.Header)
 
 	// get the response
 	resp, err := http.DefaultClient.Do(req)

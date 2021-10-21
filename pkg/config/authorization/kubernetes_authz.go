@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,6 +109,8 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 	if len(k.Groups) > 0 {
 		subjectAccessReview.Spec.Groups = k.Groups
 	}
+
+	log.FromContext(ctx).WithName("kubernetesauthz").V(1).Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)
 
 	if result, err := k.authorizer.SubjectAccessReviews().Create(ctx, &subjectAccessReview, metav1.CreateOptions{}); err != nil {
 		return false, err

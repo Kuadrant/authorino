@@ -8,8 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kuadrant/authorino/pkg/common/log"
+
 	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // AuthCredentials interface represents the methods needed to fetch credentials from input
@@ -42,7 +43,8 @@ const (
 )
 
 var (
-	authCredLog = ctrl.Log.WithName("Authorino").WithName("AuthCredential")
+	logger = log.WithName("authcredential").V(1)
+
 	notFoundErr = fmt.Errorf(credentialNotFoundMsg)
 )
 
@@ -129,7 +131,7 @@ func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoi
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {
 	cred, ok := headers[strings.ToLower(keyName)]
 	if !ok {
-		authCredLog.Error(notFoundErr, credentialNotFoundInHeaderMsg)
+		logger.Error(notFoundErr, credentialNotFoundInHeaderMsg)
 		return "", notFoundErr
 	}
 	return cred, nil
@@ -139,7 +141,7 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 	authHeader, ok := headers["authorization"]
 
 	if !ok {
-		authCredLog.Error(notFoundErr, authHeaderNotSetMsg)
+		logger.Error(notFoundErr, authHeaderNotSetMsg)
 		return "", notFoundErr
 	}
 	prefix := keyName + " "
@@ -152,7 +154,7 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 func getFromCookieHeader(headers map[string]string, keyName string) (string, error) {
 	header, ok := headers["cookie"]
 	if !ok {
-		authCredLog.Error(notFoundErr, cookieHeaderNotSetMsg)
+		logger.Error(notFoundErr, cookieHeaderNotSetMsg)
 		return "", notFoundErr
 	}
 

@@ -1,13 +1,13 @@
 package service
 
 import (
-	"encoding/json"
 	"strings"
 
 	"golang.org/x/net/context"
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -26,8 +26,6 @@ const (
 )
 
 var (
-	authServiceLog = ctrl.Log.WithName("Authorino").WithName("AuthService")
-
 	statusCodeMapping = map[rpc.Code]envoy_type.StatusCode{
 		rpc.FAILED_PRECONDITION: envoy_type.StatusCode_BadRequest,
 		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
@@ -36,28 +34,6 @@ var (
 	}
 )
 
-// AuthResult holds the result data for building the response to an auth check
-type AuthResult struct {
-	// Code is gRPC response code to the auth check
-	Code rpc.Code
-	// Status is HTTP status code to override the default mapping between gRPC response codes and HTTP status messages
-	// for auth
-	Status envoy_type.StatusCode
-	// Message is X-Ext-Auth-Reason message returned in an injected HTTP response header, to explain the reason of the
-	// auth check result
-	Message string
-	// Headers are other HTTP headers to inject in the response
-	Headers []map[string]string
-	// Metadata are Envoy dynamic metadata content
-	Metadata map[string]interface{}
-}
-
-// Success tells whether the auth check result was successful and therefore access can be granted to the requested
-// resource or it has failed (deny access)
-func (result *AuthResult) Success() bool {
-	return result.Code == rpc.OK
-}
-
 // AuthService is the server API for the authorization service.
 type AuthService struct {
 	Cache cache.Cache
@@ -65,43 +41,46 @@ type AuthService struct {
 
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
-func (self *AuthService) Check(ctx context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
-	reqJSON, err := json.MarshalIndent(req, "", "  ")
-	if err != nil {
-		return self.deniedResponse(AuthResult{Code: rpc.FAILED_PRECONDITION, Message: RESPONSE_MESSAGE_INVALID_REQUEST}), nil
-	}
-	authServiceLog.Info("Check()", "reqJSON", string(reqJSON))
+func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
+	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", req.Attributes.Request.Http.GetId())
+	ctx := log.IntoContext(parentContext, requestLogger)
+
+	a.logAuthRequest(req, ctx)
+
+	requestData := req.Attributes.Request.Http
 
 	// service config
-	host := req.Attributes.Request.Http.Host
+	host := requestData.Host
 	var apiConfig *config.APIConfig
-	apiConfig = self.Cache.Get(host)
+	apiConfig = a.Cache.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
 	if apiConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
-		apiConfig = self.Cache.Get(splitHost[0])
+		apiConfig = a.Cache.Get(splitHost[0])
 	}
 	// If we couldn't find the APIConfig in the config, we return and deny.
 	if apiConfig == nil {
-		return self.deniedResponse(AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}), nil
+		result := common.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
+		a.logAuthResult(result, ctx)
+		return a.deniedResponse(result), nil
 	}
 
-	pipeline := NewAuthPipeline(ctx, req, *apiConfig)
+	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *apiConfig)
 	result := pipeline.Evaluate()
 
-	authServiceLog.Info("Check()", "result", result)
+	a.logAuthResult(result, ctx)
 
 	if result.Success() {
-		return self.successResponse(result), nil
+		return a.successResponse(result, ctx), nil
 	} else {
-		return self.deniedResponse(result), nil
+		return a.deniedResponse(result), nil
 	}
 }
 
-func (self *AuthService) successResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := structpb.NewStruct(authResult.Metadata)
 	if err != nil {
-		authServiceLog.Error(err, "failed to create dynamic metadata", "obj", authResult.Metadata)
+		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
@@ -116,7 +95,7 @@ func (self *AuthService) successResponse(authResult AuthResult) *envoy_auth.Chec
 	}
 }
 
-func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
 
 	httpCode := authResult.Status
@@ -136,6 +115,67 @@ func (self *AuthService) deniedResponse(authResult AuthResult) *envoy_auth.Check
 				Headers: buildResponseHeadersWithReason(authResult.Message, authResult.Headers),
 			},
 		},
+	}
+}
+
+func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx context.Context) {
+	logger := log.FromContext(ctx)
+	reqAttrs := req.Attributes
+	httpAttrs := reqAttrs.Request.Http
+
+	reducedReq := &struct {
+		Source      *envoy_auth.AttributeContext_Peer `json:"source,omitempty"`
+		Destination *envoy_auth.AttributeContext_Peer `json:"destination,omitempty"`
+		Request     interface{}                       `json:"request,omitempty"`
+	}{
+		Source:      reqAttrs.Source,
+		Destination: reqAttrs.Destination,
+		Request: struct {
+			Http interface{} `json:"http,omitempty"`
+		}{
+			Http: struct {
+				Id     string `json:"id,omitempty"`
+				Method string `json:"method,omitempty"`
+				Path   string `json:"path,omitempty"`
+				Host   string `json:"host,omitempty"`
+				Scheme string `json:"scheme,omitempty"`
+			}{
+				Id:     httpAttrs.Id,
+				Method: httpAttrs.Method,
+				Path:   strings.Split(httpAttrs.Path, "?")[0],
+				Host:   httpAttrs.Host,
+				Scheme: httpAttrs.Scheme,
+			},
+		},
+	}
+	logger.Info("incoming authorization request", "object", reducedReq) // info
+
+	if logger.V(1).Enabled() {
+		logger.V(1).Info("incoming authorization request", "object", &reqAttrs) // debug
+	}
+}
+
+func (a *AuthService) logAuthResult(result common.AuthResult, ctx context.Context) {
+	logger := log.FromContext(ctx)
+	success := result.Success()
+	baseLogData := []interface{}{"authorized", success, "response", result.Code.String()}
+
+	logData := baseLogData
+	if !success {
+		reducedResult := common.AuthResult{
+			Code:    result.Code,
+			Status:  result.Status,
+			Message: result.Message,
+		}
+		logData = append(logData, "object", reducedResult)
+	}
+	logger.Info("outgoing authorization response", logData...) // info
+
+	if logger.V(1).Enabled() {
+		if !success {
+			baseLogData = append(baseLogData, "object", result)
+		}
+		logger.V(1).Info("outgoing authorization response", baseLogData...) // debug
 	}
 }
 

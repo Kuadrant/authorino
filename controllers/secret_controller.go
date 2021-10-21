@@ -27,7 +27,7 @@ var newController = controller_builder.NewControllerManagedBy
 // SecretReconciler reconciles k8s Secret objects
 type SecretReconciler struct {
 	client.Client
-	Log                  logr.Logger
+	Logger               logr.Logger
 	Scheme               *runtime.Scheme
 	SecretLabel          string
 	AuthConfigReconciler reconcile.Reconciler
@@ -36,7 +36,7 @@ type SecretReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;
 
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("secret", req.NamespacedName)
+	logger := r.Logger.WithValues("secret", req.NamespacedName)
 
 	var reconcile func(configv1beta1.AuthConfig)
 
@@ -81,9 +81,10 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	if err := r.reconcileAuthConfigsUsingAPIKey(ctx, req.Namespace, reconcile); err != nil {
-		log.Info("could not reconcile authconfigs using api key authentication", "req", req)
+		logger.Info("could not reconcile authconfigs using api key authentication")
 		return ctrl.Result{}, err
 	} else {
+		logger.Info("resource reconciled")
 		return ctrl.Result{}, nil
 	}
 }

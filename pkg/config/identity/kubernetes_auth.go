@@ -6,6 +6,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	authv1 "k8s.io/api/authentication/v1"
@@ -66,6 +67,8 @@ func (kubeAuth *KubernetesAuth) Call(pipeline common.AuthPipeline, ctx context.C
 				Audiences: kubeAuth.audiencesWithDefault(request.Host),
 			},
 		}
+
+		log.FromContext(ctx).WithName("kubernetesauth").V(1).Info("calling kubernetes token review api", "tokenreview", tr)
 
 		if result, err := kubeAuth.authenticator.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{}); err != nil {
 			return nil, err

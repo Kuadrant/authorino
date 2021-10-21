@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/response"
 )
 
@@ -45,6 +46,17 @@ type ResponseConfig struct {
 	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`
 }
 
+func (config *ResponseConfig) GetType() (string, error) {
+	switch {
+	case config.Wristband != nil:
+		return RESPONSE_WRISTBAND, nil
+	case config.DynamicJSON != nil:
+		return RESPONSE_DYNAMIC_JSON, nil
+	default:
+		return "", fmt.Errorf("invalid response config")
+	}
+}
+
 func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
 	t, _ := config.GetType()
 	switch t {
@@ -57,22 +69,12 @@ func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 	}
 }
 
-func (config *ResponseConfig) GetType() (string, error) {
-	switch {
-	case config.Wristband != nil:
-		return RESPONSE_WRISTBAND, nil
-	case config.DynamicJSON != nil:
-		return RESPONSE_DYNAMIC_JSON, nil
-	default:
-		return "", fmt.Errorf("invalid response config")
-	}
-}
-
 // impl:AuthConfigEvaluator
 
 func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx)
+		logger := log.FromContext(ctx).WithName("response")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
 	} else {
 		return nil, fmt.Errorf("invalid response config")
 	}

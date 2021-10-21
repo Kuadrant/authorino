@@ -11,6 +11,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 type GenericHttp struct {
@@ -55,6 +56,20 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	}
 
 	req.Header.Set("Content-Type", contentType)
+
+	if logger := log.FromContext(ctx).WithName("http").V(1); logger.Enabled() {
+		logData := []interface{}{
+			"method", method,
+			"url", endpoint,
+			"headers", req.Header,
+		}
+		if requestBody != nil {
+			var b []byte
+			_, _ = requestBody.Read(b)
+			logData = append(logData, "body", string(b))
+		}
+		logger.Info("sending request", logData...)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

@@ -25,6 +25,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
 	authorinoService "github.com/kuadrant/authorino/pkg/config"
 	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
@@ -45,7 +46,7 @@ import (
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	Log    logr.Logger
+	Logger logr.Logger
 	Scheme *runtime.Scheme
 	Cache  cache.Cache
 }
@@ -53,7 +54,7 @@ type AuthConfigReconciler struct {
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("authConfig", req.NamespacedName)
+	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 
 	authConfig := configv1beta1.AuthConfig{}
 	err := r.Get(ctx, req.NamespacedName, &authConfig)
@@ -61,7 +62,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// As we can't get the object, that means it was deleted.
 		// Delete all the authconfigs related to this k8s object.
-		log.Info("object has been deleted, deleted related configs", "object", req)
+		logger.Info("object has been deleted, deleted related configs")
 
 		//Cleanup all the hosts related to this CRD object.
 		r.Cache.Delete(req.String())
@@ -73,7 +74,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// The object exists so we need to either create it or update
-	authConfigByHost, err := r.translateAuthConfig(ctx, &authConfig)
+	authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -82,7 +83,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// Check for host collision with another namespace
 		if cachedKey, found := r.Cache.FindId(host); found {
 			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
-				log.Info("host already taken in another namespace", "host", host)
+				logger.Info("host already taken in another namespace", "host", host)
 				return ctrl.Result{}, nil
 			}
 		}
@@ -92,12 +93,17 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
+	logger.Info("resource reconciled")
+
 	return ctrl.Result{}, nil
 }
 
 func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *configv1beta1.AuthConfig) (map[string]authorinoService.APIConfig, error) {
+	var ctxWithLogger context.Context
+
 	identityConfigs := make([]config.IdentityConfig, 0)
 	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
+	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
 	for _, identity := range authConfig.Spec.Identity {
 		extendedProperties := make([]common.JSONProperty, 0)
@@ -141,11 +147,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// oidc
 		case configv1beta1.IdentityOidc:
-			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred)
+			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, ctxWithLogger)
 
 		// apiKey
 		case configv1beta1.IdentityApiKey:
-			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client)
+			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client, ctxWithLogger)
 
 		// kubernetes auth
 		case configv1beta1.IdentityKubernetesAuth:
@@ -247,6 +253,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
+	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
 	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
@@ -279,7 +286,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			var err error
-			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, index)
+			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, index, ctxWithLogger)
 			if err != nil {
 				return nil, err
 			}

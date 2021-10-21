@@ -32,6 +32,7 @@ import (
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/service"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +40,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -49,11 +49,12 @@ const (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 
 	watchNamespace              = common.FetchEnv("WATCH_NAMESPACE", "")
 	authorinoWatchedSecretLabel = common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", defaultAuthorinoWatchedSecretLabel)
+	logLevel                    = common.FetchEnv("LOG_LEVEL", "info")
+	logMode                     = common.FetchEnv("LOG_MODE", "production")
 
 	extAuthGRPCPort = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
 	tlsCertPath     = common.FetchEnv("TLS_CERT", "")
@@ -62,6 +63,8 @@ var (
 	oidcHTTPPort       = common.FetchEnv("OIDC_HTTP_PORT", "8083")
 	oidcTLSCertPath    = common.FetchEnv("OIDC_TLS_CERT", "")
 	oidcTLSCertKeyPath = common.FetchEnv("OIDC_TLS_CERT_KEY", "")
+
+	logger = log.NewLogger(log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}, nil).WithName("authorino")
 )
 
 func init() {
@@ -69,6 +72,8 @@ func init() {
 
 	utilruntime.Must(configv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+
+	log.SetLogger(logger)
 }
 
 func main() {
@@ -79,8 +84,6 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
-
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	managerOptions := ctrl.Options{
 		Scheme:             scheme,
@@ -94,35 +97,35 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
-
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		logger.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
 	cache := cache.NewCache()
+	controllerLogger := log.WithName("controller-runtime").WithName("manager").WithName("controller")
 
 	// sets up the auth config reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
 		Client: mgr.GetClient(),
 		Cache:  cache,
-		Log:    ctrl.Log.WithName("authorino").WithName("controller").WithName("AuthConfig"),
+		Logger: controllerLogger.WithName("authconfig"),
 		Scheme: mgr.GetScheme(),
 	}
 	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AuthConfig")
+		logger.Error(err, "unable to create controller", "controller", "authconfig")
 		os.Exit(1)
 	}
 
 	// sets up secret reconciler
 	if err = (&controllers.SecretReconciler{
 		Client:               mgr.GetClient(),
-		Log:                  ctrl.Log.WithName("authorino").WithName("controller").WithName("Secret"),
+		Logger:               controllerLogger.WithName("secret"),
 		Scheme:               mgr.GetScheme(),
 		SecretLabel:          authorinoWatchedSecretLabel,
 		AuthConfigReconciler: authConfigReconciler,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Secret")
+		logger.Error(err, "unable to create controller", "controller", "secret")
 		os.Exit(1)
 	}
 
@@ -133,11 +136,11 @@ func main() {
 
 	signalHandler := ctrl.SetupSignalHandler()
 
-	setupLog.Info("Starting manager")
+	logger.Info("starting manager")
 
 	go func() {
 		if err := mgr.Start(signalHandler); err != nil {
-			setupLog.Error(err, "problem running manager")
+			logger.Error(err, "problem running manager")
 			os.Exit(1)
 		}
 	}()
@@ -148,21 +151,22 @@ func main() {
 	managerOptions.MetricsBindAddress = "0"
 	statusUpdateManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
-		setupLog.Error(err, "unable to create status update manager")
+		logger.Error(err, "unable to start status update manager")
 		os.Exit(1)
 	}
 
 	// sets up auth config status update controller
 	if err = (&controllers.AuthConfigStatusUpdater{
 		Client: statusUpdateManager.GetClient(),
+		Logger: controllerLogger.WithName("authconfig").WithName("statusupdater"),
 	}).SetupWithManager(statusUpdateManager); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AuthConfigStatusUpdate")
+		logger.Error(err, "unable to create controller", "controller", "authconfigstatusupdate")
 	}
 
-	setupLog.Info("Starting status update manager")
+	logger.Info("starting status update manager")
 
 	if err := statusUpdateManager.Start(signalHandler); err != nil {
-		setupLog.Error(err, "problem running status update manager")
+		logger.Error(err, "problem running status update manager")
 		os.Exit(1)
 	}
 }
@@ -173,8 +177,6 @@ func startExtAuthServer(authConfigCache cache.Cache) {
 }
 
 func startExtAuthServerGRPC(authConfigCache cache.Cache) {
-	logger := ctrl.Log.WithName("authorino").WithName("auth")
-
 	if lis, err := net.Listen("tcp", ":"+extAuthGRPCPort); err != nil {
 		logger.Error(err, "failed to obtain port for grpc auth service")
 		os.Exit(1)
@@ -216,8 +218,6 @@ func startExtAuthServerHTTP(authConfigCache cache.Cache) {
 }
 
 func startOIDCServer(authConfigCache cache.Cache) {
-	logger := ctrl.Log.WithName("authorino").WithName("oidc")
-
 	if lis, err := net.Listen("tcp", ":"+oidcHTTPPort); err != nil {
 		logger.Error(err, "failed to obtain port for http oidc service")
 		os.Exit(1)

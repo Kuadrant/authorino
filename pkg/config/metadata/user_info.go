@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 )
 
@@ -14,7 +15,8 @@ type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
-func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("userinfo"))
 	oidc := userinfo.OIDC
 
 	// check if corresponding oidc identity was resolved
@@ -31,7 +33,7 @@ func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, ctx context.Context
 	}
 
 	// fetch user info
-	if userInfoURL, err := oidc.GetURL("userinfo_endpoint"); err != nil {
+	if userInfoURL, err := oidc.GetURL("userinfo_endpoint", ctx); err != nil {
 		return nil, err
 	} else {
 		return fetchUserInfo(userInfoURL.String(), accessToken, ctx)
@@ -42,6 +44,8 @@ func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Cont
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}
+
+	log.FromContext(ctx).V(1).Info("fetching user info", "endpoint", userInfoEndpoint)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

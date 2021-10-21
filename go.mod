@@ -14,6 +14,7 @@ require (
 	github.com/open-policy-agent/opa v0.25.2
 	github.com/pquerna/cachecontrol v0.0.0-20201205024021-ac21108117ac // indirect
 	github.com/tidwall/gjson v1.6.8
+	go.uber.org/zap v1.17.0
 	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.27.1
@@ -23,5 +24,6 @@ require (
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
 	k8s.io/client-go v0.21.2
+	k8s.io/klog/v2 v2.8.0
 	sigs.k8s.io/controller-runtime v0.9.2
 )

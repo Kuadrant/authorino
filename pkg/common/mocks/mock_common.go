@@ -39,6 +39,20 @@ func (m *MockAuthPipeline) EXPECT() *MockAuthPipelineMockRecorder {
 	return m.recorder
 }
 
+// Evaluate mocks base method.
+func (m *MockAuthPipeline) Evaluate() common.AuthResult {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Evaluate")
+	ret0, _ := ret[0].(common.AuthResult)
+	return ret0
+}
+
+// Evaluate indicates an expected call of Evaluate.
+func (mr *MockAuthPipelineMockRecorder) Evaluate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Evaluate", reflect.TypeOf((*MockAuthPipeline)(nil).Evaluate))
+}
+
 // GetAPI mocks base method.
 func (m *MockAuthPipeline) GetAPI() interface{} {
 	m.ctrl.T.Helper()
@@ -79,20 +93,6 @@ func (m *MockAuthPipeline) GetHttp() *envoy_service_auth_v3.AttributeContext_Htt
 func (mr *MockAuthPipelineMockRecorder) GetHttp() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHttp", reflect.TypeOf((*MockAuthPipeline)(nil).GetHttp))
-}
-
-// GetParentContext mocks base method.
-func (m *MockAuthPipeline) GetParentContext() *context.Context {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetParentContext")
-	ret0, _ := ret[0].(*context.Context)
-	return ret0
-}
-
-// GetParentContext indicates an expected call of GetParentContext.
-func (mr *MockAuthPipelineMockRecorder) GetParentContext() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParentContext", reflect.TypeOf((*MockAuthPipeline)(nil).GetParentContext))
 }
 
 // GetPostAuthorizationData mocks base method.

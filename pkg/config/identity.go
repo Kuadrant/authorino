@@ -7,15 +7,11 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-)
-
-var (
-	// IdentityEvaluator represents the identityConfig struct implementing its Call method
-	IdentityEvaluator common.AuthConfigEvaluator
 )
 
 type IdentityConfig struct {
@@ -28,10 +24,6 @@ type IdentityConfig struct {
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
 	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
-}
-
-func init() {
-	IdentityEvaluator = &IdentityConfig{}
 }
 
 func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
@@ -57,7 +49,8 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 
 func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		return evaluator.Call(pipeline, ctx)
+		logger := log.FromContext(ctx).WithName("identity")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
 	} else {
 		return nil, fmt.Errorf("invalid identity config")
 	}

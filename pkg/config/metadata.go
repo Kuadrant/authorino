@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/metadata"
 )
 
@@ -14,34 +15,11 @@ const (
 	metadataGenericHTTP = "METADATA_GENERIC_HTTP"
 )
 
-var (
-	// MetadataEvaluator represents the metadataStruct implementing its Call method
-	MetadataEvaluator common.AuthConfigEvaluator
-)
-
 type MetadataConfig struct {
 	Name        string                `yaml:"name"`
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
-}
-
-func init() {
-	MetadataEvaluator = &MetadataConfig{}
-}
-
-func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
-	t, _ := config.GetType()
-	switch t {
-	case metadataUserInfo:
-		return config.UserInfo.Call(pipeline, ctx)
-	case metadataUMA:
-		return config.UMA.Call(pipeline, ctx)
-	case metadataGenericHTTP:
-		return config.GenericHTTP.Call(pipeline, ctx)
-	default:
-		return "", fmt.Errorf("invalid metadata config")
-	}
 }
 
 func (config *MetadataConfig) GetType() (string, error) {
@@ -56,6 +34,33 @@ func (config *MetadataConfig) GetType() (string, error) {
 		return "", fmt.Errorf("invalid metadata config")
 	}
 }
+
+func (config *MetadataConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
+	t, _ := config.GetType()
+	switch t {
+	case metadataUserInfo:
+		return config.UserInfo
+	case metadataUMA:
+		return config.UMA
+	case metadataGenericHTTP:
+		return config.GenericHTTP
+	default:
+		return nil
+	}
+}
+
+// impl:AuthConfigEvaluator
+
+func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
+		logger := log.FromContext(ctx).WithName("metadata")
+		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+	} else {
+		return nil, fmt.Errorf("invalid metadata config")
+	}
+}
+
+// impl:NamedConfigEvaluator
 
 func (config *MetadataConfig) GetName() string {
 	return config.Name

@@ -9,6 +9,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common/log"
 )
 
 type OAuth2 struct {
@@ -56,12 +57,15 @@ func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (in
 		"token":           {accessToken},
 		"token_type_hint": {oauth.TokenTypeHint},
 	}
+	encodedFormData := formData.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", tokenIntrospectionURL.String(), bytes.NewBufferString(formData.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenIntrospectionURL.String(), bytes.NewBufferString(encodedFormData))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err != nil {
 		return nil, err
 	}
+
+	log.FromContext(ctx).WithName("oauth2").V(1).Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
