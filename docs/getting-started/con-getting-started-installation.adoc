@@ -1,0 +1,12 @@
+[id='con-getting-started-installation']
+= Installation
+
+Here you will find 2 sets of instructions to install Authorino. Choose among them the one that best suits your needs.
+
+.Option A: Local cluster
+To try Authorino locally, run the examples, or for setting up a developer's environment to start contributing to Authorino.
+Setup may take up to 5 minutes.
+
+.Option B: Custom deployment
+For deploying locally or in the cloud, with options to pick a pre-built image of Authorino publicly available or build your own image locally, as well as to customize deployment options such as target namespace, reconciliation mode, number of replicas, amongst others.
+Setup time may vary from 2 to 10 minutes, depending on options chosen.

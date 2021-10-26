@@ -1,0 +1,11 @@
+[id='con-architecture']
+
+= Authorino architecture
+
+The architecture of Authorino comprises several components, each one of them with a specific purpose and implementation procedures.
+
+* xref:con-protecting-upstream-apis-with-envoy-and-authorino[Protecting upstream APIs with Envoy and Authorino]
+
+  //- xref:the-authorino-authconfig-custom-resource-definition-crd[The Authorino `AuthConfig` Custom Resource Definition (CRD)]
+  //- xref:the-auth-pipeline[The "Auth Pipeline"]
+  //- xref:the-authorization-json[The Authorization JSON]

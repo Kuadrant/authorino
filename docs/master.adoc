@@ -1,0 +1,21 @@
+= Authorino documentation
+:doctype: book
+:toc: left
+:toclevels: 3
+// Embed images directly into HTML
+// :data-uri:
+
+[id='introduction']
+== Introduction
+
+// include::introduction/about-guide.adoc[leveloffset=+2]
+
+//Requirements
+include::getting-started/con-getting-started-requirements.adoc[leveloffset=+1]
+
+//Installation
+include::getting-started/con-getting-started-installation.adoc[leveloffset=+1]
+
+//Architecture
+include::architecture/con-architecture.adoc[leveloffset=+1]
+include::architecture/con-protecting-upstream-apis-with-envoy-and-authorino.adoc[leveloffset=+2]

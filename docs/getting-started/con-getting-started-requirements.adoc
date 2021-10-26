@@ -1,0 +1,20 @@
+[id='con-getting-started-requirements']
+= Requirements
+
+Having a https://kubernetes.io/[Kubernetes] server is the only actual requirement to run Authorino.
+
+With the tools provided in the repo, you can easily have a local cluster setup using https://kind.sigs.k8s.io[Kind]. In this case, the only requirement is https://docker.com[Docker].
+
+Othern than Kubernetes, Authorino relies on some other components and capabilities to perform its function:
+
+* Permission from the Kubernetes server to create Custom Resource Definitions (CRDs) during Authorino's installation. Cluster administrators can handle this requirement according to Kubernetes API RBAC bindings.
+* https://www.envoyproxy.io[Envoy] proxy (or, technically, any proxy that implements the client-side of the https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz[external authz gRPC protocol]). With Envoy, virtual hosts will be associated to the upstream APIs, and the external authorization filter should point to Authorino.
+
+[id='feature-specific-requirements']
+== Feature-specific requirements
+
+Some other feature-specific requirements (as opposed to actual requirements of Authorino) include:
+
+* For OpenID Connect, make sure you have access to an identity provider (IdP) and an authority that can issue ID tokens (JWTs). You may want to check out https://www.keycloak.org[Keycloak] which can solve both and connect to external identity sources and user federation like LDAP.
+* For UMA-protected resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more tipically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
+* For Kubernetes authentication tokens, in case you want to be able to requests access tokens for clients running outside the custer, you may want to check out the requisites for using Kubernetes https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#tokenrequest-v1-storage-k8s-io[TokenRquest API] (GA in v1.20).

@@ -1,0 +1,11 @@
+[id='con-protecting-upstream-apis-with-envoy-and-authorino']
+
+= Protecting upstream APIs with Envoy and Authorino
+
+Typically, upstream APIs are deployed to the same Kubernetes cluster and namespace where the Envoy proxy and Authorino is running (although not necessarily). Whatever is the case, Envoy proxy must be serving the upstream API (see Envoy's link:https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto[HTTP route components] and virtual hosts) and pointing to Authorino in the external authorization filter.
+
+An `Ingress` resource exposing Envoy service on a host name that must resolves to the Kubernetes cluster and identifies the API for external users. This host name is important as well for Authorino as it goes in the Authorino `AuthConfig` custom resource that declares the protection to the API.
+
+You must then be ready to write and apply the custom resource that describes the desired state of the protection for the API.
+
+There is no need to redeploy neither Authorino nor Envoy after applying a protection config. Authorino controller will automatically detect any changes relative to `authorino.3scale.net`/`AuthConfig` resources and reconcile them inside the running instances.
