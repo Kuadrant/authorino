@@ -46,9 +46,10 @@ import (
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	Logger logr.Logger
-	Scheme *runtime.Scheme
-	Cache  cache.Cache
+	Logger        logr.Logger
+	Scheme        *runtime.Scheme
+	Cache         cache.Cache
+	LabelSelector map[string]string
 }
 
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -57,39 +58,34 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 
 	authConfig := configv1beta1.AuthConfig{}
-	err := r.Get(ctx, req.NamespacedName, &authConfig)
-	if err != nil && errors.IsNotFound(err) {
-
-		// As we can't get the object, that means it was deleted.
-		// Delete all the authconfigs related to this k8s object.
-		logger.Info("object has been deleted, deleted related configs")
-
-		//Cleanup all the hosts related to this CRD object.
+	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
+		// could not get the resource but not because of a 404 Not found (some error must have happened)
+		return ctrl.Result{}, err
+	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
+		// could not find the resouce: 404 Not found (resouce must have been deleted)
+		// or the resource misses required labels (i.e. not to be watched by this controller)
+		// delete related authconfigs from cache.
 		r.Cache.Delete(req.String())
-
-		return ctrl.Result{}, nil
-
-	} else if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// The object exists so we need to either create it or update
-	authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	for host, apiConfig := range authConfigByHost {
-		// Check for host collision with another namespace
-		if cachedKey, found := r.Cache.FindId(host); found {
-			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
-				logger.Info("host already taken in another namespace", "host", host)
-				return ctrl.Result{}, nil
-			}
+	} else {
+		// resource found and it is to be watched by this controller
+		// we need to either create it or update it in the cache
+		authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
-		if err := r.Cache.Set(req.String(), host, apiConfig, true); err != nil {
-			return ctrl.Result{}, err
+		for host, apiConfig := range authConfigByHost {
+			// Check for host collision with another namespace
+			if cachedKey, found := r.Cache.FindId(host); found {
+				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
+					logger.Info("host already taken in another namespace", "host", host)
+					return ctrl.Result{}, nil
+				}
+			}
+
+			if err := r.Cache.Set(req.String(), host, apiConfig, true); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -459,6 +455,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&configv1beta1.AuthConfig{}).
+		WithEventFilter(FilterByLabels(r.LabelSelector)).
 		Complete(r)
 }
 

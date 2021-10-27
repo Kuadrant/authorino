@@ -14,7 +14,8 @@ import (
 // AuthConfigStatusUpdater updates the status of a newly reconciled auth config
 type AuthConfigStatusUpdater struct {
 	client.Client
-	Logger logr.Logger
+	Logger        logr.Logger
+	LabelSelector map[string]string
 }
 
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs/status,verbs=get;update;patch
@@ -24,17 +25,25 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	logger := u.Logger.WithValues("authconfig/status", req.NamespacedName)
 
 	authConfig := configv1beta1.AuthConfig{}
-	err := u.Get(ctx, req.NamespacedName, &authConfig)
-
-	if err != nil && errors.IsNotFound(err) {
+	if err := u.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
+		// could not get the resource but not because of a 404 Not found (some error must have happened)
+		return ctrl.Result{}, err
+	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, u.LabelSelector) {
+		// could not find the resouce: 404 Not found (resouce must have been deleted)
+		// or the resource misses required labels (i.e. not to be watched by this controller)
+		// skip status update
 		return ctrl.Result{}, nil
-	} else if err != nil {
+	} else {
+		// resource found and it is to be watched by this controller
+		// we need to update its status
+		err := u.updateAuthConfigStatus(ctx, &authConfig, true)
+
+		if err == nil {
+			logger.Info("resource status updated")
+		}
+
 		return ctrl.Result{}, err
 	}
-
-	logger.Info("resource status updated")
-
-	return ctrl.Result{}, u.updateAuthConfigStatus(ctx, &authConfig, true)
 }
 
 func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, authConfig *configv1beta1.AuthConfig, ready bool) error {
@@ -59,5 +68,6 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, au
 func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&configv1beta1.AuthConfig{}).
+		WithEventFilter(FilterByLabels(u.LabelSelector)).
 		Complete(u)
 }

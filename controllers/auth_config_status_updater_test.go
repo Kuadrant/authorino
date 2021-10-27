@@ -8,17 +8,15 @@ import (
 	"github.com/kuadrant/authorino/pkg/common/log"
 
 	"gotest.tools/assert"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestAuthConfigStatusUpdaterReconcile(t *testing.T) {
-	authConfig := v1beta1.AuthConfig{
+func newStatusUpdateAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
+	return v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
 			APIVersion: "authorino.3scale.net/v1beta1",
@@ -26,6 +24,7 @@ func TestAuthConfigStatusUpdaterReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",
 			Namespace: "authorino",
+			Labels:    authConfigLabels,
 		},
 		Spec: v1beta1.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
@@ -34,24 +33,22 @@ func TestAuthConfigStatusUpdaterReconcile(t *testing.T) {
 			Ready: false,
 		},
 	}
+}
 
-	// Create a fake client with an auth config
-	scheme := runtime.NewScheme()
-	_ = v1beta1.AddToScheme(scheme)
-	_ = v1.AddToScheme(scheme)
-	client := fake.NewFakeClientWithScheme(scheme, &authConfig)
-
-	resourceName := types.NamespacedName{
-		Namespace: authConfig.Namespace,
-		Name:      authConfig.Name,
-	}
-
-	result, err := (&AuthConfigStatusUpdater{
+func newStatusUpdaterReconciler(client client.WithWatch) *AuthConfigStatusUpdater {
+	return &AuthConfigStatusUpdater{
 		Client: client,
 		Logger: log.WithName("test").WithName("authconfigstatusupdater"),
-	}).Reconcile(context.Background(), controllerruntime.Request{
-		NamespacedName: resourceName,
-	})
+	}
+}
+
+func TestAuthConfigStatusUpdater_Reconcile(t *testing.T) {
+	authConfig := newStatusUpdateAuthConfig(map[string]string{})
+	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
+	client := newTestK8sClient(&authConfig)
+	reconciler := newStatusUpdaterReconciler(client)
+
+	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
@@ -59,4 +56,54 @@ func TestAuthConfigStatusUpdaterReconcile(t *testing.T) {
 	authConfigCheck := v1beta1.AuthConfig{}
 	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
 	assert.Check(t, authConfigCheck.Status.Ready)
+}
+
+func TestAuthConfigStatusUpdater_MissingWatchedAuthConfigLabels(t *testing.T) {
+	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
+	client := newTestK8sClient(&authConfig)
+	reconciler := newStatusUpdaterReconciler(client)
+
+	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+
+	assert.Equal(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+
+	authConfigCheck := v1beta1.AuthConfig{}
+	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
+	assert.Check(t, authConfigCheck.Status.Ready)
+}
+
+func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
+	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
+	client := newTestK8sClient(&authConfig)
+	reconciler := newStatusUpdaterReconciler(client)
+	reconciler.LabelSelector = map[string]string{"authorino.3scale.net/managed-by": "authorino"}
+
+	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+
+	assert.Equal(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+
+	authConfigCheck := v1beta1.AuthConfig{}
+	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
+	assert.Check(t, authConfigCheck.Status.Ready)
+}
+
+func TestAuthConfigStatusUpdater_UnmatchingAuthConfigLabels(t *testing.T) {
+	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "other"})
+	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
+	client := newTestK8sClient(&authConfig)
+	reconciler := newStatusUpdaterReconciler(client)
+	reconciler.LabelSelector = map[string]string{"authorino.3scale.net/managed-by": "authorino"}
+
+	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+
+	assert.Equal(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+
+	authConfigCheck := v1beta1.AuthConfig{}
+	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
+	assert.Check(t, !authConfigCheck.Status.Ready)
 }
