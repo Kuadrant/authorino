@@ -41,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // AuthConfigReconciler reconciles an AuthConfig object
@@ -459,6 +460,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&configv1beta1.AuthConfig{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 
