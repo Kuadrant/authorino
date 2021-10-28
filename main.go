@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"crypto/md5"
 	"crypto/tls"
+	"encoding/hex"
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -73,6 +76,7 @@ const (
 	defaultEnableLeaderElection           = false
 
 	gRPCMaxConcurrentStreams = 10000
+	leaderElectionIDSuffix   = "authorino.3scale.net"
 )
 
 var (
@@ -186,8 +190,9 @@ func main() {
 	}()
 
 	// status update manager
+	leaderElectionId := md5.Sum([]byte(watchedAuthConfigLabelSelector))
 	managerOptions.LeaderElection = enableLeaderElection
-	managerOptions.LeaderElectionID = "cb88a58a.authorino.3scale.net"
+	managerOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
 	managerOptions.MetricsBindAddress = "0"
 	statusUpdateManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
