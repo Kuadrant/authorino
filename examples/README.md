@@ -74,9 +74,8 @@ Config:
 ```yaml
 identity:
   - apiKey:
-      labelSelectors: # the set must match labels added to secrets
-        authorino.3scale.net/managed-by: authorino # required
-        group: friends # user-defined (optional)
+      labelSelectors: # used to select the matching `Secret`s; resources including these labels will be acepted as valid API keys to authenticate to this service
+        group: friends # user-defined
     […]
 ```
 
@@ -84,8 +83,8 @@ Secrets must contain:
 
 ```yaml
 metadata:
-  labels: # matching the the service `labelSelectors`
-    authorino.3scale.net/managed-by: authorino
+  labels: # must include the `AuthConfig`'s `spec.identity.apiKey.labelSelectors`
+    authorino.3scale.net/managed-by: authorino # required, so the Authorino controller reconciles events related to this secret
     group: friends
 stringData:
   api_key: <random-generated-api-key>

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -65,9 +65,12 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// straightforward – if the API key labels match, reconcile the auth config
 		reconcile = func(authConfig configv1beta1.AuthConfig) {
 			for _, id := range authConfig.Spec.Identity {
-				if id.GetType() == v1beta1.IdentityApiKey && reflect.DeepEqual(id.APIKey.LabelSelectors, secret.Labels) {
-					r.reconcileAuthConfig(ctx, authConfig)
-					return
+				if id.GetType() == v1beta1.IdentityApiKey {
+					selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: id.APIKey.LabelSelectors})
+					if selector != nil && selector.Matches(labels.Set(secret.Labels)) {
+						r.reconcileAuthConfig(ctx, authConfig)
+						return
+					}
 				}
 			}
 		}
