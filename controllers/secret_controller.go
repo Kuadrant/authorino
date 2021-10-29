@@ -12,9 +12,11 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -27,7 +29,7 @@ type SecretReconciler struct {
 	client.Client
 	Logger               logr.Logger
 	Scheme               *runtime.Scheme
-	LabelSelector        map[string]string
+	LabelSelector        metav1.LabelSelector
 	AuthConfigReconciler reconcile.Reconciler
 }
 
@@ -82,8 +84,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return newController(mgr).
-		For(&v1.Secret{}).
-		WithEventFilter(FilterByLabels(r.LabelSelector)).
+		For(&v1.Secret{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
 		Complete(r)
 }
 

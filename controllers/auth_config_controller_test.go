@@ -228,7 +228,7 @@ func TestMatchingAuthConfigLabels(t *testing.T) {
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
-	reconciler.LabelSelector = map[string]string{"authorino.3scale.net/managed-by": "authorino"}
+	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
@@ -248,7 +248,7 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
-	reconciler.LabelSelector = map[string]string{"authorino.3scale.net/managed-by": "authorino"}
+	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
 	cacheMock.EXPECT().Delete("authorino/auth-config-1")
 

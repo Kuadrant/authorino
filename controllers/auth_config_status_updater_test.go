@@ -79,7 +79,7 @@ func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := newStatusUpdaterReconciler(client)
-	reconciler.LabelSelector = map[string]string{"authorino.3scale.net/managed-by": "authorino"}
+	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
@@ -96,7 +96,7 @@ func TestAuthConfigStatusUpdater_UnmatchingAuthConfigLabels(t *testing.T) {
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := newStatusUpdaterReconciler(client)
-	reconciler.LabelSelector = map[string]string{"authorino.3scale.net/managed-by": "authorino"}
+	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 

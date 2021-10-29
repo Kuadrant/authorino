@@ -7,7 +7,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -15,7 +17,7 @@ import (
 type AuthConfigStatusUpdater struct {
 	client.Client
 	Logger        logr.Logger
-	LabelSelector map[string]string
+	LabelSelector metav1.LabelSelector
 }
 
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs/status,verbs=get;update;patch
@@ -67,7 +69,6 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, au
 
 func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&configv1beta1.AuthConfig{}).
-		WithEventFilter(FilterByLabels(u.LabelSelector)).
+		For(&configv1beta1.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(u.LabelSelector))).
 		Complete(u)
 }

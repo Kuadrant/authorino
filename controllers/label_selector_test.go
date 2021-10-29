@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -23,18 +24,18 @@ func TestWatched(t *testing.T) {
 	}).Times(5)
 
 	// no selectors
-	assert.Check(t, Watched(object, map[string]string{}))
+	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{}}))
 
 	// aselector matches
-	assert.Check(t, Watched(object, map[string]string{"audience": "echo-api"}))
-	assert.Check(t, Watched(object, map[string]string{"group": "pro-users"}))
-	assert.Check(t, Watched(object, map[string]string{"audience": "echo-api", "group": "pro-users"}))
+	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"audience": "echo-api"}}))
+	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"group": "pro-users"}}))
+	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"audience": "echo-api", "group": "pro-users"}}))
 
 	// selector doesn't match
-	assert.Check(t, !Watched(object, map[string]string{"other-expected-label": "something"}))
+	assert.Check(t, !Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"other-expected-label": "something"}}))
 }
 
-func TestFilterByLabels(t *testing.T) {
+func TestLabelSelectorPredicate(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
 	object := mock_client.NewMockObject(mockController)
@@ -42,7 +43,7 @@ func TestFilterByLabels(t *testing.T) {
 	var f predicate.Funcs
 
 	// no selectors
-	f = FilterByLabels(map[string]string{})
+	f = LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{}})
 
 	object.EXPECT().GetLabels().Return(map[string]string{})
 	assert.Check(t, f.CreateFunc(event.CreateEvent{Object: object}))
@@ -57,7 +58,7 @@ func TestFilterByLabels(t *testing.T) {
 	assert.Check(t, f.GenericFunc(event.GenericEvent{Object: object}))
 
 	// no selectors
-	f = FilterByLabels(map[string]string{"extected-label": "some-value"})
+	f = LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{"extected-label": "some-value"}})
 	object.EXPECT().GetLabels().Return(map[string]string{})
 	assert.Check(t, !f.CreateFunc(event.CreateEvent{Object: object}))
 
@@ -71,33 +72,33 @@ func TestFilterByLabels(t *testing.T) {
 	assert.Check(t, !f.GenericFunc(event.GenericEvent{Object: object}))
 }
 
-func TestToLabelSelectors(t *testing.T) {
-	var selectors map[string]string
+func TestToLabelSelector(t *testing.T) {
+	var matchLabels map[string]string
 
-	selectors = ToLabelSelectors("")
-	assert.Equal(t, len(selectors), 0)
+	matchLabels = ToLabelSelector("").MatchLabels
+	assert.Equal(t, len(matchLabels), 0)
 
-	selectors = ToLabelSelectors("authorino.3scale.net/managed-by=authorino")
-	assert.Equal(t, len(selectors), 1)
-	assert.Equal(t, selectors["authorino.3scale.net/managed-by"], "authorino")
+	matchLabels = ToLabelSelector("authorino.3scale.net/managed-by=authorino").MatchLabels
+	assert.Equal(t, len(matchLabels), 1)
+	assert.Equal(t, matchLabels["authorino.3scale.net/managed-by"], "authorino")
 
-	selectors = ToLabelSelectors("authorino.3scale.net/managed-by=authorino other-label=other-value")
-	assert.Equal(t, len(selectors), 2)
-	assert.Equal(t, selectors["authorino.3scale.net/managed-by"], "authorino")
-	assert.Equal(t, selectors["other-label"], "other-value")
+	matchLabels = ToLabelSelector("authorino.3scale.net/managed-by=authorino other-label=other-value").MatchLabels
+	assert.Equal(t, len(matchLabels), 2)
+	assert.Equal(t, matchLabels["authorino.3scale.net/managed-by"], "authorino")
+	assert.Equal(t, matchLabels["other-label"], "other-value")
 
-	selectors = ToLabelSelectors(`value-with-quotes="my value"`)
-	assert.Equal(t, len(selectors), 1)
-	assert.Equal(t, selectors["value-with-quotes"], "my value")
+	matchLabels = ToLabelSelector(`value-with-quotes="my value"`).MatchLabels
+	assert.Equal(t, len(matchLabels), 1)
+	assert.Equal(t, matchLabels["value-with-quotes"], "my value")
 
-	selectors = ToLabelSelectors("label1=value1\tlabel2=value2")
-	assert.Equal(t, len(selectors), 2)
-	assert.Equal(t, selectors["label1"], "value1")
-	assert.Equal(t, selectors["label2"], "value2")
+	matchLabels = ToLabelSelector("label1=value1\tlabel2=value2").MatchLabels
+	assert.Equal(t, len(matchLabels), 2)
+	assert.Equal(t, matchLabels["label1"], "value1")
+	assert.Equal(t, matchLabels["label2"], "value2")
 
-	selectors = ToLabelSelectors("invalid-label")
-	assert.Equal(t, len(selectors), 0)
-	val, found := selectors["invalid-label"]
+	matchLabels = ToLabelSelector("invalid-label").MatchLabels
+	assert.Equal(t, len(matchLabels), 0)
+	val, found := matchLabels["invalid-label"]
 	assert.Equal(t, val, "")
 	assert.Check(t, !found)
 }

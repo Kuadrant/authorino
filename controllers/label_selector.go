@@ -4,6 +4,8 @@ import (
 	"strings"
 	"unicode"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -13,21 +15,17 @@ type WatchedObject interface {
 	GetLabels() map[string]string
 }
 
-func Watched(object WatchedObject, selector map[string]string) bool {
-	labels := object.GetLabels()
-
-	for key, value := range selector {
-		if _, ok := labels[key]; !ok || labels[key] != value {
-			return false
-		}
+func Watched(object WatchedObject, labelSelector metav1.LabelSelector) bool {
+	if selector, err := metav1.LabelSelectorAsSelector(&labelSelector); err != nil {
+		return false
+	} else {
+		return selector.Matches(labels.Set(object.GetLabels()))
 	}
-
-	return true
 }
 
-func FilterByLabels(selector map[string]string) predicate.Funcs {
+func LabelSelectorPredicate(labelSelector metav1.LabelSelector) predicate.Funcs {
 	filter := func(object client.Object) bool {
-		return Watched(object, selector)
+		return Watched(object, labelSelector)
 	}
 
 	return predicate.Funcs{
@@ -46,7 +44,7 @@ func FilterByLabels(selector map[string]string) predicate.Funcs {
 	}
 }
 
-func ToLabelSelectors(selectors string) map[string]string {
+func ToLabelSelector(selectors string) metav1.LabelSelector {
 	lastQuote := rune(0)
 	parseSelector := func(c rune) bool {
 		switch {
@@ -79,5 +77,7 @@ func ToLabelSelectors(selectors string) map[string]string {
 			labels[parts[0]] = value
 		}
 	}
-	return labels
+	return metav1.LabelSelector{
+		MatchLabels: labels,
+	}
 }

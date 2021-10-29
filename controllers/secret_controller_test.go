@@ -18,9 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -40,8 +40,8 @@ type isPredicate struct {
 }
 
 func (c *isPredicate) Matches(x interface{}) bool {
-	predicateFuncs := x.(predicate.Funcs)
-	return predicateFuncs.CreateFunc != nil // Not ideal, but since we're only adding one filter
+	_, ok := x.(builder.Predicates)
+	return ok // TODO: find a better way to check this
 }
 
 func (c *isPredicate) String() string {
@@ -115,7 +115,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		Client:               client,
 		Logger:               log.WithName("test").WithName("secretreconciler"),
 		Scheme:               nil,
-		LabelSelector:        map[string]string{"authorino.3scale.net/managed-by": "authorino"},
+		LabelSelector:        ToLabelSelector("authorino.3scale.net/managed-by=authorino"),
 		AuthConfigReconciler: authConfigReconciler,
 	}
 
@@ -153,8 +153,7 @@ func TestSetupSecretReconcilerWithManager(t *testing.T) {
 		return builder
 	}
 
-	builder.EXPECT().For(gomock.Any()).Return(builder)
-	builder.EXPECT().WithEventFilter(&isPredicate{}).Return(builder)
+	builder.EXPECT().For(gomock.Any(), &isPredicate{}).Return(builder)
 	builder.EXPECT().Complete(secretReconciler)
 
 	_ = secretReconciler.SetupWithManager(nil)

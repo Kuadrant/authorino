@@ -32,14 +32,16 @@ import (
 	authorinoIdentity "github.com/kuadrant/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/kuadrant/authorino/pkg/config/metadata"
 	authorinoResponse "github.com/kuadrant/authorino/pkg/config/response"
-	"gopkg.in/square/go-jose.v2"
 
 	"github.com/go-logr/logr"
+	"gopkg.in/square/go-jose.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -49,7 +51,7 @@ type AuthConfigReconciler struct {
 	Logger        logr.Logger
 	Scheme        *runtime.Scheme
 	Cache         cache.Cache
-	LabelSelector map[string]string
+	LabelSelector metav1.LabelSelector
 }
 
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -454,8 +456,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&configv1beta1.AuthConfig{}).
-		WithEventFilter(FilterByLabels(r.LabelSelector)).
+		For(&configv1beta1.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
 		Complete(r)
 }
 

@@ -154,7 +154,7 @@ func main() {
 		Cache:         cache,
 		Logger:        controllerLogger.WithName("authconfig"),
 		Scheme:        mgr.GetScheme(),
-		LabelSelector: controllers.ToLabelSelectors(watchedAuthConfigLabelSelector),
+		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
 	}
 	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfig")
@@ -166,7 +166,7 @@ func main() {
 		Client:               mgr.GetClient(),
 		Logger:               controllerLogger.WithName("secret"),
 		Scheme:               mgr.GetScheme(),
-		LabelSelector:        controllers.ToLabelSelectors(watchedSecretLabelSelector),
+		LabelSelector:        controllers.ToLabelSelector(watchedSecretLabelSelector),
 		AuthConfigReconciler: authConfigReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "secret")
@@ -204,7 +204,7 @@ func main() {
 	if err = (&controllers.AuthConfigStatusUpdater{
 		Client:        statusUpdateManager.GetClient(),
 		Logger:        controllerLogger.WithName("authconfig").WithName("statusupdater"),
-		LabelSelector: controllers.ToLabelSelectors(watchedAuthConfigLabelSelector),
+		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
 	}).SetupWithManager(statusUpdateManager); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfigstatusupdate")
 	}
