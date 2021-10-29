@@ -12,7 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,7 +29,7 @@ type SecretReconciler struct {
 	client.Client
 	Logger               logr.Logger
 	Scheme               *runtime.Scheme
-	LabelSelector        metav1.LabelSelector
+	LabelSelector        labels.Selector
 	AuthConfigReconciler reconcile.Reconciler
 }
 

@@ -37,7 +37,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,7 +51,7 @@ type AuthConfigReconciler struct {
 	Logger        logr.Logger
 	Scheme        *runtime.Scheme
 	Cache         cache.Cache
-	LabelSelector metav1.LabelSelector
+	LabelSelector labels.Selector
 }
 
 // +kubebuilder:rbac:groups=authorino.3scale.net,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete

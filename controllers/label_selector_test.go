@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -21,18 +21,20 @@ func TestWatched(t *testing.T) {
 	object.EXPECT().GetLabels().Return(map[string]string{
 		"audience": "echo-api",
 		"group":    "pro-users",
-	}).Times(5)
+	}).Times(7)
 
 	// no selectors
-	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{}}))
+	assert.Check(t, Watched(object, ToLabelSelector("")))
 
-	// aselector matches
-	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"audience": "echo-api"}}))
-	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"group": "pro-users"}}))
-	assert.Check(t, Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"audience": "echo-api", "group": "pro-users"}}))
+	// selector matches
+	assert.Check(t, Watched(object, ToLabelSelector("audience=echo-api")))
+	assert.Check(t, Watched(object, ToLabelSelector("group=pro-users")))
+	assert.Check(t, Watched(object, ToLabelSelector("audience=echo-api,group=pro-users")))
+	assert.Check(t, Watched(object, ToLabelSelector("audience in (echo-api,other")))
 
 	// selector doesn't match
-	assert.Check(t, !Watched(object, metav1.LabelSelector{MatchLabels: map[string]string{"other-expected-label": "something"}}))
+	assert.Check(t, !Watched(object, ToLabelSelector("audience=other")))
+	assert.Check(t, !Watched(object, ToLabelSelector("! audience")))
 }
 
 func TestLabelSelectorPredicate(t *testing.T) {
@@ -43,7 +45,7 @@ func TestLabelSelectorPredicate(t *testing.T) {
 	var f predicate.Funcs
 
 	// no selectors
-	f = LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{}})
+	f = LabelSelectorPredicate(ToLabelSelector(""))
 
 	object.EXPECT().GetLabels().Return(map[string]string{})
 	assert.Check(t, f.CreateFunc(event.CreateEvent{Object: object}))
@@ -58,7 +60,7 @@ func TestLabelSelectorPredicate(t *testing.T) {
 	assert.Check(t, f.GenericFunc(event.GenericEvent{Object: object}))
 
 	// no selectors
-	f = LabelSelectorPredicate(metav1.LabelSelector{MatchLabels: map[string]string{"extected-label": "some-value"}})
+	f = LabelSelectorPredicate(ToLabelSelector("expected-label=expected-value"))
 	object.EXPECT().GetLabels().Return(map[string]string{})
 	assert.Check(t, !f.CreateFunc(event.CreateEvent{Object: object}))
 
@@ -73,32 +75,45 @@ func TestLabelSelectorPredicate(t *testing.T) {
 }
 
 func TestToLabelSelector(t *testing.T) {
-	var matchLabels map[string]string
+	var selector labels.Selector
+	var reqs labels.Requirements
 
-	matchLabels = ToLabelSelector("").MatchLabels
-	assert.Equal(t, len(matchLabels), 0)
+	selector = ToLabelSelector("")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 0)
+	assert.Check(t, selector.Matches(labels.Set{}))
+	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
 
-	matchLabels = ToLabelSelector("authorino.3scale.net/managed-by=authorino").MatchLabels
-	assert.Equal(t, len(matchLabels), 1)
-	assert.Equal(t, matchLabels["authorino.3scale.net/managed-by"], "authorino")
+	selector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 1)
+	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
 
-	matchLabels = ToLabelSelector("authorino.3scale.net/managed-by=authorino other-label=other-value").MatchLabels
-	assert.Equal(t, len(matchLabels), 2)
-	assert.Equal(t, matchLabels["authorino.3scale.net/managed-by"], "authorino")
-	assert.Equal(t, matchLabels["other-label"], "other-value")
+	selector = ToLabelSelector("authorino.3scale.net/managed-by!=authorino")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 1)
+	assert.Check(t, !selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
 
-	matchLabels = ToLabelSelector(`value-with-quotes="my value"`).MatchLabels
-	assert.Equal(t, len(matchLabels), 1)
-	assert.Equal(t, matchLabels["value-with-quotes"], "my value")
+	selector = ToLabelSelector("!authorino.3scale.net/managed-by")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 1)
+	assert.Check(t, !selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
 
-	matchLabels = ToLabelSelector("label1=value1\tlabel2=value2").MatchLabels
-	assert.Equal(t, len(matchLabels), 2)
-	assert.Equal(t, matchLabels["label1"], "value1")
-	assert.Equal(t, matchLabels["label2"], "value2")
+	selector = ToLabelSelector("authorino.3scale.net/managed-by=authorino,other-label=other-value")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 2)
+	assert.Check(t, selector.Matches(labels.Set{
+		"authorino.3scale.net/managed-by": "authorino",
+		"other-label":                     "other-value",
+	}))
 
-	matchLabels = ToLabelSelector("invalid-label").MatchLabels
-	assert.Equal(t, len(matchLabels), 0)
-	val, found := matchLabels["invalid-label"]
-	assert.Equal(t, val, "")
-	assert.Check(t, !found)
+	selector = ToLabelSelector("authorino.3scale.net/managed-by in (authorino,kuadrant)")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 1)
+	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
+	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "kuadrant"}))
+
+	selector = ToLabelSelector("inval*id-lab?el")
+	reqs, _ = selector.Requirements()
+	assert.Equal(t, len(reqs), 0)
 }
