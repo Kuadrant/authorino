@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"crypto/md5"
 	"crypto/tls"
+	"encoding/hex"
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -44,26 +47,52 @@ import (
 )
 
 const (
-	gRPCMaxConcurrentStreams           = 10000
-	defaultAuthorinoWatchedSecretLabel = "authorino.3scale.net/managed-by"
+	envWatchNamespace                 = "WATCH_NAMESPACE"
+	envWatchedAuthConfigLabelSelector = "AUTH_CONFIG_LABEL_SELECTOR"
+	envWatchedSecretLabelSelector     = "SECRET_LABEL_SELECTOR"
+	envLogLevel                       = "LOG_LEVEL"
+	envLogMode                        = "LOG_MODE"
+	envExtAuthGRPCPort                = "EXT_AUTH_GRPC_PORT"
+	envTLSCertPath                    = "TLS_CERT"
+	envTLSCertKeyPath                 = "TLS_CERT_KEY"
+	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
+	envOIDCTLSCertPath                = "OIDC_TLS_CERT"
+	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
+	flagMetricsAddr                   = "metrics-addr"
+	flagEnableLeaderElection          = "enable-leader-election"
+
+	defaultWatchNamespace                 = ""
+	defaultWatchedAuthConfigLabelSelector = ""
+	defaultWatchedSecretLabelSelector     = "authorino.3scale.net/managed-by=authorino"
+	defaultLogLevel                       = "info"
+	defaultLogMode                        = "production"
+	defaultExtAuthGRPCPort                = "50051"
+	defaultTLSCertPath                    = ""
+	defaultTLSCertKeyPath                 = ""
+	defaultOIDCHTTPPort                   = "8083"
+	defaultOIDCTLSCertPath                = ""
+	defaultOIDCTLSCertKeyPath             = ""
+	defaultMetricsAddr                    = ":8080"
+	defaultEnableLeaderElection           = false
+
+	gRPCMaxConcurrentStreams = 10000
+	leaderElectionIDSuffix   = "authorino.3scale.net"
 )
 
 var (
+	watchNamespace                 = common.FetchEnv(envWatchNamespace, defaultWatchNamespace)
+	watchedAuthConfigLabelSelector = common.FetchEnv(envWatchedAuthConfigLabelSelector, defaultWatchedAuthConfigLabelSelector)
+	watchedSecretLabelSelector     = common.FetchEnv(envWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector)
+	logLevel                       = common.FetchEnv(envLogLevel, defaultLogLevel)
+	logMode                        = common.FetchEnv(envLogMode, defaultLogMode)
+	extAuthGRPCPort                = common.FetchEnv(envExtAuthGRPCPort, defaultExtAuthGRPCPort)
+	tlsCertPath                    = common.FetchEnv(envTLSCertPath, defaultTLSCertPath)
+	tlsCertKeyPath                 = common.FetchEnv(envTLSCertKeyPath, defaultTLSCertKeyPath)
+	oidcHTTPPort                   = common.FetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
+	oidcTLSCertPath                = common.FetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
+	oidcTLSCertKeyPath             = common.FetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
+
 	scheme = runtime.NewScheme()
-
-	watchNamespace              = common.FetchEnv("WATCH_NAMESPACE", "")
-	authorinoWatchedSecretLabel = common.FetchEnv("AUTHORINO_SECRET_LABEL_KEY", defaultAuthorinoWatchedSecretLabel)
-	logLevel                    = common.FetchEnv("LOG_LEVEL", "info")
-	logMode                     = common.FetchEnv("LOG_MODE", "production")
-
-	extAuthGRPCPort = common.FetchEnv("EXT_AUTH_GRPC_PORT", "50051")
-	tlsCertPath     = common.FetchEnv("TLS_CERT", "")
-	tlsCertKeyPath  = common.FetchEnv("TLS_CERT_KEY", "")
-
-	oidcHTTPPort       = common.FetchEnv("OIDC_HTTP_PORT", "8083")
-	oidcTLSCertPath    = common.FetchEnv("OIDC_TLS_CERT", "")
-	oidcTLSCertKeyPath = common.FetchEnv("OIDC_TLS_CERT_KEY", "")
-
 	logger = log.NewLogger(log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}, nil).WithName("authorino")
 )
 
@@ -79,11 +108,25 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&metricsAddr, flagMetricsAddr, defaultMetricsAddr, "The address the metric endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, flagEnableLeaderElection, defaultEnableLeaderElection, "Enable leader election for status updater. Ensures only one instance of Authorino tries to update the status of reconciled resources.")
 	flag.Parse()
+
+	logger.V(1).Info("setting up with options",
+		envWatchNamespace, watchNamespace,
+		envWatchedAuthConfigLabelSelector, watchedAuthConfigLabelSelector,
+		envWatchedSecretLabelSelector, watchedSecretLabelSelector,
+		envLogLevel, logLevel,
+		envLogMode, logMode,
+		envExtAuthGRPCPort, extAuthGRPCPort,
+		envTLSCertPath, tlsCertPath,
+		envTLSCertKeyPath, tlsCertKeyPath,
+		envOIDCHTTPPort, oidcHTTPPort,
+		envOIDCTLSCertPath, oidcTLSCertPath,
+		envOIDCTLSCertKeyPath, oidcTLSCertKeyPath,
+		flagMetricsAddr, metricsAddr,
+		flagEnableLeaderElection, enableLeaderElection,
+	)
 
 	managerOptions := ctrl.Options{
 		Scheme:             scheme,
@@ -107,10 +150,11 @@ func main() {
 
 	// sets up the auth config reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
-		Client: mgr.GetClient(),
-		Cache:  cache,
-		Logger: controllerLogger.WithName("authconfig"),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Cache:         cache,
+		Logger:        controllerLogger.WithName("authconfig"),
+		Scheme:        mgr.GetScheme(),
+		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
 	}
 	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfig")
@@ -122,7 +166,7 @@ func main() {
 		Client:               mgr.GetClient(),
 		Logger:               controllerLogger.WithName("secret"),
 		Scheme:               mgr.GetScheme(),
-		SecretLabel:          authorinoWatchedSecretLabel,
+		LabelSelector:        controllers.ToLabelSelector(watchedSecretLabelSelector),
 		AuthConfigReconciler: authConfigReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "secret")
@@ -146,8 +190,9 @@ func main() {
 	}()
 
 	// status update manager
+	leaderElectionId := md5.Sum([]byte(watchedAuthConfigLabelSelector))
 	managerOptions.LeaderElection = enableLeaderElection
-	managerOptions.LeaderElectionID = "cb88a58a.authorino.3scale.net"
+	managerOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
 	managerOptions.MetricsBindAddress = "0"
 	statusUpdateManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
@@ -157,8 +202,9 @@ func main() {
 
 	// sets up auth config status update controller
 	if err = (&controllers.AuthConfigStatusUpdater{
-		Client: statusUpdateManager.GetClient(),
-		Logger: controllerLogger.WithName("authconfig").WithName("statusupdater"),
+		Client:        statusUpdateManager.GetClient(),
+		Logger:        controllerLogger.WithName("authconfig").WithName("statusupdater"),
+		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
 	}).SetupWithManager(statusUpdateManager); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfigstatusupdate")
 	}

@@ -215,7 +215,7 @@ For an updated list of all features and current state of development of each fea
 
 ### API key authentication
 
-Authorino relies on Kubernetes `Secret` resources to represent API keys. To define an API key, create a `Secret` in the cluster containing an `api_key` entry that holds the value of the API key. The resource must also include the same `labels` listed in the Authorino `AuthConfig` custom resource for the protected API that accepts the API key as a valid credential. For example:
+Authorino relies on Kubernetes `Secret` resources to represent API keys. To define an API key, create a `Secret` in the cluster containing an `api_key` entry that holds the value of the API key. The resource must be labeled with the `spec.identity.apiKey.labelSelectors` listed in the Authorino `AuthConfig` custom resource. For example:
 
 For the following custom resource:
 
@@ -230,9 +230,8 @@ spec:
   identity:
     - name: api-key-users
       apiKey:
-        labelSelectors: # the `labelSelectors` key-value set must match the metadata `labels` of the Secret resources
-          authorino.3scale.net/managed-by: authorino # standard label to be added to the Secret (required)
-          group: friends # custom label (optional)
+        labelSelectors: # the key-value set used to select the matching `Secret`s; resources including these labels will be acepted as valid API keys to authenticate to this service
+          group: friends # some custom label
 ```
 
 The following secret would represent a valid API key:
@@ -243,7 +242,7 @@ kind: Secret
 metadata:
   name: user-1-api-key-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.3scale.net/managed-by: authorino # required, so the Authorino controller reconciles events related to this secret
     group: friends
 stringData:
   api_key: <some-randomly-generated-api-key-value>

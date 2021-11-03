@@ -18,9 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -40,8 +40,8 @@ type isPredicate struct {
 }
 
 func (c *isPredicate) Matches(x interface{}) bool {
-	predicateFuncs := x.(predicate.Funcs)
-	return predicateFuncs.CreateFunc != nil // Not ideal, but since we're only adding one filter
+	_, ok := x.(builder.Predicates)
+	return ok // TODO: find a better way to check this
 }
 
 func (c *isPredicate) String() string {
@@ -105,16 +105,17 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	_ = v1beta1.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	// Create a fake client with an auth config and a secret.
-	client := fake.NewFakeClientWithScheme(scheme, &authConfig, &secret)
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&authConfig, &secret).Build()
 
 	authConfigReconciler := &fakeReconciler{
 		Finished: make(chan bool),
 	}
+
 	secretReconciler := &SecretReconciler{
 		Client:               client,
 		Logger:               log.WithName("test").WithName("secretreconciler"),
 		Scheme:               nil,
-		SecretLabel:          "authorino.3scale.net/managed-by",
+		LabelSelector:        ToLabelSelector("authorino.3scale.net/managed-by=authorino"),
 		AuthConfigReconciler: authConfigReconciler,
 	}
 
@@ -126,6 +127,15 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	}
 
 	return t
+}
+
+func (t *secretReconcilerTest) reconcile() (reconcile.Result, error) {
+	return t.secretReconciler.Reconcile(context.Background(), controllerruntime.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: t.secret.Namespace,
+			Name:      t.secret.Name,
+		},
+	})
 }
 
 func TestSetupSecretReconcilerWithManager(t *testing.T) {
@@ -143,23 +153,13 @@ func TestSetupSecretReconcilerWithManager(t *testing.T) {
 		return builder
 	}
 
-	builder.EXPECT().For(gomock.Any()).Return(builder)
-	builder.EXPECT().WithEventFilter(&isPredicate{}).Return(builder)
+	builder.EXPECT().For(gomock.Any(), &isPredicate{}).Return(builder)
 	builder.EXPECT().Complete(secretReconciler)
 
 	_ = secretReconciler.SetupWithManager(nil)
 }
 
-func (t *secretReconcilerTest) reconcile() (reconcile.Result, error) {
-	return t.secretReconciler.Reconcile(context.Background(), controllerruntime.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: t.secret.Namespace,
-			Name:      t.secret.Name,
-		},
-	})
-}
-
-func TestMissingAuthorinoLabel(t *testing.T) {
+func TestMissingWatchedSecretLabels(t *testing.T) {
 	// secret missing the authorino "managed-by" label
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
 		"authorino.3scale.net/managed-by": "authorino",
@@ -171,7 +171,7 @@ func TestMissingAuthorinoLabel(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func TestSameLabelsAsAuthConfig(t *testing.T) {
+func TestMatchingSecretLabels(t *testing.T) {
 	// secret with the authorino "managed-by" label and the same labels as specified in the auth config
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
 		"authorino.3scale.net/managed-by": "authorino",
@@ -187,7 +187,7 @@ func TestSameLabelsAsAuthConfig(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func TestUnmatchingLabels(t *testing.T) {
+func TestUnmatchingSecretLabels(t *testing.T) {
 	// secret with the authorino "managed-by" label but not the same labels as specified in the auth config
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
 		"authorino.3scale.net/managed-by": "authorino",

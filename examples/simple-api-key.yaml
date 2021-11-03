@@ -9,7 +9,6 @@ spec:
     - name: friends
       apiKey:
         labelSelectors:
-          authorino.3scale.net/managed-by: authorino
           group: friends
       credentials:
         in: authorization_header
