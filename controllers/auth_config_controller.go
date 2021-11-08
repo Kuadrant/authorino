@@ -66,6 +66,16 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
 		// could not find the resouce: 404 Not found (resouce must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
+		apiConfig := r.Cache.Get(req.String())
+		if nil != apiConfig {
+			for _, identityConifg := range apiConfig.IdentityConfigs {
+				if v, ok := identityConifg.(common.AuthConfigCleaner); ok {
+					if err := v.Clean(ctx); err != nil {
+						return ctrl.Result{}, err
+					}
+				}
+			}
+		}
 		// delete related authconfigs from cache.
 		r.Cache.Delete(req.String())
 	} else {
@@ -145,7 +155,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// oidc
 		case configv1beta1.IdentityOidc:
-			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, ctxWithLogger)
+			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, identity.Oidc.TTL, ctxWithLogger)
 
 		// apiKey
 		case configv1beta1.IdentityApiKey:

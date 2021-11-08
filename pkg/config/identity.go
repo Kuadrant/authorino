@@ -45,6 +45,20 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 	}
 }
 
+func (config *IdentityConfig) GetAuthConfigCleaner() common.AuthConfigCleaner {
+	switch {
+	case config.OIDC != nil:
+		return config.OIDC
+	default:
+		return nil
+
+	}
+}
+
+// ensure IdentityConfig implements AuthConfigEvaluator
+var _ common.AuthConfigEvaluator = (*IdentityConfig)(nil)
+var _ common.AuthConfigCleaner = (*IdentityConfig)(nil)
+
 // impl:AuthConfigEvaluator
 
 func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
@@ -54,6 +68,16 @@ func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 	} else {
 		return nil, fmt.Errorf("invalid identity config")
 	}
+}
+
+// impl:AuthConfigCleaner
+func (config *IdentityConfig) Clean(ctx context.Context) error {
+	if evaluator := config.GetAuthConfigCleaner(); evaluator != nil {
+		logger := log.FromContext(ctx).WithName("identity")
+		return evaluator.Clean(log.IntoContext(ctx, logger))
+	}
+	// it is ok for there to be no clean method as not all config types need it
+	return nil
 }
 
 // impl:IdentityConfigEvaluator

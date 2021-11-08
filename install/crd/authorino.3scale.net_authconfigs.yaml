@@ -686,8 +686,13 @@ spec:
                             value of  the "iss" (issuer) claim of the discovered OpenID
                             Connect configuration.
                           type: string
+                        ttl:
+                          description: Decides how long to wait before refreshing
+                            the OIDC configuration
+                          type: integer
                       required:
                       - endpoint
+                      - ttl
                       type: object
                   required:
                   - name
