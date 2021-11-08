@@ -148,6 +148,8 @@ type Identity_OidcConfig struct {
 	// Authorino will append to this value the well-known path to the OpenID Connect discovery endpoint (i.e. "/.well-known/openid-configuration"), used to automatically discover the OpenID Connect configuration, whose set of claims is expected to include (among others) the "jkws_uri" claim.
 	// The value must coincide with the value of  the "iss" (issuer) claim of the discovered OpenID Connect configuration.
 	Endpoint string `json:"endpoint"`
+	// Decides how long to wait before refreshing the OIDC configuration
+	TTL int `json:"ttl"`
 }
 
 type Identity_APIKey struct {

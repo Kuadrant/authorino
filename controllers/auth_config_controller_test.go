@@ -250,6 +250,7 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
+	cacheMock.EXPECT().Get("authorino/auth-config-1")
 	cacheMock.EXPECT().Delete("authorino/auth-config-1")
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
