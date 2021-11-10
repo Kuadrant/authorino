@@ -217,6 +217,9 @@ type Metadata_GenericHTTP struct {
 	// Use it with method=POST; for GET requests, specify parameters using placeholders in the endpoint.
 	Parameters []JsonProperty `json:"bodyParameters,omitempty"`
 
+	// Custom headers in the HTTP request.
+	Headers []JsonProperty `json:"headers,omitempty"`
+
 	// Content-Type of the request body.
 	// +kubebuilder:default:=application/x-www-form-urlencoded
 	ContentType Metadata_GenericHTTP_ContentType `json:"contentType,omitempty"`

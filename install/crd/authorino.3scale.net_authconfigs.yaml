@@ -782,6 +782,37 @@ spec:
                             where "selector" is any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson
                             and selects value from the authorization JSON. E.g. https://ext-auth-server.io/metadata?p={context.request.http.path}
                           type: string
+                        headers:
+                          description: Custom headers in the HTTP request.
+                          items:
+                            properties:
+                              name:
+                                description: The name of the claim
+                                type: string
+                              value:
+                                description: Static value of the claim
+                                x-kubernetes-preserve-unknown-fields: true
+                              valueFrom:
+                                description: Dynamic value of the claim
+                                properties:
+                                  authJSON:
+                                    description: 'Selector to fill the value from
+                                      the authorization JSON. Any patterns supported
+                                      by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The value can be just the pattern
+                                      with the path to fetch from the authorization
+                                      JSON (e.g. ''context.request.http.host'') or
+                                      a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
+                                      The following string modifiers are available:
+                                      @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      @case:upper|lower, and @base64:encode|decode.'
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
                         method:
                           description: 'HTTP verb used in the request to the service.
                             Accepted values: GET (default), POST. When the request
