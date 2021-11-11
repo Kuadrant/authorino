@@ -19,9 +19,10 @@ const (
 	DEFAULT_WRAPPER = HTTP_HEADER_WRAPPER
 )
 
-func NewResponseConfig(name string, wrapper string, wrapperKey string) *ResponseConfig {
+func NewResponseConfig(name string, priority int, wrapper string, wrapperKey string) *ResponseConfig {
 	responseConfig := ResponseConfig{
 		Name:       name,
+		Priority:   priority,
 		Wrapper:    DEFAULT_WRAPPER,
 		WrapperKey: name,
 	}
@@ -39,6 +40,7 @@ func NewResponseConfig(name string, wrapper string, wrapperKey string) *Response
 
 type ResponseConfig struct {
 	Name       string `yaml:"name"`
+	Priority   int    `yaml:"priority"`
 	Wrapper    string `yaml:"wrapper"`
 	WrapperKey string `yaml:"wrapperKey"`
 
@@ -84,6 +86,12 @@ func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 
 func (config *ResponseConfig) GetName() string {
 	return config.Name
+}
+
+// impl:Prioritizable
+
+func (config *ResponseConfig) GetPriority() int {
+	return config.Priority
 }
 
 // impl:ResponseConfigEvaluator

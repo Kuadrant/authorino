@@ -38,15 +38,32 @@ var (
 	_           = json.Unmarshal([]byte(rawRequest), &requestMock)
 )
 
-type successConfig struct{}
-type failConfig struct{}
+type successConfig struct {
+	called   bool
+	priority int
+}
 
-func (c *successConfig) Call(_ common.AuthPipeline, _ context.Context) (interface{}, error) {
+type failConfig struct {
+	called   bool
+	priority int
+}
+
+func (c *successConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+	c.called = true
 	return nil, nil
 }
 
-func (c *failConfig) Call(_ common.AuthPipeline, _ context.Context) (interface{}, error) {
+func (c *successConfig) GetPriority() int {
+	return c.priority
+}
+
+func (c *failConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+	c.called = true
 	return nil, fmt.Errorf("Failed")
+}
+
+func (c *failConfig) GetPriority() int {
+	return c.priority
 }
 
 func newTestAuthPipeline(apiConfig config.APIConfig, req *envoy_auth.CheckRequest) AuthPipeline {
@@ -307,7 +324,7 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsKeySelector().Return("APIKEY")
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&config.IdentityConfig{Name: "falty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
+		IdentityConfigs: []common.AuthConfigEvaluator{&config.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
 		DenyWith: config.DenyWith{
 			Unauthenticated: &config.DenyWithValues{
 				Code: 302,
@@ -326,4 +343,29 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	assert.Equal(t, len(authResult.Headers), 2)
 	headers, _ := json.Marshal(authResult.Headers)
 	assert.Equal(t, string(headers), `[{"X-Static-Header":"some-value"},{"Location":"https://my-app.io/login?redirect_to=https://my-api/operation"}]`)
+}
+
+func TestEvaluatePriorities(t *testing.T) {
+	request := envoy_auth.CheckRequest{}
+	_ = json.Unmarshal([]byte(rawRequest), &request)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	idConfig1 := &config.IdentityConfig{Priority: 0, MTLS: &identity.MTLS{}}
+	idConfig2 := &failConfig{priority: 1} // should never be called; otherwise, it would throw an error as it's not a config.IdentityConfig
+
+	authzConfig1 := &failConfig{priority: 0}
+	authzConfig2 := &successConfig{priority: 1} // should never be called
+
+	pipeline := newTestAuthPipeline(config.APIConfig{
+		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig1, idConfig2},
+		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig1, authzConfig2},
+	}, &request)
+
+	_ = pipeline.Evaluate()
+
+	assert.Check(t, !idConfig2.called)
+	assert.Check(t, authzConfig1.called)
+	assert.Check(t, !authzConfig2.called)
 }

@@ -41,6 +41,7 @@ spec:
 
   authorization:
     - name: requires-pre-auth
+      priority: 0
       json:
         conditions:
           - selector: auth.identity.aud
@@ -51,16 +52,16 @@ spec:
             operator: eq
             value: /auth
     - name: rbac
+      priority: 1
       opa:
         inlineRego: |
-          identity := input.auth.identity
-          internal := identity.aud == "internal"
-          roles := object.get(identity, "roles", [])
+          path := input.context.request.http.path
+          pre_auth { path == "/auth" }
+          admin { input.auth.identity.roles[_] == "admin" }
 
-          admin { roles[_] == "admin" }
-          allow { not internal }
-          allow { internal; not admin; input.context.request.http.path != "/bye" }
-          allow { internal; admin }
+          allow { pre_auth }
+          allow { not pre_auth; admin }
+          allow { not pre_auth; not admin; path != "/bye" }
 
   response:
     - name: wristband

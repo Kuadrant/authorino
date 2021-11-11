@@ -16,6 +16,7 @@ import (
 
 type IdentityConfig struct {
 	Name               string                `yaml:"name"`
+	Priority           int                   `yaml:"priority"`
 	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
@@ -54,6 +55,12 @@ func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 	} else {
 		return nil, fmt.Errorf("invalid identity config")
 	}
+}
+
+// impl:Prioritizable
+
+func (config *IdentityConfig) GetPriority() int {
+	return config.Priority
 }
 
 // impl:IdentityConfigEvaluator

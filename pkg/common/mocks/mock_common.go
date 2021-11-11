@@ -227,6 +227,43 @@ func (mr *MockNamedConfigEvaluatorMockRecorder) GetName() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockNamedConfigEvaluator)(nil).GetName))
 }
 
+// MockPrioritizable is a mock of Prioritizable interface.
+type MockPrioritizable struct {
+	ctrl     *gomock.Controller
+	recorder *MockPrioritizableMockRecorder
+}
+
+// MockPrioritizableMockRecorder is the mock recorder for MockPrioritizable.
+type MockPrioritizableMockRecorder struct {
+	mock *MockPrioritizable
+}
+
+// NewMockPrioritizable creates a new mock instance.
+func NewMockPrioritizable(ctrl *gomock.Controller) *MockPrioritizable {
+	mock := &MockPrioritizable{ctrl: ctrl}
+	mock.recorder = &MockPrioritizableMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPrioritizable) EXPECT() *MockPrioritizableMockRecorder {
+	return m.recorder
+}
+
+// GetPriority mocks base method.
+func (m *MockPrioritizable) GetPriority() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPriority")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetPriority indicates an expected call of GetPriority.
+func (mr *MockPrioritizableMockRecorder) GetPriority() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPriority", reflect.TypeOf((*MockPrioritizable)(nil).GetPriority))
+}
+
 // MockIdentityConfigEvaluator is a mock of IdentityConfigEvaluator interface.
 type MockIdentityConfigEvaluator struct {
 	ctrl     *gomock.Controller

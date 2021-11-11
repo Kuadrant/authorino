@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
@@ -126,50 +127,72 @@ func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthCon
 	})
 }
 
+func groupAuthConfigsByPriority(authConfigs []common.AuthConfigEvaluator) (map[int][]common.AuthConfigEvaluator, []int) {
+	priorities := []int{}
+	authConfigsByPriority := make(map[int][]common.AuthConfigEvaluator)
+
+	for _, conf := range authConfigs {
+		if prioritizableConfig, ok := conf.(common.Prioritizable); ok {
+			priority := prioritizableConfig.GetPriority()
+			if _, exists := authConfigsByPriority[priority]; !exists {
+				priorities = append(priorities, priority)
+			}
+			authConfigsByPriority[priority] = append(authConfigsByPriority[priority], conf)
+		}
+	}
+
+	sort.Ints(priorities)
+
+	return authConfigsByPriority, priorities
+}
+
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 	logger := pipeline.Logger.WithName("identity").V(1)
-	configs := pipeline.API.IdentityConfigs
-	count := len(configs)
-	respChannel := make(chan EvaluationResponse, count)
-
-	go func() {
-		defer close(respChannel)
-		pipeline.evaluateOneAuthConfig(configs, &respChannel)
-	}()
-
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.IdentityConfigs)
+	count := len(pipeline.API.IdentityConfigs)
 	errors := make(map[string]string)
 
-	for resp := range respChannel {
-		conf, _ := resp.Evaluator.(*config.IdentityConfig)
-		obj := resp.Object
+	for _, priority := range priorities {
+		configs := authConfigsByPriority[priority]
+		respChannel := make(chan EvaluationResponse, len(configs))
 
-		if resp.Success() {
-			// Needs to be done in 2 steps because `IdentityConfigEvaluator.ResolveExtendedProperties()` uses
-			// the resolved identity config object already stored in the auth pipeline result, to extend it.
-			// Once extended, the identity config object is stored again (replaced) in the auth pipeline result.
-			pipeline.Identity[conf] = obj
+		go func() {
+			defer close(respChannel)
+			pipeline.evaluateOneAuthConfig(configs, &respChannel)
+		}()
 
-			if extendedObj, err := conf.ResolveExtendedProperties(pipeline); err != nil {
-				resp.Error = err
-				logger.Error(err, "failed to extend identity object", "config", conf, "object", obj)
+		for resp := range respChannel {
+			conf, _ := resp.Evaluator.(*config.IdentityConfig)
+			obj := resp.Object
+
+			if resp.Success() {
+				// Needs to be done in 2 steps because `IdentityConfigEvaluator.ResolveExtendedProperties()` uses
+				// the resolved identity config object already stored in the auth pipeline result, to extend it.
+				// Once extended, the identity config object is stored again (replaced) in the auth pipeline result.
+				pipeline.Identity[conf] = obj
+
+				if extendedObj, err := conf.ResolveExtendedProperties(pipeline); err != nil {
+					resp.Error = err
+					logger.Error(err, "failed to extend identity object", "config", conf, "object", obj)
+					if count == 1 {
+						return resp
+					} else {
+						errors[conf.Name] = err.Error()
+					}
+				} else {
+					pipeline.Identity[conf] = extendedObj
+
+					logger.Info("identity validated", "config", conf, "object", extendedObj)
+					return resp
+				}
+			} else {
+				err := resp.Error
+				logger.Info("cannot validate identity", "config", conf, "reason", err)
 				if count == 1 {
 					return resp
 				} else {
 					errors[conf.Name] = err.Error()
 				}
-			} else {
-				pipeline.Identity[conf] = extendedObj
-
-				logger.Info("identity validated", "config", conf, "object", extendedObj)
-				return resp
-			}
-		} else {
-			err := resp.Error
-			logger.Info("cannot validate identity", "config", conf, "reason", err)
-			if count == 1 {
-				return resp
-			} else {
-				errors[conf.Name] = err.Error()
 			}
 		}
 	}
@@ -182,51 +205,60 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 	logger := pipeline.Logger.WithName("metadata").V(1)
-	configs := pipeline.API.MetadataConfigs
-	respChannel := make(chan EvaluationResponse, len(configs))
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.MetadataConfigs)
 
-	go func() {
-		defer close(respChannel)
-		pipeline.evaluateAnyAuthConfig(configs, &respChannel)
-	}()
+	for _, priority := range priorities {
+		configs := authConfigsByPriority[priority]
+		respChannel := make(chan EvaluationResponse, len(configs))
 
-	for resp := range respChannel {
-		conf, _ := resp.Evaluator.(*config.MetadataConfig)
-		obj := resp.Object
+		go func() {
+			defer close(respChannel)
+			pipeline.evaluateAnyAuthConfig(configs, &respChannel)
+		}()
 
-		if resp.Success() {
-			pipeline.Metadata[conf] = obj
-			logger.Info("fetched auth metadata", "config", conf, "object", obj)
-		} else {
-			logger.Info("cannot fetch metadata", "config", conf, "reason", resp.Error)
+		for resp := range respChannel {
+			conf, _ := resp.Evaluator.(*config.MetadataConfig)
+			obj := resp.Object
+
+			if resp.Success() {
+				pipeline.Metadata[conf] = obj
+				logger.Info("fetched auth metadata", "config", conf, "object", obj)
+			} else {
+				logger.Info("cannot fetch metadata", "config", conf, "reason", resp.Error)
+			}
 		}
 	}
 }
 
 func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse {
 	logger := pipeline.Logger.WithName("authorization").V(1)
-	configs := pipeline.API.AuthorizationConfigs
-	respChannel := make(chan EvaluationResponse, len(configs))
 
 	if logger.Enabled() {
 		logger.Info("evaluating for input", "input", pipeline.GetDataForAuthorization())
 	}
 
-	go func() {
-		defer close(respChannel)
-		pipeline.evaluateAllAuthConfigs(configs, &respChannel)
-	}()
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.AuthorizationConfigs)
 
-	for resp := range respChannel {
-		conf, _ := resp.Evaluator.(*config.AuthorizationConfig)
-		obj := resp.Object
+	for _, priority := range priorities {
+		configs := authConfigsByPriority[priority]
+		respChannel := make(chan EvaluationResponse, len(configs))
 
-		if resp.Success() {
-			pipeline.Authorization[conf] = obj
-			logger.Info("access granted", "config", conf, "object", obj)
-		} else {
-			logger.Info("access denied", "config", conf, "reason", resp.Error)
-			return resp
+		go func() {
+			defer close(respChannel)
+			pipeline.evaluateAllAuthConfigs(configs, &respChannel)
+		}()
+
+		for resp := range respChannel {
+			conf, _ := resp.Evaluator.(*config.AuthorizationConfig)
+			obj := resp.Object
+
+			if resp.Success() {
+				pipeline.Authorization[conf] = obj
+				logger.Info("access granted", "config", conf, "object", obj)
+			} else {
+				logger.Info("access denied", "config", conf, "reason", resp.Error)
+				return resp
+			}
 		}
 	}
 
@@ -235,23 +267,27 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 
 func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	logger := pipeline.Logger.WithName("response").V(1)
-	configs := pipeline.API.ResponseConfigs
-	respChannel := make(chan EvaluationResponse, len(configs))
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.ResponseConfigs)
 
-	go func() {
-		defer close(respChannel)
-		pipeline.evaluateAllAuthConfigs(configs, &respChannel)
-	}()
+	for _, priority := range priorities {
+		configs := authConfigsByPriority[priority]
+		respChannel := make(chan EvaluationResponse, len(configs))
 
-	for resp := range respChannel {
-		conf, _ := resp.Evaluator.(*config.ResponseConfig)
-		obj := resp.Object
+		go func() {
+			defer close(respChannel)
+			pipeline.evaluateAllAuthConfigs(configs, &respChannel)
+		}()
 
-		if resp.Success() {
-			pipeline.Response[conf] = obj
-			logger.Info("dynamic response built", "config", conf, "object", obj)
-		} else {
-			logger.Info("cannot build dynamic response", "config", conf, "reason", resp.Error)
+		for resp := range respChannel {
+			conf, _ := resp.Evaluator.(*config.ResponseConfig)
+			obj := resp.Object
+
+			if resp.Success() {
+				pipeline.Response[conf] = obj
+				logger.Info("dynamic response built", "config", conf, "object", obj)
+			} else {
+				logger.Info("cannot build dynamic response", "config", conf, "reason", resp.Error)
+			}
 		}
 	}
 }

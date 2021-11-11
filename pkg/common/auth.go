@@ -32,6 +32,10 @@ type NamedConfigEvaluator interface {
 	GetName() string
 }
 
+type Prioritizable interface {
+	GetPriority() int
+}
+
 type IdentityConfigEvaluator interface {
 	GetAuthCredentials() auth_credentials.AuthCredentials
 	GetOIDC() interface{}
