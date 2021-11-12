@@ -1,29 +1,49 @@
 # Authorino
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
-Cloud-native AuthN/AuthZ enforcer for Zero Trust API protection.
+Cloud-native AuthN/AuthZ enforcer for tailor-made Zero Trust API security on Kubernetes.
 
 ## Table of contents
 
-- [Overview](#overview)
-  - [How it works](#how-it-works)
+- [Getting started](#getting-started)
+- [Use-cases](#use-cases)
+- [How it works](#how-it-works)
 - [List of features](#list-of-features)
-- [Documentation](#documentation)
-  - [Getting started](#getting-started)
-  - [Architecture](#architecture)
-  - [User guides](#user-guides)
+- [Documentation](./docs/README.md)
 - [FAQ](#faq)
 - [Contributing](#contributing)
 
-## Overview
+## Getting started
 
-Authorino enables hybrid API security, with usually no code changes required to your application, all tailor-made for your very own combination of authentication standards and protocols and authorization policies of choice.
+1. Deploy with the [Authorino Operator](https://github.com/kuadrant/authorino-operator)
+2. Setup Envoy proxy and the [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) filter
+3. Apply an Authorino [`AuthConfig`](./docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) custom resource
+4. Obtain an authentication token and start sending requests
+
+The [Getting started](./docs/getting-started.md) page of the docs provides details for the steps above, as well as information about requirements and next steps.
+
+Check out the [docs](./docs/README.md) for general information about protecting your service using Authorino.
+
+## Use-cases
+
+- [Authentication with JWTs and OpenID Connect Discovery](./docs/user-guides/oidc-jwt-authentication.md)
+- [Authentication with API keys](./docs/user-guides/api-key-authentication.md)
+- [Authentication with Kubernetes tokens (TokenReview API)](./docs/user-guides/kubernetes-tokenreview.md)
+- [Authorization with Open Policy Agent (OPA) Rego policies](./docs/user-guides/opa-authorization.md)
+- [Authorization with simple JSON pattern-matching rules (e.g. JWT claims)](./docs/user-guides/json-pattern-matching-authorization.md)
+- [Authorization with Kubernetes RBAC (SubjectAccessReview API)](./docs/user-guides/kubernetes-subject-access-review.md)
+- [Fetching auth metadata from external sources](./docs/user-guides/external-metadata.md)
+- [Token normalization](./docs/user-guides/token-normalization.md)
+
+Check out the [User guides](./docs/user-guides.md) section of the docs for several other AuthN/AuthZ use-cases and instructions of how to implement them using Authorino.
+
+## How it works
+
+Authorino enables hybrid API security, with usually no code changes required to your application, tailor-made for your very own combination of authentication standards and protocols and authorization policies of choice.
 
 Authorino implements [Envoy Proxy](https://www.envoyproxy.io)'s [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol, and is a part of Red Hat [Kuadrant](https://github.com/kuadrant) architecture.
 
 Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources) and the [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator).
-
-### How it works
 
 **Bootstrap and configuration:**
 
@@ -44,7 +64,13 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
 8. If authorized, Envoy triggers other HTTP filters in the chain (if any), pre-injecting eventual dynamic metadata returned by Authorino, and ultimately redirects the request to the _Upstream_
 9. The _Upstream_ serves the requested resource to the consumer
 
-Check the [docs](./docs/README.md) for more information about how Authorino works, list of features and user guides.
+<details>
+  <summary>More</summary>
+
+  The [Architecture](./docs/architecture.md) section of the docs covers details of protecting your APIs with Envoy and Authorino, including information about topology (centralized gateway, centralized authorization service or sidecars), deployment modes (cluster-wide reconciliation vs. namespaced instances), an specification of Authorino's [`AuthConfig`](./docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) Custom Resource Definition (CRD) and more.
+
+  You will also find in that section information about what happens in request-time (aka Authorino's [Auth Pipeline](./docs/architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)) and how to leverage the [Authorization JSON](./docs/architecture.md#the-authorization-json) for writing policies, dynamic responses and other features of Authorino.
+</details>
 
 ## List of features
 
@@ -161,43 +187,6 @@ Check the [docs](./docs/README.md) for more information about how Authorino work
 </table>
 
 For a detailed description of the features above, refer to the [Features](./docs/features.md) page.
-
-## Documentation
-
-Detailed documentation can found [here](./docs/README.md).
-
-### Getting started
-
-1. Read the docs: [Architecture](./docs/architecture.md), [Terminology](./docs/terminology.md), [Feature description](./docs/features.md) and [User guides](./docs/user-guides.md)
-2. Deploy with the Authorino Operator
-3. Configure Envoy
-4. Write an Authorino `AuthConfig` custom resource
-5. Obtain a token
-6. Send requests
-
-The [Getting started](./docs/getting-started.md) page of the docs provides further detailed info about requirements and instructions to deploy Authorino on a Kubernetes cluster, as well as the actual steps to declare, apply and try out a protection layer of authentication and authorization over your service.
-
-### Architecture
-
-The [Architecture](./docs/architecture.md) section of the docs covers details of protecting your APIs with Envoy and Authorino, including information about topology (centralized gateway, centralized authorization service or sidecars), deployment modes (cluster-wide reconciliation vs. namespaced instances), an specification of Authorino's [`AuthConfig`](./docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) Custom Resource Definition (CRD) and more.
-
-You will also find in that section information about what happens in request-time (aka Authorino's [Auth Pipeline](./docs/architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)) and how to leverage the [Authorization JSON](./docs/architecture.md#the-authorization-json) for writing policies, dynamic responses and other features of Authorino.
-
-The Architecture page is a good introduction to learn about how Authorino works.
-
-### User guides
-
-Check out the [User guides](./docs/user-guides.md) for several AuthN/AuthZ use-cases and instructions on how to implement them using Authorino. A few examples are:
-
-- [Authentication with Kubernetes tokens (TokenReview API)](./docs/user-guides/kubernetes-tokenreview.md)
-- [Authentication with API keys](./docs/user-guides/api-key-authentication.md)
-- [OpenID Connect Discovery and authentication with JWTs](./docs/user-guides/oidc-jwt-authentication.md)
-- [Fetching auth metadata from external sources](./docs/user-guides/external-metadata.md)
-- [Simple pattern-matching authorization policies](./docs/user-guides/json-pattern-matching-authorization.md)
-- [Open Policy Agent (OPA) Rego policies](./docs/user-guides/opa-authorization.md)
-- [Kubernetes RBAC for service authorization (SubjectAccessReview API)](./docs/user-guides/kubernetes-subject-access-review.md)
-
-    ([...](./docs/user-guides.md))
 
 ## FAQ
 
