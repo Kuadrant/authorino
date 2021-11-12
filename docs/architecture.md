@@ -98,6 +98,7 @@ spec:
             value: GET
 
     - name: my-opa-policy
+      priority: 1 # optional - causes this policy to be evaluated after other policies of higher priority, where 0 is the highest and the default; can be used in configs of any phase (identity, metadata, authorization, response) to set priority of execution within the phase
       opa:
         inlineRego: |
           allow { true }
@@ -140,7 +141,7 @@ In each request to the protected API, Authorino triggers the so-called "Auth Pip
 - **(iii) Authorization phase:** all unskipped policies must evaluate to a positive result ("authorized"), or Authorino will otherwise reject the request as unauthorized (403 HTTP response code).
 - **(iv) Response phase** – Authorino builds all user-defined response items (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), which are supplied back to the external authorization client within added HTTP headers or as Envoy Dynamic Metadata
 
-Each phase is sequential to the other, from (i) to (iv), while the evaluators within each phase are triggered concurrently. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
+Each phase is sequential to the other, from (i) to (iv), while the evaluators within each phase are triggered concurrently or as prioritized. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
 
 ### The Authorization JSON
 
