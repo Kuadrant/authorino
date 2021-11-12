@@ -298,19 +298,14 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func TestGetDataForAuthorization(t *testing.T) {
+func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
 		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
-	data := pipeline.GetDataForAuthorization()
-	if dataJSON, err := json.Marshal(&data); err != nil {
-		t.Error(err)
-	} else {
-		requestJSON, _ := json.Marshal(requestMock.GetAttributes())
-		expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"identity":null,"metadata":{}}}`, requestJSON)
-		assert.Equal(t, expectedJSON, string(dataJSON))
-	}
+	requestJSON, _ := json.Marshal(requestMock.GetAttributes())
+	expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"authorization":{},"identity":null,"metadata":{},"response":{}}}`, requestJSON)
+	assert.Equal(t, pipeline.GetAuthorizationJSON(), expectedJSON)
 }
 
 func TestEvaluateWithCustomDenyOptions(t *testing.T) {

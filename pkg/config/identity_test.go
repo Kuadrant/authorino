@@ -21,7 +21,6 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 	var identityConfig IdentityConfig
 	var identityObject interface{}
 	var extendedIdentityObject interface{}
-	var authData interface{}
 	var err error
 
 	// Without extended properties
@@ -48,9 +47,7 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 	}
 
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(nil, identityObject)
-
-	_ = json.Unmarshal([]byte(`{"context":{},"auth":{"identity":{"sub":"foo","exp":1629884250}}}`), &authData)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(authData)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{},"auth":{"identity":{"sub":"foo","exp":1629884250}}}`)
 
 	extendedIdentityObject, err = identityConfig.ResolveExtendedProperties(pipelineMock)
 	assert.NilError(t, err)

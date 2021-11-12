@@ -115,8 +115,7 @@ func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (int
 	}
 
 	if len(w.CustomClaims) > 0 {
-		authData, _ := json.Marshal(pipeline.GetPostAuthorizationData())
-		authJSON := string(authData)
+		authJSON := pipeline.GetAuthorizationJSON()
 
 		for _, claim := range w.CustomClaims {
 			value := claim.Value

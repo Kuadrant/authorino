@@ -29,8 +29,8 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 		return nil, err
 	}
 
-	authData, _ := json.Marshal(pipeline.GetDataForAuthorization())
-	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, string(authData))
+	authJSON := pipeline.GetAuthorizationJSON()
+	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, authJSON)
 
 	var requestBody io.Reader
 	var contentType string
@@ -43,7 +43,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	case "POST":
 		var err error
 		contentType = h.ContentType
-		requestBody, err = h.buildRequestBody(string(authData))
+		requestBody, err = h.buildRequestBody(authJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	}
 
 	for _, header := range h.Headers {
-		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(string(authData))))
+		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(authJSON)))
 	}
 
 	req.Header.Set("Content-Type", contentType)

@@ -171,11 +171,12 @@ func TestWristbandCall(t *testing.T) {
 	signingKeys := []jose.JSONWebKey{*signingKey}
 	wristbandIssuer, _ := NewWristbandConfig("http://authorino", claims, nil, signingKeys)
 
-	type authorizationData struct {
+	type authorizationJSON struct {
 		Context  *envoy_auth.AttributeContext `json:"context"`
 		AuthData map[string]interface{}       `json:"auth"`
 	}
-	postAuthzData := &authorizationData{
+
+	authJSON, _ := json.Marshal(&authorizationJSON{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{
@@ -189,13 +190,13 @@ func TestWristbandCall(t *testing.T) {
 		AuthData: map[string]interface{}{
 			"identity": "some-user-data",
 		},
-	}
+	})
 
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
 	identityConfigMock := mock_common.NewMockIdentityConfigEvaluator(ctrl)
 	identityConfigMock.EXPECT().GetOIDC()
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(identityConfigMock, nil)
-	pipelineMock.EXPECT().GetPostAuthorizationData().Return(postAuthzData)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(string(authJSON))
 	encodedWristband, err := wristbandIssuer.Call(pipelineMock, context.TODO())
 	assert.NilError(t, err)
 

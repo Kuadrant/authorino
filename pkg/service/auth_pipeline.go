@@ -234,7 +234,9 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 	logger := pipeline.Logger.WithName("authorization").V(1)
 
 	if logger.Enabled() {
-		logger.Info("evaluating for input", "input", pipeline.GetDataForAuthorization())
+		var authJSON interface{}
+		json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON)
+		logger.Info("evaluating for input", "input", authJSON)
 	}
 
 	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.AuthorizationConfigs)
@@ -349,52 +351,44 @@ func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
 	return nil, nil
 }
 
-func (pipeline *AuthPipeline) GetResolvedMetadata() map[interface{}]interface{} {
-	m := make(map[interface{}]interface{})
-	for metadataCfg, metadataObj := range pipeline.Metadata {
-		if metadataObj != nil {
-			m[metadataCfg] = metadataObj
-		}
-	}
-	return m
-}
-
-type authorizationData struct {
+type authorizationJSON struct {
 	Context  *envoy_auth.AttributeContext `json:"context"`
 	AuthData map[string]interface{}       `json:"auth"`
 }
 
-func (pipeline *AuthPipeline) dataForAuthorization() *authorizationData {
+func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	authData := make(map[string]interface{})
+
+	// identity
 	_, authData["identity"] = pipeline.GetResolvedIdentity()
 
-	resolvedMetadata := make(map[string]interface{})
-	for config, obj := range pipeline.GetResolvedMetadata() {
-		metadataConfig, _ := config.(common.NamedConfigEvaluator)
-		resolvedMetadata[metadataConfig.GetName()] = obj
+	// metadata
+	metadata := make(map[string]interface{})
+	for config, obj := range pipeline.Metadata {
+		metadata[config.Name] = obj
 	}
-	authData["metadata"] = resolvedMetadata
+	authData["metadata"] = metadata
 
-	return &authorizationData{
+	// authorization
+	authorization := make(map[string]interface{})
+	for config, obj := range pipeline.Authorization {
+		authorization[config.Name] = obj
+	}
+	authData["authorization"] = authorization
+
+	// response
+	response := make(map[string]interface{})
+	for config, obj := range pipeline.Response {
+		response[config.Name] = obj
+	}
+	authData["response"] = response
+
+	authJSON, _ := json.Marshal(&authorizationJSON{
 		Context:  pipeline.GetRequest().Attributes,
 		AuthData: authData,
-	}
-}
+	})
 
-func (pipeline *AuthPipeline) GetDataForAuthorization() interface{} {
-	return pipeline.dataForAuthorization()
-}
-
-func (pipeline *AuthPipeline) GetPostAuthorizationData() interface{} {
-	authData := pipeline.dataForAuthorization()
-
-	authzData := make(map[string]interface{})
-	for authzConfig, authzObj := range pipeline.Authorization {
-		authzData[authzConfig.Name] = authzObj
-	}
-
-	authData.AuthData["authorization"] = authzData
-	return &authData
+	return string(authJSON)
 }
 
 func (pipeline *AuthPipeline) customizeDenyWith(authResult common.AuthResult, denyWith *config.DenyWithValues) common.AuthResult {
@@ -407,12 +401,12 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult common.AuthResult, de
 			authResult.Message = denyWith.Message
 		}
 
-		jsonData, _ := json.Marshal(pipeline.GetDataForAuthorization())
+		authJSON := pipeline.GetAuthorizationJSON()
 
 		if len(denyWith.Headers) > 0 {
 			headers := make([]map[string]string, 0)
 			for _, header := range denyWith.Headers {
-				value, _ := common.StringifyJSON(header.Value.ResolveFor(string(jsonData)))
+				value, _ := common.StringifyJSON(header.Value.ResolveFor(authJSON))
 				headers = append(headers, map[string]string{header.Name: value})
 			}
 			authResult.Headers = headers

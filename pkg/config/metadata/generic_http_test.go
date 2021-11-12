@@ -3,6 +3,7 @@ package metadata
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -32,9 +33,8 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
 	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
@@ -67,9 +67,8 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
 	requestBody := bytes.NewBuffer([]byte("user=mock"))
@@ -106,9 +105,8 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	endpointWithPlaceholders := "http://" + extHttpServiceHost + "/metadata?p={context.request.http.headers.x-origin}"
 	endpoint := "http://" + extHttpServiceHost + "/metadata?p=some-origin"
 
-	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
 	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
@@ -141,9 +139,8 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	dataForAuthorization := buildGenericHttpAuthDataMock()
 	pipelineMock := NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := NewMockAuthCredentials(ctrl)
 	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
@@ -166,17 +163,17 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	assert.Equal(t, httpRequestMock.Header.Get("Content-Type"), "text/plain")
 }
 
-func buildGenericHttpAuthDataMock() interface{} {
+func genericHttpAuthDataMock() string {
 	type mockIdentityObject struct {
 		User string `json:"user"`
 	}
 
-	type authorizationData struct {
+	type authorizationJSON struct {
 		Context  *envoy_auth.AttributeContext `json:"context"`
 		AuthData map[string]interface{}       `json:"auth"`
 	}
 
-	return &authorizationData{
+	authJSON, _ := json.Marshal(&authorizationJSON{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{
@@ -190,5 +187,7 @@ func buildGenericHttpAuthDataMock() interface{} {
 		AuthData: map[string]interface{}{
 			"identity": &mockIdentityObject{User: "mock"},
 		},
-	}
+	})
+
+	return string(authJSON)
 }
