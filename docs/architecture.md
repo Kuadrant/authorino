@@ -22,7 +22,7 @@
 
 ## Overview
 
-![Architecture](./architecture.svg)
+![Architecture](./architecture.gif)
 
 There are a few concepts to understand Authorino's architecture. The main components are: **Authorino**, **Envoy** and the **Upstream** service to be protected. Envoy proxies requests to the the configured **virtual host** upstream service, first contacting with Authorino to decide on authN/authZ.
 
