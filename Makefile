@@ -20,6 +20,8 @@ AUTHORINO_NAMESPACE ?= authorino
 AUTHORINO_DEPLOYMENT ?= namespaced
 # Number of Authorino replicas
 AUTHORINO_REPLICAS ?= 1
+# Authorino manifests bundle (CRDs, RBAC)
+AUTHORINO_MANIFESTS ?= $(PROJECT_DIR)/install/manifests.yaml
 
 all: manager
 
@@ -64,11 +66,11 @@ run: generate fmt vet manifests
 
 # Install CRDs into a cluster
 install: manifests kustomize
-	kustomize build install | kubectl apply -f -
+	kubectl apply -f $(AUTHORINO_MANIFESTS)
 
 # Uninstall CRDs from a cluster
 uninstall: manifests kustomize
-	kustomize build install | kubectl delete -f -
+	kubectl delete -f $(AUTHORINO_MANIFESTS)
 
 # Requests TLS certificates for services if cert-manager.io is installed, the secret is not already present and TLS is enabled
 .PHONY: certs
@@ -103,7 +105,7 @@ deploy: manifests kustomize
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	controller-gen crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd  output:rbac:artifacts:config=install/rbac
+	controller-gen crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
 
 # Download vendor dependencies
 .PHONY: vendor
