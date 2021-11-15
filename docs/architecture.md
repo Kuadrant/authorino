@@ -9,6 +9,7 @@
 - [Resource reconciliation and status update](#resource-reconciliation-and-status-update)
 - [The "Auth Pipeline" (_aka:_ enforcing protection in request-time)](#the-auth-pipeline-aka-enforcing-protection-in-request-time)
 - [Host lookup](#host-lookup)
+  - [Avoiding host name collision](#avoiding-host-name-collision)
 - [The Authorization JSON](#the-authorization-json)
 - [Caching](#caching)
   - [OpenID Connect and User-Managed Access configs](#openid-connect-and-user-managed-access-configs)
@@ -148,7 +149,19 @@ More concrete examples of `AuthConfig`s for specific use-cases can be found in t
 
 ## Resource reconciliation and status update
 
-[TODO: Explain aboout reconciliation of `AuthConfig`s and `Secret`s, Auhorino cache, leader election, resource status update, etc]
+The instances of the Authorino authorization service workload, following the [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator), watch events related to the `AuthConfig` custom resources, to build and reconcile an in-memory cache of configs. Whenever a replica receives traffic for authorization request, it [looks up in the cache](#host-lookup) of `AuthConfig`s and then [triggers the "Auth Pipeline"](#the-auth-pipeline-aka-enforcing-protection-in-request-time), i.e. enforces the associated auth spec onto the request.
+
+An instance can be a single authorization service workload or a set of replicas. All replicas watch and reconcile the same set of resources that match the `AUTH_CONFIG_LABEL_SELECTOR` and `SECRET_LABEL_SELECTOR` configuration options. (See both [Cluster-wide vs. Namespaced instances](#cluster-wide-vs-namespaced-instances) and [Sharding](#sharding), for details about defining the reconciliation space of Authorino instances.)
+
+The above means that all replicas of an Authorino instance should be able to receive traffic for authorization requests.
+
+Among the multiple replicas of an instance, Authorino elects one replica to be leader. The leader is responsible for updating the status of reconciled `AuthConfig`s. If the leader eventually becomes unavailable, the instance will automatically elect another replica take its place as the new leader.
+
+The status of an `AuthConfig` tells whether the resource is "ready" (i.e. cached). It also includes summary information regarding the numbers of identity configs, metadata configs, authorization configs and response configs within the spec, as well as whether [Festival Wristband](./features.md#festival-wristband-tokens-responsewristband) tokens are being issued by the Authorino instance as by spec.
+
+Apart from watching events related to `AuthConfig` custom resources, Authorino also watches events related to Kubernetes `Secret`s, as part of Authorino's [API key authentication](./features.md#api-key-identityapikey) feature. `Secret` resources that store API keys are linked-cached to their corresponding `AuthConfig`s. Whenever the Authorino instance detects a change in the set of API key `Secret`s linked to an `AuthConfig`s, the instance reconciles the cache.
+
+Authorino only watches events related to `Secret`s whose `metadata.labels` match the label selector `SECRET_LABEL_SELECTOR` of the Authorino instance. The default values of the label selector for Kubernetes `Secret`s representing Authorino API keys is `authorino.3scale.net/managed-by=authorino`.
 
 ## The "Auth Pipeline" (_aka:_ enforcing protection in request-time)
 
@@ -165,7 +178,15 @@ Each phase is sequential to the other, from (i) to (iv), while the evaluators wi
 
 ## Host lookup
 
-[TODO: Explain about how host lookup works in Authorino]
+Authorino reads the request host from `Attributes.Http.Host` of Envoy's [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) type, and uses it as key to lookup in the [cache](#resource-reconciliation-and-status-update) of `AuthConfig`s.
+
+If more than one host name is specified in the `AuthConfig`, all of them can be used as the key, i.e. all of them can be requested in the authorization request and will be mapped to the same config.
+
+The host can include the port number (i.e. `hostname:port`) or it can be just the name of the host. Authorino will first try finding a config in the cache that is associated to `hostname:port` as supplied in the authorization request; if the cache misses an entry for `hostname:port`, Authorino will then remove the `:port` suffix and lookup again using just `hostname` as key. This allows to change port numbers for a same host, as long as the name of the host is the same, without having to list multiple combinations of `hostname:port` to the `AuthConfig` spec.
+
+### Avoiding host name collision
+
+Authorino tries to prevent host name collision across namespaces by rejecting `AuthConfig`s that include at least one host name already by another `AuthConfig` in a different namespace. This is intentionally designed to avoid that, in [cluster-wide deployments](#cluster-wide-vs-namespaced-instances) of Authorino, users of one namespace can surpersed configs of another.
 
 ## The Authorization JSON
 
