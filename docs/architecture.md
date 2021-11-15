@@ -72,7 +72,15 @@ Apart from that, protected service should only listen on `localhost` and all tra
 
 ## Cluster-wide vs. Namespaced instances
 
-[TODO: Explain the difference between these modes of deployments]
+Auhorino instances can run in either **cluster-wide** or **namespaced** mode.
+
+Namespace-scoped instances only watch resources (`AuthConfig`s and `Secret`s) created in a given namespace. This deployment mode does not require admin privileges over the Kubernetes cluster to deploy the instance of the service (given Authorino's CRDs have been installed beforehand, such as when Authorino is installed using the [Authorino Operator](https://github.com/kuadrant-authorino-operator)).
+
+Cluster-wide deployment mode, in contraposition, deploys instances of Authorino that watch resources across the entire cluster, consolidating all resources into a multi-namespace cache of auth configs. Admin privileges over the Kubernetes cluster is required to deploy Authorino in cluster-wide mode.
+
+Be careful to avoid superposition when combining multiple Authorino instances and instance modes in the same Kubernetes cluster. Apart from caching unnecessary auth config data in the instances depending on your routing settings, the leaders of each instance (set of replicas) may compete for updating the status of the custom resources that are reconciled. See [Resource reconciliation and status update](#resource-reconciliation-and-status-update) for more information.
+
+If necessary, use label selectors to narrow down the space of resources watched and reconciled by each Authorino instance. Check out the [Sharding](#sharding) section below for details.
 
 ## The Authorino `AuthConfig` Custom Resource Definition (CRD)
 
