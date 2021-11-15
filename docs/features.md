@@ -1,10 +1,10 @@
 # Features
 
 - [Overview](#overview)
-  - [Common feature: JSON paths (`valueFrom.authJSON`)](#common-feature-json-paths-valuefromauthjson)
-    - [Syntax](#syntax)
-    - [String modifiers](#string-modifiers)
-    - [Interpolation](#interpolation)
+- [Common feature: JSON paths (`valueFrom.authJSON`)](#common-feature-json-paths-valuefromauthjson)
+  - [Syntax](#syntax)
+  - [String modifiers](#string-modifiers)
+  - [Interpolation](#interpolation)
 - [Identity verification & authentication features (`identity`)](#identity-verification--authentication-features-identity)
   - [API key (`identity.apiKey`)](#api-key-identityapikey)
   - [Kubernetes TokenReview (`identity.kubernetes`)](#kubernetes-tokenreview-identitykubernetes)
@@ -32,6 +32,7 @@
     - [Added HTTP headers](#added-http-headers)
     - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
   - [_Extra:_ Custom denial status (`denyWith`)](#extra-custom-denial-status-denywith)
+- [Common feature: Priorities](#common-feature-priorities)
 
 ## Overview
 
@@ -45,17 +46,17 @@ A full specification of all features of Authorino that can be configured in an `
 
 You can also learn about Authorino features by using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command in a Kubernetes cluster where the Authorino CRD has been installed. E.g. `kubectl explain authconfigs.spec.identity.extendedProperties`.
 
-### Common feature: JSON paths ([`valueFrom.authJSON`](../api/v1beta1/auth_config_types.go#L386))
+## Common feature: JSON paths ([`valueFrom.authJSON`](../api/v1beta1/auth_config_types.go#L386))
 
 The first feature of Authorino to learn about is a common functionality, used in the specification of many other features. _JSON paths_ have to do with reading data from the [Authorization JSON](./architecture.md#the-authorization-json), to refer to them in configuration of dynamic steps of API protection enforcing.
 
 Usage examples of JSON paths are: dynamic URL and request parameters when fetching metadata from external sources, dynamic authorization policy rules, and dynamic authorization responses (injected JSON and Festival Wristband token claims).
 
-#### Syntax
+### Syntax
 
 The syntax to fetch data from the Authorization JSON with JSON paths is based on [GJSON](https://pkg.go.dev/github.com/tidwall/gjson). Refer to [GJSON Path Syntax](https://github.com/tidwall/gjson/blob/master/SYNTAX.md) page for more information.
 
-#### String modifiers
+### String modifiers
 
 On top of GJSON, Authorino defines a few [string modifiers](https://github.com/tidwall/gjson/blob/master/SYNTAX.md#modifiers).
 
@@ -96,7 +97,7 @@ base64-encodes or decodes a string value. E.g. `auth.identity.username.decoded.@
 
 In combination with `@extract`, `@base64` can be used to extract the username in an HTTP Basic Authentication request. E.g. `context.request.headers.authorization.@extract:{"pos":1}|@base64:decode|@extract:{"sep":":","pos":1}` → `"jane"`.
 
-#### Interpolation
+### Interpolation
 
 _JSON paths_ can be interpolated into strings to build template-like dynamic values. E.g. `"Hello, {auth.identity.name}!"`.
 
@@ -197,6 +198,8 @@ The `kid` stated in the JWT header must match one of the keys cached by Authorin
 
 The decoded JWTs (and fetched user info) are appended to the authorization JSON as the resolved identity.
 
+Users can control the refreshing frequency of an OpenID Connect configuration by setting the `ttl` field.
+
 ### OAuth 2.0 introspection ([`identity.oauth2`](../api/v1beta1/auth_config_types.go#L110))
 
 For bare OAuth 2.0 implementations, Authorino can perform token introspection on the access tokens supplied in the requests to protected APIs.
@@ -274,7 +277,11 @@ Generic HTTP adapter that sends a request to an external service. It can be used
 
 The adapter allows issuing requests either by GET or POST methods; in both cases with URL and parameters defined by the user in the spec. Dynamic values fetched from the Authorization JSON can be used.
 
-A shared secret between Authorino and the external HTTP service can be defined (`sharedSecretRef` property), and the  service can use such secret to authenticate the origin of the request. The location where the secret travels in the request performed by Authorino to the HTTP service can be specified in a typical "credentials" property.
+POST request parameters as well as the encoding of the content can be controlled using the `bodyParameters` and `contentType` fields of the config, respectively. The Content-Type of POST requests can be either `application/x-www-form-urlencoded` (default) or `application/json`.
+
+A shared secret between Authorino and the external HTTP service can be defined (see `sharedSecretRef` field), and the  service can use such secret to authenticate the origin of the request. The location where the secret travels in the request performed by Authorino to the HTTP service can be specified in a typical [`credentials`](#extra-auth-credentials-credentials) field.
+
+Custom headers can be set with the `headers` field. Nevertheless, headers such as `Content-Type` and `Authorization` (or eventual custom header used for carrying the authentication secret, set instead via the `credentials` option) will be superseded by the respective values defined for the fields `contentType` and `sharedSecretRef`.
 
 ### OIDC UserInfo ([`metadata.userInfo`](../api/v1beta1/auth_config_types.go#L166))
 
@@ -518,3 +525,105 @@ rate_limits:
 ### _Extra:_ Custom denial status ([`denyWith`](../api/v1beta1/auth_config_types.go#L78))
 
 By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline)) or authorization (phase ii) fail. These can be customized by specifying `spec.denyWith` in the `AuthConfig`.
+
+## Common feature: Priorities
+
+_Priorities_ allow to set sequence of execution for blocks of concurrent evaluators within phases of the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time).
+
+Evaluators of same priority execute concurrently to each other "in a block". After syncing that block (i.e. after all evaluators of the block have returned), the next block of evaluator configs of consecutive priority is triggered.
+
+Use cases for priorities are:
+1. Saving expensive tasks to be triggered when there's a high chance of returning immediately after finishing executing a less expensive one – e.g.
+    - an identity config that calls an external IdP to verify a token that is rarely used, compared to verifying JWTs preferred by most users of the service;
+    - an authorization policy that performs some quick checks first, such as verifying allowed paths, and only if it passes, moves to the evaluation of a more expensive policy.
+2. Establishing dependencies between evaluators - e.g.
+    - an external metadata request that needs to wait until a previous metadata responds first (in order to use data from the response)
+
+Priorities can be set using the `priority` property available in all evaluator configs of all phases of the Auth Pipeline (identity, metadata, authorization and response). The lower the number, the highest the priority. By default, all evaluators have priority 0 (i.e. highest priority).
+
+Consider the following example to understand how priorities work:
+
+```yaml
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+    - talker-api
+  identity:
+    - name: tier-1
+      priority: 0
+      apiKey:
+        labelSelectors:
+          tier: "1"
+    - name: tier-2
+      priority: 1
+      apiKey:
+        labelSelectors:
+          tier: "2"
+    - name: tier-3
+      priority: 1
+      apiKey:
+        labelSelectors:
+          tier: "3"
+  metadata:
+    - name: first
+      http:
+        endpoint: http://talker-api:3000
+        method: GET
+    - name: second
+      priority: 1
+      http:
+        endpoint: http://talker-api:3000/first_uuid={auth.metadata.first.uuid}
+        method: GET
+  authorization:
+    - name: allowed-endpoints
+      json:
+        conditions:
+          - selector: context.request.http.path
+            operator: neq
+            value: /hi
+          - selector: context.request.http.path
+            operator: neq
+            value: /hello
+          - selector: context.request.http.path
+            operator: neq
+            value: /aloha
+          - selector: context.request.http.path
+            operator: neq
+            value: /ciao
+        rules:
+          - selector: deny
+            operator: eq
+            value: "true"
+    - name: more-expensive-policy # no point in evaluating this one if it's not an allowed endpoint
+      priority: 1
+      opa:
+        inlineRego: |
+          allow { true }
+  response:
+    - name: x-auth-data
+      json:
+        properties:
+          - name: tier
+            valueFrom:
+              authJSON: auth.identity.metadata.labels.tier
+          - name: first-uuid
+            valueFrom:
+              authJSON: auth.metadata.first.uuid
+          - name: second-uuid
+            valueFrom:
+              authJSON: auth.metadata.second.uuid
+          - name: second-path
+            valueFrom:
+              authJSON: auth.metadata.second.path
+```
+
+For the `AuthConfig` above,
+
+- Identity configs `tier-2` and `tier-3` (priority 1) will only trigger (concurrently) in case `tier-1` (priority 0) fails to validate the authentication token first. (This behavior happens without perjudice of context canceling between concurrent evaluators – i.e. evaluators that _are_ triggered concurrently to another, such as `tier-2` and `tier-3`, continue to cancel the context of each other if any of them succeeds validating the token first.)
+
+- Metadata source `second` (priority 1) uses the response of the request issued by metadata source `first` (priority 0), so it will wait for `first` to finish by triggering only in the second block.
+
+- Authorization policy `allowed-endpoints` (piority 0) is considered to be a lot less expensive than `more-expensive-policy` (priority 1) and has a high chance of denying access to the protected service (if the path is not one of the allowed endpoints). By setting different priorities to these policies we ensure the more expensive policy if triggered in sequence of the less expensive one, instead of concurrently.
