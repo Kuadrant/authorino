@@ -1,20 +1,17 @@
-# permissions for end users to edit services.
+# permissions for end users to view authconfigs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: service-editor-role
+  name: viewer-role
 rules:
 - apiGroups:
   - authorino.3scale.net
   resources:
   - authconfigs
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
+  - watch
 - apiGroups:
   - authorino.3scale.net
   resources:
