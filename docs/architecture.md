@@ -303,6 +303,22 @@ For consecutive requests performed, within a given period of time, by a same use
 
 ## Sharding
 
-Managed instances of Authorino offered to API providers who create and maintain their own API protection states within their own realms and namespaces.
+By default, Authorino instances will watch `AuthConfig` CRs in the entire space (namespace or entire cluster; see [Cluster-wide vs. Namespaced instances](#cluster-wide-vs-namespaced-instances) for details). To support combining multiple Authorino instances and instance modes in the same Kubernetes cluster, and yet avoiding superposition between the instances (i.e. multiple instances reconciling the same `AuthConfig`s), Authorino offers support for data sharding, i.e. to horizontally narrow down the space of reconciliation of an Authorino instance to a subset of that space.
 
-[TODO: explain about `AUTH_CONFIG_LABEL_SELECTOR`]
+The benefits of limiting the space of reconciliation of an Authorino instance include avoiding unnecessary caching and workload in instances that do not receive corresponding traffic (according to your routing settings) and preventing leaders of multiple instances (sets of replicas) to compete on resource status updates (see [Resource reconciliation and status update](#resource-reconciliation-and-status-update) for details).
+
+Use-cases for sharding of `AuthConfig`s:
+- Horizontal load balancing of traffic of authorization requests
+- Supporting for managed centralized instances of Authorino to API owners who create and maintain their own `AuthConfig`s within their own user namespaces.
+
+Authorino's custom controllers filter the `AuthConfig`-related events to be reconciled using [Kubernetes label selectors](https://pkg.go.dev/k8s.io/apimachinery/pkg/labels#Parse), defined for the Authorino instance via `AUTH_CONFIG_LABEL_SELECTOR` environment variable. By default, `AUTH_CONFIG_LABEL_SELECTOR` is empty, meaning all `AuthConfig`s in the space are watched; this variable can be set to any value parseable as a valid label selector, causing Authorino to then watch only events of `AuthConfig`s whose `metadata.labels` match the selector.
+
+The following are all valid examples of `AuthConfig` label selector filters:
+
+```
+AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by=authorino"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by=authorino,other-label=other-value"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by in (authorino,kuadrant)"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by!=authorino-v0.4"
+AUTH_CONFIG_LABEL_SELECTOR="!disabled"
+```
