@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
 - role.yaml
-- service_editor_role.yaml
-- service_viewer_role.yaml
+- auth_config_editor_role.yaml
+- auth_config_viewer_role.yaml
 - auth_proxy_role.yaml
 - auth_proxy_client_role.yaml
