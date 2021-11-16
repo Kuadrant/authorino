@@ -582,6 +582,13 @@ func (in *Metadata_GenericHTTP) DeepCopyInto(out *Metadata_GenericHTTP) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Headers != nil {
+		in, out := &in.Headers, &out.Headers
+		*out = make([]JsonProperty, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.SharedSecret != nil {
 		in, out := &in.SharedSecret, &out.SharedSecret
 		*out = new(SecretKeyReference)

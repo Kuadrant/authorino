@@ -236,10 +236,22 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				})
 			}
 
+			headers := make([]common.JSONProperty, 0, len(genericHttp.Headers))
+			for _, header := range genericHttp.Headers {
+				headers = append(headers, common.JSONProperty{
+					Name: header.Name,
+					Value: common.JSONValue{
+						Static:  header.Value,
+						Pattern: header.ValueFrom.AuthJSON,
+					},
+				})
+			}
+
 			translatedMetadata.GenericHTTP = &authorinoMetadata.GenericHttp{
 				Endpoint:        genericHttp.Endpoint,
 				Method:          string(genericHttp.Method),
 				Parameters:      params,
+				Headers:         headers,
 				ContentType:     string(genericHttp.ContentType),
 				SharedSecret:    sharedSecret,
 				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),

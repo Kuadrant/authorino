@@ -18,6 +18,7 @@ type GenericHttp struct {
 	Endpoint     string
 	Method       string
 	Parameters   []common.JSONProperty
+	Headers      []common.JSONProperty
 	ContentType  string
 	SharedSecret string
 	auth_credentials.AuthCredentials
@@ -53,6 +54,10 @@ func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (i
 	req, err := h.BuildRequestWithCredentials(ctx, endpoint, method, h.SharedSecret, requestBody)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, header := range h.Headers {
+		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(string(authData))))
 	}
 
 	req.Header.Set("Content-Type", contentType)

@@ -129,6 +129,43 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	assert.Equal(t, objJSON["foo"], "bar")
 }
 
+func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
+		"/metadata": {Status: 200, Body: `{"foo":"bar"}`},
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + extHttpServiceHost + "/metadata"
+
+	dataForAuthorization := buildGenericHttpAuthDataMock()
+	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization)
+
+	sharedCredsMock := NewMockAuthCredentials(ctrl)
+	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
+	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "", nil).Return(httpRequestMock, nil)
+
+	metadata := &GenericHttp{
+		Endpoint: endpoint,
+		Method:   "GET",
+		Headers: []common.JSONProperty{
+			{Name: "X-Requested-By", Value: common.JSONValue{Static: "authorino"}},
+			{Name: "Content-Type", Value: common.JSONValue{Static: "to-be-overwritten"}},
+		},
+		AuthCredentials: sharedCredsMock,
+	}
+
+	_, err := metadata.Call(pipelineMock, ctx)
+
+	assert.NilError(t, err)
+	assert.Equal(t, httpRequestMock.Header.Get("X-Requested-By"), "authorino")
+	assert.Equal(t, httpRequestMock.Header.Get("Content-Type"), "text/plain")
+}
+
 func buildGenericHttpAuthDataMock() interface{} {
 	type mockIdentityObject struct {
 		User string `json:"user"`
