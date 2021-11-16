@@ -67,18 +67,18 @@ func (mr *MockAuthPipelineMockRecorder) GetAPI() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAPI", reflect.TypeOf((*MockAuthPipeline)(nil).GetAPI))
 }
 
-// GetDataForAuthorization mocks base method.
-func (m *MockAuthPipeline) GetDataForAuthorization() interface{} {
+// GetAuthorizationJSON mocks base method.
+func (m *MockAuthPipeline) GetAuthorizationJSON() string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDataForAuthorization")
-	ret0, _ := ret[0].(interface{})
+	ret := m.ctrl.Call(m, "GetAuthorizationJSON")
+	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// GetDataForAuthorization indicates an expected call of GetDataForAuthorization.
-func (mr *MockAuthPipelineMockRecorder) GetDataForAuthorization() *gomock.Call {
+// GetAuthorizationJSON indicates an expected call of GetAuthorizationJSON.
+func (mr *MockAuthPipelineMockRecorder) GetAuthorizationJSON() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDataForAuthorization", reflect.TypeOf((*MockAuthPipeline)(nil).GetDataForAuthorization))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthorizationJSON", reflect.TypeOf((*MockAuthPipeline)(nil).GetAuthorizationJSON))
 }
 
 // GetHttp mocks base method.
@@ -93,20 +93,6 @@ func (m *MockAuthPipeline) GetHttp() *envoy_service_auth_v3.AttributeContext_Htt
 func (mr *MockAuthPipelineMockRecorder) GetHttp() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHttp", reflect.TypeOf((*MockAuthPipeline)(nil).GetHttp))
-}
-
-// GetPostAuthorizationData mocks base method.
-func (m *MockAuthPipeline) GetPostAuthorizationData() interface{} {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPostAuthorizationData")
-	ret0, _ := ret[0].(interface{})
-	return ret0
-}
-
-// GetPostAuthorizationData indicates an expected call of GetPostAuthorizationData.
-func (mr *MockAuthPipelineMockRecorder) GetPostAuthorizationData() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostAuthorizationData", reflect.TypeOf((*MockAuthPipeline)(nil).GetPostAuthorizationData))
 }
 
 // GetRequest mocks base method.
@@ -136,20 +122,6 @@ func (m *MockAuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
 func (mr *MockAuthPipelineMockRecorder) GetResolvedIdentity() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedIdentity", reflect.TypeOf((*MockAuthPipeline)(nil).GetResolvedIdentity))
-}
-
-// GetResolvedMetadata mocks base method.
-func (m *MockAuthPipeline) GetResolvedMetadata() map[interface{}]interface{} {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResolvedMetadata")
-	ret0, _ := ret[0].(map[interface{}]interface{})
-	return ret0
-}
-
-// GetResolvedMetadata indicates an expected call of GetResolvedMetadata.
-func (mr *MockAuthPipelineMockRecorder) GetResolvedMetadata() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResolvedMetadata", reflect.TypeOf((*MockAuthPipeline)(nil).GetResolvedMetadata))
 }
 
 // MockAuthConfigEvaluator is a mock of AuthConfigEvaluator interface.
@@ -225,6 +197,43 @@ func (m *MockNamedConfigEvaluator) GetName() string {
 func (mr *MockNamedConfigEvaluatorMockRecorder) GetName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockNamedConfigEvaluator)(nil).GetName))
+}
+
+// MockPrioritizable is a mock of Prioritizable interface.
+type MockPrioritizable struct {
+	ctrl     *gomock.Controller
+	recorder *MockPrioritizableMockRecorder
+}
+
+// MockPrioritizableMockRecorder is the mock recorder for MockPrioritizable.
+type MockPrioritizableMockRecorder struct {
+	mock *MockPrioritizable
+}
+
+// NewMockPrioritizable creates a new mock instance.
+func NewMockPrioritizable(ctrl *gomock.Controller) *MockPrioritizable {
+	mock := &MockPrioritizable{ctrl: ctrl}
+	mock.recorder = &MockPrioritizableMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPrioritizable) EXPECT() *MockPrioritizableMockRecorder {
+	return m.recorder
+}
+
+// GetPriority mocks base method.
+func (m *MockPrioritizable) GetPriority() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPriority")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetPriority indicates an expected call of GetPriority.
+func (mr *MockPrioritizableMockRecorder) GetPriority() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPriority", reflect.TypeOf((*MockPrioritizable)(nil).GetPriority))
 }
 
 // MockIdentityConfigEvaluator is a mock of IdentityConfigEvaluator interface.

@@ -17,6 +17,7 @@ const (
 
 type MetadataConfig struct {
 	Name        string                `yaml:"name"`
+	Priority    int                   `yaml:"priority"`
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
@@ -64,4 +65,10 @@ func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 
 func (config *MetadataConfig) GetName() string {
 	return config.Name
+}
+
+// impl:Prioritizable
+
+func (config *MetadataConfig) GetPriority() int {
+	return config.Priority
 }

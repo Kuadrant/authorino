@@ -362,7 +362,8 @@ spec:
                       - user
                       type: object
                     name:
-                      description: Name of the authorization policy.
+                      description: Name of the authorization policy. It can be used
+                        to refer to the resolved identity object in other configs.
                       type: string
                     opa:
                       description: Open Policy Agent (OPA) authorization policy.
@@ -437,6 +438,12 @@ spec:
                             NOT include the "package" declaration in line 1.
                           type: string
                       type: object
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                   required:
                   - name
                   type: object
@@ -647,9 +654,8 @@ spec:
                     name:
                       description: The name of this identity source/authentication
                         mode. It usually identifies a source of identities or group
-                        of users/clients of the protected service. It may as well
-                        be used for this identity config to be referred in some metadata
-                        configs.
+                        of users/clients of the protected service. It can be used
+                        to refer to the resolved identity object in other configs.
                       type: string
                     oauth2:
                       properties:
@@ -689,6 +695,12 @@ spec:
                       required:
                       - endpoint
                       type: object
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                   required:
                   - name
                   type: object
@@ -844,9 +856,15 @@ spec:
                       - endpoint
                       type: object
                     name:
-                      description: The name of the metadata source. Policies of te
-                        authorization phase can refer to this metadata by this value.
+                      description: The name of the metadata source. It can be used
+                        to refer to the resolved identity object in other configs.
                       type: string
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                     uma:
                       description: User-Managed Access (UMA) source of resource data.
                       properties:
@@ -931,8 +949,15 @@ spec:
                       - properties
                       type: object
                     name:
-                      description: Name of the custom response.
+                      description: Name of the custom response. It can be used to
+                        refer to the resolved identity object in other configs.
                       type: string
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                     wrapper:
                       default: httpHeader
                       description: How Authorino wraps the response. Use "httpHeader"

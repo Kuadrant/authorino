@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -17,36 +18,23 @@ import (
 )
 
 const (
-	extHttpServiceHost string = "127.0.0.1:9005"
-	regoData           string = `
-			method = object.get(input.context.request.http, "method", "")
-			path = object.get(input.context.request.http, "path", "")
-
-			allow {
-              method == "GET"
-              path = "/allow"
-          }`
-	jsonData string = "{\"result\": {\"id\": \"empty\",\n" +
-		"\"raw\":\"package my-rego-123\\n method = object.get(input.context.request.http," +
-		" \\\"method\\\", \\\"\\\")\\n path = object.get(input.context.request.http, \\\"path\\\"," +
-		" \\\"\\\")\\n\\nallow {\\n method == \\\"GET\\\"\\n path = \\\"/allow\\\"\\n}\"}}"
+	extHttpServiceHost    string = "127.0.0.1:9005"
+	opaInlineRegoDataMock string = `
+		method = object.get(input.context.request.http, "method", "")
+		path = object.get(input.context.request.http, "path", "")
+		allow { method == "GET"; path = "/allow" }`
 )
 
-type authorizationData struct {
-	Context *envoyAuth.AttributeContext `json:"context"`
-}
-
 func TestNewOPAAuthorizationInlineRego(t *testing.T) {
-	opa, err := NewOPAAuthorization("test-opa", regoData, OPAExternalSource{}, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, OPAExternalSource{}, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
-
 }
 
 func TestNewOPAAuthorizationExternalUrl(t *testing.T) {
 	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/rego": {Status: 200, Body: regoData},
+		"/rego": {Status: 200, Body: opaInlineRegoDataMock},
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -73,14 +61,14 @@ func TestNewOPAAuthorizationBoth(t *testing.T) {
 		AuthCredentials: auth_credentials.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", regoData, externalSource, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, externalSource, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
 }
 
 func TestNewOPAAuthorizationWithPackageInRego(t *testing.T) {
-	data := fmt.Sprintf("package my-rego-123\n%s", regoData)
+	data := fmt.Sprintf("package my-rego-123\n%s", opaInlineRegoDataMock)
 	opa, err := NewOPAAuthorization("test-opa", data, OPAExternalSource{}, 0, context.TODO())
 
 	assert.NilError(t, err)
@@ -90,6 +78,8 @@ func TestNewOPAAuthorizationWithPackageInRego(t *testing.T) {
 }
 
 func TestNewOPAAuthorizationJsonResponse(t *testing.T) {
+	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod = object.get(input.context.request.http, \"method\", \"\")\npath = object.get(input.context.request.http, \"path\", \"\")\n\nallow { method == \"GET\"; path = \"/allow\" }"}}`
+
 	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
 		"/rego": {Status: 200, Body: jsonData, Headers: map[string]string{"Content-Type": "application/json"}},
 	})
@@ -117,21 +107,25 @@ func assertOPAAuthorization(t *testing.T, opa *OPA) {
 		err        error
 	)
 	pipelineMock := mockCommon.NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuth("/allow", "GET")).Times(1)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "GET")).Times(1)
 
 	authorized, err = opa.Call(pipelineMock, nil)
 	assert.Assert(t, authorized)
 	assert.NilError(t, err)
 
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuth("/allow", "POST")).AnyTimes()
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "POST")).AnyTimes()
 
 	authorized, err = opa.Call(pipelineMock, nil)
 	assert.Assert(t, !authorized)
 	assert.Error(t, err, unauthorizedErrorMsg)
 }
 
-func dataForAuth(path string, method string) *authorizationData {
-	return &authorizationData{
+func opaAuthDataMock(path string, method string) string {
+	type authorizationJSON struct {
+		Context *envoyAuth.AttributeContext `json:"context"`
+	}
+
+	authJSON, _ := json.Marshal(&authorizationJSON{
 		Context: &envoyAuth.AttributeContext{
 			Request: &envoyAuth.AttributeContext_Request{
 				Http: &envoyAuth.AttributeContext_HttpRequest{
@@ -140,5 +134,7 @@ func dataForAuth(path string, method string) *authorizationData {
 				},
 			},
 		},
-	}
+	})
+
+	return string(authJSON)
 }

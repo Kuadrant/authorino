@@ -2,7 +2,6 @@ package authorization
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
@@ -14,12 +13,10 @@ type JSONPatternMatching struct {
 }
 
 func (jsonAuth *JSONPatternMatching) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
-	data := pipeline.GetDataForAuthorization()
-	dataJSON, _ := json.Marshal(data)
-	dataStr := string(dataJSON)
+	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, condition := range jsonAuth.Conditions {
-		if match, err := condition.EvaluateFor(dataStr); err != nil {
+		if match, err := condition.EvaluateFor(authJSON); err != nil {
 			return false, err
 		} else if !match { // skip the policy if any of the conditions does not match
 			return true, nil
@@ -27,7 +24,7 @@ func (jsonAuth *JSONPatternMatching) Call(pipeline common.AuthPipeline, ctx cont
 	}
 
 	for _, rule := range jsonAuth.Rules {
-		if authorized, err := rule.EvaluateFor(dataStr); err != nil {
+		if authorized, err := rule.EvaluateFor(authJSON); err != nil {
 			return false, err
 		} else if !authorized {
 			return false, fmt.Errorf(unauthorizedErrorMsg)

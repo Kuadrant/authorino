@@ -16,6 +16,7 @@ import (
 
 type IdentityConfig struct {
 	Name               string                `yaml:"name"`
+	Priority           int                   `yaml:"priority"`
 	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
@@ -56,6 +57,12 @@ func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 	}
 }
 
+// impl:Prioritizable
+
+func (config *IdentityConfig) GetPriority() int {
+	return config.Priority
+}
+
 // impl:IdentityConfigEvaluator
 
 func (config *IdentityConfig) GetOIDC() interface{} {
@@ -83,11 +90,10 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline common.AuthPipe
 		return nil, err
 	}
 
-	authDataObj := pipeline.GetDataForAuthorization()
-	authJSON, _ := json.Marshal(authDataObj)
+	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, extendedProperty := range config.ExtendedProperties {
-		extendedIdentityObject[extendedProperty.Name] = extendedProperty.Value.ResolveFor(string(authJSON))
+		extendedIdentityObject[extendedProperty.Name] = extendedProperty.Value.ResolveFor(authJSON)
 	}
 
 	return extendedIdentityObject, nil

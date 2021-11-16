@@ -18,9 +18,7 @@ type AuthPipeline interface {
 	GetHttp() *envoy_auth.AttributeContext_HttpRequest
 	GetAPI() interface{}
 	GetResolvedIdentity() (interface{}, interface{})
-	GetResolvedMetadata() map[interface{}]interface{}
-	GetDataForAuthorization() interface{}
-	GetPostAuthorizationData() interface{}
+	GetAuthorizationJSON() string
 }
 
 // AuthConfigEvaluator interface represents the configuration pieces of Identity, Metadata and Authorization
@@ -30,6 +28,10 @@ type AuthConfigEvaluator interface {
 
 type NamedConfigEvaluator interface {
 	GetName() string
+}
+
+type Prioritizable interface {
+	GetPriority() int
 }
 
 type IdentityConfigEvaluator interface {

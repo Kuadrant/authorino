@@ -11,6 +11,7 @@ import (
 
 type AuthorizationConfig struct {
 	Name            string                             `yaml:"name"`
+	Priority        int                                `yaml:"priority"`
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
 	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
@@ -32,4 +33,10 @@ func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, parentCtx 
 	default:
 		return false, fmt.Errorf("invalid authorization config")
 	}
+}
+
+// impl:Prioritizable
+
+func (config *AuthorizationConfig) GetPriority() int {
+	return config.Priority
 }

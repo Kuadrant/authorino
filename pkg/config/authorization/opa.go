@@ -66,17 +66,22 @@ type OPA struct {
 }
 
 func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
-	options := rego.EvalInput(pipeline.GetDataForAuthorization())
-	results, err := opa.policy.Eval(opa.opaContext, options)
-
-	if err != nil {
+	var authJSON interface{}
+	if err := json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON); err != nil {
 		return false, err
-	} else if len(results) == 0 {
-		return false, fmt.Errorf(invalidOPAResponseErrorMsg)
-	} else if allowed := results[0].Bindings["allowed"].(bool); !allowed {
-		return false, fmt.Errorf(unauthorizedErrorMsg)
 	} else {
-		return true, nil
+		options := rego.EvalInput(authJSON)
+		results, err := opa.policy.Eval(opa.opaContext, options)
+
+		if err != nil {
+			return false, err
+		} else if len(results) == 0 {
+			return false, fmt.Errorf(invalidOPAResponseErrorMsg)
+		} else if allowed := results[0].Bindings["allowed"].(bool); !allowed {
+			return false, fmt.Errorf(unauthorizedErrorMsg)
+		} else {
+			return true, nil
+		}
 	}
 }
 

@@ -31,11 +31,8 @@ func TestDynamicJSONCall(t *testing.T) {
 		} `json:"auth"`
 	}
 
-	var data authData
-	_ = json.Unmarshal([]byte(`{"auth":{"identity":{"username":"john"}}}`), &data)
-
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetPostAuthorizationData().Return(data)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"auth":{"identity":{"username":"john"}}}`)
 
 	response, err := jsonResponseEvaluator.Call(pipelineMock, context.TODO())
 	responseJSON, _ := json.Marshal(response)

@@ -119,6 +119,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		translatedIdentity := &config.IdentityConfig{
 			Name:               identity.Name,
+			Priority:           identity.Priority,
 			ExtendedProperties: extendedProperties,
 		}
 
@@ -173,7 +174,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for _, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &config.MetadataConfig{
-			Name: metadata.Name,
+			Name:     metadata.Name,
+			Priority: metadata.Priority,
 		}
 
 		switch metadata.GetType() {
@@ -269,7 +271,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
-			Name: authorization.Name,
+			Name:     authorization.Name,
+			Priority: authorization.Priority,
 		}
 
 		switch authorization.GetType() {
@@ -373,7 +376,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, response := range authConfig.Spec.Response {
-		translatedResponse := config.NewResponseConfig(response.Name, string(response.Wrapper), response.WrapperKey)
+		translatedResponse := config.NewResponseConfig(response.Name, response.Priority, string(response.Wrapper), response.WrapperKey)
 
 		switch response.GetType() {
 		// wristband

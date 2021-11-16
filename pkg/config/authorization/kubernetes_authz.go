@@ -2,7 +2,6 @@ package authorization
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -64,12 +63,10 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 		return false, err
 	}
 
-	data := pipeline.GetDataForAuthorization()
-	dataJSON, _ := json.Marshal(data)
-	dataStr := string(dataJSON)
+	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, condition := range k.Conditions {
-		if match, err := condition.EvaluateFor(dataStr); err != nil {
+		if match, err := condition.EvaluateFor(authJSON); err != nil {
 			return false, err
 		} else if !match { // skip the policy if any of the conditions does not match
 			return true, nil
@@ -77,7 +74,7 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 	}
 
 	jsonValueToStr := func(value common.JSONValue) string {
-		return fmt.Sprintf("%s", value.ResolveFor(dataStr))
+		return fmt.Sprintf("%s", value.ResolveFor(authJSON))
 	}
 
 	subjectAccessReview := kubeAuthz.SubjectAccessReview{

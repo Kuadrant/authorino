@@ -96,8 +96,13 @@ type Credentials struct {
 type Identity struct {
 	// The name of this identity source/authentication mode.
 	// It usually identifies a source of identities or group of users/clients of the protected service.
-	// It may as well be used for this identity config to be referred in some metadata configs.
+	// It can be used to refer to the resolved identity object in other configs.
 	Name string `json:"name"`
+
+	// Priority group of the config.
+	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+	// +kubebuilder:default:=0
+	Priority int `json:"priority,omitempty"`
 
 	// Defines where client credentials are required to be passed in the request for this identity source/authentication mode.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
@@ -160,8 +165,13 @@ type Identity_KubernetesAuth struct {
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "userInfo" or "uma".
 type Metadata struct {
 	// The name of the metadata source.
-	// Policies of te authorization phase can refer to this metadata by this value.
+	// It can be used to refer to the resolved identity object in other configs.
 	Name string `json:"name"`
+
+	// Priority group of the config.
+	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+	// +kubebuilder:default:=0
+	Priority int `json:"priority,omitempty"`
 
 	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
 	UMA         *Metadata_UMA         `json:"uma,omitempty"`
@@ -237,7 +247,13 @@ type Metadata_GenericHTTP struct {
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "opa", "json" or "kubernetes".
 type Authorization struct {
 	// Name of the authorization policy.
+	// It can be used to refer to the resolved identity object in other configs.
 	Name string `json:"name"`
+
+	// Priority group of the config.
+	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+	// +kubebuilder:default:=0
+	Priority int `json:"priority,omitempty"`
 
 	OPA             *Authorization_OPA                 `json:"opa,omitempty"`
 	JSON            *Authorization_JSONPatternMatching `json:"json,omitempty"`
@@ -345,7 +361,14 @@ type Response_Wrapper string
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "wristband" or "json".
 type Response struct {
 	// Name of the custom response.
+	// It can be used to refer to the resolved identity object in other configs.
 	Name string `json:"name"`
+
+	// Priority group of the config.
+	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+	// +kubebuilder:default:=0
+	Priority int `json:"priority,omitempty"`
+
 	// How Authorino wraps the response.
 	// Use "httpHeader" (default) to wrap the response in an HTTP header; or "envoyDynamicMetadata" to wrap the response as Envoy Dynamic Metadata
 	// +kubebuilder:default:=httpHeader

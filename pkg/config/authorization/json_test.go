@@ -1,6 +1,7 @@
 package authorization
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/common"
@@ -15,11 +16,12 @@ func TestCall(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
 
-	type authorizationData struct {
+	type authorizationJSON struct {
 		Context  *envoy_auth.AttributeContext `json:"context"`
 		AuthData map[string]interface{}       `json:"auth"`
 	}
-	dataForAuthorization := &authorizationData{
+
+	authJSON, _ := json.Marshal(&authorizationJSON{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{
@@ -36,10 +38,10 @@ func TestCall(t *testing.T) {
 				"letters": {"a", "b", "c"},
 			},
 		},
-	}
+	})
 
 	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetDataForAuthorization().Return(dataForAuthorization).AnyTimes()
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(string(authJSON)).AnyTimes()
 
 	var (
 		jsonAuth   *JSONPatternMatching
