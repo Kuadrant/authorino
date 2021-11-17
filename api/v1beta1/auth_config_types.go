@@ -165,7 +165,7 @@ type Identity_KubernetesAuth struct {
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "userInfo" or "uma".
 type Metadata struct {
 	// The name of the metadata source.
-	// It can be used to refer to the resolved identity object in other configs.
+	// It can be used to refer to the resolved metadata object in other configs.
 	Name string `json:"name"`
 
 	// Priority group of the config.
@@ -247,7 +247,7 @@ type Metadata_GenericHTTP struct {
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "opa", "json" or "kubernetes".
 type Authorization struct {
 	// Name of the authorization policy.
-	// It can be used to refer to the resolved identity object in other configs.
+	// It can be used to refer to the resolved authorization object in other configs.
 	Name string `json:"name"`
 
 	// Priority group of the config.
@@ -361,7 +361,7 @@ type Response_Wrapper string
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "wristband" or "json".
 type Response struct {
 	// Name of the custom response.
-	// It can be used to refer to the resolved identity object in other configs.
+	// It can be used to refer to the resolved response object in other configs.
 	Name string `json:"name"`
 
 	// Priority group of the config.

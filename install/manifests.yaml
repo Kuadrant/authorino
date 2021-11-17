@@ -379,7 +379,8 @@ spec:
                       - user
                       type: object
                     name:
-                      description: Name of the authorization policy.
+                      description: Name of the authorization policy. It can be used
+                        to refer to the resolved authorization object in other configs.
                       type: string
                     opa:
                       description: Open Policy Agent (OPA) authorization policy.
@@ -454,6 +455,12 @@ spec:
                             NOT include the "package" declaration in line 1.
                           type: string
                       type: object
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                   required:
                   - name
                   type: object
@@ -693,9 +700,8 @@ spec:
                     name:
                       description: The name of this identity source/authentication
                         mode. It usually identifies a source of identities or group
-                        of users/clients of the protected service. It may as well
-                        be used for this identity config to be referred in some metadata
-                        configs.
+                        of users/clients of the protected service. It can be used
+                        to refer to the resolved identity object in other configs.
                       type: string
                     oauth2:
                       properties:
@@ -735,6 +741,12 @@ spec:
                       required:
                       - endpoint
                       type: object
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                   required:
                   - name
                   type: object
@@ -847,6 +859,37 @@ spec:
                             where "selector" is any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson
                             and selects value from the authorization JSON. E.g. https://ext-auth-server.io/metadata?p={context.request.http.path}
                           type: string
+                        headers:
+                          description: Custom headers in the HTTP request.
+                          items:
+                            properties:
+                              name:
+                                description: The name of the claim
+                                type: string
+                              value:
+                                description: Static value of the claim
+                                x-kubernetes-preserve-unknown-fields: true
+                              valueFrom:
+                                description: Dynamic value of the claim
+                                properties:
+                                  authJSON:
+                                    description: 'Selector to fill the value from
+                                      the authorization JSON. Any patterns supported
+                                      by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The value can be just the pattern
+                                      with the path to fetch from the authorization
+                                      JSON (e.g. ''context.request.http.host'') or
+                                      a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
+                                      The following string modifiers are available:
+                                      @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      @case:upper|lower, and @base64:encode|decode.'
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
                         method:
                           description: 'HTTP verb used in the request to the service.
                             Accepted values: GET (default), POST. When the request
@@ -878,9 +921,15 @@ spec:
                       - endpoint
                       type: object
                     name:
-                      description: The name of the metadata source. Policies of te
-                        authorization phase can refer to this metadata by this value.
+                      description: The name of the metadata source. It can be used
+                        to refer to the resolved metadata object in other configs.
                       type: string
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                     uma:
                       description: User-Managed Access (UMA) source of resource data.
                       properties:
@@ -965,8 +1014,15 @@ spec:
                       - properties
                       type: object
                     name:
-                      description: Name of the custom response.
+                      description: Name of the custom response. It can be used to
+                        refer to the resolved response object in other configs.
                       type: string
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
                     wrapper:
                       default: httpHeader
                       description: How Authorino wraps the response. Use "httpHeader"
