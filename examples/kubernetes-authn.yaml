@@ -1,0 +1,17 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+  - talker-api-authorino.127.0.0.1.nip.io
+  identity:
+  - name: authorized-service-accounts
+    kubernetes:
+      audiences:
+      - talker-api
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-consumer-1

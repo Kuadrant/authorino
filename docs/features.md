@@ -151,7 +151,7 @@ Authorino can verify Kubernetes-valid access tokens (using Kubernetes [TokenRevi
 
 These tokens can be either `ServiceAccount` tokens such as the ones issued by kubelet as part of Kubernetes [Service Account Token Volume Projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection), or any valid user access tokens issued to users of the Kubernetes server API.
 
-The list of `audiences` of the token must include the requested host of the protected API (default), or all the audiences specified in the Authorino `AuthConfig` custom resource. For example:
+The list of `audiences` of the token must include the requested host and port of the protected API (default), or all audiences specified in the Authorino `AuthConfig` custom resource. For example:
 
 For the following `AuthConfig` CR, the Kubernetes token must include the audience `my-api.io`:
 
