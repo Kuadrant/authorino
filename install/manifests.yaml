@@ -380,7 +380,7 @@ spec:
                       type: object
                     name:
                       description: Name of the authorization policy. It can be used
-                        to refer to the resolved identity object in other configs.
+                        to refer to the resolved authorization object in other configs.
                       type: string
                     opa:
                       description: Open Policy Agent (OPA) authorization policy.
@@ -922,7 +922,7 @@ spec:
                       type: object
                     name:
                       description: The name of the metadata source. It can be used
-                        to refer to the resolved identity object in other configs.
+                        to refer to the resolved metadata object in other configs.
                       type: string
                     priority:
                       default: 0
@@ -1015,7 +1015,7 @@ spec:
                       type: object
                     name:
                       description: Name of the custom response. It can be used to
-                        refer to the resolved identity object in other configs.
+                        refer to the resolved response object in other configs.
                       type: string
                     priority:
                       default: 0
