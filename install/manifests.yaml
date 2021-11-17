@@ -1107,7 +1107,7 @@ status:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: authorino-editor-role
+  name: authorino-authconfig-editor-role
 rules:
 - apiGroups:
   - authorino.3scale.net
@@ -1120,6 +1120,26 @@ rules:
   - list
   - patch
   - update
+- apiGroups:
+  - authorino.3scale.net
+  resources:
+  - authconfigs/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: authorino-authconfig-viewer-role
+rules:
+- apiGroups:
+  - authorino.3scale.net
+  resources:
+  - authconfigs
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - authorino.3scale.net
   resources:
@@ -1210,23 +1230,3 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: authorino-viewer-role
-rules:
-- apiGroups:
-  - authorino.3scale.net
-  resources:
-  - authconfigs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - authorino.3scale.net
-  resources:
-  - authconfigs/status
-  verbs:
-  - get
