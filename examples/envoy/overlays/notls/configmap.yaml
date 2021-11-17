@@ -93,7 +93,7 @@ data:
             - endpoint:
                 address:
                   socket_address:
-                    address: authorino-authorization
+                    address: authorino-authorino-authorization
                     port_value: 50051
       - name: rate_limit
         connect_timeout: 1s

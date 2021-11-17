@@ -1,7 +1,7 @@
 # User guides
 
 ## Authentication with Kubernetes tokens (TokenReview API)
-## Authentication with API keys
+## [Authentication with API keys](./user-guides/api-key-authentication.md)
 ## OpenID Connect Discovery and authentication with JWTs
 ## Authentication with Keycloak
 ## OAuth 2.0 token introspection

@@ -93,7 +93,7 @@ data:
             - endpoint:
                 address:
                   socket_address:
-                    address: authorino-authorization
+                    address: authorino-authorino-authorization
                     port_value: 50051
         transport_socket:
           name: envoy.transport_sockets.tls

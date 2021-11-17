@@ -4,20 +4,20 @@ metadata:
   name: talker-api-protection
 spec:
   hosts:
-    - talker-api
+  - talker-api-authorino.127.0.0.1.nip.io
   identity:
-    - name: friends
-      apiKey:
-        labelSelectors:
-          group: friends
-      credentials:
-        in: authorization_header
-        keySelector: APIKEY
+  - name: friends
+    apiKey:
+      labelSelectors:
+        group: friends
+    credentials:
+      in: authorization_header
+      keySelector: APIKEY
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: friend-1-api-key-1
+  name: api-key-1
   labels:
     authorino.3scale.net/managed-by: authorino
     group: friends
