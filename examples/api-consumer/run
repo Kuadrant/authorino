@@ -1,0 +1,53 @@
+#!/bin/sh
+
+INTERVAL="10"
+CREDENTIALS_IN="authorization_header"
+CREDENTIALS_KEY="Bearer"
+
+while [[ $# -gt 0 ]]; do
+  key=${1%=*}
+  val=${1#*=}
+
+  case $key in
+    --endpoint )
+      ENDPOINT="$val"
+      ;;
+    --token )
+      TOKEN="$val"
+      ;;
+    --token-path )
+      TOKEN=$(cat "$val")
+      ;;
+    --credentials-in )
+      CREDENTIALS_IN="$val"
+      ;;
+    --credentials-key )
+      CREDENTIALS_KEY="$val"
+      ;;
+    --interval )
+      INTERVAL="$val"
+      ;;
+    * )
+      ;;
+  esac
+
+  shift
+done
+
+if [ "$CREDENTIALS_IN" == "authorization_header" ]; then
+  HEADER="Authorization: $CREDENTIALS_KEY $TOKEN"
+elif [ "$CREDENTIALS_IN" == "custom_header" ]; then
+  HEADER="${CREDENTIALS_KEY}: $TOKEN"
+elif [ "$CREDENTIALS_IN" == "cookie" ]; then
+  HEADER="Cookie: $CREDENTIALS_KEY=$TOKEN"
+elif [ "$CREDENTIALS_IN" == "query" ]; then
+  ENDPOINT="$ENDPOINT?$CREDENTIALS_KEY=$TOKEN"
+fi
+
+echo "Sending..."
+
+while true; do
+  curl -s -o /dev/null -w "%{http_code}" -H "$HEADER" "$ENDPOINT"
+  echo ""
+  sleep $INTERVAL
+done
