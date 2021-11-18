@@ -190,15 +190,19 @@ The resolved identity object, added to the authorization JSON following a Kubern
 
 ### OpenID Connect (OIDC) JWT/JOSE verification and validation ([`identity.oidc`](../api/v1beta1/auth_config_types.go#L111))
 
-At reconciliation-time, Authorino automatically discovers (using OIDC Discovery well-known endpoint) and caches OpenID Connect configurations and related JSON Web Key Sets (JWKS) for all OIDC issuers declared in an `AuthConfig`. Later, at request-time, Authorino uses the configuration to verify and validate JSON Web Tokens (signed JWTs) supplied on each request.
+In reconciliation-time, using [OpenID Connect Discovery well-known endpoint](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig), Authorino automatically discovers and caches OpenID Connect configurations and associated JSON Web Key Sets (JWKS) for all OpenID Connect issuers declared in an `AuthConfig`. Then, in request-time, Authorino verifies the JSON Web Signature (JWS) and check the time validity of signed JSON Web Tokens (JWT) supplied on each request.
 
-The `kid` stated in the JWT header must match one of the keys cached by Authorino durign OpenID Connect Discovery, therefore supporting JWK rotation.
+_Important!_ Authorino does **not** implement [OAuth2 grants](https://datatracker.ietf.org/doc/html/rfc6749#section-4) nor [OIDC authentication flows](https://openid.net/specs/openid-connect-core-1_0.html#Authentication). As a common recommendation of good practice, obtaining and refreshing access tokens is for clients to negotiate directly with the auth servers and token issuers. Authorino will only validate those tokens using the parameters provided by the trusted issuer authorities.
 
 ![OIDC](http://www.plantuml.com/plantuml/png/XO_1IWD138RlynIX9mLt7s1XfQANseDGnPx7sMmtE9EqcOpQjtUeWego7aF-__lubzcyMadHvMVYlLUV80bBc5GIWcb1v_eUDXY40qNoHiADKNtslRigDeaI2pINiBXRtLp3AkU2ke0EJkT0ESWBwj7zV3UryDNkO8inDckMLuPg6cddM0mXucWT11ycd9TjyF0X3AYM_v7TRjVtl_ckRTlFiOU2sVvU-PtpY4hZiU8U8DEElHN5cRIFD7Z3K_uCt_ONm4_ZkLiY3oN5Tm00)
 
-The decoded JWTs (and fetched user info) are appended to the authorization JSON as the resolved identity.
+The `kid` claim stated in the JWT header must match one of the keys cached by Authorino during OpenID Connect Discovery, therefore supporting JWK rotation.
 
-Users can control the refreshing frequency of an OpenID Connect configuration by setting the `ttl` field.
+The decoded payload of the validated JWT is appended to the authorization JSON as the resolved identity.
+
+Users can control the refreshing frequency of OpenID Connect configurations by setting the `identity.oidc.ttl` field.
+
+For an excellent summary of the underlying concepts and standards that relate OpenID Connect and JSON Object Signing and Encryption (JOSE), see this [article](https://access.redhat.com/blogs/766093/posts/1976593) by Jan Rusnacko. For official specification and RFCs, see [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html), [JSON Web Token (JWT) (RFC7519)](https://datatracker.ietf.org/doc/html/rfc7519), and [JSON Object Signing and Encryption (JOSE)](http://www.iana.org/assignments/jose/jose.xhtml).
 
 ### OAuth 2.0 introspection ([`identity.oauth2`](../api/v1beta1/auth_config_types.go#L110))
 

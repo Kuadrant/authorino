@@ -1,0 +1,18 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+  - talker-api-authorino.127.0.0.1.nip.io
+  identity:
+  - name: keycloak-kuadrant-realm
+    oidc:
+      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authorization:
+  - name: email-verified-only
+    json:
+      rules:
+      - selector: "auth.identity.email_verified"
+        operator: eq
+        value: "true"
