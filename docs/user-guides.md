@@ -13,7 +13,7 @@
 ## OpenID Connect UserInfo
 ## User-Managed Access (UMA) resource registry
 ## Simple pattern-matching authorization policies
-## Open Policy Agent (OPA) Rego policies
+## [Open Policy Agent (OPA) Rego policies](./user-guides/opa-authorization.md)
 ## Kubernetes RBAC for service authorization (SubjectAccessReview API)
 ## Injecting data in the request
 ## Envoy Dynamic Metadata
