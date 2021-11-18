@@ -12,7 +12,11 @@ spec:
   authorization:
   - name: email-verified-only
     json:
+      conditions:
+      - selector: context.request.http.headers.x-forwarded-for.@extract:{"sep":","}
+        operator: matches
+        value: "192\\.168\\.1\\.\\d+"
       rules:
-      - selector: "auth.identity.email_verified"
+      - selector: auth.identity.email_verified
         operator: eq
         value: "true"
