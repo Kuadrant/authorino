@@ -14,7 +14,7 @@
 ## User-Managed Access (UMA) resource registry
 ## [Simple pattern-matching authorization policies](./user-guides/json-pattern-matching-authorization.md)
 ## [Open Policy Agent (OPA) Rego policies](./user-guides/opa-authorization.md)
-## Kubernetes RBAC for service authorization (SubjectAccessReview API)
+## [Kubernetes RBAC for service authorization (SubjectAccessReview API)](./user-guides/kubernetes-subjectaccessreview.md)
 ## Injecting data in the request
 ## Envoy Dynamic Metadata
 ## Redirecting to a login page

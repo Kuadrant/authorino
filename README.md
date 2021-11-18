@@ -31,7 +31,7 @@ Check out the [docs](./docs/README.md) for general information about protecting 
 - [Authentication with Kubernetes tokens (TokenReview API)](./docs/user-guides/kubernetes-tokenreview.md)
 - [Authorization with Open Policy Agent (OPA) Rego policies](./docs/user-guides/opa-authorization.md)
 - [Authorization with simple JSON pattern-matching rules (e.g. JWT claims)](./docs/user-guides/json-pattern-matching-authorization.md)
-- [Authorization with Kubernetes RBAC (SubjectAccessReview API)](./docs/user-guides/kubernetes-subject-access-review.md)
+- [Authorization with Kubernetes RBAC (SubjectAccessReview API)](./docs/user-guides/kubernetes-subjectaccessreview.md)
 - [Fetching auth metadata from external sources](./docs/user-guides/external-metadata.md)
 - [Token normalization](./docs/user-guides/token-normalization.md)
 
