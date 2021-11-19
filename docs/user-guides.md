@@ -9,7 +9,7 @@
 ## HTTP basic authentication
 ## Token normalization
 ## Edge Authentication Architecture (EAA)
-## Fetching auth metadata from external sources
+## [Fetching auth metadata from external sources](./user-guides/external-metadata.md)
 ## OpenID Connect UserInfo
 ## User-Managed Access (UMA) resource registry
 ## [Simple pattern-matching authorization policies](./user-guides/json-pattern-matching-authorization.md)

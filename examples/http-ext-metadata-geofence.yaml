@@ -1,0 +1,45 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+  - talker-api-authorino.127.0.0.1.nip.io
+  identity:
+  - name: friends
+    apiKey:
+      labelSelectors:
+        group: friends
+    credentials:
+      in: authorization_header
+      keySelector: APIKEY
+  metadata:
+    - name: geo
+      http:
+        endpoint: http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode
+        method: GET
+        headers:
+        - name: Accept
+          value: application/json
+  authorization:
+  - name: geofence
+    opa:
+      inlineRego: |
+        import input.context.request.http
+
+        allow {
+          http.method = "GET"
+          split(http.path, "/") = [_, requested_country, _]
+          lower(requested_country) == lower(object.get(input.auth.metadata.geo, "countryCode", ""))
+        }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
