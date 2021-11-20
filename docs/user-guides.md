@@ -1,25 +1,64 @@
 # User guides
 
-## [Authentication with Kubernetes tokens (TokenReview API)](./user-guides/kubernetes-tokenreview.md)
-## [Authentication with API keys](./user-guides/api-key-authentication.md)
-## [OpenID Connect Discovery and authentication with JWTs](./user-guides/oidc-jwt-authentication.md)
-## Authentication with Keycloak
-## OAuth 2.0 token introspection
-## Passing credentials (`Authorization` header, cookie headers and others)
-## HTTP basic authentication
-## Token normalization
-## Edge Authentication Architecture (EAA)
-## [Fetching auth metadata from external sources](./user-guides/external-metadata.md)
-## OpenID Connect UserInfo
-## User-Managed Access (UMA) resource registry
-## [Simple pattern-matching authorization policies](./user-guides/json-pattern-matching-authorization.md)
-## [Open Policy Agent (OPA) Rego policies](./user-guides/opa-authorization.md)
-## [Kubernetes RBAC for service authorization (SubjectAccessReview API)](./user-guides/kubernetes-subjectaccessreview.md)
-## Injecting data in the request
-## Envoy Dynamic Metadata
-## Redirecting to a login page
-## Deploying on OpenShift
-## Reducing the operational space: sharding, noise and multi-tenancy
-## Logging
-## Tracing
-## Monitoring
+- **[Authentication with Kubernetes tokens (TokenReview API)](./user-guides/kubernetes-tokenreview.md)**<br/>
+Validate Kubernetes Service Account tokens to authenticate requests to your protected hosts.
+
+- **[Authentication with API keys](./user-guides/api-key-authentication.md)**<br/>
+Issue API keys stored in Kubernetes `Secret`s for users to authenticate with your protected hosts.
+
+- **[OpenID Connect Discovery and authentication with JWTs](./user-guides/oidc-jwt-authentication.md)**<br/>
+Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; leverage OpenID Connect Discovery to automatically fetch JSON Web Key Sets (JWKS).
+
+- **OAuth 2.0 token introspection (RFC 7662)**<br/>
+Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and token validation in request-time.
+
+- **Passing credentials (`Authorization` header, cookie headers and others)**<br/>
+Customize where credentials are supplied in the request by each trusted source of identity.
+
+- **HTTP basic authentication**<br/>
+Adjust Authorino API key `Secret`s settings to support HTTP basic auth.
+
+- **Token normalization**<br/>
+Normalize identity claims from multiple and varied trusted sources and reduce complexity in your policies.
+
+- **Edge Authentication Architecture (EAA)**<br/>
+Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal micro-services.
+
+- **[Fetching auth metadata from external sources](./user-guides/external-metadata.md)**<br/>
+Get real-time online data from HTTP services to enhance authorization rules.
+
+- **OpenID Connect UserInfo**<br/>
+Fetch user info for OpenID Connect ID tokens in request-time for extra metadata for your policies and online verification of token validity.
+
+- **User-Managed Access (UMA) resource registry**<br/>
+Fetch resource attributes relevant for authorization from a User-Managed Access (UMA) resource registry such as Keycloak resource server clients.
+
+- **Leveraging Keycloak**<br/>
+Leverage Keycloak authentication methods and Keycloak Authorization Services' resource server clients.
+
+- **[Simple pattern-matching authorization policies](./user-guides/json-pattern-matching-authorization.md)**<br/>
+Write simple authorization rules based on JSON patterns matched against Authorino's Authorization JSON; check contextual information of the request, validate JWT claims, cross metadata fetched from external sources, etc.
+
+- **[Open Policy Agent (OPA) Rego policies](./user-guides/opa-authorization.md)**<br/>
+Leverage the power of Open Policy Agent (OPA) policies, evaluated against Authorino's Authorization JSON in a built-in runtime compiled together with Authorino; pre-cache policies defined in Rego language inline or fetched from an external policy registry.
+
+- **[Kubernetes RBAC for service authorization (SubjectAccessReview API)](./user-guides/kubernetes-subjectaccessreview.md)**<br/>
+Manage permissions in the Kubernetes RBAC and let Authorino to check them in request-time with the authorization system of the cluster.
+
+- **Injecting data in the request**<br/>
+Inject HTTP headers with serialized JSON content.
+
+- **Authenticated rate limiting (with Envoy Dynamic Metadata)**<br/>
+Provide Envoy with dynamic metadata from the external authorization process to be injected and used by consecutive filters, such as by a rate limiting service.
+
+- **Redirecting to a login page**<br/>
+Customize response status code and headers on failed requests. E.g. redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`; mask resources on access denied behind a `404 Not Found` response instead of `403 Forbidden`.
+
+- **Reducing the operational space: sharding, noise and multi-tenancy**<br/>
+Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
+
+- **Logging**<br/>
+Parse Authorino's structured JSON log messages; activate debug log level and get more user-friendly outputs in dev environment.
+
+- **Tracing**<br/>
+Trace authorization requests deep across the stack.
