@@ -1,6 +1,6 @@
 # Logging
 
-## Log levels and log modes
+## 1. Log levels and log modes
 
 Authorino outputs 3 levels of log messages: (from lowest to highest level)
 1. `debug`
@@ -9,27 +9,45 @@ Authorino outputs 3 levels of log messages: (from lowest to highest level)
 
 `info` logging is restricted to high-level information of the gRPC and HTTP authorization services, limiting messages to incomming request and respective outgoing response logs, with reduced details about the corresponding objects (request payload and authorization result), and without any further detailed logs of the steps in between, except for errors.
 
-Only `debug` logging will include processing details of each [Auth Pipeline](architecture.md#the-auth-pipeline), such as intermediary requests to validate identities with external auth servers, requests to external sources of auth metadata or authorization policies.
+Only `debug` logging will include processing details of each [Auth Pipeline](./../architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time), such as intermediary requests to validate identities with external auth servers, requests to external sources of auth metadata or authorization policies.
 
-To configure the desired log level, set the environment variable `LOG_LEVEL` to one of the supported values listed above. Default log level is `info`.
+To configure the desired log level, set the field `spec.logLevel` of the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD (`LOG_LEVEL` environment variable in the Authorino deployment), to one of the supported values listed above. Default log level is `info`.
 
 Apart from log level, Authorino can output messages to the logs in 2 different formats:
 - `production` (default): each line is a parseable JSON object with properties `{"level":string, "ts":int, "msg":string, "logger":string, extra values...}`
 - `development`: more human-readable outputs, extra stack traces and logging info, plus extra values output as JSON, in the format: `<timestamp-iso-8601>\t<log-level>\t<logger>\t<message>\t{extra-values-as-json}`
 
-To configure the desired log mode, set the environment variable `LOG_MODE` to one of the supported values listed above. Default log level is `production`.
+To configure the desired log mode, set the field `spec.logMode` of the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD (`LOG_MODE` environment variable in the Authorino deployment), to one of the supported values listed above. Default log level is `production`.
 
-## Sensitive data output to the logs
+Example of `Authorino` CR with log level `debug` and log mode `production`:
 
-Authorino will never output HTTP headers and query string parameters to `info` log messages, as such values usually include sensitive data (e.g. access tokens, API keys and Authorino [Festival Wristbands](architecture.md#festival-wristband-authentication)). However, `debug` log messages may include such sensitive information and those are not redacted.
+```yaml
+apiVersion: operator.authorino.kuadrant.io/v1beta1
+kind: Authorino
+metadata:
+  name: authorino
+spec:
+  logLevel: debug
+  logMode: production
+  listener:
+    tls:
+      enabled: false
+  oidcServer:
+    tls:
+      enabled: false
+```
+
+## 2. Sensitive data output to the logs
+
+Authorino will never output HTTP headers and query string parameters to `info` log messages, as such values usually include sensitive data (e.g. access tokens, API keys and Authorino Festival Wristbands). However, `debug` log messages may include such sensitive information and those are not redacted.
 
 Therefore, **DO NOT USE `debug` LOG LEVEL IN PRODUCTION**! Instead use either `info` or `error`.
 
-## Tracing ID
+## 3. Tracing ID
 
 Most log messages associated with an auth request include a `request id` extra value. The value represents the ID of the external authorization request received and processed by Authorino. This value is particularly useful to link incomming request and outgoing response log messages, as well as the more fine-grained log details available only in `debug` level.
 
-## Typical log messages
+## 4. Typical log messages - table and examples
 
 Some typical log messages output by the Authorino service are listed in the table below:
 

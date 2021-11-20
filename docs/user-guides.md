@@ -57,8 +57,8 @@ Customize response status code and headers on failed requests. E.g. redirect use
 - **Reducing the operational space: sharding, noise and multi-tenancy**<br/>
 Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
 
-- **Logging**<br/>
+- **[Logging](./user-guides/logging.md)**<br/>
 Parse Authorino's structured JSON log messages; activate debug log level and get more user-friendly outputs in dev environment.
 
-- **Tracing**<br/>
+- **[Tracing](./user-guides/logging.md#3-tracing-id)**<br/>
 Trace authorization requests deep across the stack.
