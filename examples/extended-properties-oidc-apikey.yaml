@@ -1,0 +1,47 @@
+apiVersion: authorino.3scale.net/v1beta1
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+  - talker-api-authorino.127.0.0.1.nip.io
+  identity:
+  - name: keycloak-kuadrant-realm
+    oidc:
+      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+    extendedProperties:
+    - name: roles
+      valueFrom:
+        authJSON: auth.identity.realm_access.roles
+  - name: api-key-friends
+    apiKey:
+      labelSelectors:
+        group: friends
+    credentials:
+      in: authorization_header
+      keySelector: APIKEY
+    extendedProperties:
+    - name: roles
+      value: ["admin"]
+  authorization:
+  - name: only-admins-can-delete
+    json:
+      conditions:
+      - selector: context.request.http.method
+        operator: eq
+        value: DELETE
+      rules:
+      - selector: auth.identity.roles
+        operator: incl
+        value: admin
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-1
+  labels:
+    authorino.3scale.net/managed-by: authorino
+    group: friends
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque

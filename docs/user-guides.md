@@ -18,8 +18,8 @@ Customize where credentials are supplied in the request by each trusted source o
 - **HTTP basic authentication**<br/>
 Adjust Authorino API key `Secret`s settings to support HTTP basic auth.
 
-- **Token normalization**<br/>
-Normalize identity claims from multiple and varied trusted sources and reduce complexity in your policies.
+- **[Token normalization](./user-guides/token-normalization.md)**<br/>
+Normalize identity claims from trusted sources and reduce complexity in your policies.
 
 - **Edge Authentication Architecture (EAA)**<br/>
 Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal micro-services.
