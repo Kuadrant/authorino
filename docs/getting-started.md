@@ -22,7 +22,7 @@ These are the plarform requirements to use Authorino:
     Alternatively to upstream Kubernetes, you should be able use any other Kubernetes distribution or Kubernetes Management Platform (KMP) with support for Kubernetes Custom Resources Definitions (CRD) and custom controllers, such as <a href="https://www.openshift.com">Red Hat OpenShift</a>, <a href="https://www.ibm.com/cloud/kubernetes-service">IBM Cloud Kubernetes Service (IKS)</a>, <a href="http://cloud.google.com/kubernetes-engine">Google Kubernetes Engine (GKE)</a>, <a href="https://aws.amazon.com/eks">Amazon Elastic Kubernetes Service (EKS)</a> and <a href="https://azure.microsoft.com/en-us/services/kubernetes-service">Azure Kubernetes Service (AKS)</a>.
   </details>
 
-- [**Envoy**](https://www.envoyproxy.io) proxy (recommended v1.19 or later), to wire up Upstream services (i.e. the services to be protected with Authorino) and external authorization filter (Authorino) for integrations based on the reverse-proxy architecture - [example](../examples/envoy)
+- [**Envoy**](https://www.envoyproxy.io) proxy (recommended v1.19 or later), to wire up Upstream services (i.e. the services to be protected with Authorino) and external authorization filter (Authorino) for integrations based on the reverse-proxy architecture - [example](https://github.com/kuadrant/authorino-examples#envoy)
 
   <details>
     <summary>Alternative: Non-reverse-proxy integration</summary>
@@ -234,7 +234,7 @@ static_resources:
               filename: /etc/ssl/certs/authorino-ca-cert.crt
 ```
 
-For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://github.com/kuadrant/limitador), plus a webapp served with under the same domain of the protected API, check out this [example](../examples/envoy/overlays/tls/configmap.yaml).
+For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://github.com/kuadrant/limitador), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/kuadrant/authorino-examples/blob/main/envoy/overlays/tls/configmap.yaml).
 
 After creating the `ConfigMap` with the Envoy configuration, create an Envoy `Deployment` and `Service`. E.g.:
 

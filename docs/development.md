@@ -86,7 +86,7 @@ The following command will:
 - Push the freshly built image to the cluster's registry
 - Install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster
 - Create a namespace for you tests
-- Install the example application [**Talker API**](../examples/talker-api/talker-api-deploy.yaml), a simple HTTP API that echoes back whatever it gets in the request
+- Install the example application [**Talker API**](https://github.com/kuadrant/authorino-examples#talker-api), a simple HTTP API that echoes back whatever it gets in the request
 - Setup Envoy for proxying to the Talker API and using Authorino for external authorization
 
 ```sh
@@ -134,7 +134,7 @@ You can skip the step of building a local image of Authorino based on the curren
   To deploy [Limitador](https://github.com/kuadrant/limitador) – pre-configured in Envoy for rate-limiting the Talker API to 5 hits per minute per `user_id` when available in the cluster workload –, run:
 
   ```sh
-  kubectl -n authorino apply -f examples/limitador/limitador-deploy.yaml
+  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/limitador/limitador-deploy.yaml
   ```
 </details>
 
@@ -164,7 +164,7 @@ You can skip the step of building a local image of Authorino based on the curren
   To deploy, run:
 
   ```sh
-  kubectl -n authorino apply -f examples/keycloak/keycloak-deploy.yaml
+  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
   ```
 
   Forward local requests to the instance of Keycloak running in the cluster:
@@ -186,13 +186,35 @@ You can skip the step of building a local image of Authorino based on the curren
   To deploy, run:
 
   ```sh
-  kubectl -n authorino apply -f examples/dex/dex-deploy.yaml
+  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/dex/dex-deploy.yaml
   ```
 
   Forward local requests to the instance of Dex running in the cluster:
 
   ```sh
   kubectl -n authorino port-forward deployment/dex 5556:5556 &
+  ```
+</details>
+
+<details>
+  <summary><strong>a12n-server</strong></summary>
+
+  Authorino examples include a bundle of [**a12n-server**](https://github.com/curveball/a12n-server) and corresponding MySQL database, preloaded with the following setup:<br/>
+  - Admin console: http://a12n-server:8531 (admin/123456)
+  - Preloaded clients:<br/>
+    - **service-account-1**: to obtain access tokens via `client_credentials` OAuth2 grant type, to consume the Talker API (Client secret: DbgXROi3uhWYCxNUq_U1ZXjGfLHOIM8X3C2bJLpeEdE); includes metadata privilege: `{ "talker-api": ["read"] }` that can be used to write authorization policies
+    - **talker-api**: to authenticate to the token introspect endpoint (Client secret: V6g-2Eq2ALB1_WHAswzoeZofJ_e86RI4tdjClDDDb4g)
+
+  To deploy, run:
+
+  ```sh
+  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/a12n-server/a12n-server-deploy.yaml
+  ```
+
+  Forward local requests to the instance of a12n-server running in the cluster:
+
+  ```sh
+  kubectl -n authorino port-forward deployment/a12n-server 8531:8531 &
   ```
 </details>
 

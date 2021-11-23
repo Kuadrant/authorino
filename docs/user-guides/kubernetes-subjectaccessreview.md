@@ -50,7 +50,7 @@ kubectl create namespace authorino
 The **Talker API** is just an echo API, included in the Authorino examples. We will use it in this guide as the service to be protected with Authorino.
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/Kuadrant/authorino/main/examples/talker-api/talker-api-deploy.yaml
+kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 ```
 
 ## 4. Deploy Authorino
@@ -81,8 +81,8 @@ The following bundle from the Authorino examples (commands below) is to apply En
 For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/Kuadrant/authorino/main/examples/envoy/overlays/notls/configmap.yaml
-kubectl -n authorino apply -f https://raw.githubusercontent.com/Kuadrant/authorino/main/examples/envoy/base/envoy.yaml
+kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/overlays/notls/configmap.yaml
+kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/base/envoy.yaml
 ```
 
 The bundle also creates an `Ingress` with host name `talker-api-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:

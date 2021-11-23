@@ -179,13 +179,20 @@ else
 ENVOY_OVERLAY = notls
 endif
 example-apps:
-	kubectl -n $(NAMESPACE) apply -f examples/talker-api/talker-api-deploy.yaml
-	kustomize build examples/envoy/overlays/$(ENVOY_OVERLAY) | kubectl -n $(NAMESPACE) apply -f -
+	@{ \
+	set -e ;\
+	EXAMPLES_DIR=$$(mktemp -d) ;\
+	cd $$EXAMPLES_DIR ;\
+	git clone --deph 1 --branch main https://github.com/Kuadrant/authorino-examples.git && cd authorino-examples ;\
+	kubectl -n $(NAMESPACE) apply -f talker-api/talker-api-deploy.yaml ;\
+	kustomize build envoy/overlays/$(ENVOY_OVERLAY) | kubectl -n $(NAMESPACE) apply -f - ;\
+	rm -rf $$EXAMPLES_DIR ;\
+	}
 ifneq (, $(DEPLOY_KEYCLOAK))
-	kubectl -n $(NAMESPACE) apply -f examples/keycloak/keycloak-deploy.yaml
+	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/keycloak/keycloak-deploy.yaml
 endif
 ifneq (, $(DEPLOY_DEX))
-	kubectl -n $(NAMESPACE) apply -f examples/dex/dex-deploy.yaml
+	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/dex/dex-deploy.yaml
 endif
 
 # Install CertManager to the Kubernetes cluster
@@ -202,7 +209,7 @@ endif
 .PHONY: limitador
 NAMESPACE ?= $(AUTHORINO_NAMESPACE)
 limitador:
-	kubectl -n $(NAMESPACE) apply -f examples/limitador/limitador-deploy.yaml
+	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/limitador/limitador-deploy.yaml
 
 # Targets with the 'local-' prefix, for trying Authorino in a local cluster spawned with Kind
 
