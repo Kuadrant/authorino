@@ -12,7 +12,7 @@ Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; le
 - **[OAuth 2.0 token introspection (RFC 7662)](./user-guides/oauth2-token-introspection.md)**<br/>
 Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and token validation in request-time.
 
-- **Passing credentials (`Authorization` header, cookie headers and others)**<br/>
+- **[Passing credentials (`Authorization` header, cookie headers and others)](./user-guides/passing-credentials.md)**<br/>
 Customize where credentials are supplied in the request by each trusted source of identity.
 
 - **HTTP basic authentication**<br/>
