@@ -43,10 +43,8 @@ func TestOAuth2Call(t *testing.T) {
 
 	{
 		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-inactive", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
-		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
-		assert.NilError(t, err)
-		claims := obj.(map[string]interface{})
-		assert.Assert(t, claims["active"] == false)
+		_, err := oauthEvaluator.Call(pipelineMock, ctx)
+		assert.Error(t, err, "token is not active")
 	}
 }
 

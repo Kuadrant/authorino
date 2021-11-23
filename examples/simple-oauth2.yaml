@@ -12,13 +12,6 @@ spec:
         tokenTypeHint: requesting_party_token
         credentialsRef:
           name: oauth2-token-introspection-credentials
-  authorization:
-    - name: active-access-tokens-only
-      json:
-        rules:
-          - selector: "auth.identity.active"
-            operator: eq
-            value: "true"
 ---
 apiVersion: v1
 kind: Secret

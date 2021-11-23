@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -78,6 +79,10 @@ func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (in
 	if err := json.NewDecoder(resp.Body).Decode(&claims); err != nil {
 		return nil, err
 	} else {
-		return claims, nil
+		if claims["active"].(bool) {
+			return claims, nil
+		} else {
+			return nil, fmt.Errorf("token is not active")
+		}
 	}
 }
