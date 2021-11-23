@@ -9,7 +9,7 @@ Issue API keys stored in Kubernetes `Secret`s for users to authenticate with you
 - **[OpenID Connect Discovery and authentication with JWTs](./user-guides/oidc-jwt-authentication.md)**<br/>
 Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; leverage OpenID Connect Discovery to automatically fetch JSON Web Key Sets (JWKS).
 
-- **OAuth 2.0 token introspection (RFC 7662)**<br/>
+- **[OAuth 2.0 token introspection (RFC 7662)](./user-guides/oauth2-token-introspection.md)**<br/>
 Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and token validation in request-time.
 
 - **Passing credentials (`Authorization` header, cookie headers and others)**<br/>
