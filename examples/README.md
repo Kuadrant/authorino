@@ -454,7 +454,7 @@ curl -H "Content-Type: application/x-www-form-urlencoded" -d "refresh_token=$REF
 Send another request:
 
 ```sh
-curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 403
+curl -H 'Host: talker-api' -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/hello # 401
 ```
 
 ----
