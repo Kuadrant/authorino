@@ -15,7 +15,7 @@ Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and
 - **[Passing credentials (`Authorization` header, cookie headers and others)](./user-guides/passing-credentials.md)**<br/>
 Customize where credentials are supplied in the request by each trusted source of identity.
 
-- **HTTP basic authentication**<br/>
+- **[HTTP "Basic" Authentication (RFC 7235)](./user-guides/http-basic-authentication.md)**<br/>
 Adjust Authorino API key `Secret`s settings to support HTTP basic auth.
 
 - **[Token normalization](./user-guides/token-normalization.md)**<br/>
