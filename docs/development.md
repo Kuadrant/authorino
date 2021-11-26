@@ -14,6 +14,7 @@
   - [Sign your commits](#sign-your-commits)
 - [Logging policy](#logging-policy)
 - [Additional resources](#additional-resources)
+- [Reach out](#reach-out)
 
 ## Technology stack for developers
 
@@ -264,3 +265,7 @@ Other repos:
 
 - [Authorino Operator](https://github.com/kuadrant/authorino-operator)
 - [Authorino examples](https://github.com/kuadrant/authorino-examples)
+
+## Reach out
+
+[kuadrant.slack.com](https://kuadrant.slack.com)

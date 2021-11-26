@@ -328,3 +328,5 @@ For a detailed description of the features above, refer to the [Features](./docs
 ## Contributing
 
 If you are interested in contributing to Authorino, please refer to the [Developer's guide](./docs/development.md) for info about the stack and requirements, workflow, policies and Code of Conduct.
+
+Join us on [kuadrant.slack.com](https://kuadrant.slack.com) for live discussions about the roadmap and more.
