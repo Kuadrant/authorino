@@ -291,6 +291,10 @@ Custom headers can be set with the `headers` field. Nevertheless, headers such a
 
 Online fetching of OpenID Connect (OIDC) UserInfo data (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline)), associated with an OIDC identity source configured and resolved in phase (i).
 
+Apart from possibly complementing information of the JWT, fetching OpenID Connect UserInfo in request-time can be particularly useful for remote checking the state of the session, as opposed to only verifying the JWT/JWS offline.
+
+Implementation requires an OpenID Connect issuer ([`spec.identity.oidc`](#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc)) configured in the same `AuthConfig`.
+
 The response returned by the OIDC server to the UserInfo request is appended (as JSON) to `auth.metadata` in the authorization JSON.
 
 ### User-Managed Access (UMA) resource registry ([`metadata.uma`](../api/v1beta1/auth_config_types.go#L167))

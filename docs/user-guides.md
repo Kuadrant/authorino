@@ -27,7 +27,7 @@ Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands"
 - **[Fetching auth metadata from external sources](./user-guides/external-metadata.md)**<br/>
 Get real-time online data from HTTP services to enhance authorization rules.
 
-- **OpenID Connect UserInfo**<br/>
+- **[OpenID Connect UserInfo](./user-guides/oidc-user-info.md)**<br/>
 Fetch user info for OpenID Connect ID tokens in request-time for extra metadata for your policies and online verification of token validity.
 
 - **User-Managed Access (UMA) resource registry**<br/>
