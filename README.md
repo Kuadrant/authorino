@@ -20,11 +20,13 @@ Cloud-native AuthN/AuthZ enforcer for tailor-made Zero Trust API security on Kub
 3. Apply an Authorino [`AuthConfig`](./docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) custom resource
 4. Obtain an authentication token and start sending requests
 
-The [Getting started](./docs/getting-started.md) page of the docs provides details for the steps above, as well as information about requirements and next steps.
+The full [Getting started](./docs/getting-started.md) page of the docs provides details for the steps above, as well as information about requirements and next steps.
 
 Check out the [docs](./docs/README.md) for general information about protecting your service using Authorino.
 
 ## Use-cases
+
+The [User guides](./docs/user-guides.md) section of the docs gathers several AuthN/AuthZ use-cases as well as the instructions to implement them using Authorino. A few examples are:
 
 - [Authentication with JWTs and OpenID Connect Discovery](./docs/user-guides/oidc-jwt-authentication.md)
 - [Authentication with API keys](./docs/user-guides/api-key-authentication.md)
@@ -34,8 +36,6 @@ Check out the [docs](./docs/README.md) for general information about protecting 
 - [Authorization with Kubernetes RBAC (SubjectAccessReview API)](./docs/user-guides/kubernetes-subjectaccessreview.md)
 - [Fetching auth metadata from external sources](./docs/user-guides/external-metadata.md)
 - [Token normalization](./docs/user-guides/token-normalization.md)
-
-Check out the [User guides](./docs/user-guides.md) section of the docs for several other AuthN/AuthZ use-cases and instructions of how to implement them using Authorino.
 
 ## How it works
 
