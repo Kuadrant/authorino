@@ -253,7 +253,14 @@ A few guidelines for adding logging messages in your code:
 
 ## Additional resources
 
+Here in the repo:
+
 - [Getting started](./getting-started.md)
 - [Terminology](./terminology.md)
 - [Architecture](./architecture.md)
 - [Feature description](./features.md)
+
+Other repos:
+
+- [Authorino Operator](https://github.com/kuadrant/authorino-operator)
+- [Authorino examples](https://github.com/kuadrant/authorino-examples)
