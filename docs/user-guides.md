@@ -45,7 +45,7 @@ Leverage the power of Open Policy Agent (OPA) policies, evaluated against Author
 - **[Kubernetes RBAC for service authorization (SubjectAccessReview API)](./user-guides/kubernetes-subjectaccessreview.md)**<br/>
 Manage permissions in the Kubernetes RBAC and let Authorino to check them in request-time with the authorization system of the cluster.
 
-- **Injecting data in the request**<br/>
+- **[Injecting data in the request](./user-guides/injecting-data.md)**<br/>
 Inject HTTP headers with serialized JSON content.
 
 - **Authenticated rate limiting (with Envoy Dynamic Metadata)**<br/>
