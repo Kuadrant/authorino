@@ -48,7 +48,7 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
 - **[Injecting data in the request](./user-guides/injecting-data.md)**<br/>
 Inject HTTP headers with serialized JSON content.
 
-- **Authenticated rate limiting (with Envoy Dynamic Metadata)**<br/>
+- **[Authenticated rate limiting (with Envoy Dynamic Metadata)](./user-guides/authenticated-rate-limiting-envoy-dynamic-metadata.md)**<br/>
 Provide Envoy with dynamic metadata from the external authorization process to be injected and used by consecutive filters, such as by a rate limiting service.
 
 - **Redirecting to a login page**<br/>
