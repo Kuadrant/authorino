@@ -51,7 +51,7 @@ Inject HTTP headers with serialized JSON content.
 - **[Authenticated rate limiting (with Envoy Dynamic Metadata)](./user-guides/authenticated-rate-limiting-envoy-dynamic-metadata.md)**<br/>
 Provide Envoy with dynamic metadata from the external authorization process to be injected and used by consecutive filters, such as by a rate limiting service.
 
-- **Redirecting to a login page**<br/>
+- **[Redirecting to a login page](./user-guides/deny-with-redirect-to-login.md)**<br/>
 Customize response status code and headers on failed requests. E.g. redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`; mask resources on access denied behind a `404 Not Found` response instead of `403 Forbidden`.
 
 - **Reducing the operational space: sharding, noise and multi-tenancy**<br/>
