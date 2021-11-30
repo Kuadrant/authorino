@@ -159,9 +159,9 @@ func getFromCookieHeader(headers map[string]string, keyName string) (string, err
 	}
 
 	for _, part := range strings.Split(header, ";") {
-		keyAndValue := strings.Split(strings.TrimSpace(part), "=")
-		if keyAndValue[0] == keyName {
-			return keyAndValue[1], nil
+		keyAndValue := strings.TrimSpace(part)
+		if strings.HasPrefix(keyAndValue, keyName+"=") {
+			return strings.TrimPrefix(keyAndValue, keyName+"="), nil
 		}
 	}
 

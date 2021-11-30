@@ -114,6 +114,36 @@ func TestGetCredentialsFromCookieHeaderSuccess(t *testing.T) {
 	assert.Check(t, cred == "HumanInstrumentality")
 }
 
+func TestGetCredentialsFromCookieHeaderFirstKey(t *testing.T) {
+	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
+		Headers: map[string]string{"cookie": "API-KEY=HumanInstrumentality; Expires=Tue, 01-Jan-2016 21:47:38 GMT"},
+	}
+
+	authCredentials := AuthCredential{
+		KeySelector: "API-KEY",
+		In:          "cookie",
+	}
+	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+
+	assert.NilError(t, err)
+	assert.Check(t, cred == "HumanInstrumentality")
+}
+
+func TestGetCredentialsFromCookieHeaderWithEqualSign(t *testing.T) {
+	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
+		Headers: map[string]string{"cookie": "Expires=Tue, 01-Jan-2016 21:47:38 GMT; API-KEY=SHVtYW5JbnN0cnVtZW50YWxpdHk="},
+	}
+
+	authCredentials := AuthCredential{
+		KeySelector: "API-KEY",
+		In:          "cookie",
+	}
+	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+
+	assert.NilError(t, err)
+	assert.Check(t, cred == "SHVtYW5JbnN0cnVtZW50YWxpdHk=")
+}
+
 func TestGetCredentialsFromCookieHeaderNoCookieHeaderFail(t *testing.T) {
 	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{
 		Headers: map[string]string{"cookie": "Expires=Tue, 01-Jan-2016 21:47:38 GMT"},
