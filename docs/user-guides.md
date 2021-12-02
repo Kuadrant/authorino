@@ -21,8 +21,8 @@ Adjust Authorino API key `Secret`s settings to support HTTP basic auth.
 - **[Token normalization](./user-guides/token-normalization.md)**<br/>
 Normalize identity claims from trusted sources and reduce complexity in your policies.
 
-- **Edge Authentication Architecture (EAA)**<br/>
-Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal micro-services.
+- **[Edge Authentication Architecture (EAA)](./user-guides/edge-authentication-architecture-festival-wristbands.md)**<br/>
+Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquitously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal micro-services.
 
 - **[Fetching auth metadata from external sources](./user-guides/external-metadata.md)**<br/>
 Get real-time online data from HTTP services to enhance authorization rules.
