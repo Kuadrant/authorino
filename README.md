@@ -22,7 +22,9 @@ Cloud-native AuthN/AuthZ enforcer for tailor-made Zero Trust API security on Kub
 
 The full [Getting started](./docs/getting-started.md) page of the docs provides details for the steps above, as well as information about requirements and next steps.
 
-Check out the [docs](./docs/README.md) for general information about protecting your service using Authorino.
+Or try out our [Hello World](./docs/user-guides/hello-world.md) example.
+
+For general information about protecting your service using Authorino, check out the [docs](./docs/README.md).
 
 ## Use-cases
 

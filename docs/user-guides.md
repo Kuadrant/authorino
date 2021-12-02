@@ -1,5 +1,8 @@
 # User guides
 
+- **[Hello World](./user-guides/hello-world.md)**<br/>
+The basics of protecting an API with Authorino.
+
 - **[Authentication with Kubernetes tokens (TokenReview API)](./user-guides/kubernetes-tokenreview.md)**<br/>
 Validate Kubernetes Service Account tokens to authenticate requests to your protected hosts.
 

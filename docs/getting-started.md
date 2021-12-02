@@ -2,6 +2,8 @@
 
 This page covers requirements and instructions to deploy Authorino on a Kubernetes cluster, as well as the steps to declare, apply and try out a protection layer of authentication and authorization over your service, clean-up and complete uninstall.
 
+If you prefer learning with an example, check out our [Hello World](./user-guides/hello-world.md).
+
 - [Requirements](#requirements)
 - [Install with the operator](#install-with-the-operator)
 - [Protect a service](#protect-a-service)
