@@ -179,15 +179,8 @@ else
 ENVOY_OVERLAY = notls
 endif
 example-apps:
-	@{ \
-	set -e ;\
-	EXAMPLES_DIR=$$(mktemp -d) ;\
-	cd $$EXAMPLES_DIR ;\
-	git clone --deph 1 --branch main https://github.com/Kuadrant/authorino-examples.git && cd authorino-examples ;\
-	kubectl -n $(NAMESPACE) apply -f talker-api/talker-api-deploy.yaml ;\
-	kustomize build envoy/overlays/$(ENVOY_OVERLAY) | kubectl -n $(NAMESPACE) apply -f - ;\
-	rm -rf $$EXAMPLES_DIR ;\
-	}
+	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-$(ENVOY_OVERLAY)-deploy.yaml
 ifneq (, $(DEPLOY_KEYCLOAK))
 	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/keycloak/keycloak-deploy.yaml
 endif
