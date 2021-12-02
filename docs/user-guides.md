@@ -33,9 +33,6 @@ Fetch user info for OpenID Connect ID tokens in request-time for extra metadata 
 - **[Resource-level authorization with User-Managed Access (UMA) resource registry](./user-guides/resource-level-authorization-uma.md)**<br/>
 Fetch resource attributes relevant for authorization from a User-Managed Access (UMA) resource registry such as Keycloak resource server clients.
 
-- **Leveraging Keycloak**<br/>
-Leverage Keycloak authentication methods and Keycloak Authorization Services' resource server clients.
-
 - **[Simple pattern-matching authorization policies](./user-guides/json-pattern-matching-authorization.md)**<br/>
 Write simple authorization rules based on JSON patterns matched against Authorino's Authorization JSON; check contextual information of the request, validate JWT claims, cross metadata fetched from external sources, etc.
 
