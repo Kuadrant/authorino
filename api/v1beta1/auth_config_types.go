@@ -149,7 +149,7 @@ type Identity_OidcConfig struct {
 	// The value must coincide with the value of  the "iss" (issuer) claim of the discovered OpenID Connect configuration.
 	Endpoint string `json:"endpoint"`
 	// Decides how long to wait before refreshing the OIDC configuration (in seconds).
-	TTL int `json:"ttl"`
+	TTL int `json:"ttl,omitempty"`
 }
 
 type Identity_APIKey struct {

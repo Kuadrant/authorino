@@ -694,11 +694,10 @@ spec:
                           type: string
                         ttl:
                           description: Decides how long to wait before refreshing
-                            the OIDC configuration
+                            the OIDC configuration (in seconds).
                           type: integer
                       required:
                       - endpoint
-                      - ttl
                       type: object
                     priority:
                       default: 0
