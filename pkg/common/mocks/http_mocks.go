@@ -7,13 +7,15 @@ import (
 	"net/http/httptest"
 )
 
-type HttpServerMockResponses struct {
+type HttpServerMockResponse struct {
 	Status  int
 	Headers map[string]string
 	Body    string
 }
 
-func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerMockResponses) *httptest.Server {
+type HttpServerMockResponseFunc func() HttpServerMockResponse
+
+func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerMockResponseFunc) *httptest.Server {
 	log.Printf("starting mock http server at %v", serverHost)
 
 	listener, err := net.Listen("tcp", serverHost)
@@ -22,7 +24,8 @@ func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerM
 	}
 
 	handler := func(rw http.ResponseWriter, req *http.Request) {
-		for path, response := range httpServerMocks {
+		for path, responseFunc := range httpServerMocks {
+			response := responseFunc()
 			if path == req.URL.String() {
 				for k, v := range response.Headers {
 					rw.Header().Add(k, v)

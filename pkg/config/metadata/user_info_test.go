@@ -51,9 +51,9 @@ func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 	}
 }
 func TestMain(m *testing.M) {
-	authServer := NewHttpServerMock(authServerHost, map[string]HttpServerMockResponses{
-		"/.well-known/openid-configuration": {Status: 200, Body: wellKnownOIDCConfig},
-		"/userinfo":                         {Status: 200, Body: userInfoClaims},
+	authServer := NewHttpServerMock(authServerHost, map[string]HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: wellKnownOIDCConfig} },
+		"/userinfo":                         func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: userInfoClaims} },
 	})
 	defer authServer.Close()
 	os.Exit(m.Run())

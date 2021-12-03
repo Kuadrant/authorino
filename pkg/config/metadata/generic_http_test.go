@@ -22,8 +22,8 @@ const (
 )
 
 func TestGenericHttpCallWithGET(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/metadata": {Status: 200, Body: `{"foo":"bar"}`},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/metadata": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -56,8 +56,8 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 }
 
 func TestGenericHttpCallWithPOST(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/metadata": {Status: 200, Body: `{"foo":"bar"}`},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/metadata": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -93,8 +93,8 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 }
 
 func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/metadata?p=some-origin": {Status: 200, Body: `{"foo":"bar"}`},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/metadata?p=some-origin": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -128,8 +128,8 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 }
 
 func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/metadata": {Status: 200, Body: `{"foo":"bar"}`},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/metadata": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
 	})
 	defer extHttpMetadataServer.Close()
 
