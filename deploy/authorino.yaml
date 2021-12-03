@@ -1,0 +1,22 @@
+# To deploy an Authorino instance using the Authorino Operator
+apiVersion: operator.authorino.kuadrant.io/v1beta1
+kind: Authorino
+metadata:
+  name: authorino
+spec:
+  image: authorino:local
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  clusterWide: false
+  listener:
+    tls:
+      enabled: ${TLS_ENABLED}
+      certSecretRef:
+        name: authorino-server-cert
+  oidcServer:
+    tls:
+      enabled: ${TLS_ENABLED}
+      certSecretRef:
+        name: authorino-oidc-server-cert
+  logLevel: debug
+  logMode: development

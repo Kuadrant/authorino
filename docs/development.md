@@ -87,45 +87,22 @@ The following command will:
 - Push the freshly built image to the cluster's registry
 - Install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster
 - Create a namespace for you tests
-- Install the example application [**Talker API**](https://github.com/kuadrant/authorino-examples#talker-api), a simple HTTP API that echoes back whatever it gets in the request
+- Generate TLS certificates for the Authorino service
+- Deploy an instance of Authorino to the namespace
+- Deploy the example application [**Talker API**](https://github.com/kuadrant/authorino-examples#talker-api), a simple HTTP API that echoes back whatever it gets in the request
 - Setup Envoy for proxying to the Talker API and using Authorino for external authorization
 
 ```sh
 make local-setup
 ```
 
-Create the `Authorino` custom resource, e.g.:
-
-```sh
-kubectl -n authorino apply -f -<<EOF
-apiVersion: operator.authorino.kuadrant.io/v1beta1
-kind: Authorino
-metadata:
-  name: authorino
-spec:
-  image: authorino:local
-  replicas: 1
-  clusterWide: false
-  listener:
-    tls:
-      enabled: true
-      certSecretRef:
-        name: authorino-server-cert
-  oidcServer:
-    tls:
-      enabled: true
-      certSecretRef:
-        name: authorino-oidc-server-cert
-EOF
-```
+You will be prompted to edit the `Authorino` custom resource.
 
 Once the deployment is ready, you can forward the requests on port 8000 to the Envoy service
 
 ```sh
 kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 ```
-
-You can skip the step of building a local image of Authorino based on the current branch and default to `quay.io/3scale/authorino:latest` instead by passing `SKIP_LOCAL_BUILD=1` to `make local-setup`.
 
 #### Additional tools (for specific use-cases)
 

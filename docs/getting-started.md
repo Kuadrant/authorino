@@ -69,7 +69,7 @@ The instructions here are for centralized gateway or centralized authorization s
   ```sh
   git clone --depth 1 --branch v0.5.0 https://github.com/kuadrant/authorino.git && cd authorino
   make cert-manager # installs https://github.com/jetstack/cert-manager - skip it if already installed
-  make certs AUTHORINO_NAMESPACE=authorino
+  make certs NAMESPACE=authorino
   ```
 
   Deploy Authorino:
@@ -131,7 +131,7 @@ The instructions here are for centralized gateway or centralized authorization s
   ```sh
   git clone --depth 1 --branch v0.5.0 https://github.com/kuadrant/authorino.git && cd authorino
   make cert-manager # installs https://github.com/jetstack/cert-manager - skip it if already installed
-  make certs AUTHORINO_NAMESPACE=myapp
+  make certs NAMESPACE=myapp
   ```
 
   Deploy Authorino:
