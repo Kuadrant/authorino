@@ -1,7 +1,14 @@
 # User guide: OpenID Connect Discovery and authentication with JWTs
 
+Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; leverage OpenID Connect Discovery to automatically fetch JSON Web Key Sets (JWKS).
+
 <details>
-  <summary><strong>Feature:</strong> Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></summary>
+  <summary>
+    <strong>Authorino features in this guide:</strong>
+    <ul>
+      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+    </ul>
+  </summary>
 
   Authorino validates JSON Web Tokens (JWT) issued by an OpenID Connect server that implements OpenID Connect Discovery. Authorino fetches the OpenID Connect configuration and JSON Web Key Set (JWKS) from the issuer endpoint, and verifies the JSON Web Signature (JWS) and time validity of the token.
 
@@ -16,7 +23,7 @@
 
 - Kubernetes server
 - Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
-- [jq](https://stedolan.github.io/jq/)
+- [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 

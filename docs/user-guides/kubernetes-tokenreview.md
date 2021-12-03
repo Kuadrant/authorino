@@ -1,7 +1,14 @@
 # User guide: Authentication with Kubernetes tokens (TokenReview API)
 
+Validate Kubernetes Service Account tokens to authenticate requests to your protected hosts.
+
 <details>
-  <summary><strong>Feature:</strong> Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></summary>
+  <summary>
+    <strong>Authorino features in this guide:</strong>
+    <ul>
+      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>
+    </ul>
+  </summary>
 
   Authorino can verify Kubernetes-valid access tokens (using Kubernetes [TokenReview](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1) API).
 

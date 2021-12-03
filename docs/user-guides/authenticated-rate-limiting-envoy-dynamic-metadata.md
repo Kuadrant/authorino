@@ -1,8 +1,10 @@
 # User guide: Authenticated rate limiting (with Envoy Dynamic Metadata)
 
+Provide Envoy with dynamic metadata about the external authorization process to be injected into the rate limiting filter.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Dynamic response → Response wrappers → <a href="./../features.md#envoy-dynamic-metadata">Envoy Dynamic Metadata</a></li>
       <li>Dynamic response → <a href="./../features.md#json-injection-responsejson">JSON injection</a></li>

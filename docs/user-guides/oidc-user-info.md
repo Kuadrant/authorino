@@ -1,8 +1,10 @@
 # User guide: OpenID Connect UserInfo
 
+Fetch user info for OpenID Connect ID tokens in request-time for extra metadata for your policies and online verification of token validity.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>External auth metadata → <a href="./../features.md#oidc-userinfo-metadatauserinfo">OIDC UserInfo</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
@@ -23,7 +25,7 @@
 
 - Kubernetes server
 - Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
-- [jq](https://stedolan.github.io/jq/)
+- [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 

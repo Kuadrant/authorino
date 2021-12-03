@@ -8,7 +8,7 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
 
 <details>
   <summary>
-    <strong>Features explored in this guide:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li><a href="./../architecture.md#sharding">Sharding</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>

@@ -12,7 +12,7 @@ As a minimum, EAA allows to simplify authentication between applications and mic
 
 <details>
   <summary>
-    <strong>Features explored in this guide:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Dynamic response → <a href="./../features.md#festival-wristband-tokens-responsewristband">Festival Wristband tokens</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>

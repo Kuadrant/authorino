@@ -1,8 +1,10 @@
 # User guide: Resource-level authorization with User-Managed Access (UMA) resource registry
 
+Fetch resource metadata relevant for your authorization policies from Keycloak authorization clients, unsing User-Managed Access (UMA) protocol.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>External auth metadata → <a href="./../features.md#user-managed-access-uma-resource-registry-metadatauma">User-Managed Access (UMA) resource registry</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
@@ -21,7 +23,7 @@
 
 - Kubernetes server
 - Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
-- [jq](https://stedolan.github.io/jq/)
+- [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 

@@ -1,11 +1,18 @@
 # User guide: Authentication with API keys
 
+Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with your protected hosts.
+
 <details>
-  <summary><strong>Feature:</strong> Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></summary>
+  <summary>
+    <strong>Authorino features in this guide:</strong>
+    <ul>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+    </ul>
+  </summary>
 
   In Authorino, API keys are stored as Kubernetes `Secret`s. Each resource must contain an `api_key` entry with the value of the API key, and labeled to match the selectors specified in `spec.identity.apiKey.labelSelectors` of the `AuthConfig`.
 
-  Moreover, API keys are automatically reconciled, to which the `Secret`s must also include labels that match the `secretLabelSelector` field of the Authorino instance. See [Resource reconciliation and status update](../architecture.md#resource-reconciliation-and-status-update) for details.
+  API key `Secret`s must also include labels that match the `secretLabelSelector` field of the Authorino instance. See [Resource reconciliation and status update](../architecture.md#resource-reconciliation-and-status-update) for details.
 
   For further details about Authorino features in general, check the [docs](./../features.md).
 </details>

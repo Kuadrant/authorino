@@ -7,7 +7,7 @@ The basics of protecting an API with Authorino.
 Validate Kubernetes Service Account tokens to authenticate requests to your protected hosts.
 
 - **[Authentication with API keys](./user-guides/api-key-authentication.md)**<br/>
-Issue API keys stored in Kubernetes `Secret`s for users to authenticate with your protected hosts.
+Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with your protected hosts.
 
 - **[OpenID Connect Discovery and authentication with JWTs](./user-guides/oidc-jwt-authentication.md)**<br/>
 Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; leverage OpenID Connect Discovery to automatically fetch JSON Web Key Sets (JWKS).
@@ -19,7 +19,7 @@ Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and
 Customize where credentials are supplied in the request by each trusted source of identity.
 
 - **[HTTP "Basic" Authentication (RFC 7235)](./user-guides/http-basic-authentication.md)**<br/>
-Adjust Authorino API key `Secret`s settings to support HTTP basic auth.
+Turn Authorino API key `Secret`s settings into HTTP basic auth.
 
 - **[Token normalization](./user-guides/token-normalization.md)**<br/>
 Normalize identity claims from trusted sources and reduce complexity in your policies.
@@ -28,7 +28,7 @@ Normalize identity claims from trusted sources and reduce complexity in your pol
 Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquitously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal micro-services.
 
 - **[Fetching auth metadata from external sources](./user-guides/external-metadata.md)**<br/>
-Get real-time online data from HTTP services to enhance authorization rules.
+Get online data from remote HTTP services to enhance authorization rules.
 
 - **[OpenID Connect UserInfo](./user-guides/oidc-user-info.md)**<br/>
 Fetch user info for OpenID Connect ID tokens in request-time for extra metadata for your policies and online verification of token validity.

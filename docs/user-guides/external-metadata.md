@@ -1,8 +1,10 @@
 # User guide: Fetching auth metadata from external sources
 
+Get online data from remote HTTP services to enhance authorization rules.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>

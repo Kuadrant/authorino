@@ -1,8 +1,10 @@
 # User guide: Simple pattern-matching authorization policies
 
+Write simple authorization rules based on JSON patterns matched against Authorino's Authorization JSON; check contextual information of the request, validate JWT claims, cross metadata fetched from external sources, etc.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
@@ -22,7 +24,7 @@
 
 - Kubernetes server
 - Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
-- [jq](https://stedolan.github.io/jq/)
+- [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 

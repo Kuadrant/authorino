@@ -1,8 +1,10 @@
 # User guide: Kubernetes RBAC for service authorization (SubjectAccessReview API)
 
+Manage permissions in the Kubernetes RBAC and let Authorino to check them in request-time with the authorization system of the cluster.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes">Kubernetes SubjectAccessReview</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>

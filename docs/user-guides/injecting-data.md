@@ -1,8 +1,10 @@
 # User guide: Injecting data in the request
 
+Inject HTTP headers with serialized JSON content.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Dynamic response → <a href="./../features.md#json-injection-responsejson">JSON injection</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>

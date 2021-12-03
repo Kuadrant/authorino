@@ -1,8 +1,10 @@
 # User guide: HTTP "Basic" Authentication (RFC 7235)
 
+Turn Authorino API key `Secret`s settings into HTTP basic auth.
+
 <details>
   <summary>
-    <strong>Feature:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
         <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>

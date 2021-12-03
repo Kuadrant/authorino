@@ -1,8 +1,10 @@
 # User guide: Redirecting to a login page
 
+Customize response status code and headers on failed requests to redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Dynamic response → <a href="./../features.md#extra-custom-denial-status-denywith">Custom denial status</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>

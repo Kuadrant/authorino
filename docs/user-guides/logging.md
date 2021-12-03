@@ -1,5 +1,7 @@
 # Logging
 
+Master Authorino log messages and learn how to trace authorization requests.
+
 ## 1. Log levels and log modes
 
 Authorino outputs 3 levels of log messages: (from lowest to highest level)

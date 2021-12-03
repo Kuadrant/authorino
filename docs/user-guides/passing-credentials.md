@@ -1,8 +1,10 @@
 # User guide: Passing credentials (`Authorization` header, cookie headers and others)
 
+Customize where credentials are supplied in the request by each trusted source of identity.
+
 <details>
   <summary>
-    <strong>Features:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Identity verification & authentication → <a href="./../features.md#extra-auth-credentials-credentials">Auth credentials</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>

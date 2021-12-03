@@ -10,7 +10,7 @@ For not only normalizing the identity claims for purpose of writing simpler auth
 
 <details>
   <summary>
-    <strong>Features explored in this guide:</strong>
+    <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
@@ -30,7 +30,7 @@ For not only normalizing the identity claims for purpose of writing simpler auth
 
 - Kubernetes server
 - Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
-- [jq](https://stedolan.github.io/jq/)
+- [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
