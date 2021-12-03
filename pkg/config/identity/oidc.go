@@ -25,8 +25,9 @@ func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials, ttl int, c
 		AuthCredentials: creds,
 		Endpoint:        endpoint,
 	}
-	_ = oidc.getProvider(log.IntoContext(ctx, log.FromContext(ctx).WithName("oidc")))
-	oidc.shutDown = oidc.configureProviderRefresh(ttl, ctx)
+	ctxWithLogger := log.IntoContext(ctx, log.FromContext(ctx).WithName("oidc"))
+	_ = oidc.getProvider(ctxWithLogger, false)
+	oidc.shutDown = oidc.configureProviderRefresh(ttl, ctxWithLogger)
 	return oidc
 }
 
@@ -46,12 +47,13 @@ func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context) (inter
 	}
 }
 
-func (oidc *OIDC) getProvider(ctx context.Context) *goidc.Provider {
-	if oidc.provider == nil {
+func (oidc *OIDC) getProvider(ctx context.Context, force bool) *goidc.Provider {
+	if oidc.provider == nil || force {
 		endpoint := oidc.Endpoint
 		if provider, err := goidc.NewProvider(context.TODO(), endpoint); err != nil {
 			log.FromContext(ctx).Error(err, "failed to discovery openid connect configuration", "endpoint", endpoint)
 		} else {
+			log.FromContext(ctx).V(1).Info("openid connect configuration updated", "endpoint", endpoint)
 			oidc.provider = provider
 		}
 	}
@@ -81,7 +83,7 @@ func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, 
 func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.IDToken, error) {
 	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
 
-	if idToken, err := oidc.getProvider(ctx).Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
+	if idToken, err := oidc.getProvider(ctx, false).Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
 		return nil, err
 	} else {
 		return idToken, nil
@@ -90,7 +92,7 @@ func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.I
 
 func (oidc *OIDC) GetURL(name string, ctx context.Context) (*url.URL, error) {
 	var providerClaims map[string]interface{}
-	_ = oidc.getProvider(ctx).Claims(&providerClaims)
+	_ = oidc.getProvider(ctx, false).Claims(&providerClaims)
 
 	if endpoint, err := url.Parse(providerClaims[name].(string)); err != nil {
 		return nil, err
@@ -109,13 +111,13 @@ func (oidc *OIDC) configureProviderRefresh(ttl int, ctx context.Context) chan bo
 		oidc.refresh.Stop()
 	}
 	oidc.refresh = time.NewTicker(duration)
-	// to make sure this routne is cleaned up and stopped we return a done channel
+	// to make sure this routine is cleaned up and stopped we return a done channel
 	go func() {
 		defer oidc.refresh.Stop()
 		for {
 			select {
 			case <-oidc.refresh.C:
-				oidc.getProvider(ctx)
+				oidc.getProvider(ctx, true)
 			case <-ctx.Done():
 				return
 			case <-done:
