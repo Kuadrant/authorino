@@ -104,11 +104,11 @@ func (oidc *OIDC) configureProviderRefresh(ttl int, ctx context.Context) chan bo
 		return nil
 	}
 	done := make(chan bool, 1)
-	duriation := time.Duration(ttl) * time.Second
+	duration := time.Duration(ttl) * time.Second
 	if oidc.refresh != nil {
 		oidc.refresh.Stop()
 	}
-	oidc.refresh = time.NewTicker(duriation)
+	oidc.refresh = time.NewTicker(duration)
 	// to make sure this routne is cleaned up and stopped we return a done channel
 	go func() {
 		defer oidc.refresh.Stop()

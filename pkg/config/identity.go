@@ -52,7 +52,6 @@ func (config *IdentityConfig) GetAuthConfigCleaner() common.AuthConfigCleaner {
 		return config.OIDC
 	default:
 		return nil
-
 	}
 }
 

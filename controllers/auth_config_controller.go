@@ -69,10 +69,10 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// could not find the resouce: 404 Not found (resouce must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		apiConfig := r.Cache.Get(req.String())
-		if nil != apiConfig {
-			for _, identityConifg := range apiConfig.IdentityConfigs {
-				if v, ok := identityConifg.(common.AuthConfigCleaner); ok {
-					if err := v.Clean(ctx); err != nil {
+		if apiConfig != nil {
+			for _, identityConfig := range apiConfig.IdentityConfigs {
+				if cleaner, ok := identityConfig.(common.AuthConfigCleaner); ok {
+					if err := cleaner.Clean(ctx); err != nil {
 						return ctrl.Result{}, err
 					}
 				}
