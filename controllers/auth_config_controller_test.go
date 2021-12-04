@@ -188,13 +188,15 @@ func TestHostColllision(t *testing.T) {
 	cacheMock := mock_cache.NewMockCache(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{})
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
 	cacheMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 
-	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
 
 	assert.DeepEqual(t, result, ctrl.Result{})
 	assert.NilError(t, err)
@@ -206,14 +208,16 @@ func TestMissingWatchedAuthConfigLabels(t *testing.T) {
 	cacheMock := mock_cache.NewMockCache(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
 
-	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
 
 	assert.NilError(t, err)
 	assert.DeepEqual(t, result, ctrl.Result{}) // Result should be empty
@@ -225,15 +229,17 @@ func TestMatchingAuthConfigLabels(t *testing.T) {
 	cacheMock := mock_cache.NewMockCache(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
 
-	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
 
 	assert.NilError(t, err)
 	assert.DeepEqual(t, result, ctrl.Result{}) // Result should be empty
@@ -245,15 +251,16 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	cacheMock := mock_cache.NewMockCache(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "other"})
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
 
-	cacheMock.EXPECT().Get("authorino/auth-config-1")
-	cacheMock.EXPECT().Delete("authorino/auth-config-1")
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().Delete(authConfigName.String())
 
-	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
 
 	assert.NilError(t, err)
 	assert.DeepEqual(t, result, ctrl.Result{}) // Result should be empty
