@@ -191,7 +191,7 @@ jobs:
           #  - nothing in third_party
           #  - nothing in .git/
           #  - no *.ai (Adobe Illustrator) files.
-          for x in $(find . -type f -not -name '*.ai' -not -path './vendor/*' -not -path './third_party/*' -not -path './.git/*'); do
+          for x in $(find . -type f -not -name '*.ai' -not -name '*.svg' -not -path './vendor/*' -not -path './third_party/*' -not -path './.git/*'); do
             # Based on https://stackoverflow.com/questions/34943632/linux-check-if-there-is-an-empty-line-at-the-end-of-a-file
             if [[ -f $x && ! ( -s "$x" && -z "$(tail -c 1 $x)" ) ]]; then
               # We add 1 to `wc -l` here because of this limitation (from the man page):
