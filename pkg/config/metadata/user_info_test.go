@@ -38,7 +38,7 @@ type userInfoTestData struct {
 
 func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 	authCredMock := NewMockAuthCredentials(ctrl)
-	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, context.TODO())
+	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, 0, context.TODO())
 	ctx, cancel := context.WithCancel(context.TODO())
 	return userInfoTestData{
 		ctx,
@@ -51,9 +51,9 @@ func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 	}
 }
 func TestMain(m *testing.M) {
-	authServer := NewHttpServerMock(authServerHost, map[string]HttpServerMockResponses{
-		"/.well-known/openid-configuration": {Status: 200, Body: wellKnownOIDCConfig},
-		"/userinfo":                         {Status: 200, Body: userInfoClaims},
+	authServer := NewHttpServerMock(authServerHost, map[string]HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: wellKnownOIDCConfig} },
+		"/userinfo":                         func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: userInfoClaims} },
 	})
 	defer authServer.Close()
 	os.Exit(m.Run())
@@ -98,7 +98,7 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	otherOidcEvaluator := identity.NewOIDC("http://wrongServer", ta.authCredMock, context.TODO())
+	otherOidcEvaluator := identity.NewOIDC("http://wrongServer", ta.authCredMock, 0, context.TODO())
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(otherOidcEvaluator)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 

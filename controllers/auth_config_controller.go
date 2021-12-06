@@ -60,6 +60,7 @@ type AuthConfigReconciler struct {
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
+	cacheId := req.String()
 
 	authConfig := configv1beta1.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
@@ -68,11 +69,23 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
 		// could not find the resouce: 404 Not found (resouce must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
+
+		// clean the identity configs, i.e. shuts down channels and go routines
+		if err := r.cleanAllIdentityConfigs(cacheId, ctx); err != nil {
+			logger.Error(err, "failed to clean identity configs")
+		}
+
 		// delete related authconfigs from cache.
-		r.Cache.Delete(req.String())
+		r.Cache.Delete(cacheId)
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the cache
+
+		// clean the identity configs, i.e. shuts down channels and go routines
+		if err := r.cleanAllIdentityConfigs(cacheId, ctx); err != nil {
+			logger.Error(err, "failed to clean identity configs")
+		}
+
 		authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -87,7 +100,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				}
 			}
 
-			if err := r.Cache.Set(req.String(), host, apiConfig, true); err != nil {
+			if err := r.Cache.Set(cacheId, host, apiConfig, true); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -96,6 +109,22 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger.Info("resource reconciled")
 
 	return ctrl.Result{}, nil
+}
+
+func (r *AuthConfigReconciler) cleanAllIdentityConfigs(cacheId string, ctx context.Context) error {
+	if hosts := r.Cache.FindKeys(cacheId); len(hosts) > 0 {
+		// no need to clean for all the hosts as the config should be the same
+		if apiConfig := r.Cache.Get(hosts[0]); apiConfig != nil {
+			for _, identityConfig := range apiConfig.IdentityConfigs {
+				if cleaner, ok := identityConfig.(common.AuthConfigCleaner); ok {
+					if err := cleaner.Clean(ctx); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *configv1beta1.AuthConfig) (map[string]authorinoService.APIConfig, error) {
@@ -148,7 +177,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// oidc
 		case configv1beta1.IdentityOidc:
-			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, ctxWithLogger)
+			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, identity.Oidc.TTL, ctxWithLogger)
 
 		// apiKey
 		case configv1beta1.IdentityApiKey:

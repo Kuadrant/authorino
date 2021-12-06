@@ -26,6 +26,11 @@ type AuthConfigEvaluator interface {
 	Call(AuthPipeline, context.Context) (interface{}, error)
 }
 
+type AuthConfigCleaner interface {
+	// Clean is used to give the different auth configs chance to clean up anything internal to that config
+	Clean(context.Context) error
+}
+
 type NamedConfigEvaluator interface {
 	GetName() string
 }

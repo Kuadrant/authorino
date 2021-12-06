@@ -16,9 +16,9 @@ import (
 const oauthServerHost = "127.0.0.1:9004"
 
 func TestOAuth2Call(t *testing.T) {
-	authServer := NewHttpServerMock(oauthServerHost, map[string]HttpServerMockResponses{
-		"/introspect-active":   {Status: 200, Body: `{ "active": true }`},
-		"/introspect-inactive": {Status: 200, Body: `{ "active": false }`},
+	authServer := NewHttpServerMock(oauthServerHost, map[string]HttpServerMockResponseFunc{
+		"/introspect-active":   func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{ "active": true }`} },
+		"/introspect-inactive": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{ "active": false }`} },
 	})
 	defer authServer.Close()
 

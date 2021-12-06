@@ -29,8 +29,8 @@ var (
 )
 
 func TestNewUMAMetadata(t *testing.T) {
-	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponses{
-		"/uma/.well-known/uma2-configuration": {Status: 200, Body: umaWellKnownConfig},
+	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponseFunc{
+		"/uma/.well-known/uma2-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: umaWellKnownConfig} },
 	})
 	defer httpServer.Close()
 
@@ -41,8 +41,8 @@ func TestNewUMAMetadata(t *testing.T) {
 }
 
 func TestUMAMetadataFailToDecodeConfig(t *testing.T) {
-	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponses{
-		"/uma/.well-known/uma2-configuration": {Status: 500},
+	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponseFunc{
+		"/uma/.well-known/uma2-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 500} },
 	})
 	defer httpServer.Close()
 
@@ -53,12 +53,14 @@ func TestUMAMetadataFailToDecodeConfig(t *testing.T) {
 }
 
 func TestUMACall(t *testing.T) {
-	jsonResponse := func(body string) HttpServerMockResponses {
-		return HttpServerMockResponses{Status: 200, Headers: map[string]string{"Context-Type": "application/json"}, Body: body}
+	jsonResponse := func(body string) HttpServerMockResponseFunc {
+		return func() HttpServerMockResponse {
+			return HttpServerMockResponse{Status: 200, Headers: map[string]string{"Context-Type": "application/json"}, Body: body}
+		}
 	}
 
 	resourceData := `{"_id":"44f93c94-a8d0-4b33-8188-8173e86844d2","name":"some-resource","uris":["/someresource"]}`
-	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponses{
+	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponseFunc{
 		"/uma/.well-known/uma2-configuration":                    jsonResponse(umaWellKnownConfig),
 		"/uma/pat":                                               jsonResponse(`{"some-pat-claim": "some-value"}`),
 		"/uma/resource_set?uri=/someresource":                    jsonResponse(`["44f93c94-a8d0-4b33-8188-8173e86844d2"]`),

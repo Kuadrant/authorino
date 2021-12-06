@@ -33,8 +33,8 @@ func TestNewOPAAuthorizationInlineRego(t *testing.T) {
 }
 
 func TestNewOPAAuthorizationExternalUrl(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/rego": {Status: 200, Body: opaInlineRegoDataMock},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/rego": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: opaInlineRegoDataMock} },
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -51,8 +51,8 @@ func TestNewOPAAuthorizationExternalUrl(t *testing.T) {
 
 // TestNewOPAAuthorizationBoth it will take the rego from Inline parameter and won't download it from the external URL
 func TestNewOPAAuthorizationBoth(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/rego": {Status: 200, Body: "won't work"},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/rego": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: "won't work"} },
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -80,8 +80,10 @@ func TestNewOPAAuthorizationWithPackageInRego(t *testing.T) {
 func TestNewOPAAuthorizationJsonResponse(t *testing.T) {
 	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod = object.get(input.context.request.http, \"method\", \"\")\npath = object.get(input.context.request.http, \"path\", \"\")\n\nallow { method == \"GET\"; path = \"/allow\" }"}}`
 
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponses{
-		"/rego": {Status: 200, Body: jsonData, Headers: map[string]string{"Content-Type": "application/json"}},
+	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
+		"/rego": func() HttpServerMockResponse {
+			return HttpServerMockResponse{Status: 200, Body: jsonData, Headers: map[string]string{"Content-Type": "application/json"}}
+		},
 	})
 	defer extHttpMetadataServer.Close()
 
