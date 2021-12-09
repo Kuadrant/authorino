@@ -8,9 +8,9 @@ metadata:
   namespace: system
 spec:
   dnsNames:
-  - authorino-authorization
-  - authorino-authorization.$(AUTHORINO_NAMESPACE).svc
-  - authorino-authorization.$(AUTHORINO_NAMESPACE).svc.cluster.local
+  - authorino-authorino-authorization
+  - authorino-authorino-authorization.$(AUTHORINO_NAMESPACE).svc
+  - authorino-authorino-authorization.$(AUTHORINO_NAMESPACE).svc.cluster.local
   issuerRef:
     kind: Issuer
     name: ca-issuer
