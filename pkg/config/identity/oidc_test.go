@@ -24,6 +24,55 @@ func oidcServerMockResponse(count int) mock_common.HttpServerMockResponse {
 	}
 }
 
+func TestOidcVerifyTokenServerUnknownHost(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+
+	evaluator := NewOIDC("http://unreachable-server", authCredMock, 0, context.TODO())
+	token, err := evaluator.verifyToken("token", context.TODO())
+
+	assert.Check(t, token == nil)
+	assert.Error(t, err, "missing openid connect configuration")
+}
+
+func TestOidcVerifyTokenServerNotFound(t *testing.T) {
+	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse { return mock_common.HttpServerMockResponse{Status: 404} },
+	})
+	defer authServer.Close()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+
+	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
+	token, err := evaluator.verifyToken("token", context.TODO())
+
+	assert.Check(t, token == nil)
+	assert.Error(t, err, "missing openid connect configuration")
+}
+
+func TestOidcVerifyTokenServerInternalError(t *testing.T) {
+	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse { return mock_common.HttpServerMockResponse{Status: 500} },
+	})
+	defer authServer.Close()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+
+	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
+	token, err := evaluator.verifyToken("token", context.TODO())
+
+	assert.Check(t, token == nil)
+	assert.Error(t, err, "missing openid connect configuration")
+}
+
 func TestOidcProviderRefreshDisabled(t *testing.T) {
 	count := 0
 	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{

@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -81,9 +82,14 @@ func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, 
 }
 
 func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.IDToken, error) {
-	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
+	provider := oidc.getProvider(ctx, false)
 
-	if idToken, err := oidc.getProvider(ctx, false).Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
+	if provider == nil {
+		return nil, fmt.Errorf("missing openid connect configuration")
+	}
+
+	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
+	if idToken, err := provider.Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
 		return nil, err
 	} else {
 		return idToken, nil
