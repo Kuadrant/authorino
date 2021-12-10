@@ -1,0 +1,69 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app: authorino
+  name: authorino-ca-cert
+  namespace: $(NAMESPACE)
+spec:
+  commonName: '*.$(NAMESPACE).svc'
+  isCA: true
+  issuerRef:
+    kind: Issuer
+    name: authorino-selfsigned-issuer
+  secretName: authorino-ca-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app: authorino
+  name: authorino-oidc-server-cert
+  namespace: $(NAMESPACE)
+spec:
+  dnsNames:
+  - $(AUTHORINO_INSTANCE)-authorino-oidc
+  - $(AUTHORINO_INSTANCE)-authorino-oidc.$(NAMESPACE).svc
+  - $(AUTHORINO_INSTANCE)-authorino-oidc.$(NAMESPACE).svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: authorino-ca-issuer
+  secretName: authorino-oidc-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app: authorino
+  name: authorino-server-cert
+  namespace: $(NAMESPACE)
+spec:
+  dnsNames:
+  - $(AUTHORINO_INSTANCE)-authorino-authorization
+  - $(AUTHORINO_INSTANCE)-authorino-authorization.$(NAMESPACE).svc
+  - $(AUTHORINO_INSTANCE)-authorino-authorization.$(NAMESPACE).svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: authorino-ca-issuer
+  secretName: authorino-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app: authorino
+  name: authorino-ca-issuer
+  namespace: $(NAMESPACE)
+spec:
+  ca:
+    secretName: authorino-ca-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    app: authorino
+  name: authorino-selfsigned-issuer
+  namespace: $(NAMESPACE)
+spec:
+  selfSigned: {}
