@@ -2,7 +2,7 @@
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
-  name: authorino
+  name: $(AUTHORINO_INSTANCE)
 spec:
   image: authorino:local
   imagePullPolicy: IfNotPresent
@@ -10,12 +10,12 @@ spec:
   clusterWide: false
   listener:
     tls:
-      enabled: ${TLS_ENABLED}
+      enabled: $(TLS_ENABLED)
       certSecretRef:
         name: authorino-server-cert
   oidcServer:
     tls:
-      enabled: ${TLS_ENABLED}
+      enabled: $(TLS_ENABLED)
       certSecretRef:
         name: authorino-oidc-server-cert
   logLevel: debug

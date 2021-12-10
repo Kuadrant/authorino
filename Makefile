@@ -17,6 +17,9 @@ AUTHORINO_MANIFESTS ?= $(PROJECT_DIR)/install/manifests.yaml
 # The Kubernetes namespace where to deploy the Authorino instance
 NAMESPACE ?= authorino
 
+# Authorino instance name
+AUTHORINO_INSTANCE ?= authorino
+
 # TLS enabled/disabled
 TLS_ENABLED ?= true
 
@@ -131,13 +134,12 @@ namespace:
 	kubectl create namespace $(NAMESPACE)
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-REGEX="s/$$\{TLS_ENABLED\}/$(TLS_ENABLED)/g"
 deploy: certs
 	@{ \
 	set -e ;\
 	TEMP_FILE=/tmp/authorino-deploy-$$(openssl rand -hex 4).yaml ;\
 	cp $(AUTHORINO_CR) $$TEMP_FILE ;\
-	sed -i "$(REGEX)" $$TEMP_FILE ;\
+	sed -i "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(TLS_ENABLED)/$(TLS_ENABLED)/g" $$TEMP_FILE ;\
 	$(EDITOR) $$TEMP_FILE ;\
 	kubectl -n $(NAMESPACE) apply -f $$TEMP_FILE ;\
 	rm -rf $$TEMP_FILE ;\
@@ -153,12 +155,10 @@ ifeq (true,$(TLS_ENABLED))
 endif
 
 # Requests TLS certificates for services if cert-manager.io is installed, the secret is not already present and TLS is enabled
-certs: kustomize
+certs:
 ifeq (true,$(TLS_ENABLED))
 ifeq (,$(shell kubectl -n $(NAMESPACE) get secret/authorino-oidc-server-cert 2>/dev/null))
-	cd deploy/certs && kustomize edit set namespace $(NAMESPACE)
-	kustomize build deploy/certs | kubectl -n $(NAMESPACE) apply -f -
-	cd deploy/certs && kustomize edit set namespace authorino
+	sed "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(NAMESPACE)/$(NAMESPACE)/g" deploy/certs.yaml | kubectl -n $(NAMESPACE) apply -f -
 else
 	echo "tls cert secret found."
 endif
