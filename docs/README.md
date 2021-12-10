@@ -5,4 +5,4 @@
 ## [Architecture](./architecture.md)
 ## [Feature description](./features.md)
 ## [User guides](./user-guides.md)
-## [Developer’s guide](./development.md)
+## [Developer’s guide](./contributing.md)
