@@ -47,8 +47,7 @@ Check out the [Features](./features.md) specification for fature-specific requir
 ### 1. Clone and install the Authorino Operator
 
 ```sh
-git clone https://github.com/kuadrant/authorino-operator && cd authorino-operator
-kubectl create namespace authorino-operator && make install deploy
+kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
 ### 2. Deploy an Authorino instance
