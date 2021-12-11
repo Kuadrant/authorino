@@ -48,8 +48,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-git clone https://github.com/kuadrant/authorino-operator && cd authorino-operator
-kubectl create namespace authorino-operator && make install deploy
+kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
 ## 2. Create the namespace
@@ -202,7 +201,7 @@ curl -H "Authorization: Bearer $ACCESS_TOKEN" \
 
 ## Cleanup
 
-If you have started a Kubernetes cluster locally with Kind only to test this user guide, delete it by running:
+If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
 kind delete cluster --name authorino-trial
@@ -215,8 +214,8 @@ kubectl -n authorino namespace authorino
 kubectl -n authorino namespace authorino-operator
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run from the Authorino Operator directory:
+To uninstall the Authorino and Authorino Operator manifests, run:
 
 ```sh
-make uninstall
+kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```

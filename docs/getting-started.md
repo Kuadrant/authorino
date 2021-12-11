@@ -47,8 +47,7 @@ Check out the [Features](./features.md) specification for fature-specific requir
 ### 1. Clone and install the Authorino Operator
 
 ```sh
-git clone https://github.com/kuadrant/authorino-operator && cd authorino-operator
-kubectl create namespace authorino-operator && make install deploy
+kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
 ### 2. Deploy an Authorino instance
@@ -65,11 +64,14 @@ The instructions here are for centralized gateway or centralized authorization s
   kubectl create namespace authorino
   ```
 
-  Create the TLS certificates – skip this step if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace:
+  Deploy [cert-manager](https://github.com/jetstack/cert-manager) <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace or cert-manager is installed and running in the cluster)</small>:
   ```sh
-  git clone --depth 1 --branch v0.5.0 https://github.com/kuadrant/authorino.git && cd authorino
-  make cert-manager # installs https://github.com/jetstack/cert-manager - skip it if already installed
-  make certs NAMESPACE=authorino
+  kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+  ```
+
+  Create the TLS certificates <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
+  ```sh
+  curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/authorino/g" | kubectl -n authorino apply -f -
   ```
 
   Deploy Authorino:
@@ -127,11 +129,14 @@ The instructions here are for centralized gateway or centralized authorization s
   kubectl create namespace myapp
   ```
 
-  Create the TLS certificates – skip this step if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace:
+  Deploy [cert-manager](https://github.com/jetstack/cert-manager) <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace or cert-manager is installed and running in the cluster)</small>:
   ```sh
-  git clone --depth 1 --branch v0.5.0 https://github.com/kuadrant/authorino.git && cd authorino
-  make cert-manager # installs https://github.com/jetstack/cert-manager - skip it if already installed
-  make certs NAMESPACE=myapp
+  kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+  ```
+
+  Create the TLS certificates <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
+  ```sh
+  curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/myapp/g" | kubectl -n myapp apply -f -
   ```
 
   Deploy Authorino:

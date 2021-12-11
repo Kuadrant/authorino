@@ -29,9 +29,6 @@ AUTHORINO_CR = $(PROJECT_DIR)/deploy/authorino.yaml
 # Authorino Operator version
 OPERATOR_VERSION ?= latest
 
-# Authorino Operator namespace
-OPERATOR_NAMESPACE ?= authorino-operator
-
 .PHONY: vendor fmt vet generate manager manifests run test cover install  uninstall install-operator deploy cert-manager certs
 
 # Download vendor dependencies
@@ -117,17 +114,8 @@ else
 OPERATOR_BRANCH = $(OPERATOR_VERSION)
 endif
 install-operator:
-	kubectl create namespace $(OPERATOR_NAMESPACE)
-	kubectl -n $(OPERATOR_NAMESPACE) apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/install/manifests.yaml
-	@{ \
-	set -e ;\
-	OPERATOR_TMP_DIR=$$(mktemp -d) ;\
-	cd $$OPERATOR_TMP_DIR ;\
-	git clone --depth 1 --branch $(OPERATOR_BRANCH) https://github.com/kuadrant/authorino-operator . ;\
-	make deploy OPERATOR_IMAGE=quay.io/3scale/authorino-operator:$(OPERATOR_VERSION) ;\
-	rm -rf $$OPERATOR_TMP_DIR ;\
-	}
-	kubectl -n $(OPERATOR_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
+	kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/deploy/manifests.yaml
+	kubectl -n authorino-operator wait --timeout=300s --for=condition=Available deployments --all
 
 # Creates a namespace where to deploy Authorino
 namespace:
@@ -191,7 +179,7 @@ local-build: kind
 	kind load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
 # Set up a test/dev local Kubernetes server loaded up with a freshly built Authorino image plus dependencies
-local-setup: cluster local-build cert-manager install install-operator namespace deploy example-apps
+local-setup: cluster local-build cert-manager install-operator install namespace deploy example-apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \
