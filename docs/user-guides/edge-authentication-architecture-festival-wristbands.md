@@ -136,7 +136,7 @@ Create the config:
 
 ```sh
 kubectl -n edge apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: edge-auth
@@ -147,14 +147,14 @@ spec:
   - name: api-clients
     apiKey:
       labelSelectors:
-        authorino.3scale.net/managed-by: authorino
+        authorino.kuadrant.io/managed-by: authorino
     credentials:
       in: authorization_header
       keySelector: APIKEY
     extendedProperties:
     - name: username
       valueFrom:
-        authJSON: auth.identity.metadata.annotations.authorino\.3scale\.net/username
+        authJSON: auth.identity.metadata.annotations.authorino\.kuadrant\.io/username
   - name: idp-users
     oidc:
       endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
@@ -208,7 +208,7 @@ kubectl -n internal port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl -n internal apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -231,10 +231,10 @@ kind: Secret
 metadata:
   name: api-key-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
   annotations:
-    authorino.3scale.net/username: alice
-    authorino.3scale.net/email: alice@host
+    authorino.kuadrant.io/username: alice
+    authorino.kuadrant.io/email: alice@host
 stringData:
   api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
 type: Opaque

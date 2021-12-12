@@ -323,7 +323,7 @@ For a OpenID Connect/JWT verification authentication and one JWT claim authoriza
 
 ```yaml
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: my-api-protection

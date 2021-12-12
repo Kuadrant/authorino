@@ -98,7 +98,7 @@ _Optional._ Set [`use_remote_address: true`](https://www.envoyproxy.io/docs/envo
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -134,7 +134,7 @@ kind: Secret
 metadata:
   name: api-key-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     group: friends
 stringData:
   api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx

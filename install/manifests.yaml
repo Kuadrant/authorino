@@ -4,9 +4,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: authconfigs.authorino.3scale.net
+  name: authconfigs.authorino.kuadrant.io
 spec:
-  group: authorino.3scale.net
+  group: authorino.kuadrant.io
   names:
     kind: AuthConfig
     listKind: AuthConfigList
@@ -1170,7 +1170,7 @@ metadata:
   name: authorino-authconfig-editor-role
 rules:
 - apiGroups:
-  - authorino.3scale.net
+  - authorino.kuadrant.io
   resources:
   - authconfigs
   verbs:
@@ -1181,7 +1181,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - authorino.3scale.net
+  - authorino.kuadrant.io
   resources:
   - authconfigs/status
   verbs:
@@ -1193,7 +1193,7 @@ metadata:
   name: authorino-authconfig-viewer-role
 rules:
 - apiGroups:
-  - authorino.3scale.net
+  - authorino.kuadrant.io
   resources:
   - authconfigs
   verbs:
@@ -1201,7 +1201,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - authorino.3scale.net
+  - authorino.kuadrant.io
   resources:
   - authconfigs/status
   verbs:
@@ -1220,7 +1220,7 @@ rules:
   verbs:
   - create
 - apiGroups:
-  - authorino.3scale.net
+  - authorino.kuadrant.io
   resources:
   - authconfigs
   verbs:
@@ -1232,7 +1232,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - authorino.3scale.net
+  - authorino.kuadrant.io
   resources:
   - authconfigs/status
   verbs:

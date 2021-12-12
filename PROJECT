@@ -1,4 +1,4 @@
-domain: authorino.3scale.net
+domain: authorino.kuadrant.io
 layout: go.kubebuilder.io/v2
 projectName: authorino
 repo: github.com/kuadrant/authorino/

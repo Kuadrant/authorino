@@ -111,7 +111,7 @@ The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.or
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: talker-api-protection

@@ -19,7 +19,7 @@ func newStatusUpdateAuthConfig(authConfigLabels map[string]string) v1beta1.AuthC
 	return v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "authorino.3scale.net/v1beta1",
+			APIVersion: "authorino.kuadrant.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",
@@ -59,7 +59,7 @@ func TestAuthConfigStatusUpdater_Reconcile(t *testing.T) {
 }
 
 func TestAuthConfigStatusUpdater_MissingWatchedAuthConfigLabels(t *testing.T) {
-	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "authorino"})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := newStatusUpdaterReconciler(client)
@@ -75,11 +75,11 @@ func TestAuthConfigStatusUpdater_MissingWatchedAuthConfigLabels(t *testing.T) {
 }
 
 func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
-	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "authorino"})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := newStatusUpdaterReconciler(client)
-	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
+	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
@@ -92,11 +92,11 @@ func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
 }
 
 func TestAuthConfigStatusUpdater_UnmatchingAuthConfigLabels(t *testing.T) {
-	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "other"})
+	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "other"})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := newStatusUpdaterReconciler(client)
-	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
+	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 

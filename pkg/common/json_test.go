@@ -87,10 +87,10 @@ func TestIsTemplate(t *testing.T) {
 	assert.Check(t, value.IsTemplate())
 
 	// json path
-	value = &JSONValue{Pattern: `auth.identity.metadata.annotations.authorino\.3scale\.net/username`}
+	value = &JSONValue{Pattern: `auth.identity.metadata.annotations.authorino\.kuadrant\.io/username`}
 	assert.Check(t, !value.IsTemplate())
 
-	value = &JSONValue{Pattern: `auth.identity.metadata.annotations.authorino\.3scale\.net/username|@case:lower`}
+	value = &JSONValue{Pattern: `auth.identity.metadata.annotations.authorino\.kuadrant\.io/username|@case:lower`}
 	assert.Check(t, !value.IsTemplate())
 
 	value = &JSONValue{Pattern: `auth.identity.metadata.creationTimestamp`}
@@ -105,10 +105,10 @@ func TestIsTemplate(t *testing.T) {
 	assert.Check(t, value.IsTemplate())
 
 	// template with modifier
-	value = &JSONValue{Pattern: `Hello, {auth.identity.metadata.annotations.authorino\.3scale\.net/name|@extract:{"pos":1}}!`}
+	value = &JSONValue{Pattern: `Hello, {auth.identity.metadata.annotations.authorino\.kuadrant\.io/name|@extract:{"pos":1}}!`}
 	assert.Check(t, value.IsTemplate())
 
-	value = &JSONValue{Pattern: `Hello, \{auth.identity.metadata.annotations.authorino\.3scale\.net/name|@extract:\{"pos":1}}!`}
+	value = &JSONValue{Pattern: `Hello, \{auth.identity.metadata.annotations.authorino\.kuadrant\.io/name|@extract:\{"pos":1}}!`}
 	assert.Check(t, value.IsTemplate())
 
 	value = &JSONValue{Pattern: `Email domain: {auth.identity.email.@extract:{"sep":"@","pos":1}}`}
@@ -121,7 +121,7 @@ func TestIsTemplate(t *testing.T) {
 	value = &JSONValue{Pattern: `The JSON path is \{auth.identity.metadata.annotations.name.@replace:\{"old":"john","new":"John"\}\}!`}
 	assert.Check(t, value.IsTemplate())
 
-	value = &JSONValue{Pattern: `Hello, {auth.identity.metadata.annotations.authorino\.3scale\.net/name}!`}
+	value = &JSONValue{Pattern: `Hello, {auth.identity.metadata.annotations.authorino\.kuadrant\.io/name}!`}
 	assert.Check(t, value.IsTemplate())
 
 	// template with more than one variable placeholder
