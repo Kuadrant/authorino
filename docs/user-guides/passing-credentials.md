@@ -98,7 +98,7 @@ In this example, `member` users can authenticate supplying the API key in any of
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -152,7 +152,7 @@ kind: Secret
 metadata:
   name: api-key-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     group: members
 stringData:
   api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
@@ -169,7 +169,7 @@ kind: Secret
 metadata:
   name: api-key-2
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     group: admins
 stringData:
   api_key: 7BNaTmYGItSzXiwQLNHu82+x52p1XHgY

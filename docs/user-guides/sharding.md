@@ -104,7 +104,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: auth-config-1
@@ -154,7 +154,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: auth-config-2
@@ -202,7 +202,7 @@ kubectl -n authorino logs $(kubectl -n authorino get pods -l authorino-resource=
 
 ```sh
 kubectl -n myapp label authconfig/auth-config-2 disabled=true
-# authconfig.authorino.3scale.net/auth-config-2 labeled
+# authconfig.authorino.kuadrant.io/auth-config-2 labeled
 ```
 
 Verify in the logs that only the `authorino-production` instance adds the resources to the cache:

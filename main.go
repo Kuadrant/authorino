@@ -63,7 +63,7 @@ const (
 
 	defaultWatchNamespace                 = ""
 	defaultWatchedAuthConfigLabelSelector = ""
-	defaultWatchedSecretLabelSelector     = "authorino.3scale.net/managed-by=authorino"
+	defaultWatchedSecretLabelSelector     = "authorino.kuadrant.io/managed-by=authorino"
 	defaultLogLevel                       = "info"
 	defaultLogMode                        = "production"
 	defaultExtAuthGRPCPort                = "50051"
@@ -76,7 +76,7 @@ const (
 	defaultEnableLeaderElection           = false
 
 	gRPCMaxConcurrentStreams = 10000
-	leaderElectionIDSuffix   = "authorino.3scale.net"
+	leaderElectionIDSuffix   = "authorino.kuadrant.io"
 )
 
 var (

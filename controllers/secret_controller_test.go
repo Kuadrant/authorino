@@ -74,7 +74,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 	authConfig := v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "authorino.3scale.net/v1beta1",
+			APIVersion: "authorino.kuadrant.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",
@@ -87,8 +87,8 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 					Name: "friends",
 					APIKey: &v1beta1.Identity_APIKey{
 						LabelSelectors: map[string]string{
-							"authorino.3scale.net/managed-by": "authorino",
-							"target":                          "echo-api",
+							"authorino.kuadrant.io/managed-by": "authorino",
+							"target":                           "echo-api",
 						},
 					},
 				},
@@ -115,7 +115,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		Client:               client,
 		Logger:               log.WithName("test").WithName("secretreconciler"),
 		Scheme:               nil,
-		LabelSelector:        ToLabelSelector("authorino.3scale.net/managed-by=authorino"),
+		LabelSelector:        ToLabelSelector("authorino.kuadrant.io/managed-by=authorino"),
 		AuthConfigReconciler: authConfigReconciler,
 	}
 
@@ -140,7 +140,7 @@ func (t *secretReconcilerTest) reconcile() (reconcile.Result, error) {
 
 func TestSetupSecretReconcilerWithManager(t *testing.T) {
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
-		"authorino.3scale.net/managed-by": "authorino",
+		"authorino.kuadrant.io/managed-by": "authorino",
 	})
 	secretReconciler := reconcilerTest.secretReconciler
 
@@ -162,7 +162,7 @@ func TestSetupSecretReconcilerWithManager(t *testing.T) {
 func TestMissingWatchedSecretLabels(t *testing.T) {
 	// secret missing the authorino "managed-by" label
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
-		"authorino.3scale.net/managed-by": "authorino",
+		"authorino.kuadrant.io/managed-by": "authorino",
 	})
 
 	_, err := reconcilerTest.reconcile()
@@ -174,8 +174,8 @@ func TestMissingWatchedSecretLabels(t *testing.T) {
 func TestMatchingSecretLabels(t *testing.T) {
 	// secret with the authorino "managed-by" label and the same labels as specified in the auth config
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
-		"authorino.3scale.net/managed-by": "authorino",
-		"target":                          "echo-api",
+		"authorino.kuadrant.io/managed-by": "authorino",
+		"target":                           "echo-api",
 	})
 
 	_, err := reconcilerTest.reconcile()
@@ -190,7 +190,7 @@ func TestMatchingSecretLabels(t *testing.T) {
 func TestUnmatchingSecretLabels(t *testing.T) {
 	// secret with the authorino "managed-by" label but not the same labels as specified in the auth config
 	reconcilerTest := newSecretReconcilerTest(map[string]string{
-		"authorino.3scale.net/managed-by": "authorino",
+		"authorino.kuadrant.io/managed-by": "authorino",
 	})
 
 	_, err := reconcilerTest.reconcile()

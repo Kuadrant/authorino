@@ -82,36 +82,36 @@ func TestToLabelSelector(t *testing.T) {
 	reqs, _ = selector.Requirements()
 	assert.Equal(t, len(reqs), 0)
 	assert.Check(t, selector.Matches(labels.Set{}))
-	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
+	assert.Check(t, selector.Matches(labels.Set{"authorino.kuadrant.io/managed-by": "authorino"}))
 
-	selector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
+	selector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 	reqs, _ = selector.Requirements()
 	assert.Equal(t, len(reqs), 1)
-	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
+	assert.Check(t, selector.Matches(labels.Set{"authorino.kuadrant.io/managed-by": "authorino"}))
 
-	selector = ToLabelSelector("authorino.3scale.net/managed-by!=authorino")
+	selector = ToLabelSelector("authorino.kuadrant.io/managed-by!=authorino")
 	reqs, _ = selector.Requirements()
 	assert.Equal(t, len(reqs), 1)
-	assert.Check(t, !selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
+	assert.Check(t, !selector.Matches(labels.Set{"authorino.kuadrant.io/managed-by": "authorino"}))
 
-	selector = ToLabelSelector("!authorino.3scale.net/managed-by")
+	selector = ToLabelSelector("!authorino.kuadrant.io/managed-by")
 	reqs, _ = selector.Requirements()
 	assert.Equal(t, len(reqs), 1)
-	assert.Check(t, !selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
+	assert.Check(t, !selector.Matches(labels.Set{"authorino.kuadrant.io/managed-by": "authorino"}))
 
-	selector = ToLabelSelector("authorino.3scale.net/managed-by=authorino,other-label=other-value")
+	selector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino,other-label=other-value")
 	reqs, _ = selector.Requirements()
 	assert.Equal(t, len(reqs), 2)
 	assert.Check(t, selector.Matches(labels.Set{
-		"authorino.3scale.net/managed-by": "authorino",
-		"other-label":                     "other-value",
+		"authorino.kuadrant.io/managed-by": "authorino",
+		"other-label":                      "other-value",
 	}))
 
-	selector = ToLabelSelector("authorino.3scale.net/managed-by in (authorino,kuadrant)")
+	selector = ToLabelSelector("authorino.kuadrant.io/managed-by in (authorino,kuadrant)")
 	reqs, _ = selector.Requirements()
 	assert.Equal(t, len(reqs), 1)
-	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "authorino"}))
-	assert.Check(t, selector.Matches(labels.Set{"authorino.3scale.net/managed-by": "kuadrant"}))
+	assert.Check(t, selector.Matches(labels.Set{"authorino.kuadrant.io/managed-by": "authorino"}))
+	assert.Check(t, selector.Matches(labels.Set{"authorino.kuadrant.io/managed-by": "kuadrant"}))
 
 	selector = ToLabelSelector("inval*id-lab?el")
 	reqs, _ = selector.Requirements()

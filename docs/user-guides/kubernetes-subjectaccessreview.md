@@ -103,7 +103,7 @@ The `AuthConfig` below defines:
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -153,7 +153,7 @@ spec:
         namespace:
           value: authorino
         group:
-          value: talker-api.authorino.3scale.net
+          value: talker-api.authorino.kuadrant.io
         resource:
           value: resources
         name:
@@ -208,7 +208,7 @@ kind: Role
 metadata:
   name: talker-api-resource-reader
 rules:
-- apiGroups: ["talker-api.authorino.3scale.net"]
+- apiGroups: ["talker-api.authorino.kuadrant.io"]
   resources: ["resources"]
   verbs: ["get"]
 EOF
@@ -246,7 +246,7 @@ kind: Secret
 metadata:
   name: api-key-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     audiences: talker-api
   annotations:
     username: john
@@ -265,7 +265,7 @@ kind: Secret
 metadata:
   name: api-key-2
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     audiences: talker-api
   annotations:
     username: jane

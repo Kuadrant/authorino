@@ -41,7 +41,7 @@ func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
 	return v1beta1.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "authorino.3scale.net/v1beta1",
+			APIVersion: "authorino.kuadrant.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",
@@ -211,7 +211,7 @@ func TestMissingWatchedAuthConfigLabels(t *testing.T) {
 	defer mockController.Finish()
 	cacheMock := mock_cache.NewMockCache(mockController)
 
-	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "authorino"})
 	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
@@ -232,12 +232,12 @@ func TestMatchingAuthConfigLabels(t *testing.T) {
 	defer mockController.Finish()
 	cacheMock := mock_cache.NewMockCache(mockController)
 
-	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "authorino"})
+	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "authorino"})
 	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
-	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
+	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
@@ -254,12 +254,12 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	defer mockController.Finish()
 	cacheMock := mock_cache.NewMockCache(mockController)
 
-	authConfig := newTestAuthConfig(map[string]string{"authorino.3scale.net/managed-by": "other"})
+	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "other"})
 	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
-	reconciler.LabelSelector = ToLabelSelector("authorino.3scale.net/managed-by=authorino")
+	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
 	cacheMock.EXPECT().Delete(authConfigName.String())

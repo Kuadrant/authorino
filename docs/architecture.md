@@ -91,7 +91,7 @@ The desired protection for a service is declaratively stated by applying an `Aut
 An `AuthConfig` resource typically looks like the following:
 
 ```yaml
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: my-api-protection
@@ -140,7 +140,7 @@ spec:
     unauthorized: {…}
 ```
 
-Check out the [OAS](/install/crd/authorino.3scale.net_authconfigs.yaml) of the `AuthConfig` CRD for a formal specification of the options for `identity` verification, external `metadata` fetching, `authorization` policies, and dynamic `response`, as well as any other host protection capability implemented by Authorino.
+Check out the [OAS](/install/crd/authorino.kuadrant.io_authconfigs.yaml) of the `AuthConfig` CRD for a formal specification of the options for `identity` verification, external `metadata` fetching, `authorization` policies, and dynamic `response`, as well as any other host protection capability implemented by Authorino.
 
 You can also read the specification from the CLI using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command. The Authorino CRD is required to have been installed in Kubernetes cluster. E.g. `kubectl explain authconfigs.spec.identity.extendedProperties`.
 
@@ -162,7 +162,7 @@ The status of an `AuthConfig` tells whether the resource is "ready" (i.e. cached
 
 Apart from watching events related to `AuthConfig` custom resources, Authorino also watches events related to Kubernetes `Secret`s, as part of Authorino's [API key authentication](./features.md#api-key-identityapikey) feature. `Secret` resources that store API keys are linked-cached to their corresponding `AuthConfig`s. Whenever the Authorino instance detects a change in the set of API key `Secret`s linked to an `AuthConfig`s, the instance reconciles the cache.
 
-Authorino only watches events related to `Secret`s whose `metadata.labels` match the label selector `SECRET_LABEL_SELECTOR` of the Authorino instance. The default values of the label selector for Kubernetes `Secret`s representing Authorino API keys is `authorino.3scale.net/managed-by=authorino`.
+Authorino only watches events related to `Secret`s whose `metadata.labels` match the label selector `SECRET_LABEL_SELECTOR` of the Authorino instance. The default values of the label selector for Kubernetes `Secret`s representing Authorino API keys is `authorino.kuadrant.io/managed-by=authorino`.
 
 ## The "Auth Pipeline" (_aka:_ enforcing protection in request-time)
 
@@ -317,10 +317,10 @@ Authorino's custom controllers filter the `AuthConfig`-related events to be reco
 The following are all valid examples of `AuthConfig` label selector filters:
 
 ```
-AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by=authorino"
-AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by=authorino,other-label=other-value"
-AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by in (authorino,kuadrant)"
-AUTH_CONFIG_LABEL_SELECTOR="authorino.3scale.net/managed-by!=authorino-v0.4"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by=authorino"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by=authorino,other-label=other-value"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by in (authorino,kuadrant)"
+AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by!=authorino-v0.4"
 AUTH_CONFIG_LABEL_SELECTOR="!disabled"
 ```
 

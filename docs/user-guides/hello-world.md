@@ -82,7 +82,7 @@ Authorino does not know about the `talker-api-authorino.127.0.0.1.nip.io` host, 
 
 ```sh
 kubectl -n hello-world apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/hello-world/authconfig.yaml
-# authconfig.authorino.3scale.net/talker-api-protection created
+# authconfig.authorino.kuadrant.io/talker-api-protection created
 ```
 
 ## 8. Consume the API without credentials

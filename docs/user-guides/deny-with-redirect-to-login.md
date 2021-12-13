@@ -91,7 +91,7 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection
@@ -134,7 +134,7 @@ kind: Secret
 metadata:
   name: user-credential-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     group: users
 stringData:
   api_key: am9objpw # john:p
@@ -202,7 +202,7 @@ kubectl -n authorino set env deployment/matrix-quotes KEYCLOAK_REALM=http://keyc
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection

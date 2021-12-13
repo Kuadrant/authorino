@@ -101,7 +101,7 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.3scale.net/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -143,7 +143,7 @@ kind: Secret
 metadata:
   name: api-key-1
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     group: friends
   annotations:
     auth-data/username: john
@@ -162,7 +162,7 @@ kind: Secret
 metadata:
   name: api-key-2
   labels:
-    authorino.3scale.net/managed-by: authorino
+    authorino.kuadrant.io/managed-by: authorino
     group: friends
   annotations:
     auth-data/username: jane
