@@ -162,6 +162,43 @@ func (mr *MockAuthConfigEvaluatorMockRecorder) Call(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*MockAuthConfigEvaluator)(nil).Call), arg0, arg1)
 }
 
+// MockAuthConfigCleaner is a mock of AuthConfigCleaner interface.
+type MockAuthConfigCleaner struct {
+	ctrl     *gomock.Controller
+	recorder *MockAuthConfigCleanerMockRecorder
+}
+
+// MockAuthConfigCleanerMockRecorder is the mock recorder for MockAuthConfigCleaner.
+type MockAuthConfigCleanerMockRecorder struct {
+	mock *MockAuthConfigCleaner
+}
+
+// NewMockAuthConfigCleaner creates a new mock instance.
+func NewMockAuthConfigCleaner(ctrl *gomock.Controller) *MockAuthConfigCleaner {
+	mock := &MockAuthConfigCleaner{ctrl: ctrl}
+	mock.recorder = &MockAuthConfigCleanerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAuthConfigCleaner) EXPECT() *MockAuthConfigCleanerMockRecorder {
+	return m.recorder
+}
+
+// Clean mocks base method.
+func (m *MockAuthConfigCleaner) Clean(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Clean", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Clean indicates an expected call of Clean.
+func (mr *MockAuthConfigCleanerMockRecorder) Clean(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clean", reflect.TypeOf((*MockAuthConfigCleaner)(nil).Clean), arg0)
+}
+
 // MockNamedConfigEvaluator is a mock of NamedConfigEvaluator interface.
 type MockNamedConfigEvaluator struct {
 	ctrl     *gomock.Controller
@@ -234,6 +271,43 @@ func (m *MockPrioritizable) GetPriority() int {
 func (mr *MockPrioritizableMockRecorder) GetPriority() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPriority", reflect.TypeOf((*MockPrioritizable)(nil).GetPriority))
+}
+
+// MockConditionalEvaluator is a mock of ConditionalEvaluator interface.
+type MockConditionalEvaluator struct {
+	ctrl     *gomock.Controller
+	recorder *MockConditionalEvaluatorMockRecorder
+}
+
+// MockConditionalEvaluatorMockRecorder is the mock recorder for MockConditionalEvaluator.
+type MockConditionalEvaluatorMockRecorder struct {
+	mock *MockConditionalEvaluator
+}
+
+// NewMockConditionalEvaluator creates a new mock instance.
+func NewMockConditionalEvaluator(ctrl *gomock.Controller) *MockConditionalEvaluator {
+	mock := &MockConditionalEvaluator{ctrl: ctrl}
+	mock.recorder = &MockConditionalEvaluatorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConditionalEvaluator) EXPECT() *MockConditionalEvaluatorMockRecorder {
+	return m.recorder
+}
+
+// GetConditions mocks base method.
+func (m *MockConditionalEvaluator) GetConditions() []common.JSONPatternMatchingRule {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConditions")
+	ret0, _ := ret[0].([]common.JSONPatternMatchingRule)
+	return ret0
+}
+
+// GetConditions indicates an expected call of GetConditions.
+func (mr *MockConditionalEvaluatorMockRecorder) GetConditions() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConditions", reflect.TypeOf((*MockConditionalEvaluator)(nil).GetConditions))
 }
 
 // MockIdentityConfigEvaluator is a mock of IdentityConfigEvaluator interface.

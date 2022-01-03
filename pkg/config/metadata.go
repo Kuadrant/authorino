@@ -16,8 +16,10 @@ const (
 )
 
 type MetadataConfig struct {
-	Name        string                `yaml:"name"`
-	Priority    int                   `yaml:"priority"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
@@ -71,4 +73,10 @@ func (config *MetadataConfig) GetName() string {
 
 func (config *MetadataConfig) GetPriority() int {
 	return config.Priority
+}
+
+// impl:ConditionalEvaluator
+
+func (config *MetadataConfig) GetConditions() []common.JSONPatternMatchingRule {
+	return config.Conditions
 }

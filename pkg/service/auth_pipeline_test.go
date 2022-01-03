@@ -39,8 +39,9 @@ var (
 )
 
 type successConfig struct {
-	called   bool
-	priority int
+	called     bool
+	priority   int
+	conditions []common.JSONPatternMatchingRule
 }
 
 type failConfig struct {
@@ -55,6 +56,10 @@ func (c *successConfig) Call(pipeline common.AuthPipeline, ctx context.Context) 
 
 func (c *successConfig) GetPriority() int {
 	return c.priority
+}
+
+func (c *successConfig) GetConditions() []common.JSONPatternMatchingRule {
+	return c.conditions
 }
 
 func (c *failConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
@@ -347,8 +352,8 @@ func TestEvaluatePriorities(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig1 := &config.IdentityConfig{Priority: 0, MTLS: &identity.MTLS{}}
-	idConfig2 := &failConfig{priority: 1} // should never be called; otherwise, it would throw an error as it's not a config.IdentityConfig
+	idConfig1 := &config.IdentityConfig{Priority: 0, MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig2 := &failConfig{priority: 1}                                    // should never be called; otherwise, it would throw an error as it's not a config.IdentityConfig
 
 	authzConfig1 := &failConfig{priority: 0}
 	authzConfig2 := &successConfig{priority: 1} // should never be called
@@ -363,4 +368,112 @@ func TestEvaluatePriorities(t *testing.T) {
 	assert.Check(t, !idConfig2.called)
 	assert.Check(t, authzConfig1.called)
 	assert.Check(t, !authzConfig2.called)
+}
+
+func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
+	request := envoy_auth.CheckRequest{}
+	_ = json.Unmarshal([]byte(rawRequest), &request)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	idConfig := &successConfig{}
+
+	pipeline := newTestAuthPipeline(config.APIConfig{
+		Conditions: []common.JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.path",
+				Operator: "neq",
+				Value:    "/operation",
+			},
+		},
+		IdentityConfigs: []common.AuthConfigEvaluator{idConfig},
+	}, &request)
+
+	_ = pipeline.Evaluate()
+
+	assert.Check(t, !idConfig.called)
+}
+
+func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
+	request := envoy_auth.CheckRequest{}
+	_ = json.Unmarshal([]byte(rawRequest), &request)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	authzConfig := &successConfig{}
+
+	pipeline := newTestAuthPipeline(config.APIConfig{
+		Conditions: []common.JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.path",
+				Operator: "eq",
+				Value:    "/operation",
+			},
+		},
+		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig},
+		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig},
+	}, &request)
+
+	_ = pipeline.Evaluate()
+
+	assert.Check(t, authzConfig.called)
+}
+
+func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
+	request := envoy_auth.CheckRequest{}
+	_ = json.Unmarshal([]byte(rawRequest), &request)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	authzConfig := &successConfig{
+		conditions: []common.JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.path",
+				Operator: "neq",
+				Value:    "/operation",
+			},
+		},
+	}
+
+	pipeline := newTestAuthPipeline(config.APIConfig{
+		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig},
+		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig},
+	}, &request)
+
+	_ = pipeline.Evaluate()
+
+	assert.Check(t, !authzConfig.called)
+}
+
+func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
+	request := envoy_auth.CheckRequest{}
+	_ = json.Unmarshal([]byte(rawRequest), &request)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	authzConfig := &successConfig{
+		conditions: []common.JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.path",
+				Operator: "eq",
+				Value:    "/operation",
+			},
+		},
+	}
+
+	pipeline := newTestAuthPipeline(config.APIConfig{
+		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig},
+		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig},
+	}, &request)
+
+	_ = pipeline.Evaluate()
+
+	assert.Check(t, authzConfig.called)
 }

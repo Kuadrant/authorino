@@ -19,7 +19,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(conditions []common.JSONPatternMatchingRule, user common.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user common.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -31,7 +31,6 @@ func NewKubernetesAuthz(conditions []common.JSONPatternMatchingRule, user common
 	}
 
 	return &KubernetesAuthz{
-		Conditions:         conditions,
 		User:               user,
 		Groups:             groups,
 		ResourceAttributes: resourceAttributes,
@@ -49,8 +48,6 @@ type KubernetesAuthzResourceAttributes struct {
 }
 
 type KubernetesAuthz struct {
-	Conditions []common.JSONPatternMatchingRule
-
 	User               common.JSONValue
 	Groups             []string
 	ResourceAttributes *KubernetesAuthzResourceAttributes
@@ -64,15 +61,6 @@ func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-
-	for _, condition := range k.Conditions {
-		if match, err := condition.EvaluateFor(authJSON); err != nil {
-			return false, err
-		} else if !match { // skip the policy if any of the conditions does not match
-			return true, nil
-		}
-	}
-
 	jsonValueToStr := func(value common.JSONValue) string {
 		return fmt.Sprintf("%s", value.ResolveFor(authJSON))
 	}

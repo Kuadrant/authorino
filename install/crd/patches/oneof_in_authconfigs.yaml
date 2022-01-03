@@ -55,3 +55,75 @@
         name: {}
         kubernetes: {}
       required: [name, kubernetes]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/json/properties/rules/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector, value]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/conditions/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector, value]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/properties/conditions/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector, value]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/properties/conditions/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector, value]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/conditions/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector, value]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/items/properties/conditions/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector, value]

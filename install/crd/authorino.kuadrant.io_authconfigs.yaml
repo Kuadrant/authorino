@@ -77,46 +77,44 @@ spec:
                     one of the following parameters is required and only one of the
                     following parameters is allowed: "opa", "json" or "kubernetes".'
                   properties:
+                    conditions:
+                      description: Conditions that must match for Authorino to enforce
+                        this policy; otherwise, the policy will be skipped.
+                      items:
+                        properties:
+                          operator:
+                            description: 'The binary operator to be applied to the
+                              content fetched from the authorization JSON, for comparison
+                              with "value". Possible values are: "eq" (equal to),
+                              "neq" (not equal to), "incl" (includes; for arrays),
+                              "excl" (excludes; for arrays), "matches" (regex)'
+                            enum:
+                            - eq
+                            - neq
+                            - incl
+                            - excl
+                            - matches
+                            type: string
+                          patternRef:
+                            description: Name of a named pattern
+                            type: string
+                          selector:
+                            description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                              The value is used to fetch content from the input authorization
+                              JSON built by Authorino along the identity and metadata
+                              phases.
+                            type: string
+                          value:
+                            description: The value of reference for the comparison
+                              with the content fetched from the authorization JSON.
+                              If used with the "matches" operator, the value must
+                              compile to a valid Golang regex.
+                            type: string
+                        type: object
+                      type: array
                     json:
                       description: JSON pattern matching authorization policy.
                       properties:
-                        conditions:
-                          description: Conditions that must match for Authorino to
-                            enforce this policy; otherwise, the policy will be skipped.
-                          items:
-                            properties:
-                              operator:
-                                description: 'The binary operator to be applied to
-                                  the content fetched from the authorization JSON,
-                                  for comparison with "value". Possible values are:
-                                  "eq" (equal to), "neq" (not equal to), "incl" (includes;
-                                  for arrays), "excl" (excludes; for arrays), "matches"
-                                  (regex)'
-                                enum:
-                                - eq
-                                - neq
-                                - incl
-                                - excl
-                                - matches
-                                type: string
-                              selector:
-                                description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
-                                  The value is used to fetch content from the input
-                                  authorization JSON built by Authorino along the
-                                  identity and metadata phases.
-                                type: string
-                              value:
-                                description: The value of reference for the comparison
-                                  with the content fetched from the authorization
-                                  policy. If used with the "matches" operator, the
-                                  value must compile to a valid Golang regex.
-                                type: string
-                            required:
-                            - operator
-                            - selector
-                            - value
-                            type: object
-                          type: array
                         rules:
                           description: The rules that must all evaluate to "true"
                             for the request to be authorized.
@@ -136,6 +134,9 @@ spec:
                                 - excl
                                 - matches
                                 type: string
+                              patternRef:
+                                description: Name of a named pattern
+                                type: string
                               selector:
                                 description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
                                   The value is used to fetch content from the input
@@ -145,57 +146,18 @@ spec:
                               value:
                                 description: The value of reference for the comparison
                                   with the content fetched from the authorization
-                                  policy. If used with the "matches" operator, the
-                                  value must compile to a valid Golang regex.
+                                  JSON. If used with the "matches" operator, the value
+                                  must compile to a valid Golang regex.
                                 type: string
-                            required:
-                            - operator
-                            - selector
-                            - value
                             type: object
                           type: array
+                      required:
+                      - rules
                       type: object
                     kubernetes:
                       description: Kubernetes authorization policy based on `SubjectAccessReview`
                         Path and Verb are inferred from the request.
                       properties:
-                        conditions:
-                          description: Conditions that must match for Authorino to
-                            enforce this policy; otherwise, the policy will be skipped.
-                          items:
-                            properties:
-                              operator:
-                                description: 'The binary operator to be applied to
-                                  the content fetched from the authorization JSON,
-                                  for comparison with "value". Possible values are:
-                                  "eq" (equal to), "neq" (not equal to), "incl" (includes;
-                                  for arrays), "excl" (excludes; for arrays), "matches"
-                                  (regex)'
-                                enum:
-                                - eq
-                                - neq
-                                - incl
-                                - excl
-                                - matches
-                                type: string
-                              selector:
-                                description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
-                                  The value is used to fetch content from the input
-                                  authorization JSON built by Authorino along the
-                                  identity and metadata phases.
-                                type: string
-                              value:
-                                description: The value of reference for the comparison
-                                  with the content fetched from the authorization
-                                  policy. If used with the "matches" operator, the
-                                  value must compile to a valid Golang regex.
-                                type: string
-                            required:
-                            - operator
-                            - selector
-                            - value
-                            type: object
-                          type: array
                         groups:
                           description: Groups to test for.
                           items:
@@ -448,6 +410,40 @@ spec:
                   - name
                   type: object
                 type: array
+              conditions:
+                description: Conditions for the AuthConfig to be enforced. If omitted,
+                  the AuthConfig will be enforced for all requests.
+                items:
+                  properties:
+                    operator:
+                      description: 'The binary operator to be applied to the content
+                        fetched from the authorization JSON, for comparison with "value".
+                        Possible values are: "eq" (equal to), "neq" (not equal to),
+                        "incl" (includes; for arrays), "excl" (excludes; for arrays),
+                        "matches" (regex)'
+                      enum:
+                      - eq
+                      - neq
+                      - incl
+                      - excl
+                      - matches
+                      type: string
+                    patternRef:
+                      description: Name of a named pattern
+                      type: string
+                    selector:
+                      description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                        The value is used to fetch content from the input authorization
+                        JSON built by Authorino along the identity and metadata phases.
+                      type: string
+                    value:
+                      description: The value of reference for the comparison with
+                        the content fetched from the authorization JSON. If used with
+                        the "matches" operator, the value must compile to a valid
+                        Golang regex.
+                      type: string
+                  type: object
+                type: array
               denyWith:
                 description: Custom denial response codes, statuses and headers to
                   override default 40x's.
@@ -575,6 +571,41 @@ spec:
                       required:
                       - labelSelectors
                       type: object
+                    conditions:
+                      description: Conditions that must match for Authorino to enforce
+                        this identity config; otherwise, the config will be skipped.
+                      items:
+                        properties:
+                          operator:
+                            description: 'The binary operator to be applied to the
+                              content fetched from the authorization JSON, for comparison
+                              with "value". Possible values are: "eq" (equal to),
+                              "neq" (not equal to), "incl" (includes; for arrays),
+                              "excl" (excludes; for arrays), "matches" (regex)'
+                            enum:
+                            - eq
+                            - neq
+                            - incl
+                            - excl
+                            - matches
+                            type: string
+                          patternRef:
+                            description: Name of a named pattern
+                            type: string
+                          selector:
+                            description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                              The value is used to fetch content from the input authorization
+                              JSON built by Authorino along the identity and metadata
+                              phases.
+                            type: string
+                          value:
+                            description: The value of reference for the comparison
+                              with the content fetched from the authorization JSON.
+                              If used with the "matches" operator, the value must
+                              compile to a valid Golang regex.
+                            type: string
+                        type: object
+                      type: array
                     credentials:
                       description: Defines where client credentials are required to
                         be passed in the request for this identity source/authentication
@@ -717,6 +748,41 @@ spec:
                     following parameters is required and only one of the following
                     parameters is allowed: "userInfo" or "uma".'
                   properties:
+                    conditions:
+                      description: Conditions that must match for Authorino to enforce
+                        this metadata config; otherwise, the config will be skipped.
+                      items:
+                        properties:
+                          operator:
+                            description: 'The binary operator to be applied to the
+                              content fetched from the authorization JSON, for comparison
+                              with "value". Possible values are: "eq" (equal to),
+                              "neq" (not equal to), "incl" (includes; for arrays),
+                              "excl" (excludes; for arrays), "matches" (regex)'
+                            enum:
+                            - eq
+                            - neq
+                            - incl
+                            - excl
+                            - matches
+                            type: string
+                          patternRef:
+                            description: Name of a named pattern
+                            type: string
+                          selector:
+                            description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                              The value is used to fetch content from the input authorization
+                              JSON built by Authorino along the identity and metadata
+                              phases.
+                            type: string
+                          value:
+                            description: The value of reference for the comparison
+                              with the content fetched from the authorization JSON.
+                              If used with the "matches" operator, the value must
+                              compile to a valid Golang regex.
+                            type: string
+                        type: object
+                      type: array
                     http:
                       description: Generic HTTP interface to obtain authorization
                         metadata from a HTTP service.
@@ -907,6 +973,40 @@ spec:
                   - name
                   type: object
                 type: array
+              patterns:
+                additionalProperties:
+                  items:
+                    properties:
+                      operator:
+                        description: 'The binary operator to be applied to the content
+                          fetched from the authorization JSON, for comparison with
+                          "value". Possible values are: "eq" (equal to), "neq" (not
+                          equal to), "incl" (includes; for arrays), "excl" (excludes;
+                          for arrays), "matches" (regex)'
+                        enum:
+                        - eq
+                        - neq
+                        - incl
+                        - excl
+                        - matches
+                        type: string
+                      selector:
+                        description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                          The value is used to fetch content from the input authorization
+                          JSON built by Authorino along the identity and metadata
+                          phases.
+                        type: string
+                      value:
+                        description: The value of reference for the comparison with
+                          the content fetched from the authorization JSON. If used
+                          with the "matches" operator, the value must compile to a
+                          valid Golang regex.
+                        type: string
+                    type: object
+                  type: array
+                description: Named sets of JSON patterns that can be referred in `conditions`
+                  and in JSON-pattern matching policy rules.
+                type: object
               response:
                 description: List of response configs. Authorino gathers data from
                   the auth pipeline to build custom responses for the client.
@@ -915,6 +1015,42 @@ spec:
                     "name", one of the following parameters is required and only one
                     of the following parameters is allowed: "wristband" or "json".'
                   properties:
+                    conditions:
+                      description: Conditions that must match for Authorino to enforce
+                        this custom response config; otherwise, the config will be
+                        skipped.
+                      items:
+                        properties:
+                          operator:
+                            description: 'The binary operator to be applied to the
+                              content fetched from the authorization JSON, for comparison
+                              with "value". Possible values are: "eq" (equal to),
+                              "neq" (not equal to), "incl" (includes; for arrays),
+                              "excl" (excludes; for arrays), "matches" (regex)'
+                            enum:
+                            - eq
+                            - neq
+                            - incl
+                            - excl
+                            - matches
+                            type: string
+                          patternRef:
+                            description: Name of a named pattern
+                            type: string
+                          selector:
+                            description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                              The value is used to fetch content from the input authorization
+                              JSON built by Authorino along the identity and metadata
+                              phases.
+                            type: string
+                          value:
+                            description: The value of reference for the comparison
+                              with the content fetched from the authorization JSON.
+                              If used with the "matches" operator, the value must
+                              compile to a valid Golang regex.
+                            type: string
+                        type: object
+                      type: array
                     json:
                       properties:
                         properties:

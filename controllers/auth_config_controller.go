@@ -147,6 +147,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		translatedIdentity := &config.IdentityConfig{
 			Name:               identity.Name,
 			Priority:           identity.Priority,
+			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
 			ExtendedProperties: extendedProperties,
 		}
 
@@ -201,8 +202,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for _, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &config.MetadataConfig{
-			Name:     metadata.Name,
-			Priority: metadata.Priority,
+			Name:       metadata.Name,
+			Priority:   metadata.Priority,
+			Conditions: buildJSONPatternExpressions(authConfig, metadata.Conditions),
 		}
 
 		switch metadata.GetType() {
@@ -298,8 +300,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
-			Name:     authorization.Name,
-			Priority: authorization.Priority,
+			Name:       authorization.Name,
+			Priority:   authorization.Priority,
+			Conditions: buildJSONPatternExpressions(authConfig, authorization.Conditions),
 		}
 
 		switch authorization.GetType() {
@@ -335,42 +338,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// json
 		case configv1beta1.AuthorizationJSONPatternMatching:
-			conditions := make([]common.JSONPatternMatchingRule, 0)
-			for _, c := range authorization.JSON.Conditions {
-				condition := &common.JSONPatternMatchingRule{
-					Selector: c.Selector,
-					Operator: string(c.Operator),
-					Value:    c.Value,
-				}
-				conditions = append(conditions, *condition)
-			}
-
-			rules := make([]common.JSONPatternMatchingRule, 0)
-			for _, r := range authorization.JSON.Rules {
-				rule := &common.JSONPatternMatchingRule{
-					Selector: r.Selector,
-					Operator: string(r.Operator),
-					Value:    r.Value,
-				}
-				rules = append(rules, *rule)
-			}
-
 			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
-				Conditions: conditions,
-				Rules:      rules,
+				Rules: buildJSONPatternExpressions(authConfig, authorization.JSON.Rules),
 			}
 
 		case configv1beta1.AuthorizationKubernetesAuthz:
-			conditions := make([]common.JSONPatternMatchingRule, 0)
-			for _, c := range authorization.KubernetesAuthz.Conditions {
-				condition := &common.JSONPatternMatchingRule{
-					Selector: c.Selector,
-					Operator: string(c.Operator),
-					Value:    c.Value,
-				}
-				conditions = append(conditions, *condition)
-			}
-
 			user := authorization.KubernetesAuthz.User
 			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
 
@@ -388,7 +360,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(conditions, authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
+			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}
@@ -403,7 +375,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, response := range authConfig.Spec.Response {
-		translatedResponse := config.NewResponseConfig(response.Name, response.Priority, string(response.Wrapper), response.WrapperKey)
+		translatedResponse := config.NewResponseConfig(response.Name, response.Priority, buildJSONPatternExpressions(authConfig, response.Conditions), string(response.Wrapper), response.WrapperKey)
 
 		switch response.GetType() {
 		// wristband
@@ -480,6 +452,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	config := make(map[string]authorinoService.APIConfig)
 
 	apiConfig := authorinoService.APIConfig{
+		Conditions:           buildJSONPatternExpressions(authConfig, authConfig.Spec.Conditions),
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
@@ -511,6 +484,30 @@ func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name stri
 		}
 	}
 	return nil, fmt.Errorf("missing identity config %v", name)
+}
+
+func buildJSONPatternExpressions(authConfig *configv1beta1.AuthConfig, patterns []configv1beta1.JSONPattern) []common.JSONPatternMatchingRule {
+	expressions := []common.JSONPatternMatchingRule{}
+
+	for _, pattern := range patterns {
+		expressionsToAdd := configv1beta1.JSONPatternExpressions{}
+
+		if expressionsByRef, found := authConfig.Spec.Patterns[pattern.JSONPatternName]; found {
+			expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
+		} else {
+			expressionsToAdd = append(expressionsToAdd, pattern.JSONPatternExpression)
+		}
+
+		for _, expression := range expressionsToAdd {
+			expressions = append(expressions, common.JSONPatternMatchingRule{
+				Selector: expression.Selector,
+				Operator: string(expression.Operator),
+				Value:    expression.Value,
+			})
+		}
+	}
+
+	return expressions
 }
 
 func buildAuthorinoDenyWithValues(denyWithSpec *configv1beta1.DenyWithSpec) *authorinoService.DenyWithValues {

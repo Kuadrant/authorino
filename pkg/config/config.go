@@ -8,6 +8,8 @@ import (
 
 // APIConfig holds the static configuration to be evaluated in the auth pipeline
 type APIConfig struct {
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+
 	IdentityConfigs      []common.AuthConfigEvaluator `yaml:"identity,omitempty"`
 	MetadataConfigs      []common.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []common.AuthConfigEvaluator `yaml:"authorization,omitempty"`
