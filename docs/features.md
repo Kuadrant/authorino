@@ -33,6 +33,7 @@
     - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
   - [_Extra:_ Custom denial status (`denyWith`)](#extra-custom-denial-status-denywith)
 - [Common feature: Priorities](#common-feature-priorities)
+- [Common feature: Conditions](#common-feature-conditions)
 
 ## Overview
 
@@ -315,27 +316,32 @@ The resources data is added as metadata of the authorization payload and passed 
 
 ### JSON pattern-matching authorization rules ([`authorization.json`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_JSONPatternMatching))
 
-Grant/deny access based on simple pattern-matching rules comparing values from the Authorization JSON.
+Grant/deny access based on simple pattern-matching expressions ("rules") compared against values selected from the Authorization JSON.
 
-Values can be selected from the authorization JSON built throughout the auth pipeline and operations include relational operators _equals_ (`eq`), _not equal_ (`neq`), _includes_ (`incl`; for arrays), _excludes_ (`excl`; for arrays) and _matches_ (`matches`; for regular expressions).
+Each expression is a tuple composed of:
+- a `selector`, to fetch from the Authorization JSON – see [Common feature: JSON paths](#common-feature-json-paths-valuefromauthjson) for details about syntax;
+- an `operator` – `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions;
+- a fixed comparable `value`
 
-A typical configuration contains a `conditions` array and a `rules` array, and looks like the following:
+Rules can mix and combine literal expressions and references to expression sets ("named patterns") defined at the upper level of the `AuthConfig` spec. (See [Common feature: Conditions](#common-feature-conditions))
 
 ```yaml
-authorization:
-  - name: my-simple-json-pattern-matching-policy
-    json:
-      conditions: # (Optional) Allows to establish conditions for the policy to be enforced or skipped
-        - selector: context.request.http.method
-          operator: eq # Other operators include neq, incl, excl, matches
-          value: DELETE
-      rules: # All rules must match for access to be granted
-        - selector: auth.identity.group
-          operator: incl
-          value: admin
-```
+spec:
+  authorization:
+    - name: my-simple-json-pattern-matching-policy
+      json:
+        rules: # All rules must match for access to be granted
+          - selector: auth.identity.email_verified
+            operator: eq
+            value: "true"
+          - patternRef: admin
 
-Individuals policies can be optionally skipped based on `conditions` represented with similar data selectors and operators.
+  pattterns:
+    admin: # a named pattern that can be reused in other sets of rules or conditions
+      - selector: auth.identity.roles
+        operator: incl
+        value: admin
+```
 
 ### Open Policy Agent (OPA) Rego policies ([`authorization.opa`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_OPA))
 
@@ -368,15 +374,11 @@ authorization:
       resourceAttributes: # Omit it to perform a non-resource `SubjectAccessReview` based on the request's path and method (verb) instead
         namespace: # other supported resource attributes are: group, resource, name, subresource and verb
           value: default
-
-      conditions: [] # Allows to establish conditions for the policy to be enforced or skipped
 ```
 
 `user` and `resourceAttributes` can be specified as a fixed value or patterns to fetch from the Authorization JSON.
 
 An array of required `groups` can as well be specified and it will be used in the `SubjectAccessReview`.
-
-`conditions` works exactly like in [JSON pattern-matching authorization](#json-pattern-matching-authorization-rules-authorizationjson). It allows to specify conditions for the policy to be enforced or skipped, based on values of the Authorization JSON.
 
 ### Keycloak Authorization Services (UMA-compliant Authorization API)
 
@@ -587,20 +589,20 @@ spec:
         method: GET
   authorization:
     - name: allowed-endpoints
+      conditions:
+        - selector: context.request.http.path
+          operator: neq
+          value: /hi
+        - selector: context.request.http.path
+          operator: neq
+          value: /hello
+        - selector: context.request.http.path
+          operator: neq
+          value: /aloha
+        - selector: context.request.http.path
+          operator: neq
+          value: /ciao
       json:
-        conditions:
-          - selector: context.request.http.path
-            operator: neq
-            value: /hi
-          - selector: context.request.http.path
-            operator: neq
-            value: /hello
-          - selector: context.request.http.path
-            operator: neq
-            value: /aloha
-          - selector: context.request.http.path
-            operator: neq
-            value: /ciao
         rules:
           - selector: deny
             operator: eq
@@ -635,3 +637,130 @@ For the `AuthConfig` above,
 - Metadata source `second` (priority 1) uses the response of the request issued by metadata source `first` (priority 0), so it will wait for `first` to finish by triggering only in the second block.
 
 - Authorization policy `allowed-endpoints` (piority 0) is considered to be a lot less expensive than `more-expensive-policy` (priority 1) and has a high chance of denying access to the protected service (if the path is not one of the allowed endpoints). By setting different priorities to these policies we ensure the more expensive policy if triggered in sequence of the less expensive one, instead of concurrently.
+
+## Common feature: Conditions
+
+_Conditions_ are sets of expressions (JSON patterns) that, whenever included, must evaluate to true against the [Authorization JSON](./architecture.md#the-authorization-json), so the scope where the expressions are defined is enforced. If any of the expressions in the set of conditions for a given scope does not match, Authorino will skip that scope in the [Auth Pipeline](./architecture.md#the-auth-pipeline).
+
+The scope for a set of conditions can be the entire `AuthConfig` ("top level conditions") or a particular evaluator of any phase of the auth pipeline.
+
+Each expression is a tuple composed of:
+- a `selector`, to fetch from the Authorization JSON – see [Common feature: JSON paths](#common-feature-json-paths-valuefromauthjson) for details about syntax;
+- an `operator` – `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions;
+- a fixed comparable `value`
+
+_Conditions_ can list, mix and combine literal expressions and references to expression sets ("named patterns") defined at the upper level of the `AuthConfig` spec.
+
+_Conditions_ can be used, e.g.,:
+
+i) to skip an entire `AuthConfig` based on the context:
+
+```yaml
+spec:
+  conditions: # no authn/authz required on requests to /status
+  - selector: context.request.http.path
+    operator: neq
+    value: /status
+```
+
+ii) to skip parts of an `AuthConfig` (i.e. a specific evaluator):
+
+```yaml
+spec:
+  metadata:
+  - name: metadata-source
+    http:
+      endpoint: https://my-metadata-source.io
+    conditions: # only fetch the external metadata if the context is HTTP method different than OPTIONS
+    - selector: context.request.http.method
+      operator: neq
+      value: OPTIONS
+```
+
+iii) to enforce a particular evaluator only in certain contexts (really the same as the above, though to a different use case):
+
+```yaml
+spec:
+  identity:
+  - name: authn-meth-1
+    apiKey: {...} # this authn method only valid for POST requests to /foo[/*]
+    conditions:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/foo(/.*)?$
+    - selector: context.request.http.method
+      operator: eq
+      value: POST
+
+  - name: authn-meth-2
+    oidc: {...}
+```
+
+iv) to avoid repetition while defining patterns for conditions:
+
+```yaml
+spec:
+  patterns:
+    a-pet: # a named pattern that can be reused in sets of conditions
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/pets/\d+(/.*)$
+
+  metadata:
+  - name: pets-info
+    conditions:
+    - patternRef: a-pet
+    http:
+      endpoint: https://pets-info.io?petId={context.request.http.path.@extract:{"sep":"/","pos":2}}
+
+  authorization:
+  - name: pets-owners-only
+    conditions:
+    - patternRef: a-pet
+    opa:
+      inlineRego: |
+        allow { input.metadata["pets-info"].ownerid == input.auth.identity.userid }
+```
+
+v) mixing and combining literal expressions and refs:
+
+```yaml
+spec:
+  patterns:
+    foo:
+    - selector: context.request.http.path
+      operator: eq
+      value: /foo
+
+  conditions: # unauthenticated access to /foo always granted
+  - patternRef: foo
+  - selector: context.request.http.headers.authorization
+    operator: eq
+    value: ""
+
+  authorization:
+  - name: my-policy-1
+    conditions: # authenticated access to /foo controlled by policy
+    - patternRef: foo
+    json: {...}
+```
+
+vi) to avoid evaluating unnecessary identity checks when the user can indicate the preferred authentication method (again the pattern of skipping based upon the context):
+
+```yaml
+spec:
+  identity:
+  - name: jwt
+    conditions:
+    - selector: selector: context.request.http.headers.authorization
+      operator: matches
+      value: JWT .+
+    oidc: {...}
+
+  - name: api-key
+    conditions:
+    - selector: context.request.http.headers.authorization
+      operator: matches
+      value: APIKEY .+
+    apiKey: {...}
+```

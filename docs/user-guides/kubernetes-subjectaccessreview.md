@@ -132,20 +132,20 @@ spec:
       keySelector: APIKEY
   authorization:
   - name: non-resource-endpoints
+    conditions:
+    - selector: context.request.http.path.@extract:{"sep":"/","pos":1}
+      operator: neq
+      value: resources
     kubernetes:
-      conditions:
-      - selector: context.request.http.path.@extract:{"sep":"/","pos":1}
-        operator: neq
-        value: resources
       user:
         valueFrom:
           authJSON: auth.identity.username
   - name: resource-endpoints
+    conditions:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/resources(/\w+)?
     kubernetes:
-      conditions:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/resources(/\w+)?
       user:
         valueFrom:
           authJSON: auth.identity.username
@@ -164,6 +164,8 @@ spec:
             authJSON: context.request.http.method.@case:lower
 EOF
 ```
+
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifiers `@extract` and `@case` used above. Check out as well the common feature [Conditions](./../architecture.md#common-feature-conditions) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## 7. Create roles associated with endpoints of the API
 

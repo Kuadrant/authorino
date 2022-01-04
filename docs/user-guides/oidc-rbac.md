@@ -128,45 +128,49 @@ spec:
     oidc:
       endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
 
+  patterns:
+    member-role:
+    - selector: auth.identity.realm_access.roles
+      operator: incl
+      value: member
+    admin-role:
+    - selector: auth.identity.realm_access.roles
+      operator: incl
+      value: admin
+
   authorization:
   # RBAC rule: 'member' role required for requests to /resources[/*]
   - name: rbac-resources-api
+    conditions:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/resources(/.*)?$
     json:
-      conditions:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/resources(/.*)?$
       rules:
-      - selector: auth.identity.realm_access.roles
-        operator: incl
-        value: member
+      - patternRef: member-role
 
   # RBAC rule: 'admin' role required for DELETE requests to /resources/{id}
   - name: rbac-delete-resource
+    conditions:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/resources/\d+$
+    - selector: context.request.http.method
+      operator: eq
+      value: DELETE
     json:
-      conditions:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/resources/\d+$
-      - selector: context.request.http.method
-        operator: eq
-        value: DELETE
       rules:
-      - selector: auth.identity.realm_access.roles
-        operator: incl
-        value: admin
+      - patternRef: admin-role
 
   # RBAC rule: 'admin' role required for requests to /admin[/*]
   - name: rbac-admin-api
+    conditions:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/admin(/.*)?$
     json:
-      conditions:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/admin(/.*)?$
       rules:
-      - selector: auth.identity.realm_access.roles
-        operator: incl
-        value: admin
+      - patternRef: admin-role
 EOF
 ```
 

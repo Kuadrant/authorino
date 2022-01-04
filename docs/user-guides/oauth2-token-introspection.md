@@ -171,11 +171,11 @@ spec:
         name: oauth2-token-introspection-credentials-a12n-server
   authorization:
   - name: can-read
+    conditions:
+    - selector: auth.identity.privileges
+      operator: neq
+      value: ""
     json:
-      conditions:
-      - selector: auth.identity.privileges
-        operator: neq
-        value: ""
       rules:
       - selector: auth.identity.privileges.talker-api
         operator: incl
@@ -186,6 +186,8 @@ EOF
 On every request, Authorino will try to verify the token remotely with the Keycloak server and the a12n-server server.
 
 For authorization, whenever the introspected token data includes a `privileges` property (returned by a12n-server), Authorino will enforce only consumers whose `privileges.talker-api` includes the `"read"` permission are granted access.
+
+Check out the docs for information about the common feature [Conditions](./../architecture.md#common-feature-conditions) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## 7. Obtain an access token and consume the API
 
