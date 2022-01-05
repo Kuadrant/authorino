@@ -39,6 +39,9 @@ Fetch resource attributes relevant for authorization from a User-Managed Access 
 - **[Simple pattern-matching authorization policies](./user-guides/json-pattern-matching-authorization.md)**<br/>
 Write simple authorization rules based on JSON patterns matched against Authorino's Authorization JSON; check contextual information of the request, validate JWT claims, cross metadata fetched from external sources, etc.
 
+- **[OpenID Connect (OIDC) and Role-Based Access Control (RBAC) with Authorino and Keycloak](./user-guides/oidc-rbac.md)**<br/>
+Combine OpenID Connect (OIDC) authentication and Role-Based Access Control (RBAC) authorization rules leveraging Keycloak and Authorino working together.
+
 - **[Open Policy Agent (OPA) Rego policies](./user-guides/opa-authorization.md)**<br/>
 Leverage the power of Open Policy Agent (OPA) policies, evaluated against Authorino's Authorization JSON in a built-in runtime compiled together with Authorino; pre-cache policies defined in Rego language inline or fetched from an external policy registry.
 
