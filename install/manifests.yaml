@@ -1210,8 +1210,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: authorino-manager-role
+  name: authorino-manager-k8s-auth-role
 rules:
 - apiGroups:
   - authentication.k8s.io
@@ -1219,6 +1218,19 @@ rules:
   - tokenreviews
   verbs:
   - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: authorino-manager-role
+rules:
 - apiGroups:
   - authorino.kuadrant.io
   resources:
@@ -1239,12 +1251,6 @@ rules:
   - get
   - patch
   - update
-- apiGroups:
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
 - apiGroups:
   - coordination.k8s.io
   resources:

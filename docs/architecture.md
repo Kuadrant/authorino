@@ -328,13 +328,14 @@ AUTH_CONFIG_LABEL_SELECTOR="!disabled"
 
 The table below describes the roles and role bindings defined by the Authorino service:
 
-|                 Role               |     Kind      | Scope(*) |             Description                 |                                                    Permissions                                                      |
-| ---------------------------------- | ------------- |:--------:| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `authorino-manager-role`           | `ClusterRole` | C/N      | Role of the Authorino manager service   | Watch and reconcile `AuthConfig`s and `Secret`s; create `TokenReview`s and `SubjectAccessReview`s (Kubernetes auth) |
-| `authorino-leader-election-role`   | `Role`        | N        | Leader election role                    | Create/update the `ConfigMap` used to coordinate which replica of Authorino is the leader                           |
-| `authorino-authconfig-editor-role` | `ClusterRole` | -        | `AuthConfig` editor                     | R/W `AuthConfig`s; Read `AuthConfig/status`                                                                         |
-| `authorino-authconfig-viewer-role` | `ClusterRole` | -        | `AuthConfig` viewer                     | Read `AuthConfig`s and `AuthConfig/status`                                                                          |
-| `authorino-proxy-role`             | `ClusterRole` | C/N      | Kube-rbac-proxy-role (sidecar)'s role   | Create `TokenReview`s and `SubjectAccessReview`s to check permissions to the `/metrics` endpoint                    |
-| `authorino-metrics-reader`         | `ClusterRole` | -        | Metrics reader                          | `GET /metrics`                                                                                                      |
+|                 Role               |     Kind      | Scope(*) |             Description                 |                                                    Permissions                                   |
+| ---------------------------------- | ------------- |:--------:| --------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `authorino-manager-role`           | `ClusterRole` | C/N      | Role of the Authorino manager service   | Watch and reconcile `AuthConfig`s and `Secret`s                                                  |
+| `authorino-manager-k8s-auth-role`  | `ClusterRole` | C/N      | Role for the Kubernetes auth features   | Create `TokenReview`s and `SubjectAccessReview`s (Kubernetes auth)                               |
+| `authorino-leader-election-role`   | `Role`        | N        | Leader election role                    | Create/update the `ConfigMap` used to coordinate which replica of Authorino is the leader        |
+| `authorino-authconfig-editor-role` | `ClusterRole` | -        | `AuthConfig` editor                     | R/W `AuthConfig`s; Read `AuthConfig/status`                                                      |
+| `authorino-authconfig-viewer-role` | `ClusterRole` | -        | `AuthConfig` viewer                     | Read `AuthConfig`s and `AuthConfig/status`                                                       |
+| `authorino-proxy-role`             | `ClusterRole` | C/N      | Kube-rbac-proxy-role (sidecar)'s role   | Create `TokenReview`s and `SubjectAccessReview`s to check permissions to the `/metrics` endpoint |
+| `authorino-metrics-reader`         | `ClusterRole` | -        | Metrics reader                          | `GET /metrics`                                                                                   |
 
 <small>(*) C - Cluster-wide | N - Authorino namespace | C/N - Cluster-wide or Authorino namespace (depending on the <a href="#cluster-wide-vs-namespaced-instances">deployment mode</a>).</small>
