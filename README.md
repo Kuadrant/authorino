@@ -36,6 +36,7 @@ The [User guides](./docs/user-guides.md) section of the docs gathers several Aut
 - [Authorization with Open Policy Agent (OPA) Rego policies](./docs/user-guides/opa-authorization.md)
 - [Authorization with simple JSON pattern-matching rules (e.g. JWT claims)](./docs/user-guides/json-pattern-matching-authorization.md)
 - [Authorization with Kubernetes RBAC (SubjectAccessReview API)](./docs/user-guides/kubernetes-subjectaccessreview.md)
+- [OpenID Connect (OIDC) and Role-Based Access Control (RBAC) with Authorino and Keycloak](./docs/user-guides/oidc-rbac.md)
 - [Fetching auth metadata from external sources](./docs/user-guides/external-metadata.md)
 - [Token normalization](./docs/user-guides/token-normalization.md)
 
