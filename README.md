@@ -32,17 +32,19 @@ The [User guides](./docs/user-guides.md) section of the docs gathers several Aut
 
 - [Authentication with JWTs and OpenID Connect Discovery](./docs/user-guides/oidc-jwt-authentication.md)
 - [Authentication with API keys](./docs/user-guides/api-key-authentication.md)
-- [Authentication with Kubernetes tokens (TokenReview API)](./docs/user-guides/kubernetes-tokenreview.md)
+- [Authentication with Kubernetes SA tokens (TokenReview API)](./docs/user-guides/kubernetes-tokenreview.md)
+- [Authorization with JSON pattern-matching rules (e.g. JWT claims, request attributes, etc)](./docs/user-guides/json-pattern-matching-authorization.md)
 - [Authorization with Open Policy Agent (OPA) Rego policies](./docs/user-guides/opa-authorization.md)
-- [Authorization with simple JSON pattern-matching rules (e.g. JWT claims)](./docs/user-guides/json-pattern-matching-authorization.md)
-- [Authorization with Kubernetes RBAC (SubjectAccessReview API)](./docs/user-guides/kubernetes-subjectaccessreview.md)
-- [OpenID Connect (OIDC) and Role-Based Access Control (RBAC) with Authorino and Keycloak](./docs/user-guides/oidc-rbac.md)
-- [Fetching auth metadata from external sources](./docs/user-guides/external-metadata.md)
-- [Token normalization](./docs/user-guides/token-normalization.md)
+- [Authorization using the Kubernetes RBAC (rules stated in K8s `Role` and `RoleBinding` resources)](./docs/user-guides/kubernetes-subjectaccessreview.md)
+- [Authorization using auth metadata fetched from external sources](./docs/user-guides/external-metadata.md)
+- [OIDC authentication and RBAC with Keycloak JWTs](./docs/user-guides/oidc-rbac.md)
+- [Multiple trusted sources of identity and authentication methods - Token normalization](./docs/user-guides/token-normalization.md)
+- [Micro-services and Edge Authentication Architecture (EAA)](./docs/user-guides/edge-authentication-architecture-festival-wristbands.md)
+- [Injecting auth data into the request (HTTP headers, Wristband tokens, rate-limit metadata, etc)](./docs/user-guides/injecting-data.md)
 
 ## How it works
 
-Authorino enables hybrid API security, with usually no code changes required to your application, tailor-made for your very own combination of authentication standards and protocols and authorization policies of choice.
+Authorino enables hybrid API security, with usually no code changes required to your application, tailor-made for your own combination of authentication standards and protocols and authorization policies of choice.
 
 Authorino implements [Envoy Proxy](https://www.envoyproxy.io)'s [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol, and is a part of Red Hat [Kuadrant](https://github.com/kuadrant) architecture.
 
@@ -95,7 +97,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>Kubernetes TokenReview</td>
+      <td>Kubernetes TokenReview <small>(SA tokens)</small></td>
       <td><i>Ready</i></td>
     </tr>
     <tr>
@@ -115,7 +117,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/9">#9</a>)</td>
     </tr>
     <tr>
-      <td rowspan="3">Ad hoc external metadata fecthing</td>
+      <td rowspan="3">Ad hoc external metadata fetching</td>
       <td>OpenID Connect User Info</td>
       <td><i>Ready</i></td>
     </tr>
@@ -137,11 +139,11 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>Kubernetes SubjectAccessReview <small>(resource and non-reqsource attributes)</small></td>
+      <td>Kubernetes SubjectAccessReview <small>(resource and non-resource attributes)</small></td>
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>Keycloak (UMA-compliant Authorization API)</td>
+      <td>Keycloak Authorization Services (UMA-compliant Authorization API)</td>
       <td>In analysis</td>
     </tr>
     <tr>
