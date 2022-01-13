@@ -69,7 +69,7 @@
       required: [operator, selector, value]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/conditions/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -81,7 +81,7 @@
       required: [operator, selector, value]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/properties/conditions/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -93,7 +93,7 @@
       required: [operator, selector, value]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/properties/conditions/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -105,7 +105,7 @@
       required: [operator, selector, value]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/conditions/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -117,7 +117,7 @@
       required: [operator, selector, value]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/items/properties/conditions/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/items/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}

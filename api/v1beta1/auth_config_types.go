@@ -58,12 +58,13 @@ type AuthConfigSpec struct {
 	// Authorino uses the requested host to lookup for the corresponding authentication/authorization configs to enforce.
 	Hosts []string `json:"hosts"`
 
-	// Named sets of JSON patterns that can be referred in `conditions` and in JSON-pattern matching policy rules.
+	// Named sets of JSON patterns that can be referred in `when` conditionals and in JSON-pattern matching policy rules.
 	Patterns map[string]JSONPatternExpressions `json:"patterns,omitempty"`
 
 	// Conditions for the AuthConfig to be enforced.
 	// If omitted, the AuthConfig will be enforced for all requests.
-	Conditions []JSONPattern `json:"conditions,omitempty"`
+	// If present, all conditions must match for the AuthConfig to be enforced; otherwise, Authorino skips the AuthConfig and returns immediately with status OK.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	// List of identity sources/authentication modes.
 	// At least one config of this list MUST evaluate to a valid identity for a request to be successful in the identity verification phase.
@@ -138,8 +139,10 @@ type Identity struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
-	// Conditions that must match for Authorino to enforce this identity config; otherwise, the config will be skipped.
-	Conditions []JSONPattern `json:"conditions,omitempty"`
+	// Conditions for Authorino to enforce this identity config.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	// Defines where client credentials are required to be passed in the request for this identity source/authentication mode.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
@@ -212,8 +215,10 @@ type Metadata struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
-	// Conditions that must match for Authorino to enforce this metadata config; otherwise, the config will be skipped.
-	Conditions []JSONPattern `json:"conditions,omitempty"`
+	// Conditions for Authorino to enforce this metadata config.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
 	UMA         *Metadata_UMA         `json:"uma,omitempty"`
@@ -297,8 +302,10 @@ type Authorization struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
-	// Conditions that must match for Authorino to enforce this policy; otherwise, the policy will be skipped.
-	Conditions []JSONPattern `json:"conditions,omitempty"`
+	// Conditions for Authorino to enforce this authorization policy.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	OPA             *Authorization_OPA                 `json:"opa,omitempty"`
 	JSON            *Authorization_JSONPatternMatching `json:"json,omitempty"`
@@ -393,8 +400,10 @@ type Response struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
-	// Conditions that must match for Authorino to enforce this custom response config; otherwise, the config will be skipped.
-	Conditions []JSONPattern `json:"conditions,omitempty"`
+	// Conditions for Authorino to enforce this custom response config.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	// How Authorino wraps the response.
 	// Use "httpHeader" (default) to wrap the response in an HTTP header; or "envoyDynamicMetadata" to wrap the response as Envoy Dynamic Metadata
