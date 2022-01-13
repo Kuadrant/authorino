@@ -124,7 +124,7 @@ spec:
       endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   authorization:
   - name: email-verified-only
-    conditions:
+    when:
     - selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\": \",\"}"
       operator: matches
       value: 192\\.168\\.1\\.\\d+
@@ -136,7 +136,7 @@ spec:
 EOF
 ```
 
-Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#json-pattern-matching-authorization-rules-authorizationjson) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../architecture.md#common-feature-conditions) about skipping parts of an `AuthConfig` in the auth pipeline based on context..
+Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#json-pattern-matching-authorization-rules-authorizationjson) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context..
 
 ## 7. Obtain an access token and consume the API
 

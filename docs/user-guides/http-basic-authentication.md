@@ -109,7 +109,7 @@ spec:
       keySelector: Basic
   authorization:
   - name: acl
-    conditions:
+    when:
     - selector: context.request.http.path
       operator: eq
       value: /bye
@@ -123,7 +123,7 @@ EOF
 
 The config specifies an Access Control List (ACL), by which only the user `john` is authorized to consume the `/bye` endpoint of the API.
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifiers `@extract` and `@case` used above. Check out as well the common feature [Conditions](./../architecture.md#common-feature-conditions) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifiers `@extract` and `@case` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## 7. Create user credentials
 

@@ -141,7 +141,7 @@ spec:
   authorization:
   # RBAC rule: 'member' role required for requests to /resources[/*]
   - name: rbac-resources-api
-    conditions:
+    when:
     - selector: context.request.http.path
       operator: matches
       value: ^/resources(/.*)?$
@@ -151,7 +151,7 @@ spec:
 
   # RBAC rule: 'admin' role required for DELETE requests to /resources/{id}
   - name: rbac-delete-resource
-    conditions:
+    when:
     - selector: context.request.http.path
       operator: matches
       value: ^/resources/\d+$
@@ -164,7 +164,7 @@ spec:
 
   # RBAC rule: 'admin' role required for requests to /admin[/*]
   - name: rbac-admin-api
-    conditions:
+    when:
     - selector: context.request.http.path
       operator: matches
       value: ^/admin(/.*)?$

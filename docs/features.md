@@ -33,7 +33,7 @@
     - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
   - [_Extra:_ Custom denial status (`denyWith`)](#extra-custom-denial-status-denywith)
 - [Common feature: Priorities](#common-feature-priorities)
-- [Common feature: Conditions](#common-feature-conditions)
+- [Common feature: Conditions (`when`)](#common-feature-conditions-when)
 
 ## Overview
 
@@ -323,7 +323,7 @@ Each expression is a tuple composed of:
 - an `operator` – `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions;
 - a fixed comparable `value`
 
-Rules can mix and combine literal expressions and references to expression sets ("named patterns") defined at the upper level of the `AuthConfig` spec. (See [Common feature: Conditions](#common-feature-conditions))
+Rules can mix and combine literal expressions and references to expression sets ("named patterns") defined at the upper level of the `AuthConfig` spec. (See [Common feature: Conditions](#common-feature-conditions-when))
 
 ```yaml
 spec:
@@ -589,7 +589,7 @@ spec:
         method: GET
   authorization:
     - name: allowed-endpoints
-      conditions:
+      when:
         - selector: context.request.http.path
           operator: neq
           value: /hi
@@ -638,18 +638,18 @@ For the `AuthConfig` above,
 
 - Authorization policy `allowed-endpoints` (piority 0) is considered to be a lot less expensive than `more-expensive-policy` (priority 1) and has a high chance of denying access to the protected service (if the path is not one of the allowed endpoints). By setting different priorities to these policies we ensure the more expensive policy if triggered in sequence of the less expensive one, instead of concurrently.
 
-## Common feature: Conditions
+## Common feature: Conditions (`when`)
 
-_Conditions_ are sets of expressions (JSON patterns) that, whenever included, must evaluate to true against the [Authorization JSON](./architecture.md#the-authorization-json), so the scope where the expressions are defined is enforced. If any of the expressions in the set of conditions for a given scope does not match, Authorino will skip that scope in the [Auth Pipeline](./architecture.md#the-auth-pipeline).
+_Conditions_, named `when` in the AUthCOnfig API, are sets of expressions (JSON patterns) that, whenever included, must evaluate to true against the [Authorization JSON](./architecture.md#the-authorization-json), so the scope where the expressions are defined is enforced. If any of the expressions in the set of conditions for a given scope does not match, Authorino will skip that scope in the [Auth Pipeline](./architecture.md#the-auth-pipeline).
 
-The scope for a set of conditions can be the entire `AuthConfig` ("top level conditions") or a particular evaluator of any phase of the auth pipeline.
+The scope for a set of `when` conditions can be the entire `AuthConfig` ("top-level conditions") or a particular evaluator of any phase of the auth pipeline.
 
 Each expression is a tuple composed of:
 - a `selector`, to fetch from the Authorization JSON – see [Common feature: JSON paths](#common-feature-json-paths-valuefromauthjson) for details about syntax;
 - an `operator` – `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions;
 - a fixed comparable `value`
 
-_Conditions_ can list, mix and combine literal expressions and references to expression sets ("named patterns") defined at the upper level of the `AuthConfig` spec.
+Literal expressions and references to expression sets (`patterns`, defined at the upper level of the `AuthConfig` spec) can be listed, mixed and combined in `when` conditions sets.
 
 _Conditions_ can be used, e.g.,:
 
@@ -657,7 +657,7 @@ i) to skip an entire `AuthConfig` based on the context:
 
 ```yaml
 spec:
-  conditions: # no authn/authz required on requests to /status
+  when: # no authn/authz required on requests to /status
   - selector: context.request.http.path
     operator: neq
     value: /status
@@ -671,7 +671,7 @@ spec:
   - name: metadata-source
     http:
       endpoint: https://my-metadata-source.io
-    conditions: # only fetch the external metadata if the context is HTTP method different than OPTIONS
+    when: # only fetch the external metadata if the context is HTTP method different than OPTIONS
     - selector: context.request.http.method
       operator: neq
       value: OPTIONS
@@ -684,7 +684,7 @@ spec:
   identity:
   - name: authn-meth-1
     apiKey: {...} # this authn method only valid for POST requests to /foo[/*]
-    conditions:
+    when:
     - selector: context.request.http.path
       operator: matches
       value: ^/foo(/.*)?$
@@ -708,14 +708,14 @@ spec:
 
   metadata:
   - name: pets-info
-    conditions:
+    when:
     - patternRef: a-pet
     http:
       endpoint: https://pets-info.io?petId={context.request.http.path.@extract:{"sep":"/","pos":2}}
 
   authorization:
   - name: pets-owners-only
-    conditions:
+    when:
     - patternRef: a-pet
     opa:
       inlineRego: |
@@ -732,7 +732,7 @@ spec:
       operator: eq
       value: /foo
 
-  conditions: # unauthenticated access to /foo always granted
+  when: # unauthenticated access to /foo always granted
   - patternRef: foo
   - selector: context.request.http.headers.authorization
     operator: eq
@@ -740,7 +740,7 @@ spec:
 
   authorization:
   - name: my-policy-1
-    conditions: # authenticated access to /foo controlled by policy
+    when: # authenticated access to /foo controlled by policy
     - patternRef: foo
     json: {...}
 ```
@@ -751,14 +751,14 @@ vi) to avoid evaluating unnecessary identity checks when the user can indicate t
 spec:
   identity:
   - name: jwt
-    conditions:
+    when:
     - selector: selector: context.request.http.headers.authorization
       operator: matches
       value: JWT .+
     oidc: {...}
 
   - name: api-key
-    conditions:
+    when:
     - selector: context.request.http.headers.authorization
       operator: matches
       value: APIKEY .+
