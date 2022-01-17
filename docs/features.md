@@ -355,30 +355,69 @@ Authorino's built-in OPA module precompiles the policies in reconciliation-time 
 
 ### Kubernetes SubjectAccessReview ([`authorization.kubernetes`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_KubernetesAuthz))
 
-Access control enforcement based on rules defined in the Kubernetes authorization system (e.g. as `ClusterRole` and `ClusterRoleBinding` resources of Kubernetes RBAC authorization).
+Access control enforcement based on rules defined in the Kubernetes authorization system, i.e. `Role`, `ClusterRole`, `RoleBinding` and `ClusterRoleBinding` resources of Kubernetes RBAC.
 
-Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/kubernetes-api/authorization-resources/subject-access-review-v1) inquiry checking with the underlying Kubernetes cluster whether the user can access the requested API resouce. It can be used with `resourceAttributes` or `nonResourceAttributes` (the latter inferring HTTP verb and method from the original request).
+Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/kubernetes-api/authorization-resources/subject-access-review-v1) (SAR) inquiry that checks with the underlying Kubernetes server whether the user can access a particular resource, resurce kind or generic URL.
 
-A Kubernetes authorization policy config looks like the following in an Authorino `AuthConfig`:
+It supports **resource attributes authorization check** (parameters defined in the `AuthConfig`) and **non-resource attributes authorization check** (HTTP endpoint inferred from the original request).
+- Resource attributes: adequate for permissions set at namespace level, defined in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb)
+- Non-resource attributes: adequate for permissions set at cluster scope, defined for protected endpoints of a generic HTTP API (URL path + verb)
+
+Example of Kubernetes role for resource attributes authorization:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pet-reader
+rules:
+- apiGroups: ["pets.io"]
+  resources: ["pets"]
+  verbs: ["get"]
+```
+
+Example of Kubernetes cluster role for non-resource attributes authorization:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pet-editor
+rules:
+- nonResourceURLs: ["/pets/*"]
+  verbs: ["put", "delete"]
+```
+
+Kubernetes authorization policy configs look like the following in an Authorino `AuthConfig`:
 
 ```yaml
 authorization:
   - name: kubernetes-rbac
     kubernetes:
       user:
-        valueFrom: # It can be a fixed value as well, by using `value` instead
+        valueFrom: # values of the parameter can be fixed (`value`) or fetched from the Auhtorization JSON (`valueFrom.authJSON`)
           authJSON: auth.identity.metadata.annotations.userid
 
-      groups: [] # User groups to test for.
+      groups: [] # user groups to test for.
 
-      resourceAttributes: # Omit it to perform a non-resource `SubjectAccessReview` based on the request's path and method (verb) instead
-        namespace: # other supported resource attributes are: group, resource, name, subresource and verb
+      # for resource attributes permission checks; omit it to perform a non-resource attributes SubjectAccessReview with path and method/verb assumed from the original request
+      # if included, use the resource attributes, where the values for each parameter can be fixed (`value`) or fetched from the Auhtorization JSON (`valueFrom.authJSON`)
+      resourceAttributes:
+        namespace:
           value: default
+        group:
+          value: pets.io # the api group of the protected resource to be checked for permissions for the user
+        resource:
+          value: pets # the resource kind
+        name:
+          valueFrom: { authJSON: context.request.http.path.@extract:{"sep":"/","pos":2} } # resource name – e.g., the {id} in `/pets/{id}`
+        verb:
+          valueFrom: { authJSON: context.request.http.method.@case:lower } # api operation – e.g., copying from the context to use the same http method of the request
 ```
 
-`user` and `resourceAttributes` can be specified as a fixed value or patterns to fetch from the Authorization JSON.
+`user` and properties of `resourceAttributes` can be defined from fixed values or patterns of the Authorization JSON.
 
-An array of required `groups` can as well be specified and it will be used in the `SubjectAccessReview`.
+An array of `groups` (optional) can as well be set. When defined, it will be used in the `SubjectAccessReview` request.
 
 ### Keycloak Authorization Services (UMA-compliant Authorization API)
 
