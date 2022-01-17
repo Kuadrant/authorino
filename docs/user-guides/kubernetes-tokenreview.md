@@ -123,23 +123,16 @@ EOF
 
 ## 8. Consume the API from outside the cluster
 
-Get the Kubernetes API base endpoint and current Kubernetes user, and save the user's TLS certificate and TLS key to file:
+Proxy requests to the Kubernetes API (holds the shell):
 
 ```sh
-CURRENT_K8S_CONTEXT=$(kubectl config view -o json | jq -r '."current-context"')
-CURRENT_K8S_USER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.user')
-CURRENT_K8S_CLUSTER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.cluster')
-KUBERNETES_API=$(kubectl config view -o json | jq -r --arg K8S_CLUSTER "${CURRENT_K8S_CLUSTER}" '.clusters[] | select(.name == $K8S_CLUSTER) | .cluster.server')
-
-yq r ~/.kube/config "users(name==$CURRENT_K8S_USER).user.client-certificate-data" | base64 -d > /tmp/kind-cluster-user-cert.pem
-yq r ~/.kube/config "users(name==$CURRENT_K8S_USER).user.client-key-data" | base64 -d > /tmp/kind-cluster-user-cert.key
+kubectl proxy --port=8181
 ```
 
-Use the Kubernetes user's client TLS certificate to obtain a short-lived access token for the `api-consumer-1` `ServiceAccount`:
+Obtain a short-lived access token for the `api-consumer-1` `ServiceAccount`:
 
 ```sh
-export ACCESS_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-1/token" \
-     --cert /tmp/kind-cluster-user-cert.pem --key /tmp/kind-cluster-user-cert.key \
+export ACCESS_TOKEN=$(curl -k -X "POST" "http://localhost:8181/api/v1/namespaces/authorino/serviceaccounts/api-consumer-1/token" \
      -H 'Content-Type: application/json; charset=utf-8' \
      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
 ```
@@ -173,7 +166,7 @@ metadata:
 spec:
   containers:
   - name: api-consumer
-    image: quay.io/3scale/authorino:api-consumer
+    image: quay.io/3scale/authorino-examples:api-consumer
     command: ["./run"]
     args:
       - --endpoint=http://envoy.authorino.svc.cluster.local:8000/hello
