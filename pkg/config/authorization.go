@@ -10,8 +10,10 @@ import (
 )
 
 type AuthorizationConfig struct {
-	Name            string                             `yaml:"name"`
-	Priority        int                                `yaml:"priority"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
 	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
@@ -39,4 +41,10 @@ func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, parentCtx 
 
 func (config *AuthorizationConfig) GetPriority() int {
 	return config.Priority
+}
+
+// impl:ConditionalEvaluator
+
+func (config *AuthorizationConfig) GetConditions() []common.JSONPatternMatchingRule {
+	return config.Conditions
 }

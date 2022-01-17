@@ -139,7 +139,7 @@ spec:
   authorization:
   - name: only-admins-can-delete
     json:
-      conditions:
+      when:
       - selector: context.request.http.method
         operator: eq
         value: DELETE

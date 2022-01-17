@@ -39,6 +39,10 @@ type Prioritizable interface {
 	GetPriority() int
 }
 
+type ConditionalEvaluator interface {
+	GetConditions() []JSONPatternMatchingRule
+}
+
 type IdentityConfigEvaluator interface {
 	GetAuthCredentials() auth_credentials.AuthCredentials
 	GetOIDC() interface{}

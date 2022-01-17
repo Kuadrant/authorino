@@ -76,6 +76,12 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 		return
 	}
 
+	if conditionalEv, ok := config.(common.ConditionalEvaluator); ok {
+		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
+			return
+		}
+	}
+
 	if authObj, err := config.Call(pipeline, ctx); err != nil {
 		*respChannel <- newEvaluationResponse(config, nil, err)
 
@@ -294,8 +300,28 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	}
 }
 
+func (pipeline *AuthPipeline) evaluateConditions(conditions []common.JSONPatternMatchingRule) error {
+	authJSON := pipeline.GetAuthorizationJSON()
+	for _, condition := range conditions {
+		if match, err := condition.EvaluateFor(authJSON); err != nil {
+			return err
+		} else if !match {
+			return fmt.Errorf("unmatching conditions for config")
+		}
+	}
+	return nil
+}
+
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
+	if err := pipeline.evaluateConditions(pipeline.API.Conditions); err != nil {
+		pipeline.Logger.V(1).Info("skipping", "reason", err)
+
+		return common.AuthResult{
+			Code: rpc.OK,
+		}
+	}
+
 	// phase 1: identity verification
 	if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
 		return pipeline.customizeDenyWith(common.AuthResult{

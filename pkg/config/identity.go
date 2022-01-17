@@ -15,9 +15,9 @@ import (
 )
 
 type IdentityConfig struct {
-	Name               string                `yaml:"name"`
-	Priority           int                   `yaml:"priority"`
-	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
@@ -25,6 +25,8 @@ type IdentityConfig struct {
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
 	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
+
+	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
 }
 
 func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
@@ -74,6 +76,12 @@ func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 
 func (config *IdentityConfig) GetPriority() int {
 	return config.Priority
+}
+
+// impl:ConditionalEvaluator
+
+func (config *IdentityConfig) GetConditions() []common.JSONPatternMatchingRule {
+	return config.Conditions
 }
 
 // impl:AuthConfigCleaner

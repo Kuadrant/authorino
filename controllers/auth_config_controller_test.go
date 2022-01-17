@@ -92,19 +92,24 @@ func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
 				{
 					Name: "some-extra-rules",
 					JSON: &v1beta1.Authorization_JSONPatternMatching{
-						Rules: []v1beta1.Authorization_JSONPatternMatching_Rule{
+						Rules: []v1beta1.JSONPattern{
 							{
-								Selector: "context.identity.role",
-								Operator: "eq",
-								Value:    "admin",
+								JSONPatternExpression: v1beta1.JSONPatternExpression{
+									Selector: "context.identity.role",
+									Operator: "eq",
+									Value:    "admin",
+								},
 							},
 							{
-								Selector: "attributes.source.address.Address.SocketAddress.address",
-								Operator: "eq",
-								Value:    "80.133.21.75",
+								JSONPatternExpression: v1beta1.JSONPatternExpression{
+									Selector: "attributes.source.address.Address.SocketAddress.address",
+									Operator: "eq",
+									Value:    "80.133.21.75",
+								},
 							},
 						},
-					}},
+					},
+				},
 			},
 		},
 		Status: v1beta1.AuthConfigStatus{

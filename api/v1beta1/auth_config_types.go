@@ -58,6 +58,14 @@ type AuthConfigSpec struct {
 	// Authorino uses the requested host to lookup for the corresponding authentication/authorization configs to enforce.
 	Hosts []string `json:"hosts"`
 
+	// Named sets of JSON patterns that can be referred in `when` conditionals and in JSON-pattern matching policy rules.
+	Patterns map[string]JSONPatternExpressions `json:"patterns,omitempty"`
+
+	// Conditions for the AuthConfig to be enforced.
+	// If omitted, the AuthConfig will be enforced for all requests.
+	// If present, all conditions must match for the AuthConfig to be enforced; otherwise, Authorino skips the AuthConfig and returns immediately with status OK.
+	Conditions []JSONPattern `json:"when,omitempty"`
+
 	// List of identity sources/authentication modes.
 	// At least one config of this list MUST evaluate to a valid identity for a request to be successful in the identity verification phase.
 	Identity []*Identity `json:"identity,omitempty"`
@@ -77,6 +85,33 @@ type AuthConfigSpec struct {
 	// Custom denial response codes, statuses and headers to override default 40x's.
 	DenyWith *DenyWith `json:"denyWith,omitempty"`
 }
+
+type JSONPattern struct {
+	JSONPatternRef        `json:",omitempty"`
+	JSONPatternExpression `json:",omitempty"`
+}
+
+type JSONPatternRef struct {
+	// Name of a named pattern
+	JSONPatternName string `json:"patternRef,omitempty"`
+}
+
+type JSONPatternExpressions []JSONPatternExpression
+
+type JSONPatternExpression struct {
+	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+	// The value is used to fetch content from the input authorization JSON built by Authorino along the identity and metadata phases.
+	Selector string `json:"selector,omitempty"`
+	// The binary operator to be applied to the content fetched from the authorization JSON, for comparison with "value".
+	// Possible values are: "eq" (equal to), "neq" (not equal to), "incl" (includes; for arrays), "excl" (excludes; for arrays), "matches" (regex)
+	Operator JSONPatternOperator `json:"operator,omitempty"`
+	// The value of reference for the comparison with the content fetched from the authorization JSON.
+	// If used with the "matches" operator, the value must compile to a valid Golang regex.
+	Value string `json:"value,omitempty"`
+}
+
+// +kubebuilder:validation:Enum:=eq;neq;incl;excl;matches
+type JSONPatternOperator string
 
 // +kubebuilder:validation:Enum:=authorization_header;custom_header;query;cookie
 type Credentials_In string
@@ -103,6 +138,11 @@ type Identity struct {
 	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
+
+	// Conditions for Authorino to enforce this identity config.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	// Defines where client credentials are required to be passed in the request for this identity source/authentication mode.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
@@ -174,6 +214,11 @@ type Metadata struct {
 	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
+
+	// Conditions for Authorino to enforce this metadata config.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
 	UMA         *Metadata_UMA         `json:"uma,omitempty"`
@@ -257,6 +302,11 @@ type Authorization struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
+	// Conditions for Authorino to enforce this authorization policy.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
+
 	OPA             *Authorization_OPA                 `json:"opa,omitempty"`
 	JSON            *Authorization_JSONPatternMatching `json:"json,omitempty"`
 	KubernetesAuthz *Authorization_KubernetesAuthz     `json:"kubernetes,omitempty"`
@@ -302,26 +352,8 @@ type Authorization_OPA struct {
 
 // JSON pattern matching authorization policy.
 type Authorization_JSONPatternMatching struct {
-	// Conditions that must match for Authorino to enforce this policy; otherwise, the policy will be skipped.
-	Conditions []Authorization_JSONPatternMatching_Rule `json:"conditions,omitempty"`
-
 	// The rules that must all evaluate to "true" for the request to be authorized.
-	Rules []Authorization_JSONPatternMatching_Rule `json:"rules,omitempty"`
-}
-
-// +kubebuilder:validation:Enum:=eq;neq;incl;excl;matches
-type JSONPatternMatching_Rule_Operator string
-
-type Authorization_JSONPatternMatching_Rule struct {
-	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
-	// The value is used to fetch content from the input authorization JSON built by Authorino along the identity and metadata phases.
-	Selector string `json:"selector"`
-	// The binary operator to be applied to the content fetched from the authorization JSON, for comparison with "value".
-	// Possible values are: "eq" (equal to), "neq" (not equal to), "incl" (includes; for arrays), "excl" (excludes; for arrays), "matches" (regex)
-	Operator JSONPatternMatching_Rule_Operator `json:"operator"`
-	// The value of reference for the comparison with the content fetched from the authorization policy.
-	// If used with the "matches" operator, the value must compile to a valid Golang regex.
-	Value string `json:"value"`
+	Rules []JSONPattern `json:"rules"`
 }
 
 type Authorization_KubernetesAuthz_Attribute struct {
@@ -341,9 +373,6 @@ type Authorization_KubernetesAuthz_ResourceAttributes struct {
 // Kubernetes authorization policy based on `SubjectAccessReview`
 // Path and Verb are inferred from the request.
 type Authorization_KubernetesAuthz struct {
-	// Conditions that must match for Authorino to enforce this policy; otherwise, the policy will be skipped.
-	Conditions []Authorization_JSONPatternMatching_Rule `json:"conditions,omitempty"`
-
 	// User to test for.
 	// If without "Groups", then is it interpreted as "What if User were not a member of any groups"
 	User Authorization_KubernetesAuthz_Attribute `json:"user"`
@@ -370,6 +399,11 @@ type Response struct {
 	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
+
+	// Conditions for Authorino to enforce this custom response config.
+	// If omitted, the config will be enforced for all requests.
+	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
 
 	// How Authorino wraps the response.
 	// Use "httpHeader" (default) to wrap the response in an HTTP header; or "envoyDynamicMetadata" to wrap the response as Envoy Dynamic Metadata

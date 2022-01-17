@@ -19,10 +19,11 @@ const (
 	DEFAULT_WRAPPER = HTTP_HEADER_WRAPPER
 )
 
-func NewResponseConfig(name string, priority int, wrapper string, wrapperKey string) *ResponseConfig {
+func NewResponseConfig(name string, priority int, conditions []common.JSONPatternMatchingRule, wrapper string, wrapperKey string) *ResponseConfig {
 	responseConfig := ResponseConfig{
 		Name:       name,
 		Priority:   priority,
+		Conditions: conditions,
 		Wrapper:    DEFAULT_WRAPPER,
 		WrapperKey: name,
 	}
@@ -39,10 +40,11 @@ func NewResponseConfig(name string, priority int, wrapper string, wrapperKey str
 }
 
 type ResponseConfig struct {
-	Name       string `yaml:"name"`
-	Priority   int    `yaml:"priority"`
-	Wrapper    string `yaml:"wrapper"`
-	WrapperKey string `yaml:"wrapperKey"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Wrapper    string                           `yaml:"wrapper"`
+	WrapperKey string                           `yaml:"wrapperKey"`
 
 	Wristband   common.WristbandIssuer `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`
@@ -92,6 +94,12 @@ func (config *ResponseConfig) GetName() string {
 
 func (config *ResponseConfig) GetPriority() int {
 	return config.Priority
+}
+
+// impl:ConditionalEvaluator
+
+func (config *ResponseConfig) GetConditions() []common.JSONPatternMatchingRule {
+	return config.Conditions
 }
 
 // impl:ResponseConfigEvaluator
