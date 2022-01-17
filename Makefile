@@ -122,10 +122,13 @@ namespace:
 	kubectl create namespace $(NAMESPACE)
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+EDITOR ?= vim
 deploy: certs
 	@{ \
 	set -e ;\
-	TEMP_FILE=/tmp/authorino-deploy-$$(openssl rand -hex 4).yaml ;\
+	TEMP_DIR=$(PROJECT_DIR)/tmp ;\
+	mkdir -p $$TEMP_DIR ;\
+	TEMP_FILE=$$TEMP_DIR/authorino-deploy.yaml ;\
 	cp $(AUTHORINO_CR) $$TEMP_FILE ;\
 	sed -i "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(TLS_ENABLED)/$(TLS_ENABLED)/g" $$TEMP_FILE ;\
 	$(EDITOR) $$TEMP_FILE ;\
