@@ -339,7 +339,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			var err error
-			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, index, ctxWithLogger)
+			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, opa.Fuzzy, index, ctxWithLogger)
 			if err != nil {
 				return nil, err
 			}

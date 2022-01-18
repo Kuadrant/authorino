@@ -386,11 +386,13 @@ spec:
 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs.
 
-Policies can be either declared in-line (in Rego language) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time.
+Policies can be either declared in-line in Rego language (`inlineRego`) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time (`externalRegistry`).
 
-Authorino's built-in OPA module precompiles the policies in reconciliation-time and cache them for fast evaluation in request-time, where they receive the Authorization JSON as input.
+Authorino's built-in OPA module precompiles the policies during reconciliation of the AUthConfig and caches the precompiled policies for fast evaluation in runtime, where they receive the Authorization JSON as input.
 
-![OPA](http://www.plantuml.com/plantuml/png/ZSv1IiH048NXVPsYc7tYVY0oeuYB0IFUeEcKfh2xAdPUATxUB4GG5B9_F-yxhKWDKGkjhsfBQgboTVCyDw_2Q254my1Fajso5arGjmvQXOU1pe7PcvfpTys7cz22Jet7n_E1ZrlqeYkayU95yoVz7loPt7fTjCX_nPRyN98vX8iyuyWvvLc8-hx_rhw5hDZ9l1Vmv3cg6FX3CRFQ4jZ3lNjF9H9sURVvUBbw62zq4fkYbYy0)
+![OPA](http://www.plantuml.com/plantuml/png/TP71IWD138RlynHXJmfklHTMMaKyMle6OPgwmKoopcQiHNntjqjTc8F79D__vm_PZ8xPIv8mlhCEc351ChNOPqi4dWk5CBMT8m-e3jlYlMLM0nm1_ueAQHuBYxUiyBhRDXVE1go9dGd7CsHwuz7p-G8jHGXT1tkAff65qTcqTKu4NHUMXT0-B09OmmrzEML5WM5sleLT4GaBqKxuegrTfcoJmNucAL_ruT9TXa-M1XQgPfMXcXC87NqD4MDF8QnMg-iT7uL6hm-eLx-Gmy5YIQGE9_OUM8VYTOJdJvI2_d-6YVc61aNirApdlzqVKKQwWoaA_8GDwQ4a-GK0)
+
+A field option `fuzzy: boolean` makes the values of all rules declared in the Rego document to be returned in the OPA output after policy evaluation. When disabled (default), only the boolean value `allow` is returned. Values of internal rules of the Rego document can be referenced in subsequent policies/phases of the Auth Pipeline.
 
 ### Kubernetes SubjectAccessReview ([`authorization.kubernetes`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_KubernetesAuthz))
 

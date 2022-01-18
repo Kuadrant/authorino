@@ -359,6 +359,12 @@ type Authorization_OPA struct {
 
 	// External registry of OPA policies.
 	ExternalRegistry ExternalRegistry `json:"externalRegistry,omitempty"`
+
+	// Use fuzzy OPA evaluation for each Rego rule to be exposed as a query, and thus whose value can be read in subsequent evaluators/phases of the Auth Pipeline.
+	// Otherwise, only the default `allow` rule will be exposed.
+	// The use of fuzzy OPA evaluation can affect performance of OPA policies in both during reconciliation (policy precompile) and runtime.
+	// +kubebuilder:default:=false
+	Fuzzy bool `json:"fuzzy,omitempty"`
 }
 
 // JSON pattern matching authorization policy.

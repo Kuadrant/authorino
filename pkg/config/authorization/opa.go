@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/common/log"
 
+	opaParser "github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 )
 
@@ -20,15 +22,15 @@ const (
 	policyTemplate = `package %s
 default allow = false
 %s`
-
 	policyUIDHashSeparator = "|"
+	allowQuery             = "allow"
 
 	opaPolicyPrecompileErrorMsg = "Failed to precompile OPA policy"
 	regoDownloadErrorMsg        = "Failed to download Rego data"
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
-func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, nonce int, ctx context.Context) (*OPA, error) {
+func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, fuzzy bool, nonce int, ctx context.Context) (*OPA, error) {
 	logger := log.FromContext(ctx).WithName("opa")
 
 	if rego == "" && externalSource.Endpoint != "" {
@@ -45,6 +47,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource OPAExter
 	o := &OPA{
 		Rego:              rego,
 		OPAExternalSource: externalSource,
+		Fuzzy:             fuzzy,
 		policyUID:         generatePolicyUID(policyName, rego, nonce),
 		opaContext:        context.TODO(),
 	}
@@ -59,13 +62,14 @@ func NewOPAAuthorization(policyName string, rego string, externalSource OPAExter
 type OPA struct {
 	Rego              string `yaml:"rego"`
 	OPAExternalSource OPAExternalSource
+	Fuzzy             bool
 
 	opaContext context.Context
 	policy     *rego.PreparedEvalQuery
 	policyUID  string
 }
 
-func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
+func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
 	var authJSON interface{}
 	if err := json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON); err != nil {
 		return false, err
@@ -74,13 +78,13 @@ func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, e
 		results, err := opa.policy.Eval(opa.opaContext, options)
 
 		if err != nil {
-			return false, err
+			return nil, err
 		} else if len(results) == 0 {
-			return false, fmt.Errorf(invalidOPAResponseErrorMsg)
-		} else if allowed := results[0].Bindings["allowed"].(bool); !allowed {
-			return false, fmt.Errorf(unauthorizedErrorMsg)
+			return nil, fmt.Errorf(invalidOPAResponseErrorMsg)
+		} else if allowed := results[0].Bindings[allowQuery].(bool); !allowed {
+			return nil, fmt.Errorf(unauthorizedErrorMsg)
 		} else {
-			return true, nil
+			return results[0].Bindings, nil
 		}
 	}
 }
@@ -88,10 +92,34 @@ func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, e
 func (opa *OPA) precompilePolicy() error {
 	policyName := fmt.Sprintf(`authorino.authz["%s"]`, opa.policyUID)
 	policyContent := fmt.Sprintf(policyTemplate, policyName, opa.Rego)
-	regoQuery := rego.Query("allowed = data." + policyName + ".allow")
-	regoModule := rego.Module(opa.policyUID+".rego", policyContent)
+	policyFileName := opa.policyUID + ".rego"
+	queryTemplate := `%s = object.get(data.` + policyName + `, "%s", null)`
 
-	if regoPolicy, err := rego.New(regoQuery, regoModule).PrepareForEval(opa.opaContext); err != nil {
+	var module *opaParser.Module
+	queries := []string{fmt.Sprintf(queryTemplate, allowQuery, allowQuery)}
+	var err error
+
+	if module, err = opaParser.ParseModule(policyFileName, policyContent); err != nil {
+		return err
+	}
+
+	if opa.Fuzzy {
+		rules := map[string]interface{}{allowQuery: nil}
+		for _, rule := range module.Rules {
+			name := string(rule.Head.Name)
+			if _, found := rules[name]; !found {
+				queries = append(queries, fmt.Sprintf(queryTemplate, name, name))
+				rules[name] = nil
+			}
+		}
+	}
+
+	r := rego.New(
+		rego.Query(strings.Join(queries, ";")),
+		rego.ParsedModule(module),
+	)
+
+	if regoPolicy, err := r.PrepareForEval(opa.opaContext); err != nil {
 		return err
 	} else {
 		opa.policy = &regoPolicy
