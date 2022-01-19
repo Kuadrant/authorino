@@ -8,14 +8,12 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
     <ul>
       <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes">Kubernetes SubjectAccessReview</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>
     </ul>
   </summary>
 
-  Authorino can delegate authorization decision to the Kubernetes authorization system, allowing permissions to be stored and managed using the Kubernetes Role-Based Access Control (RBAC) for example. The feature is based on the `SubjectAccessReview` API and can be used for `resourceAttributes` or `nonResourceAttributes` (the latter inferring HTTP verb and method from the original request).
+  Authorino can delegate authorization decision to the Kubernetes authorization system, allowing permissions to be stored and managed using the Kubernetes Role-Based Access Control (RBAC) for example. The feature is based on the `SubjectAccessReview` API and can be used for `resourceAttributes` (parameters defined in the `AuthConfig`) or `nonResourceAttributes` (inferring HTTP path and verb from the original request).
 
-  Check out as well the user guides about [Authentication with Kubernetes tokens (TokenReview API)](./kubernetes-tokenreview.md), [Authentication with API keys](./api-key-authentication.md) and [Token normalization](./token-normalization.md).
+  Check out as well the user guide about [Authentication with Kubernetes tokens (TokenReview API)](./kubernetes-tokenreview.md).
 
   For further details about Authorino features in general, check the [docs](./../features.md).
 </details>
@@ -93,13 +91,7 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 
 ## 6. Create the `AuthConfig`
 
-The `AuthConfig` below defines:
-- 2 sets of identities trusted to access the API:
-  - users that authenticate with API keys (**`api-key-users`**), and
-  - service accounts that authenticate with Kubernetes service account tokens (**`service-accounts`**);
-- 2 authorization policies based on Kubernetes SubjectAccessReview:
-  - resource access reviews when the requested endpoint matches `/resources(/\w+)?` (**`resource-endpoints`**), and
-  - non-resource access reviews when the requested endpoint does not match `/resources(/\w+)?` (**`non-resource-endpoints`**)
+The `AuthConfig` below sets all Kubernetes service accounts as trusted users of the API, and relies on the Kubernetes RBAC to enforce authorization using Kubernetes SubjectAccessReview API for non-resource endpoints:
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
@@ -110,71 +102,29 @@ metadata:
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
+  - envoy.authorino.svc.cluster.local
   identity:
   - name: service-accounts
     kubernetes:
-      audiences:
-      - talker-api
-    extendedProperties:
-    - name: username
-      valueFrom:
-        authJSON: auth.identity.sub
-  - name: api-key-users
-    apiKey:
-      labelSelectors:
-        audiences: talker-api
-    extendedProperties:
-    - name: username
-      valueFrom:
-        authJSON: auth.identity.metadata.annotations.username
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+      audiences: ["https://kubernetes.default.svc.cluster.local"]
   authorization:
-  - name: non-resource-endpoints
-    when:
-    - selector: context.request.http.path.@extract:{"sep":"/","pos":1}
-      operator: neq
-      value: resources
+  - name: k8s-rbac
     kubernetes:
       user:
-        valueFrom:
-          authJSON: auth.identity.username
-  - name: resource-endpoints
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/resources(/\w+)?
-    kubernetes:
-      user:
-        valueFrom:
-          authJSON: auth.identity.username
-      resourceAttributes:
-        namespace:
-          value: authorino
-        group:
-          value: talker-api.authorino.kuadrant.io
-        resource:
-          value: resources
-        name:
-          valueFrom:
-            authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
-        verb:
-          valueFrom:
-            authJSON: context.request.http.method.@case:lower
+        valueFrom: { authJSON: auth.identity.sub }
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifiers `@extract` and `@case` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
+Check out the [spec](./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes) for the Authorino Kubernetes SubjectAccessReview authorization feature, for resource attributes permission checks where SubjectAccessReviews issued by Authorino are modeled in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb).
 
 ## 7. Create roles associated with endpoints of the API
 
-Because the authorization policy `non-resource-endpoints`, configured in the `AuthConfig` in the previous step, is for non-resource access review requests, the corresponding roles and role bindings have to be defined at cluster scope, whereas the roles and role bindings for the `resource-endpoints` policy can be scoped to the namespace.
+Because the `k8s-rbac` policy defined in the `AuthConfig` in the previous step is for non-resource access review requests, the corresponding roles and role bindings have to be defined at cluster scope.
 
-Create a `talker-api-greeter` role whose users and service accounts bound to this role can consume the non-resource endpoints `POST /hello` and `POST /hey` of the API:
+Create a `talker-api-greeter` role whose users and service accounts bound to this role can consume the non-resource endpoints `POST /hello` and `POST /hi` of the API:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -182,7 +132,7 @@ metadata:
 rules:
 - nonResourceURLs: ["/hello"]
   verbs: ["post"]
-- nonResourceURLs: ["/hey"]
+- nonResourceURLs: ["/hi"]
   verbs: ["post"]
 EOF
 ```
@@ -190,7 +140,7 @@ EOF
 Create a `talker-api-speaker` role whose users and service accounts bound to this role can consume the non-resource endpoints `POST /say/*` of the API:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -201,23 +151,8 @@ rules:
 EOF
 ```
 
-Create a `talker-api-resource-reader` role whose users and service accounts bound to this role can consume the resource endpoints `GET /resources[/*]` of the API:
 
-```sh
-kubectl -n authorino apply -f -<<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: talker-api-resource-reader
-rules:
-- apiGroups: ["talker-api.authorino.kuadrant.io"]
-  resources: ["resources"]
-  verbs: ["get"]
-EOF
-```
-
-
-## 8. Create a few API keys and `ServiceAccount` and permissions
+## 8. Create the `ServiceAccount`s and permissions to consume the API
 
 Create service accounts `api-consumer-1` and `api-consumer-2`:
 
@@ -239,48 +174,10 @@ metadata:
 EOF
 ```
 
-Create an API key `api-key-1` for user `john`:
+Bind both service accounts to the `talker-api-greeter` role:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: api-key-1
-  labels:
-    authorino.kuadrant.io/managed-by: authorino
-    audiences: talker-api
-  annotations:
-    username: john
-stringData:
-  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
-type: Opaque
-EOF
-```
-
-Create an API key `api-key-2` for user `jane`:
-
-```sh
-kubectl -n authorino apply -f -<<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: api-key-2
-  labels:
-    authorino.kuadrant.io/managed-by: authorino
-    audiences: talker-api
-  annotations:
-    username: jane
-stringData:
-  api_key: Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn
-type: Opaque
-EOF
-```
-
-Bind all users and service accounts to the `talker-api-greeter` role:
-
-```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -296,17 +193,13 @@ subjects:
 - kind: ServiceAccount
   name: api-consumer-2
   namespace: authorino
-- kind: User
-  name: john
-- kind: User
-  name: jane
 EOF
 ```
 
-Bind service account `api-consumer-1` and user `john` to the `talker-api-speaker` role:
+Bind service account `api-consumer-1` to the `talker-api-speaker` role:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -319,136 +212,100 @@ subjects:
 - kind: ServiceAccount
   name: api-consumer-1
   namespace: authorino
-- kind: User
-  name: john
 EOF
 ```
 
-Bind service account `api-consumer-1` and user `john` to the `talker-api-resource-reader` role:
-
-```sh
-kubectl -n authorino apply -f -<<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: talker-api-resource-reader-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: talker-api-resource-reader
-subjects:
-- kind: ServiceAccount
-  name: api-consumer-1
-  namespace: authorino
-- kind: User
-  name: john
-  namespace: authorino
-EOF
-```
 
 ## 9. Consume the API
 
-Consume the API as `john`, who is bound to the `talker-api-greeter`, `talker-api-speaker` and `talker-api-resource-reader` roles in the Kubernetes RBAC:
+Run a pod that consumes one of the greeting endpoints of the API from inside the cluster, as service account `api-consumer-1`, bound to the `talker-api-greeter` and `talker-api-speaker` cluster roles in the Kubernetes RBAC:
 
 ```sh
-curl -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
-# HTTP/1.1 200 OK
+kubectl -n authorino run greeter --attach --rm --restart=Never -q --image=quay.io/3scale/authorino-examples:api-consumer --overrides='{
+  "apiVersion": "v1",
+  "spec": {
+    "containers": [{
+      "name": "api-consumer", "image": "quay.io/3scale/authorino-examples:api-consumer", "command": ["./run"],
+      "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/hi","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
+      "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
+    }],
+    "serviceAccountName": "api-consumer-1",
+    "volumes": [{"name": "access-token","projected": {"sources": [{"serviceAccountToken": {"path": "api-token","expirationSeconds": 7200}}]}}]
+  }
+}' -- sh
+# Sending...
+# 200
 ```
+
+Run a pod that sends a `POST` request to `/say/blah` from within the cluster, as service account `api-consumer-1`:
 
 ```sh
-curl -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/say/i-love-you
-# HTTP/1.1 200 OK
+kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/3scale/authorino-examples:api-consumer --overrides='{
+  "apiVersion": "v1",
+  "spec": {
+    "containers": [{
+      "name": "api-consumer", "image": "quay.io/3scale/authorino-examples:api-consumer", "command": ["./run"],
+      "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
+      "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
+    }],
+    "serviceAccountName": "api-consumer-1",
+    "volumes": [{"name": "access-token","projected": {"sources": [{"serviceAccountToken": {"path": "api-token","expirationSeconds": 7200}}]}}]
+  }
+}' -- sh
+# Sending...
+# 200
 ```
+
+Run a pod that sends a `POST` request to `/say/blah` from within the cluster, as service account `api-consumer-2`, bound only to the `talker-api-greeter` cluster role in the Kubernetes RBAC:
 
 ```sh
-curl -H "Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" http://talker-api-authorino.127.0.0.1.nip.io:8000/resources
-# HTTP/1.1 200 OK
+kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/3scale/authorino-examples:api-consumer --overrides='{
+  "apiVersion": "v1",
+  "spec": {
+    "containers": [{
+      "name": "api-consumer", "image": "quay.io/3scale/authorino-examples:api-consumer", "command": ["./run"],
+      "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
+      "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
+    }],
+    "serviceAccountName": "api-consumer-2",
+    "volumes": [{"name": "access-token","projected": {"sources": [{"serviceAccountToken": {"path": "api-token","expirationSeconds": 7200}}]}}]
+  }
+}' -- sh
+# Sending...
+# 403
 ```
 
-Consume the API as `jane`, who is bound to the `talker-api-greeter` role in the Kubernetes RBAC:
+<details>
+  <summary>Extra: consume the API as service account <code>api-consumer-2</code> from <i>outside</i> the cluster</summary>
 
-```sh
-curl -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/hey
-# HTTP/1.1 200 OK
-```
+  <br/>
 
-```sh
-curl -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/say/something -i
-# HTTP/1.1 403 Forbidden
-# x-ext-auth-reason: Not authorized: unknown reason
-```
+  To obtain access tokens to consume the API as service accounts from outside the cluster, start by proxying requests to the Kubernetes API:
 
-```sh
-curl -H "Authorization: APIKEY Vb8Ymt1Y2hWvaKcAcElau81ia2CsAYUn" http://talker-api-authorino.127.0.0.1.nip.io:8000/resources -i
-# HTTP/1.1 403 Forbidden
-# x-ext-auth-reason: Not authorized: unknown reason
-```
+  ```sh
+  kubectl proxy --port=8181 # holds the shell
+  ```
 
-To consume the API as a service account sending requests from outside the cluster, get the Kubernetes API base endpoint and current Kubernetes user, and save the user's TLS certificate and TLS key to file:
+  Then, obtain a short-lived access token for service account `api-consumer-2`, bound to the `talker-api-greeter` cluster role in the Kubernetes RBAC, using the Kubernetes TokenRequest API:
 
-```sh
-CURRENT_K8S_CONTEXT=$(kubectl config view -o json | jq -r '."current-context"')
-CURRENT_K8S_USER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.user')
-CURRENT_K8S_CLUSTER=$(kubectl config view -o json | jq -r --arg K8S_CONTEXT "${CURRENT_K8S_CONTEXT}"  '.contexts[] | select(.name == $K8S_CONTEXT) | .context.cluster')
-KUBERNETES_API=$(kubectl config view -o json | jq -r --arg K8S_CLUSTER "${CURRENT_K8S_CLUSTER}" '.clusters[] | select(.name == $K8S_CLUSTER) | .cluster.server')
+  ```sh
+  ACCESS_TOKEN=$(curl -k -X "POST" "http://localhost:8181/api/v1/namespaces/authorino/serviceaccounts/api-consumer-2/token" \
+      -H 'Content-Type: application/json; charset=utf-8' \
+      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | jq -r '.status.token')
+  ```
 
-yq r ~/.kube/config "users(name==$CURRENT_K8S_USER).user.client-certificate-data" | base64 -d > /tmp/kind-cluster-user-cert.pem
-yq r ~/.kube/config "users(name==$CURRENT_K8S_USER).user.client-key-data" | base64 -d > /tmp/kind-cluster-user-cert.key
-```
+  Consume the API as `api-consumer-2` from outside the cluster:
 
-Use the Kubernetes user's client TLS certificate to obtain a short-lived access token for the `api-consumer-1` `ServiceAccount`:
+  ```sh
+  curl -H "Authorization: Bearer $ACCESS_TOKEN" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
+  # HTTP/1.1 200 OK
+  ```
 
-```sh
-export ACCESS_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-1/token" \
-     --cert /tmp/kind-cluster-user-cert.pem --key /tmp/kind-cluster-user-cert.key \
-     -H 'Content-Type: application/json; charset=utf-8' \
-     -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
-```
-
-Consume the API as `api-consumer-1`, which is bound to the `talker-api-greeter`, `talker-api-speaker` and `talker-api-resource-reader` roles in the Kubernetes RBAC:
-
-```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
-# HTTP/1.1 200 OK
-```
-
-```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/say/happy-to-be-here
-# HTTP/1.1 200 OK
-```
-
-```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/resources/123
-# HTTP/1.1 200 OK
-```
-
-Use the Kubernetes user's client TLS certificate to obtain a short-lived access token for the `api-consumer-2` `ServiceAccount`:
-
-```sh
-export ACCESS_TOKEN=$(curl -k -X "POST" "$KUBERNETES_API/api/v1/namespaces/authorino/serviceaccounts/api-consumer-2/token" \
-     --cert /tmp/kind-cluster-user-cert.pem --key /tmp/kind-cluster-user-cert.key \
-     -H 'Content-Type: application/json; charset=utf-8' \
-     -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "audiences": ["talker-api"], "expirationSeconds": 600 } }' | jq -r '.status.token')
-```
-
-Consume the API as `api-consumer-2`, which is bound to the `talker-api-greeter` role in the Kubernetes RBAC:
-
-```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/hey
-# HTTP/1.1 200 OK
-```
-
-```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/say/something -i
-# HTTP/1.1 403 Forbidden
-# x-ext-auth-reason: Not authorized: unknown reason
-```
-
-```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/resources/123 -i
-# HTTP/1.1 403 Forbidden
-# x-ext-auth-reason: Not authorized: unknown reason
-```
+  ```sh
+  curl -H "Authorization: Bearer $ACCESS_TOKEN" -X POST http://talker-api-authorino.127.0.0.1.nip.io:8000/say/something -i
+  # HTTP/1.1 403 Forbidden
+  ```
+</details>
 
 ## Cleanup
 
