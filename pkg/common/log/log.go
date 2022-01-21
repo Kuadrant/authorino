@@ -19,7 +19,7 @@ var (
 	// sigs.k8s.io/controller-runtime, which points to a no-op (null) logger
 	// until `SetLogger` is called.
 	// This is also useful for mocking the default logger tests.
-	Log logr.Logger = ctrl.Log
+	Log Logger = ctrl.Log
 )
 
 type Logger = logr.Logger
@@ -79,104 +79,53 @@ type Options struct {
 }
 
 // SetLogger sets up a logger.
-func SetLogger(logger logr.Logger) {
-	opts := extractOptions(logger)
-
+func SetLogger(logger Logger, opts Options) {
 	Log = logger
 
-	ctrl.SetLogger(logger) // fulfills `logger` as the de facto logger used by controller-runtime
-	klog.SetLogger(logger)
+	ctrl.SetLogger(Log) // fulfills `logger` as the de facto logger used by controller-runtime
+	klog.SetLogger(Log)
 
 	logger.Info("setting instance base logger", "min level", opts.Level.String(), "mode", opts.Mode.String())
 }
 
 // WithName uses the singleton logger to create a new logger with the given name.
-func WithName(name string) logr.Logger {
+func WithName(name string) Logger {
 	return Log.WithName(name)
 }
 
 // WithName uses the singleton logger to create a new logger with the given values.
-func WithValues(keysAndValues ...interface{}) logr.Logger {
+func WithValues(keysAndValues ...interface{}) Logger {
 	return Log.WithValues(keysAndValues...)
 }
 
 // V uses the singleton logger to create a new logger for the given log level.
-func V(level int) logr.Logger {
+func V(level int) Logger {
 	return Log.V(level)
 }
 
 // IntoContext takes a context and sets the logger as one of its values.
 // Use FromContext function to retrieve the logger.
-func IntoContext(ctx context.Context, log logr.Logger) context.Context {
+func IntoContext(ctx context.Context, log Logger) context.Context {
 	return logr.NewContext(ctx, log)
 }
 
 // FromContext returns a logger with predefined values from a context.Context.
-func FromContext(ctx context.Context, keysAndValues ...interface{}) logr.Logger {
-	var log logr.Logger = Log
+func FromContext(ctx context.Context, keysAndValues ...interface{}) Logger {
+	var l logr.Logger = Log
 	if ctx != nil {
-		if logger := logr.FromContext(ctx); logger != nil {
-			log = logger
+		if logger, err := logr.FromContext(ctx); err == nil {
+			l = logger
 		}
 	}
-	return log.WithValues(keysAndValues...)
+	return l.WithValues(keysAndValues...)
 }
 
 // NewLogger returns a new logger with the given options.
 // `logger` param is the actual logger implementation; when omitted, a new
 // logger based on sigs.k8s.io/controller-runtime/pkg/log/zap is created.
-func NewLogger(opts Options, logger logr.Logger) logr.Logger {
-	l := &configuredLogger{Options: opts}
-
-	if logger != nil {
-		l.Logger = logger
-	} else {
-		l.Logger = zap.New(
-			zap.Level(zapcore.Level(opts.Level)),
-			zap.UseDevMode(opts.Mode == LogModeDev),
-		)
-	}
-
-	return l
-}
-
-// configuredLogger is a delegation logger that holds information about the log options.
-type configuredLogger struct {
-	Options Options
-	Logger  logr.Logger
-}
-
-func (l *configuredLogger) Enabled() bool {
-	return l.Logger.Enabled()
-}
-
-func (l *configuredLogger) Info(msg string, keysAndValues ...interface{}) {
-	l.Logger.Info(msg, keysAndValues...)
-}
-
-func (l *configuredLogger) Error(err error, msg string, keysAndValues ...interface{}) {
-	l.Logger.Error(err, msg, keysAndValues...)
-}
-
-func (l *configuredLogger) V(level int) logr.Logger {
-	return NewLogger(l.Options, l.Logger.V(level))
-}
-
-func (l *configuredLogger) WithValues(keysAndValues ...interface{}) logr.Logger {
-	return NewLogger(l.Options, l.Logger.WithValues(keysAndValues...))
-}
-
-func (l *configuredLogger) WithName(name string) logr.Logger {
-	return NewLogger(l.Options, l.Logger.WithName(name))
-}
-
-func extractOptions(l logr.Logger) Options {
-	if cl, ok := l.(*configuredLogger); ok {
-		return cl.Options
-	} else {
-		return Options{
-			Level: LogLevel(zapcore.InfoLevel),
-			Mode:  LogModeProd,
-		}
-	}
+func NewLogger(opts Options) Logger {
+	return zap.New(
+		zap.Level(zapcore.Level(opts.Level)),
+		zap.UseDevMode(opts.Mode == LogModeDev),
+	)
 }

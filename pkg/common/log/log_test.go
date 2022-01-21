@@ -3,11 +3,7 @@ package log
 import (
 	"testing"
 
-	mock_logr "github.com/kuadrant/authorino/pkg/common/log/mocks"
-
-	gomock "github.com/golang/mock/gomock"
 	"gotest.tools/assert"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func TestLogLevelToString(t *testing.T) {
@@ -62,43 +58,4 @@ func TestToLogMode(t *testing.T) {
 		}
 	}()
 	_ = ToLogMode("invalid")
-}
-
-func TestWithName(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer func() {
-		mockController.Finish()
-		Log = ctrl.Log
-	}()
-	loggerMock := mock_logr.NewMockLogger(mockController)
-	Log = loggerMock
-
-	loggerMock.EXPECT().WithName("test").Return(loggerMock)
-	WithName("test")
-}
-
-func TestWithValues(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer func() {
-		mockController.Finish()
-		Log = ctrl.Log
-	}()
-	loggerMock := mock_logr.NewMockLogger(mockController)
-	Log = loggerMock
-
-	loggerMock.EXPECT().WithValues("key", "value").Return(loggerMock)
-	WithValues("key", "value")
-}
-
-func TestV(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer func() {
-		mockController.Finish()
-		Log = ctrl.Log
-	}()
-	loggerMock := mock_logr.NewMockLogger(mockController)
-	Log = loggerMock
-
-	loggerMock.EXPECT().V(1).Return(loggerMock)
-	V(1)
 }
