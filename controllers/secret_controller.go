@@ -3,8 +3,7 @@ package controllers
 import (
 	"context"
 
-	"github.com/kuadrant/authorino/api/v1beta1"
-	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	"github.com/kuadrant/authorino/pkg/common"
 
@@ -31,6 +30,7 @@ type SecretReconciler struct {
 	Scheme               *runtime.Scheme
 	LabelSelector        labels.Selector
 	AuthConfigReconciler reconcile.Reconciler
+	Namespace            string
 }
 
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;
@@ -38,7 +38,7 @@ type SecretReconciler struct {
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("secret", req.NamespacedName)
 
-	var reconcile func(configv1beta1.AuthConfig)
+	var reconcile func(api.AuthConfig)
 
 	secret := v1.Secret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
@@ -48,10 +48,10 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// could not find the resouce: 404 Not found (resouce must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		// try to find a secret with same name by digging into the cache of authconfigs
-		reconcile = func(authConfig configv1beta1.AuthConfig) {
+		reconcile = func(authConfig api.AuthConfig) {
 			for _, host := range authConfig.Spec.Hosts {
-				sr, _ := r.AuthConfigReconciler.(*AuthConfigReconciler)
-				for _, id := range sr.Cache.Get(host).IdentityConfigs {
+				authConfigReconciler, _ := r.AuthConfigReconciler.(*AuthConfigReconciler)
+				for _, id := range authConfigReconciler.Cache.Get(host).IdentityConfigs {
 					i, _ := id.(common.APIKeySecretFinder)
 					if s := i.FindSecretByName(req.NamespacedName); s != nil {
 						r.reconcileAuthConfig(ctx, authConfig)
@@ -63,11 +63,15 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	} else {
 		// resource found and it is to be watched by this controller
 		// straightforward – if the API key labels match, reconcile the auth config
-		reconcile = func(authConfig configv1beta1.AuthConfig) {
+		reconcile = func(authConfig api.AuthConfig) {
 			for _, id := range authConfig.Spec.Identity {
-				if id.GetType() == v1beta1.IdentityApiKey {
+				if id.GetType() == api.IdentityApiKey {
+					validNamespace := true
+					if !id.APIKey.AllNamespaces {
+						validNamespace = secret.Namespace == authConfig.Namespace
+					}
 					selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: id.APIKey.LabelSelectors})
-					if selector != nil && selector.Matches(labels.Set(secret.Labels)) {
+					if validNamespace && (selector == nil || selector.Matches(labels.Set(secret.Labels))) {
 						r.reconcileAuthConfig(ctx, authConfig)
 						return
 					}
@@ -76,7 +80,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
-	if err := r.reconcileAuthConfigsUsingAPIKey(ctx, req.Namespace, reconcile); err != nil {
+	if err := r.reconcileAuthConfigsUsingAPIKey(ctx, reconcile); err != nil {
 		logger.Info("could not reconcile authconfigs using api key authentication")
 		return ctrl.Result{}, err
 	} else {
@@ -85,36 +89,19 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 }
 
+func (r *SecretReconciler) ClusterWide() bool {
+	return r.Namespace == ""
+}
+
 func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return newController(mgr).
 		For(&v1.Secret{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
 		Complete(r)
 }
 
-func (r *SecretReconciler) getAuthConfigsUsingAPIKey(ctx context.Context, namespace string) ([]configv1beta1.AuthConfig, error) {
-	var existingAuthConfigs = &configv1beta1.AuthConfigList{}
-	selectedAuthConfigs := make([]configv1beta1.AuthConfig, 0)
-
-	if err := r.List(ctx, existingAuthConfigs, &client.ListOptions{
-		Namespace: namespace,
-	}); err != nil {
-		return nil, err
-	} else {
-		for _, authConfig := range existingAuthConfigs.Items {
-			for _, id := range authConfig.Spec.Identity {
-				if id.GetType() == v1beta1.IdentityApiKey {
-					selectedAuthConfigs = append(selectedAuthConfigs, authConfig)
-					break
-				}
-			}
-		}
-		return selectedAuthConfigs, nil
-	}
-}
-
 // reconcileAuthConfigsUsingAPIKey invokes the reconcile(authConfig) func asynchronously, for each authConfig using API key identity
-func (r *SecretReconciler) reconcileAuthConfigsUsingAPIKey(ctx context.Context, namespace string, reconcile func(configv1beta1.AuthConfig)) error {
-	if authConfigs, err := r.getAuthConfigsUsingAPIKey(ctx, namespace); err != nil {
+func (r *SecretReconciler) reconcileAuthConfigsUsingAPIKey(ctx context.Context, reconcile func(api.AuthConfig)) error {
+	if authConfigs, err := r.listAuthConfigsUsingAPIKey(ctx); err != nil {
 		return err
 	} else {
 		for _, authConfig := range authConfigs {
@@ -127,7 +114,31 @@ func (r *SecretReconciler) reconcileAuthConfigsUsingAPIKey(ctx context.Context, 
 	}
 }
 
-func (r *SecretReconciler) reconcileAuthConfig(ctx context.Context, authConfig configv1beta1.AuthConfig) {
+func (r *SecretReconciler) listAuthConfigsUsingAPIKey(ctx context.Context) ([]api.AuthConfig, error) {
+	var existingAuthConfigs = &api.AuthConfigList{}
+	var selectedAuthConfigs []api.AuthConfig
+
+	opts := &client.ListOptions{}
+	if !r.ClusterWide() {
+		opts.Namespace = r.Namespace
+	}
+
+	if err := r.List(ctx, existingAuthConfigs, opts); err != nil {
+		return nil, err
+	} else {
+		for _, authConfig := range existingAuthConfigs.Items {
+			for _, id := range authConfig.Spec.Identity {
+				if id.GetType() == api.IdentityApiKey {
+					selectedAuthConfigs = append(selectedAuthConfigs, authConfig)
+					break
+				}
+			}
+		}
+		return selectedAuthConfigs, nil
+	}
+}
+
+func (r *SecretReconciler) reconcileAuthConfig(ctx context.Context, authConfig api.AuthConfig) {
 	_, _ = r.AuthConfigReconciler.Reconcile(ctx, ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: authConfig.Namespace,

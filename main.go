@@ -156,6 +156,7 @@ func main() {
 		Logger:        controllerLogger.WithName("authconfig"),
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
+		Namespace:     watchNamespace,
 	}
 	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfig")
@@ -169,6 +170,7 @@ func main() {
 		Scheme:               mgr.GetScheme(),
 		LabelSelector:        controllers.ToLabelSelector(watchedSecretLabelSelector),
 		AuthConfigReconciler: authConfigReconciler,
+		Namespace:            watchNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "secret")
 		os.Exit(1)
