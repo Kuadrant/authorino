@@ -59,9 +59,10 @@ controller-gen: bin/controller-gen
 # Generate code
 generate: vendor controller-gen
 	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(MAKE) fmt vet
 
 # Build manager binary
-manager: generate fmt vet
+manager: generate
 	go build -o bin/authorino main.go
 
 bin/kustomize:
@@ -81,7 +82,7 @@ manifests: controller-gen
 	controller-gen crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: generate manifests
 	go run ./main.go
 
 setup-envtest:
@@ -93,7 +94,7 @@ SETUP_ENVTEST=$(shell which setup-envtest)
 endif
 
 # Run the tests
-test: generate fmt vet manifests setup-envtest
+test: generate manifests setup-envtest
 	KUBEBUILDER_ASSETS='$(strip $(shell $(SETUP_ENVTEST) use -p path 1.21.2))'  go test ./... -coverprofile cover.out
 
 # Show test coverage
