@@ -21,6 +21,9 @@ Customize where credentials are supplied in the request by each trusted source o
 - **[HTTP "Basic" Authentication (RFC 7235)](./user-guides/http-basic-authentication.md)**<br/>
 Turn Authorino API key `Secret`s settings into HTTP basic auth.
 
+- **[Anonymous access](./user-guides/anonymous-access.md)**<br/>
+Bypass identity verification or fall back to anonymous access when credentials fail to validate
+
 - **[Token normalization](./user-guides/token-normalization.md)**<br/>
 Normalize identity claims from trusted sources and reduce complexity in your policies.
 
