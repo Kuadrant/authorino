@@ -28,6 +28,7 @@ const (
 	IdentityOidc                     = "IDENTITY_OIDC"
 	IdentityApiKey                   = "IDENTITY_APIKEY"
 	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
+	IdentityAnonymous                = "IDENTITY_ANONYMOUS"
 	MetadataUma                      = "METADATA_UMA"
 	MetadataGenericHTTP              = "METADATA_GENERIC_HTTP"
 	MetadataUserinfo                 = "METADATA_USERINFO"
@@ -156,6 +157,7 @@ type Identity struct {
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
 	APIKey         *Identity_APIKey         `json:"apiKey,omitempty"`
 	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
+	Anonymous      *Identity_Anonymous      `json:"anonymous,omitempty"`
 }
 
 func (i *Identity) GetType() string {
@@ -167,6 +169,8 @@ func (i *Identity) GetType() string {
 		return IdentityApiKey
 	} else if i.KubernetesAuth != nil {
 		return IdentityKubernetesAuth
+	} else if i.Anonymous != nil {
+		return IdentityAnonymous
 	} else {
 		return TypeUnknown
 	}
@@ -202,6 +206,8 @@ type Identity_KubernetesAuth struct {
 	// If omitted, Authorino will review tokens expecting the host name of the requested protected service amongst the audiences.
 	Audiences []string `json:"audiences,omitempty"`
 }
+
+type Identity_Anonymous struct{}
 
 // The metadata config.
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "userInfo" or "uma".

@@ -598,7 +598,16 @@ spec:
                     required:
                     - name
                     - kubernetes
+                  - properties:
+                      credentials: {}
+                      kubernetes: {}
+                      name: {}
+                    required:
+                    - name
+                    - anonymous
                   properties:
+                    anonymous:
+                      type: object
                     apiKey:
                       properties:
                         labelSelectors:
