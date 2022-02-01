@@ -199,6 +199,11 @@ type Identity_OidcConfig struct {
 type Identity_APIKey struct {
 	// The map of label selectors used by Authorino to match secrets from the cluster storing valid credentials to authenticate to this service
 	LabelSelectors map[string]string `json:"labelSelectors"`
+
+	// Whether Authorino should look for API key secrets in all namespaces or only in the same namespace of the AuthConfig.
+	// Enabling this option in namespaced Authorino instances has no effect.
+	// +kubebuilder:default:=false
+	AllNamespaces bool `json:"allNamespaces,omitempty"`
 }
 
 type Identity_KubernetesAuth struct {

@@ -107,19 +107,24 @@ _JSON paths_ can be interpolated into strings to build template-like dynamic val
 
 ### API key ([`identity.apiKey`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Identity_APIKey))
 
-Authorino relies on Kubernetes `Secret` resources to represent API keys. To define an API key, create a `Secret` in the cluster containing an `api_key` entry that holds the value of the API key.
+Authorino relies on Kubernetes `Secret` resources to represent API keys.
 
-The resource must include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`), otherwise changes related to the resource will be ignored by the reconciler.
+To define an API key, create a `Secret` in the cluster containing an `api_key` entry that holds the value of the API key.
 
-The resource must be labeled with the same labels specified in `spec.identity.apiKey.labelSelectors` in the `AuthConfig` custom resource. For example:
+API key secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.identity.apiKey.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
 
-For the following `AuthConfig` CR:
+API key secrets must be labeled with the labels that match the selectors specified in `spec.identity.apiKey.labelSelectors` in the `AuthConfig`.
+
+Whenever an `AuthConfig` is cached, Authorino will also cache all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.labelSelectors` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
+
+**Example.** For the following `AuthConfig`:
 
 ```yaml
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: my-api-protection
+  namespace: authorino-system
 spec:
   hosts:
     - my-api.io
@@ -128,17 +133,19 @@ spec:
       apiKey:
         labelSelectors: # the key-value set used to select the matching `Secret`s; resources including these labels will be acepted as valid API keys to authenticate to this service
           group: friends # some custom label
+        allNamespaces: true # only works with cluster-wide Authorino instances; otherwise, create the API key secrets in the same namespace of the AuthConfig
 ```
 
-The following secret would represent a valid API key:
+The following Kubernetes `Secret` represents a valid API key:
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
   name: user-1-api-key-1
+  namespace: default
   labels:
-    authorino.kuadrant.io/managed-by: authorino # required, so the Authorino controller reconciles events related to this secret
+    authorino.kuadrant.io/managed-by: authorino # so the Authorino controller reconciles events related to this secret
     group: friends
 stringData:
   api_key: <some-randomly-generated-api-key-value>

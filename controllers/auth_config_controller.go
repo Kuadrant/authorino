@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
@@ -52,6 +52,7 @@ type AuthConfigReconciler struct {
 	Scheme        *runtime.Scheme
 	Cache         cache.Cache
 	LabelSelector labels.Selector
+	Namespace     string
 }
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -60,7 +61,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 	cacheId := req.String()
 
-	authConfig := configv1beta1.AuthConfig{}
+	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
 		// could not get the resource but not because of a 404 Not found (some error must have happened)
 		return ctrl.Result{}, err
@@ -125,7 +126,7 @@ func (r *AuthConfigReconciler) cleanAllIdentityConfigs(cacheId string, ctx conte
 	return nil
 }
 
-func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *configv1beta1.AuthConfig) (map[string]authorinoService.APIConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (map[string]authorinoService.APIConfig, error) {
 	var ctxWithLogger context.Context
 
 	identityConfigs := make([]config.IdentityConfig, 0)
@@ -155,7 +156,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		switch identity.GetType() {
 		// oauth2
-		case configv1beta1.IdentityOAuth2:
+		case api.IdentityOAuth2:
 			oauth2Identity := identity.OAuth2
 
 			secret := &v1.Secret{}
@@ -175,25 +176,29 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			)
 
 		// oidc
-		case configv1beta1.IdentityOidc:
+		case api.IdentityOidc:
 			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, identity.Oidc.TTL, ctxWithLogger)
 
 		// apiKey
-		case configv1beta1.IdentityApiKey:
-			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, authCred, r.Client, ctxWithLogger)
+		case api.IdentityApiKey:
+			namespace := authConfig.Namespace
+			if identity.APIKey.AllNamespaces && r.ClusterWide() {
+				namespace = ""
+			}
+			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, namespace, authCred, r.Client, ctxWithLogger)
 
 		// kubernetes auth
-		case configv1beta1.IdentityKubernetesAuth:
+		case api.IdentityKubernetesAuth:
 			if k8sAuthConfig, err := authorinoIdentity.NewKubernetesAuthIdentity(authCred, identity.KubernetesAuth.Audiences); err != nil {
 				return nil, err
 			} else {
 				translatedIdentity.KubernetesAuth = k8sAuthConfig
 			}
 
-		case configv1beta1.IdentityAnonymous:
+		case api.IdentityAnonymous:
 			translatedIdentity.Noop = &authorinoIdentity.Noop{AuthCredentials: authCred}
 
-		case configv1beta1.TypeUnknown:
+		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", identity)
 		}
 
@@ -212,7 +217,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		switch metadata.GetType() {
 		// uma
-		case configv1beta1.MetadataUma:
+		case api.MetadataUma:
 			secret := &v1.Secret{}
 			if err := r.Client.Get(ctx, types.NamespacedName{
 				Namespace: authConfig.Namespace,
@@ -232,7 +237,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// user_info
-		case configv1beta1.MetadataUserinfo:
+		case api.MetadataUserinfo:
 			translatedMetadata.UserInfo = &authorinoMetadata.UserInfo{}
 
 			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource); err != nil {
@@ -242,7 +247,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// generic http
-		case configv1beta1.MetadataGenericHTTP:
+		case api.MetadataGenericHTTP:
 			genericHttp := metadata.GenericHTTP
 			sharedSecretRef := genericHttp.SharedSecret
 			creds := genericHttp.Credentials
@@ -291,7 +296,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),
 			}
 
-		case configv1beta1.TypeUnknown:
+		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown metadata type %v", metadata)
 		}
 
@@ -310,7 +315,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		switch authorization.GetType() {
 		// opa
-		case configv1beta1.AuthorizationOPA:
+		case api.AuthorizationOPA:
 			policyName := authConfig.GetNamespace() + "/" + authConfig.GetName() + "/" + authorization.Name
 			opa := authorization.OPA
 			externalRegistry := opa.ExternalRegistry
@@ -340,12 +345,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// json
-		case configv1beta1.AuthorizationJSONPatternMatching:
+		case api.AuthorizationJSONPatternMatching:
 			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
 				Rules: buildJSONPatternExpressions(authConfig, authorization.JSON.Rules),
 			}
 
-		case configv1beta1.AuthorizationKubernetesAuthz:
+		case api.AuthorizationKubernetesAuthz:
 			user := authorization.KubernetesAuthz.User
 			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
 
@@ -368,7 +373,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err
 			}
 
-		case configv1beta1.TypeUnknown:
+		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown authorization type %v", authorization)
 		}
 
@@ -382,7 +387,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		switch response.GetType() {
 		// wristband
-		case configv1beta1.ResponseWristband:
+		case api.ResponseWristband:
 			wristband := response.Wristband
 			signingKeys := make([]jose.JSONWebKey, 0)
 
@@ -430,7 +435,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// dynamic json
-		case configv1beta1.ResponseDynamicJSON:
+		case api.ResponseDynamicJSON:
 			jsonProperties := make([]common.JSONProperty, 0)
 
 			for _, property := range response.JSON.Properties {
@@ -445,7 +450,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 			translatedResponse.DynamicJSON = authorinoResponse.NewDynamicJSONResponse(jsonProperties)
 
-		case configv1beta1.TypeUnknown:
+		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown response type %v", response)
 		}
 
@@ -474,9 +479,13 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	return config, nil
 }
 
+func (r *AuthConfigReconciler) ClusterWide() bool {
+	return r.Namespace == ""
+}
+
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&configv1beta1.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
+		For(&api.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
 		Complete(r)
 }
 
@@ -489,11 +498,11 @@ func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name stri
 	return nil, fmt.Errorf("missing identity config %v", name)
 }
 
-func buildJSONPatternExpressions(authConfig *configv1beta1.AuthConfig, patterns []configv1beta1.JSONPattern) []common.JSONPatternMatchingRule {
+func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSONPattern) []common.JSONPatternMatchingRule {
 	expressions := []common.JSONPatternMatchingRule{}
 
 	for _, pattern := range patterns {
-		expressionsToAdd := configv1beta1.JSONPatternExpressions{}
+		expressionsToAdd := api.JSONPatternExpressions{}
 
 		if expressionsByRef, found := authConfig.Spec.Patterns[pattern.JSONPatternName]; found {
 			expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
@@ -513,7 +522,7 @@ func buildJSONPatternExpressions(authConfig *configv1beta1.AuthConfig, patterns 
 	return expressions
 }
 
-func buildAuthorinoDenyWithValues(denyWithSpec *configv1beta1.DenyWithSpec) *authorinoService.DenyWithValues {
+func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *authorinoService.DenyWithValues {
 	if denyWithSpec == nil {
 		return nil
 	}

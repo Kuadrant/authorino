@@ -22,6 +22,7 @@ const (
 type apiKeyDetails struct {
 	Name                  string            `yaml:"name"`
 	LabelSelectors        map[string]string `yaml:"labelSelectors"`
+	Namespace             string            `yaml:"namespace"`
 	k8sClient             client.Reader
 	authorizedCredentials map[string]v1.Secret
 }
@@ -33,12 +34,13 @@ type APIKey struct {
 }
 
 // NewApiKeyIdentity creates a new instance of APIKey
-func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred auth_credentials.AuthCredentials, k8sClient client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace string, authCred auth_credentials.AuthCredentials, k8sClient client.Reader, ctx context.Context) *APIKey {
 	apiKey := &APIKey{
 		authCred,
 		apiKeyDetails{
 			name,
 			labelSelectors,
+			namespace,
 			k8sClient,
 			nil,
 		},
@@ -51,9 +53,12 @@ func NewApiKeyIdentity(name string, labelSelectors map[string]string, authCred a
 
 // GetCredentialsFromCluster will get the k8s secrets and update the APIKey instance
 func (apiKey *APIKey) GetCredentialsFromCluster(ctx context.Context) error {
-	var matchingLabels client.MatchingLabels = apiKey.LabelSelectors
+	opts := []client.ListOption{client.MatchingLabels(apiKey.LabelSelectors)}
+	if namespace := apiKey.Namespace; namespace != "" {
+		opts = append(opts, client.InNamespace(namespace))
+	}
 	var secretList = &v1.SecretList{}
-	if err := apiKey.k8sClient.List(ctx, secretList, matchingLabels); err != nil {
+	if err := apiKey.k8sClient.List(ctx, secretList, opts...); err != nil {
 		return err
 	}
 	var parsedSecrets = make(map[string]v1.Secret)
