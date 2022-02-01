@@ -527,6 +527,8 @@ spec:
                     one of the following parameters is allowed: "oicd", "apiKey" or
                     "kubernetes".'
                   properties:
+                    anonymous:
+                      type: object
                     apiKey:
                       properties:
                         labelSelectors:

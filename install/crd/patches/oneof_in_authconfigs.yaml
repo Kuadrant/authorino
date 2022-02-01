@@ -23,6 +23,11 @@
         credentials: {}
         kubernetes: {}
       required: [name, kubernetes]
+    - properties:
+        name: {}
+        credentials: {}
+        kubernetes: {}
+      required: [name, anonymous]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/oneOf

@@ -190,6 +190,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				translatedIdentity.KubernetesAuth = k8sAuthConfig
 			}
 
+		case configv1beta1.IdentityAnonymous:
+			translatedIdentity.Noop = &authorinoIdentity.Noop{AuthCredentials: authCred}
+
 		case configv1beta1.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", identity)
 		}

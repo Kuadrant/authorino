@@ -13,6 +13,7 @@
   - [OpenShift OAuth (user-echo endpoint) (`identity.openshift`)](#openshift-oauth-user-echo-endpoint-identityopenshift)
   - [Mutual Transport Layer Security (mTLS) authentication (`identity.mtls`)](#mutual-transport-layer-security-mtls-authentication-identitymtls)
   - [Hash Message Authentication Code (HMAC) authentication (`identity.hmac`)](#hash-message-authentication-code-hmac-authentication-identityhmac)
+  - [Anonymous access (`identity.anonymous`)](#anonymous-access-identityanonymous)
   - [Festival Wristband authentication](#festival-wristband-authentication)
   - [_Extra:_ Auth credentials (`credentials`)](#extra-auth-credentials-credentials)
   - [_Extra:_ Identity extension (`extendedProperties`)](#extra-identity-extension-extendedproperties)
@@ -246,6 +247,37 @@ Authentication based on client X509 certificates presented on the request to the
 </table>
 
 Authentication based on the validation of a hash code generated from the contextual information of the request to the protected API, concatenated with a secret known by the API consumer.
+
+### Anonymous access (`identity.anonymous`)
+
+Literally a no-op evaluator for the identity verification phase that returns a static identity object `{"anonymous":true}`.
+
+It allows to implement `AuthConfigs` that bypasses the identity verification phase of Authorino, to such as:
+- enable anonymous access to protected services (always or combined with [Priorities](#common-feature-priorities))
+- postpone authentication in the Auth Pipeline to be resolved as part of an OPA policy
+
+Example of `AuthConfig` spec that falls back to anonymous access when OIDC authentication fails, enforcing read-only access to the protected service in such cases:
+
+```yaml
+spec:
+  identity:
+  - name: jwt
+    oidc: { endpoint: ... }
+  - name: anonymous
+    priority: 1 # expired oidc token, missing creds, etc default to anonymous access
+    anonymous: {}
+  authorization:
+  - name: read-only-access-if-authn-fails
+    when:
+    - selector: auth.identity.anonymous
+      operator: eq
+      value: "true"
+    json:
+      rules:
+      - selector: context.request.http.method
+        operator: eq
+        value: GET
+```
 
 ### Festival Wristband authentication
 

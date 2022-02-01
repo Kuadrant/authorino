@@ -25,6 +25,7 @@ type IdentityConfig struct {
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
 	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
+	Noop           *identity.Noop           `yaml:"noop,omitempty"`
 
 	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
 }
@@ -43,6 +44,8 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 		return config.APIKey
 	case config.KubernetesAuth != nil:
 		return config.KubernetesAuth
+	case config.Noop != nil:
+		return config.Noop
 	default:
 		return nil
 	}
