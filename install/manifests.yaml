@@ -599,8 +599,8 @@ spec:
                     - name
                     - kubernetes
                   - properties:
+                      anonymous: {}
                       credentials: {}
-                      kubernetes: {}
                       name: {}
                     required:
                     - name
