@@ -43,7 +43,7 @@ HTTP request header frequently used to carry credentials to authenticate a user 
 
 
 **Capability**<br/>
-Usually employed to refer to a management feature of a cloud-native system, based on the definition and use of Kubernetes Custom Resources (CRDs and CRs), that enables that system to one of the following “capability levels”: Basic Install, Seamless Upgrades, Full Lifecycle, Deep Insights, Auto Pilot.
+Usually employed to refer to a management feature of a Kubernetes-native system, based on the definition and use of Kubernetes Custom Resources (CRDs and CRs), that enables that system to one of the following “capability levels”: Basic Install, Seamless Upgrades, Full Lifecycle, Deep Insights, Auto Pilot.
 
 
 **Claim**<br/>

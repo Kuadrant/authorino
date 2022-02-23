@@ -1,7 +1,10 @@
 # Authorino
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+**Kubernetes-native authorization service for tailor-made Zero Trust API security.**<br/>
 
-Cloud-native AuthN/AuthZ enforcer for tailor-made Zero Trust API security on Kubernetes.
+A lightweight Envoy proxy external authorization server fully manageable via Kubernetes Custom Resources.<br/>
+JWT validation, API key auth, pattern-matching authz, OPA, K8s SA tokens, K8s RBAC, external metadata fetching, and [more](#list-of-features).
+
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
 ## Table of contents
 
@@ -256,7 +259,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   In particular, [Istio Authorization Policies](https://istio.io/latest/docs/reference/config/security/authorization-policy/) can be seen, in terms of functionality and expressiveness, as a subset of one type of authorization policies supported by Authorino, the [JSON pattern-matching authorization](./docs/features.md#json-pattern-matching-authorization-rules-authorizationjson) policies. While Istio, however, is heavily focused on specific use cases of API Management, offering a relatively limited list of [supported attribute conditions](https://istio.io/latest/docs/reference/config/security/conditions/), Authorino is more generic, allowing to express authorization rules for a wider spectrum of use cases – ACLs, RBAC, ABAC, etc, pretty much counting on any attribute of the Envoy payload, identity object and external metadata available.
 
-  Authorino also provides built-in OPA authorization, several other methods of authentication and identity verification (e.g. Kubernetes token validation, API key-based authentication, OAuth token introspection, OIDC-discoverable JWT verification, etc), and features like fetching of external metadata (HTTP services, OIDC userinfo, UMA resource data), token normalization, wristband tokens and dynamic responses. These all can be used independently or combined, in a simple and straightforward cloud-native fashion.
+  Authorino also provides built-in OPA authorization, several other methods of authentication and identity verification (e.g. Kubernetes token validation, API key-based authentication, OAuth token introspection, OIDC-discoverable JWT verification, etc), and features like fetching of external metadata (HTTP services, OIDC userinfo, UMA resource data), token normalization, wristband tokens and dynamic responses. These all can be used independently or combined, in a simple and straightforward Kubernetes-native fashion.
 
   In summary, one might value Authorino when looking for a policy enforcer that offers:
   1. multiple supported methods and protocols for rather hybrid authentication, encompassing future and legacy auth needs;
