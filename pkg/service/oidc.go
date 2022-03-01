@@ -11,32 +11,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
-
-var (
-	totalRequests = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "oidc_server_requests_total",
-			Help: "Number of get requests received on the OIDC (Festival Wristband) server.",
-		},
-		[]string{"namespace", "authconfig", "wristband", "path"},
-	)
-
-	responseStatus = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "oidc_server_response_status",
-			Help: "Status of HTTP response sent by the OIDC (Festival Wristband) server.",
-		},
-		[]string{"status"},
-	)
-)
-
-func init() {
-	_ = prometheus.Register(totalRequests)
-	_ = prometheus.Register(responseStatus)
-}
 
 // OidcService implements an HTTP server for OpenID Connect Discovery
 type OidcService struct {
@@ -93,7 +68,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 				responseBody = err.Error()
 			}
 
-			totalRequests.WithLabelValues(namespace, authconfig, config, pathMetric).Inc()
+			ReportMetric(oidcServerTotalRequestsMetric, namespace, authconfig, config, pathMetric)
 		} else {
 			statusCode = http.StatusNotFound
 			responseBody = "Not found"
@@ -112,7 +87,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		requestLogger.Info("response sent", "status", statusCode)
 	}
 
-	responseStatus.WithLabelValues(strconv.Itoa(statusCode)).Inc()
+	ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
 }
 
 func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) common.WristbandIssuer {

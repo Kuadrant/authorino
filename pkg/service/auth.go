@@ -82,9 +82,13 @@ func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.
 	if err != nil {
 		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
+
+	code := rpc.OK
+	reportStatusMetric(code)
+
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
-			Code: int32(rpc.OK),
+			Code: int32(code),
 		},
 		HttpResponse: &envoy_auth.CheckResponse_OkResponse{
 			OkResponse: &envoy_auth.OkHttpResponse{
@@ -97,6 +101,7 @@ func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.
 
 func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
+	reportStatusMetric(code)
 
 	httpCode := authResult.Status
 	if httpCode == 0 {
@@ -208,4 +213,8 @@ func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string
 	headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
 
 	return buildResponseHeaders(headers)
+}
+
+func reportStatusMetric(rpcStatusCode rpc.Code) {
+	ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)])
 }

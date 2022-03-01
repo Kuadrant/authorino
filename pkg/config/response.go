@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	RESPONSE_WRISTBAND    = "RESPONSE_WRISTBAND"
-	RESPONSE_DYNAMIC_JSON = "RESPONSE_DYNAMIC_JSON"
+	responseWristband = "RESPONSE_WRISTBAND"
+	responseJSON      = "RESPONSE_JSON"
 
 	HTTP_HEADER_WRAPPER            = "httpHeader"
 	ENVOY_DYNAMIC_METADATA_WRAPPER = "envoyDynamicMetadata"
@@ -19,13 +19,14 @@ const (
 	DEFAULT_WRAPPER = HTTP_HEADER_WRAPPER
 )
 
-func NewResponseConfig(name string, priority int, conditions []common.JSONPatternMatchingRule, wrapper string, wrapperKey string) *ResponseConfig {
+func NewResponseConfig(name string, priority int, conditions []common.JSONPatternMatchingRule, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
 	responseConfig := ResponseConfig{
-		Name:       name,
-		Priority:   priority,
-		Conditions: conditions,
-		Wrapper:    DEFAULT_WRAPPER,
-		WrapperKey: name,
+		Name:           name,
+		Priority:       priority,
+		Conditions:     conditions,
+		Wrapper:        DEFAULT_WRAPPER,
+		WrapperKey:     name,
+		MetricsEnabled: metricsEnabled,
 	}
 
 	if wrapper != "" {
@@ -40,33 +41,22 @@ func NewResponseConfig(name string, priority int, conditions []common.JSONPatter
 }
 
 type ResponseConfig struct {
-	Name       string                           `yaml:"name"`
-	Priority   int                              `yaml:"priority"`
-	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
-	Wrapper    string                           `yaml:"wrapper"`
-	WrapperKey string                           `yaml:"wrapperKey"`
+	Name           string                           `yaml:"name"`
+	Priority       int                              `yaml:"priority"`
+	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Wrapper        string                           `yaml:"wrapper"`
+	WrapperKey     string                           `yaml:"wrapperKey"`
+	MetricsEnabled bool                             `yaml:"monit"`
 
 	Wristband   common.WristbandIssuer `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`
 }
 
-func (config *ResponseConfig) GetType() (string, error) {
-	switch {
-	case config.Wristband != nil:
-		return RESPONSE_WRISTBAND, nil
-	case config.DynamicJSON != nil:
-		return RESPONSE_DYNAMIC_JSON, nil
-	default:
-		return "", fmt.Errorf("invalid response config")
-	}
-}
-
 func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
-	t, _ := config.GetType()
-	switch t {
-	case RESPONSE_WRISTBAND:
+	switch config.GetType() {
+	case responseWristband:
 		return config.Wristband
-	case RESPONSE_DYNAMIC_JSON:
+	case responseJSON:
 		return config.DynamicJSON
 	default:
 		return nil
@@ -84,10 +74,29 @@ func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 	}
 }
 
-// impl:NamedConfigEvaluator
+// impl:NamedEvaluator
 
 func (config *ResponseConfig) GetName() string {
 	return config.Name
+}
+
+// impl:TypedEvaluator
+
+func (config *ResponseConfig) GetType() string {
+	switch {
+	case config.Wristband != nil:
+		return responseWristband
+	case config.DynamicJSON != nil:
+		return responseJSON
+	default:
+		return ""
+	}
+}
+
+// impl:Monitorable
+
+func (config *ResponseConfig) Measured() bool {
+	return config.MetricsEnabled
 }
 
 // impl:Prioritizable

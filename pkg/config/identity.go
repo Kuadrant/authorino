@@ -14,10 +14,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	identityOAuth2     = "IDENTITY_OAUTH2"
+	identityOIDC       = "IDENTITY_OIDC"
+	identityMTLS       = "IDENTITY_MTLS"
+	identityHMAC       = "IDENTITY_HMAC"
+	identityAPIKey     = "IDENTITY_APIKEY"
+	identityKubernetes = "IDENTITY_KUBERNETES"
+	identityNoop       = "IDENTITY_NOOP"
+)
+
 type IdentityConfig struct {
-	Name       string                           `yaml:"name"`
-	Priority   int                              `yaml:"priority"`
-	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Name           string                           `yaml:"name"`
+	Priority       int                              `yaml:"priority"`
+	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
+	MetricsEnabled bool                             `yaml:"monit"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
@@ -31,20 +42,20 @@ type IdentityConfig struct {
 }
 
 func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
-	switch {
-	case config.OAuth2 != nil:
+	switch config.GetType() {
+	case identityOAuth2:
 		return config.OAuth2
-	case config.OIDC != nil:
+	case identityOIDC:
 		return config.OIDC
-	case config.MTLS != nil:
+	case identityMTLS:
 		return config.MTLS
-	case config.HMAC != nil:
+	case identityHMAC:
 		return config.HMAC
-	case config.APIKey != nil:
+	case identityAPIKey:
 		return config.APIKey
-	case config.KubernetesAuth != nil:
+	case identityKubernetes:
 		return config.KubernetesAuth
-	case config.Noop != nil:
+	case identityNoop:
 		return config.Noop
 	default:
 		return nil
@@ -73,6 +84,41 @@ func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 	} else {
 		return nil, fmt.Errorf("invalid identity config")
 	}
+}
+
+// impl:NamedEvaluator
+
+func (config *IdentityConfig) GetName() string {
+	return config.Name
+}
+
+// impl:TypedEvaluator
+
+func (config *IdentityConfig) GetType() string {
+	switch {
+	case config.OAuth2 != nil:
+		return identityOAuth2
+	case config.OIDC != nil:
+		return identityOIDC
+	case config.MTLS != nil:
+		return identityMTLS
+	case config.HMAC != nil:
+		return identityHMAC
+	case config.APIKey != nil:
+		return identityAPIKey
+	case config.KubernetesAuth != nil:
+		return identityKubernetes
+	case config.Noop != nil:
+		return identityNoop
+	default:
+		return ""
+	}
+}
+
+// impl:Monitorable
+
+func (config *IdentityConfig) Measured() bool {
+	return config.MetricsEnabled
 }
 
 // impl:Prioritizable

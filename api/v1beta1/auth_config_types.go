@@ -140,6 +140,10 @@ type Identity struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
+	// Whether this identity config should generate individual observability metrics
+	// +kubebuilder:default:=false
+	Monit bool `json:"monit,omitempty"`
+
 	// Conditions for Authorino to enforce this identity config.
 	// If omitted, the config will be enforced for all requests.
 	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
@@ -225,6 +229,10 @@ type Metadata struct {
 	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
+
+	// Whether this metadata config should generate individual observability metrics
+	// +kubebuilder:default:=false
+	Monit bool `json:"monit,omitempty"`
 
 	// Conditions for Authorino to enforce this metadata config.
 	// If omitted, the config will be enforced for all requests.
@@ -312,6 +320,10 @@ type Authorization struct {
 	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
+
+	// Whether this authorization config should generate individual observability metrics
+	// +kubebuilder:default:=false
+	Monit bool `json:"monit,omitempty"`
 
 	// Conditions for Authorino to enforce this authorization policy.
 	// If omitted, the config will be enforced for all requests.
@@ -410,6 +422,10 @@ type Response struct {
 	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
+
+	// Whether this response config should generate individual observability metrics
+	// +kubebuilder:default:=false
+	Monit bool `json:"monit,omitempty"`
 
 	// Conditions for Authorino to enforce this custom response config.
 	// If omitted, the config will be enforced for all requests.

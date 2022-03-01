@@ -150,6 +150,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Priority:           identity.Priority,
 			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
 			ExtendedProperties: extendedProperties,
+			MetricsEnabled:     identity.Monit,
 		}
 
 		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
@@ -210,9 +211,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for _, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &config.MetadataConfig{
-			Name:       metadata.Name,
-			Priority:   metadata.Priority,
-			Conditions: buildJSONPatternExpressions(authConfig, metadata.Conditions),
+			Name:           metadata.Name,
+			Priority:       metadata.Priority,
+			Conditions:     buildJSONPatternExpressions(authConfig, metadata.Conditions),
+			MetricsEnabled: metadata.Monit,
 		}
 
 		switch metadata.GetType() {
@@ -308,9 +310,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
-			Name:       authorization.Name,
-			Priority:   authorization.Priority,
-			Conditions: buildJSONPatternExpressions(authConfig, authorization.Conditions),
+			Name:           authorization.Name,
+			Priority:       authorization.Priority,
+			Conditions:     buildJSONPatternExpressions(authConfig, authorization.Conditions),
+			MetricsEnabled: authorization.Monit,
 		}
 
 		switch authorization.GetType() {
@@ -383,7 +386,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, response := range authConfig.Spec.Response {
-		translatedResponse := config.NewResponseConfig(response.Name, response.Priority, buildJSONPatternExpressions(authConfig, response.Conditions), string(response.Wrapper), response.WrapperKey)
+		translatedResponse := config.NewResponseConfig(
+			response.Name,
+			response.Priority,
+			buildJSONPatternExpressions(authConfig, response.Conditions),
+			string(response.Wrapper),
+			response.WrapperKey,
+			response.Monit,
+		)
 
 		switch response.GetType() {
 		// wristband
@@ -465,6 +475,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 		ResponseConfigs:      interfacedResponseConfigs,
+		Labels:               map[string]string{"namespace": authConfig.Namespace, "name": authConfig.Name},
 	}
 
 	// denyWith
