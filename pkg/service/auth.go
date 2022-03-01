@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -32,7 +33,13 @@ var (
 		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
 		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
 	}
+
+	authServerResponseStatusMetric = metrics.NewCounterMetric("auth_server_response_status", "Response status of authconfigs sent by the auth server.", "status")
 )
+
+func init() {
+	metrics.Register(authServerResponseStatusMetric)
+}
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
@@ -216,5 +223,5 @@ func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string
 }
 
 func reportStatusMetric(rpcStatusCode rpc.Code) {
-	ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)])
+	metrics.ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)])
 }

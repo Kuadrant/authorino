@@ -11,7 +11,20 @@ import (
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/metrics"
 )
+
+var (
+	oidcServerTotalRequestsMetric  = metrics.NewAuthConfigCounterMetric("oidc_server_requests_total", "Number of get requests received on the OIDC (Festival Wristband) server.", "wristband", "path")
+	oidcServerResponseStatusMetric = metrics.NewCounterMetric("oidc_server_response_status", "Status of HTTP response sent by the OIDC (Festival Wristband) server.", "status")
+)
+
+func init() {
+	metrics.Register(
+		oidcServerTotalRequestsMetric,
+		oidcServerResponseStatusMetric,
+	)
+}
 
 // OidcService implements an HTTP server for OpenID Connect Discovery
 type OidcService struct {
@@ -68,7 +81,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 				responseBody = err.Error()
 			}
 
-			ReportMetric(oidcServerTotalRequestsMetric, namespace, authconfig, config, pathMetric)
+			metrics.ReportMetric(oidcServerTotalRequestsMetric, namespace, authconfig, config, pathMetric)
 		} else {
 			statusCode = http.StatusNotFound
 			responseBody = "Not found"
@@ -87,7 +100,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		requestLogger.Info("response sent", "status", statusCode)
 	}
 
-	ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
+	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
 }
 
 func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) common.WristbandIssuer {

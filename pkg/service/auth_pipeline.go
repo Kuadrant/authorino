@@ -9,12 +9,41 @@ import (
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	"golang.org/x/net/context"
 )
+
+var (
+	evaluatorMetricLabels = []string{"evaluator_type", "evaluator_name"}
+
+	// evaluator metrics
+	authServerEvaluatorTotalMetric     = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_total", "Total number of evaluations of individual authconfig rule performed by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorCancelledMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_cancelled", "Number of evaluations of individual authconfig rule cancelled by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorIgnoredMetric   = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_ignored", "Number of evaluations of individual authconfig rule ignored by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorDeniedMetric    = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_denied", "Number of denials from individual authconfig rule evaluated by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorDurationMetric  = metrics.NewAuthConfigDurationMetric("auth_server_evaluator_duration_seconds", "Response latency of individual authconfig rule evaluated by the auth server (in seconds).", evaluatorMetricLabels...)
+	// authconfig metrics
+	authServerAuthConfigTotalMetric          = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_total", "Total number of authconfigs enforced by the auth server, partitioned by authconfig.")
+	authServerAuthConfigResponseStatusMetric = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_response_status", "Response status of authconfigs sent by the auth server, partitioned by authconfig.", "status")
+	authServerAuthConfigDurationMetric       = metrics.NewAuthConfigDurationMetric("auth_server_authconfig_duration_seconds", "Response latency of authconfig enforced by the auth server (in seconds).")
+)
+
+func init() {
+	metrics.Register(
+		authServerEvaluatorTotalMetric,
+		authServerEvaluatorCancelledMetric,
+		authServerEvaluatorIgnoredMetric,
+		authServerEvaluatorDeniedMetric,
+		authServerEvaluatorDurationMetric,
+		authServerAuthConfigTotalMetric,
+		authServerAuthConfigResponseStatusMetric,
+		authServerAuthConfigDurationMetric,
+	)
+}
 
 type EvaluationResponse struct {
 	Evaluator common.AuthConfigEvaluator
@@ -71,17 +100,17 @@ type AuthPipeline struct {
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
-	ReportMetricWithEvaluator(authServerEvaluatorTotalMetric, config, pipeline.metricLabels()...)
+	metrics.ReportMetricWithEvaluator(authServerEvaluatorTotalMetric, config, pipeline.metricLabels()...)
 
 	if err := common.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		ReportMetricWithEvaluator(authServerEvaluatorCancelledMetric, config, pipeline.metricLabels()...)
+		metrics.ReportMetricWithEvaluator(authServerEvaluatorCancelledMetric, config, pipeline.metricLabels()...)
 		return
 	}
 
 	if conditionalEv, ok := config.(common.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			ReportMetricWithEvaluator(authServerEvaluatorIgnoredMetric, config, pipeline.metricLabels()...)
+			metrics.ReportMetricWithEvaluator(authServerEvaluatorIgnoredMetric, config, pipeline.metricLabels()...)
 			return
 		}
 	}
@@ -90,7 +119,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			ReportMetricWithEvaluator(authServerEvaluatorDeniedMetric, config, pipeline.metricLabels()...)
+			metrics.ReportMetricWithEvaluator(authServerEvaluatorDeniedMetric, config, pipeline.metricLabels()...)
 
 			if failureCallback != nil {
 				failureCallback()
@@ -104,7 +133,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 		}
 	}
 
-	ReportTimedMetricWithEvaluator(authServerEvaluatorDurationMetric, evaluateFunc, config, pipeline.metricLabels()...)
+	metrics.ReportTimedMetricWithEvaluator(authServerEvaluatorDurationMetric, evaluateFunc, config, pipeline.metricLabels()...)
 }
 
 type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -332,7 +361,7 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 		}
 	}
 
-	ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
+	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
 
 	authResult := make(chan common.AuthResult)
 
@@ -380,14 +409,14 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 			}
 		}
 
-		ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
+		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
 	}()
 
 	return <-authResult
 }
 
 func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
-	ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
+	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
 }
 
 func (pipeline *AuthPipeline) metricLabels() []string {
