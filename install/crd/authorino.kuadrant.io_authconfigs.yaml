@@ -295,6 +295,15 @@ spec:
                     opa:
                       description: Open Policy Agent (OPA) authorization policy.
                       properties:
+                        allValues:
+                          default: false
+                          description: Returns the value of all Rego rules in the
+                            virtual document. Values can be read in subsequent evaluators/phases
+                            of the Auth Pipeline. Otherwise, only the default `allow`
+                            rule will be exposed. Returning all Rego rules can affect
+                            performance of OPA policies during reconciliation (policy
+                            precompile) and at runtime.
+                          type: boolean
                         externalRegistry:
                           description: External registry of OPA policies.
                           properties:
@@ -357,16 +366,6 @@ spec:
                               - name
                               type: object
                           type: object
-                        fuzzy:
-                          default: false
-                          description: Use fuzzy OPA evaluation for each Rego rule
-                            to be exposed as a query, and thus whose value can be
-                            read in subsequent evaluators/phases of the Auth Pipeline.
-                            Otherwise, only the default `allow` rule will be exposed.
-                            The use of fuzzy OPA evaluation can affect performance
-                            of OPA policies in both during reconciliation (policy
-                            precompile) and runtime.
-                          type: boolean
                         inlineRego:
                           description: Authorization policy as a Rego language document.
                             The Rego document must include the "allow" condition,

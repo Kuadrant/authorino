@@ -392,7 +392,7 @@ Authorino's built-in OPA module precompiles the policies during reconciliation o
 
 ![OPA](http://www.plantuml.com/plantuml/png/TP71IWD138RlynHXJmfklHTMMaKyMle6OPgwmKoopcQiHNntjqjTc8F79D__vm_PZ8xPIv8mlhCEc351ChNOPqi4dWk5CBMT8m-e3jlYlMLM0nm1_ueAQHuBYxUiyBhRDXVE1go9dGd7CsHwuz7p-G8jHGXT1tkAff65qTcqTKu4NHUMXT0-B09OmmrzEML5WM5sleLT4GaBqKxuegrTfcoJmNucAL_ruT9TXa-M1XQgPfMXcXC87NqD4MDF8QnMg-iT7uL6hm-eLx-Gmy5YIQGE9_OUM8VYTOJdJvI2_d-6YVc61aNirApdlzqVKKQwWoaA_8GDwQ4a-GK0)
 
-A field option `fuzzy: boolean` makes the values of all rules declared in the Rego document to be returned in the OPA output after policy evaluation. When disabled (default), only the boolean value `allow` is returned. Values of internal rules of the Rego document can be referenced in subsequent policies/phases of the Auth Pipeline.
+An optional field `allValues: boolean` makes the values of all rules declared in the Rego document to be returned in the OPA output after policy evaluation. When disabled (default), only the boolean value `allow` is returned. Values of internal rules of the Rego document can be referenced in subsequent policies/phases of the Auth Pipeline.
 
 ### Kubernetes SubjectAccessReview ([`authorization.kubernetes`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_KubernetesAuthz))
 

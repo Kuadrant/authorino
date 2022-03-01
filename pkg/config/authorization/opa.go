@@ -30,7 +30,7 @@ default allow = false
 	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
 )
 
-func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, fuzzy bool, nonce int, ctx context.Context) (*OPA, error) {
+func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, allValues bool, nonce int, ctx context.Context) (*OPA, error) {
 	logger := log.FromContext(ctx).WithName("opa")
 
 	if rego == "" && externalSource.Endpoint != "" {
@@ -47,7 +47,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource OPAExter
 	o := &OPA{
 		Rego:              rego,
 		OPAExternalSource: externalSource,
-		Fuzzy:             fuzzy,
+		AllValues:         allValues,
 		policyUID:         generatePolicyUID(policyName, rego, nonce),
 		opaContext:        context.TODO(),
 	}
@@ -62,7 +62,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource OPAExter
 type OPA struct {
 	Rego              string `yaml:"rego"`
 	OPAExternalSource OPAExternalSource
-	Fuzzy             bool
+	AllValues         bool
 
 	opaContext context.Context
 	policy     *rego.PreparedEvalQuery
@@ -103,7 +103,7 @@ func (opa *OPA) precompilePolicy() error {
 		return err
 	}
 
-	if opa.Fuzzy {
+	if opa.AllValues {
 		rules := map[string]interface{}{allowQuery: nil}
 		for _, rule := range module.Rules {
 			name := string(rule.Head.Name)

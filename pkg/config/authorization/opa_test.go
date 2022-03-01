@@ -100,7 +100,7 @@ func TestOPAExternalUrlJsonResponse(t *testing.T) {
 	assertOPAAuthorization(t, opa)
 }
 
-func TestOPAFuzzy(t *testing.T) {
+func TestOPAAllValues(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
 
