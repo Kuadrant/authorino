@@ -184,7 +184,7 @@ curl -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' \
 curl -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' \
      -H 'X-Forwarded-For: 109.112.34.56' \
      http://talker-api-authorino.127.0.0.1.nip.io:8000/it/hello -i
-# HTTP/1.1 403 Forbidden
+# HTTP/1.1 200 OK
 ```
 
 ## Cleanup
