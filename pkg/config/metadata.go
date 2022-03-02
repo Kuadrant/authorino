@@ -19,7 +19,7 @@ type MetadataConfig struct {
 	Name           string                           `yaml:"name"`
 	Priority       int                              `yaml:"priority"`
 	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	MetricsEnabled bool                             `yaml:"monit"`
+	MetricsEnabled bool                             `yaml:"metrics"`
 
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`

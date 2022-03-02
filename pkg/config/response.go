@@ -46,7 +46,7 @@ type ResponseConfig struct {
 	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
 	Wrapper        string                           `yaml:"wrapper"`
 	WrapperKey     string                           `yaml:"wrapperKey"`
-	MetricsEnabled bool                             `yaml:"monit"`
+	MetricsEnabled bool                             `yaml:"metrics"`
 
 	Wristband   common.WristbandIssuer `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`

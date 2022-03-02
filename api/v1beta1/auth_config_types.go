@@ -142,7 +142,7 @@ type Identity struct {
 
 	// Whether this identity config should generate individual observability metrics
 	// +kubebuilder:default:=false
-	Monit bool `json:"monit,omitempty"`
+	Metrics bool `json:"metrics,omitempty"`
 
 	// Conditions for Authorino to enforce this identity config.
 	// If omitted, the config will be enforced for all requests.
@@ -232,7 +232,7 @@ type Metadata struct {
 
 	// Whether this metadata config should generate individual observability metrics
 	// +kubebuilder:default:=false
-	Monit bool `json:"monit,omitempty"`
+	Metrics bool `json:"metrics,omitempty"`
 
 	// Conditions for Authorino to enforce this metadata config.
 	// If omitted, the config will be enforced for all requests.
@@ -323,7 +323,7 @@ type Authorization struct {
 
 	// Whether this authorization config should generate individual observability metrics
 	// +kubebuilder:default:=false
-	Monit bool `json:"monit,omitempty"`
+	Metrics bool `json:"metrics,omitempty"`
 
 	// Conditions for Authorino to enforce this authorization policy.
 	// If omitted, the config will be enforced for all requests.
@@ -425,7 +425,7 @@ type Response struct {
 
 	// Whether this response config should generate individual observability metrics
 	// +kubebuilder:default:=false
-	Monit bool `json:"monit,omitempty"`
+	Metrics bool `json:"metrics,omitempty"`
 
 	// Conditions for Authorino to enforce this custom response config.
 	// If omitted, the config will be enforced for all requests.

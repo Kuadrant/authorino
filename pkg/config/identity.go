@@ -28,7 +28,7 @@ type IdentityConfig struct {
 	Name           string                           `yaml:"name"`
 	Priority       int                              `yaml:"priority"`
 	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	MetricsEnabled bool                             `yaml:"monit"`
+	MetricsEnabled bool                             `yaml:"metrics"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`

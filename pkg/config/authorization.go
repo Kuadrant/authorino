@@ -19,7 +19,7 @@ type AuthorizationConfig struct {
 	Name           string                           `yaml:"name"`
 	Priority       int                              `yaml:"priority"`
 	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	MetricsEnabled bool                             `yaml:"monit"`
+	MetricsEnabled bool                             `yaml:"metrics"`
 
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`

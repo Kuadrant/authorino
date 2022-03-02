@@ -150,7 +150,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Priority:           identity.Priority,
 			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
 			ExtendedProperties: extendedProperties,
-			MetricsEnabled:     identity.Monit,
+			MetricsEnabled:     identity.Metrics,
 		}
 
 		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
@@ -214,7 +214,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Name:           metadata.Name,
 			Priority:       metadata.Priority,
 			Conditions:     buildJSONPatternExpressions(authConfig, metadata.Conditions),
-			MetricsEnabled: metadata.Monit,
+			MetricsEnabled: metadata.Metrics,
 		}
 
 		switch metadata.GetType() {
@@ -313,7 +313,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Name:           authorization.Name,
 			Priority:       authorization.Priority,
 			Conditions:     buildJSONPatternExpressions(authConfig, authorization.Conditions),
-			MetricsEnabled: authorization.Monit,
+			MetricsEnabled: authorization.Metrics,
 		}
 
 		switch authorization.GetType() {
@@ -392,7 +392,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			buildJSONPatternExpressions(authConfig, response.Conditions),
 			string(response.Wrapper),
 			response.WrapperKey,
-			response.Monit,
+			response.Metrics,
 		)
 
 		switch response.GetType() {

@@ -318,7 +318,7 @@ spec:
                       required:
                       - user
                       type: object
-                    monit:
+                    metrics:
                       default: false
                       description: Whether this authorization config should generate
                         individual observability metrics
@@ -708,7 +708,7 @@ spec:
                             type: string
                           type: array
                       type: object
-                    monit:
+                    metrics:
                       default: false
                       description: Whether this identity config should generate individual
                         observability metrics
@@ -990,7 +990,7 @@ spec:
                       required:
                       - endpoint
                       type: object
-                    monit:
+                    metrics:
                       default: false
                       description: Whether this metadata config should generate individual
                         observability metrics
@@ -1172,7 +1172,7 @@ spec:
                       required:
                       - properties
                       type: object
-                    monit:
+                    metrics:
                       default: false
                       description: Whether this response config should generate individual
                         observability metrics
