@@ -20,6 +20,7 @@
   - [Repeated requests](#repeated-requests)
 - [Sharding](#sharding)
 - [RBAC](#rbac)
+- [Observability](#observability)
 
 ## Overview
 
@@ -339,3 +340,7 @@ The table below describes the roles and role bindings defined by the Authorino s
 | `authorino-metrics-reader`         | `ClusterRole` | -        | Metrics reader                          | `GET /metrics`                                                                                   |
 
 <small>(*) C - Cluster-wide | N - Authorino namespace | C/N - Cluster-wide or Authorino namespace (depending on the <a href="#cluster-wide-vs-namespaced-instances">deployment mode</a>).</small>
+
+## Observability
+
+Please refer to the respective user guides for info about [Metrics & Observability](./user-guides/metrics.md) and [Logging & Tracing](./user-guides/logging.md).
