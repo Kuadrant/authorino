@@ -93,12 +93,6 @@ func (config *ResponseConfig) GetType() string {
 	}
 }
 
-// impl:Monitorable
-
-func (config *ResponseConfig) Measured() bool {
-	return config.MetricsEnabled
-}
-
 // impl:Prioritizable
 
 func (config *ResponseConfig) GetPriority() int {
@@ -115,6 +109,12 @@ func (config *ResponseConfig) GetConditions() []common.JSONPatternMatchingRule {
 
 func (config *ResponseConfig) GetWristbandIssuer() common.WristbandIssuer {
 	return config.Wristband
+}
+
+// impl:metrics.Object
+
+func (config *ResponseConfig) Measured() bool {
+	return config.MetricsEnabled
 }
 
 func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders map[string]string, responseMetadata map[string]interface{}) {

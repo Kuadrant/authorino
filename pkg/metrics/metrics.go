@@ -3,10 +3,15 @@ package metrics
 import (
 	"fmt"
 
-	"github.com/kuadrant/authorino/pkg/common"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+type Object interface {
+	GetType() string
+	GetName() string
+
+	Measured() bool
+}
 
 func Register(metrics ...prometheus.Collector) {
 	prometheus.MustRegister(metrics...)
@@ -49,8 +54,8 @@ func ReportMetricWithStatus(metric *prometheus.CounterVec, status string, labels
 	ReportMetric(metric, extendLabelValuesWithStatus(status, labels...)...)
 }
 
-func ReportMetricWithEvaluator(metric *prometheus.CounterVec, evaluator common.AuthConfigEvaluator, labels ...string) {
-	if labels, err := extendLabelValuesWithEvaluator(evaluator, labels...); err == nil {
+func ReportMetricWithObject(metric *prometheus.CounterVec, obj Object, labels ...string) {
+	if labels, err := extendLabelValuesWithObject(obj, labels...); err == nil {
 		ReportMetric(metric, labels...)
 	}
 }
@@ -71,8 +76,8 @@ func ReportTimedMetricWithStatus(metric *prometheus.HistogramVec, f func(), stat
 	ReportTimedMetric(metric, f, extendLabelValuesWithStatus(status, labels...)...)
 }
 
-func ReportTimedMetricWithEvaluator(metric *prometheus.HistogramVec, f func(), evaluator common.AuthConfigEvaluator, labels ...string) {
-	if labels, err := extendLabelValuesWithEvaluator(evaluator, labels...); err == nil {
+func ReportTimedMetricWithObject(metric *prometheus.HistogramVec, f func(), obj Object, labels ...string) {
+	if labels, err := extendLabelValuesWithObject(obj, labels...); err == nil {
 		ReportTimedMetric(metric, f, labels...)
 	} else {
 		f()
@@ -92,17 +97,13 @@ func extendLabelValuesWithStatus(status string, baseLabels ...string) []string {
 	return labels
 }
 
-func extendLabelValuesWithEvaluator(evaluator common.AuthConfigEvaluator, baseLabels ...string) ([]string, error) {
-	if ev, ok := evaluator.(common.Monitorable); ok {
-		if !ev.Measured() {
-			return nil, fmt.Errorf("metrics are disabled for the evaluator")
-		}
-
-		labels := make([]string, len(baseLabels))
-		copy(labels, baseLabels)
-		labels = append(labels, ev.GetType(), ev.GetName())
-		return labels, nil
-	} else {
-		return baseLabels, fmt.Errorf("cannot cast evaluator to monitorable")
+func extendLabelValuesWithObject(obj Object, baseLabels ...string) ([]string, error) {
+	if obj == nil || !obj.Measured() {
+		return nil, fmt.Errorf("metrics are disabled")
 	}
+
+	labels := make([]string, len(baseLabels))
+	copy(labels, baseLabels)
+	labels = append(labels, obj.GetType(), obj.GetName())
+	return labels, nil
 }

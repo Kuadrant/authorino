@@ -71,12 +71,6 @@ func (config *MetadataConfig) GetType() string {
 	}
 }
 
-// impl:Monitorable
-
-func (config *MetadataConfig) Measured() bool {
-	return config.MetricsEnabled
-}
-
 // impl:Prioritizable
 
 func (config *MetadataConfig) GetPriority() int {
@@ -87,4 +81,10 @@ func (config *MetadataConfig) GetPriority() int {
 
 func (config *MetadataConfig) GetConditions() []common.JSONPatternMatchingRule {
 	return config.Conditions
+}
+
+// impl:metrics.Object
+
+func (config *MetadataConfig) Measured() bool {
+	return config.MetricsEnabled
 }

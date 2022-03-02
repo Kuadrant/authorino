@@ -39,12 +39,6 @@ type TypedEvaluator interface {
 	GetType() string
 }
 
-type Monitorable interface {
-	NamedEvaluator
-	TypedEvaluator
-	Measured() bool
-}
-
 type Prioritizable interface {
 	GetPriority() int
 }

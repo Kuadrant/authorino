@@ -115,12 +115,6 @@ func (config *IdentityConfig) GetType() string {
 	}
 }
 
-// impl:Monitorable
-
-func (config *IdentityConfig) Measured() bool {
-	return config.MetricsEnabled
-}
-
 // impl:Prioritizable
 
 func (config *IdentityConfig) GetPriority() int {
@@ -188,4 +182,10 @@ func (config *IdentityConfig) FindSecretByName(lookup types.NamespacedName) *v1.
 	} else {
 		return nil
 	}
+}
+
+// impl:metrics.Object
+
+func (config *IdentityConfig) Measured() bool {
+	return config.MetricsEnabled
 }

@@ -65,12 +65,6 @@ func (config *AuthorizationConfig) GetType() string {
 	}
 }
 
-// impl:Monitorable
-
-func (config *AuthorizationConfig) Measured() bool {
-	return config.MetricsEnabled
-}
-
 // impl:Prioritizable
 
 func (config *AuthorizationConfig) GetPriority() int {
@@ -81,4 +75,10 @@ func (config *AuthorizationConfig) GetPriority() int {
 
 func (config *AuthorizationConfig) GetConditions() []common.JSONPatternMatchingRule {
 	return config.Conditions
+}
+
+// impl:metrics.Object
+
+func (config *AuthorizationConfig) Measured() bool {
+	return config.MetricsEnabled
 }

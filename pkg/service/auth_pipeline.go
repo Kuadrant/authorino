@@ -100,17 +100,18 @@ type AuthPipeline struct {
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
-	metrics.ReportMetricWithEvaluator(authServerEvaluatorTotalMetric, config, pipeline.metricLabels()...)
+	monitorable, _ := config.(metrics.Object)
+	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
 
 	if err := common.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		metrics.ReportMetricWithEvaluator(authServerEvaluatorCancelledMetric, config, pipeline.metricLabels()...)
+		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
 		return
 	}
 
 	if conditionalEv, ok := config.(common.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			metrics.ReportMetricWithEvaluator(authServerEvaluatorIgnoredMetric, config, pipeline.metricLabels()...)
+			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
 			return
 		}
 	}
@@ -119,7 +120,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			metrics.ReportMetricWithEvaluator(authServerEvaluatorDeniedMetric, config, pipeline.metricLabels()...)
+			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels()...)
 
 			if failureCallback != nil {
 				failureCallback()
@@ -133,7 +134,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 		}
 	}
 
-	metrics.ReportTimedMetricWithEvaluator(authServerEvaluatorDurationMetric, evaluateFunc, config, pipeline.metricLabels()...)
+	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
 }
 
 type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())

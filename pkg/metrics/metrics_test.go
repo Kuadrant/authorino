@@ -1,42 +1,14 @@
 package metrics
 
 import (
-	"context"
 	"testing"
 
-	"github.com/kuadrant/authorino/pkg/common"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_metrics "github.com/kuadrant/authorino/pkg/metrics/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"gotest.tools/assert"
 )
-
-type testMetricsSimpleEvaluator struct{}
-
-func (e *testMetricsSimpleEvaluator) Call(_ common.AuthPipeline, _ context.Context) (interface{}, error) {
-	return nil, nil
-}
-
-type testMetricsMonitorableEvaluator struct {
-	monitorable common.Monitorable
-}
-
-func (e *testMetricsMonitorableEvaluator) Call(_ common.AuthPipeline, _ context.Context) (interface{}, error) {
-	return nil, nil
-}
-
-func (e *testMetricsMonitorableEvaluator) GetType() string {
-	return e.monitorable.GetType()
-}
-
-func (e *testMetricsMonitorableEvaluator) GetName() string {
-	return e.monitorable.GetName()
-}
-
-func (e *testMetricsMonitorableEvaluator) Measured() bool {
-	return e.monitorable.Measured()
-}
 
 func TestReportMetric(t *testing.T) {
 	metric := NewCounterMetric("foo", "Foo metric")
@@ -51,31 +23,27 @@ func TestReportMetricWithStatus(t *testing.T) {
 	assert.Equal(t, float64(0), testutil.ToFloat64(metric.WithLabelValues("NOK")))
 }
 
-func TestReportMetricWithEvaluator(t *testing.T) {
+func TestReportMetricWithObject(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	metric := NewCounterMetric("foo", "Foo metric", "type", "name")
 
-	// evaluator is not a monitorable
-	ReportMetricWithEvaluator(metric, &testMetricsSimpleEvaluator{})
-	assert.Equal(t, 0, testutil.CollectAndCount(metric))
+	object := mock_metrics.NewMockObject(ctrl)
+	object.EXPECT().GetType().Return("AUTHZ_X")
+	object.EXPECT().GetName().Return("foo")
 
-	monitorable := mock_common.NewMockMonitorable(ctrl)
-	monitorable.EXPECT().GetType().Return("AUTHZ_X")
-	monitorable.EXPECT().GetName().Return("foo")
-	evaluator := &testMetricsMonitorableEvaluator{monitorable: monitorable}
+	object.EXPECT().Measured().Return(true)
+	ReportMetricWithObject(metric, object)
+	assert.Equal(t, float64(1), testutil.ToFloat64(metric))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metric.WithLabelValues("AUTHZ_X", "foo")))
 
-	// metrics are disabled for the evaluator
-	monitorable.EXPECT().Measured().Return(false)
-	ReportMetricWithEvaluator(metric, evaluator)
-	assert.Equal(t, 0, testutil.CollectAndCount(metric))
+	object.EXPECT().Measured().Return(false)
+	ReportMetricWithObject(metric, object)
+	assert.Equal(t, float64(1), testutil.ToFloat64(metric))
 
-	// metrics are enabled for the evaluator
-	monitorable.EXPECT().Measured().Return(true)
-	ReportMetricWithEvaluator(metric, evaluator)
-	assert.Equal(t, 1, testutil.CollectAndCount(metric))
-	assert.Equal(t, 1, testutil.CollectAndCount(metric.WithLabelValues("AUTHZ_X", "foo")))
+	ReportMetricWithObject(metric, nil)
+	assert.Equal(t, float64(1), testutil.ToFloat64(metric))
 }
 
 func TestReportTimedMetric(t *testing.T) {
@@ -100,7 +68,7 @@ func TestReportTimedMetricWithStatus(t *testing.T) {
 	assert.Check(t, invoked)
 }
 
-func TestReportTimedMetricWithEvaluator(t *testing.T) {
+func TestReportTimedMetricWithObject(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -110,28 +78,18 @@ func TestReportTimedMetricWithEvaluator(t *testing.T) {
 	f := func() {
 		invoked = true
 	}
+	object := mock_metrics.NewMockObject(ctrl)
+	object.EXPECT().GetType().Return("AUTHZ_X")
+	object.EXPECT().GetName().Return("foo")
 
-	// evaluator is not a monitorable
-	ReportTimedMetricWithEvaluator(metric, f, &testMetricsSimpleEvaluator{})
-	assert.Equal(t, 0, testutil.CollectAndCount(metric))
+	object.EXPECT().Measured().Return(true)
+	ReportTimedMetricWithObject(metric, f, object)
+	assert.Equal(t, 1, testutil.CollectAndCount(metric))
 	assert.Check(t, invoked)
 
-	monitorable := mock_common.NewMockMonitorable(ctrl)
-	monitorable.EXPECT().GetType().Return("AUTHZ_X")
-	monitorable.EXPECT().GetName().Return("foo")
-	evaluator := &testMetricsMonitorableEvaluator{monitorable: monitorable}
-
-	// metrics are disabled for the evaluator
 	invoked = false
-	monitorable.EXPECT().Measured().Return(false)
-	ReportTimedMetricWithEvaluator(metric, f, evaluator)
-	assert.Equal(t, 0, testutil.CollectAndCount(metric))
-	assert.Check(t, invoked)
-
-	// metrics are enabled for the evaluator
-	invoked = false
-	monitorable.EXPECT().Measured().Return(true)
-	ReportTimedMetricWithEvaluator(metric, f, evaluator)
+	object.EXPECT().Measured().Return(false)
+	ReportTimedMetricWithObject(metric, f, object)
 	assert.Equal(t, 1, testutil.CollectAndCount(metric))
 	assert.Check(t, invoked)
 }
