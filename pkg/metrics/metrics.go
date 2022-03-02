@@ -27,10 +27,6 @@ func NewCounterMetric(name, help string, labels ...string) *prometheus.CounterVe
 	)
 }
 
-func NewAuthConfigCounterMetric(name, help string, extraLabels ...string) *prometheus.CounterVec {
-	return NewCounterMetric(name, help, extendedAuthConfigMetricLabels(extraLabels...)...)
-}
-
 func NewDurationMetric(name, help string, labels ...string) *prometheus.HistogramVec {
 	return prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -40,10 +36,6 @@ func NewDurationMetric(name, help string, labels ...string) *prometheus.Histogra
 		},
 		labels,
 	)
-}
-
-func NewAuthConfigDurationMetric(name, help string, extraLabels ...string) *prometheus.HistogramVec {
-	return NewDurationMetric(name, help, extendedAuthConfigMetricLabels(extraLabels...)...)
 }
 
 func ReportMetric(metric *prometheus.CounterVec, labels ...string) {
@@ -82,12 +74,6 @@ func ReportTimedMetricWithObject(metric *prometheus.HistogramVec, f func(), obj 
 	} else {
 		f()
 	}
-}
-
-func extendedAuthConfigMetricLabels(extraLabels ...string) []string {
-	labels := []string{"namespace", "authconfig"}
-	labels = append(labels, extraLabels[:]...)
-	return labels
 }
 
 func extendLabelValuesWithStatus(status string, baseLabels ...string) []string {
