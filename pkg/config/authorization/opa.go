@@ -81,7 +81,7 @@ func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (interfa
 			return nil, err
 		} else if len(results) == 0 {
 			return nil, fmt.Errorf(invalidOPAResponseErrorMsg)
-		} else if allowed := results[0].Bindings[allowQuery].(bool); !allowed {
+		} else if allowed, ok := results[0].Bindings[allowQuery].(bool); !ok || !allowed {
 			return nil, fmt.Errorf(unauthorizedErrorMsg)
 		} else {
 			return results[0].Bindings, nil

@@ -123,6 +123,23 @@ func TestOPAAllValues(t *testing.T) {
 	assert.Assert(t, !undefinedFound)
 }
 
+func TestOPANonBooleanAllowed(t *testing.T) {
+	ctrl := NewController(t)
+	defer ctrl.Finish()
+
+	pipelineMock := mockCommon.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "GET")).Times(1)
+
+	opa, _ := NewOPAAuthorization("test-opa", `allow = "foo"`, OPAExternalSource{}, false, 0, context.TODO())
+
+	results, err := opa.Call(pipelineMock, nil)
+	resultSet, _ := results.(rego.Vars)
+	authorized, ok := resultSet["allow"].(bool)
+	assert.Assert(t, !authorized)
+	assert.Assert(t, !ok)
+	assert.ErrorContains(t, err, "Unauthorized")
+}
+
 func assertOPAAuthorization(t *testing.T, opa *OPA) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
