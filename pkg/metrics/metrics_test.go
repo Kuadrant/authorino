@@ -93,3 +93,24 @@ func TestReportTimedMetricWithObject(t *testing.T) {
 	assert.Equal(t, 1, testutil.CollectAndCount(metric))
 	assert.Check(t, invoked)
 }
+
+func TestDeepMetricsEnabled(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metric := NewCounterMetric("foo", "Foo metric", "type", "name")
+
+	object := mock_metrics.NewMockObject(ctrl)
+	object.EXPECT().GetType().Return("AUTHZ_X").AnyTimes()
+	object.EXPECT().GetName().Return("foo").AnyTimes()
+
+	DeepMetricsEnabled = true
+	object.EXPECT().MetricsEnabled().Return(false)
+	ReportMetricWithObject(metric, object)
+	assert.Equal(t, 1, testutil.CollectAndCount(metric))
+
+	DeepMetricsEnabled = false
+	object.EXPECT().MetricsEnabled().Return(false)
+	ReportMetricWithObject(metric, object)
+	assert.Equal(t, 1, testutil.CollectAndCount(metric)) // does not change
+}

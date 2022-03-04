@@ -216,7 +216,7 @@ The [Authorino Operator](https://github.com/kuadrant/authorino-operator) creates
 
 Both endpoints also export metrics about the Go runtime, such as number of goroutines (go_goroutines) and threads (go_threads), usage of CPU, memory and GC stats.
 
-<small>(\*) <code>auth_server_evaluator_*</code> metrics require <code>authconfig.spec.(identity|metadata|authorization|response).metrics: true</code> (default: <code>false</code>).<small>
+<small><strong>(\*) Opt-in metrics:</strong> <code>auth_server_evaluator_*</code> metrics require <code>authconfig.spec.(identity|metadata|authorization|response).metrics: true</code> (default: <code>false</code>). This can be enforced for the entire instance (all AuthConfigs and evaluators), by setting the <code>DEEP_METRICS_ENABLED=true</code> environment variable in the Authorino deployment.<small>
 
 ## Examples
 

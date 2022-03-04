@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
@@ -39,6 +40,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,6 +63,7 @@ const (
 	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
 	envOIDCTLSCertPath                = "OIDC_TLS_CERT"
 	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
+	envDeepMetricsEnabled             = "DEEP_METRICS_ENABLED"
 	flagMetricsAddr                   = "metrics-addr"
 	flagEnableLeaderElection          = "enable-leader-election"
 
@@ -75,6 +78,7 @@ const (
 	defaultOIDCHTTPPort                   = "8083"
 	defaultOIDCTLSCertPath                = ""
 	defaultOIDCTLSCertKeyPath             = ""
+	defaultDeepMetricsEnabled             = "false"
 	defaultMetricsAddr                    = ":8080"
 	defaultEnableLeaderElection           = false
 
@@ -94,6 +98,7 @@ var (
 	oidcHTTPPort                   = common.FetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
 	oidcTLSCertPath                = common.FetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
 	oidcTLSCertKeyPath             = common.FetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
+	deepMetricEnabled              = common.FetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
 
 	scheme  = runtime.NewScheme()
 	logOpts = log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
@@ -107,6 +112,8 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 
 	log.SetLogger(logger, logOpts)
+
+	metrics.DeepMetricsEnabled, _ = strconv.ParseBool(deepMetricEnabled)
 }
 
 func main() {
@@ -128,6 +135,7 @@ func main() {
 		envOIDCHTTPPort, oidcHTTPPort,
 		envOIDCTLSCertPath, oidcTLSCertPath,
 		envOIDCTLSCertKeyPath, oidcTLSCertKeyPath,
+		envDeepMetricsEnabled, deepMetricEnabled,
 		flagMetricsAddr, metricsAddr,
 		flagEnableLeaderElection, enableLeaderElection,
 	)

@@ -6,6 +6,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var DeepMetricsEnabled = false
+
 type Object interface {
 	GetType() string
 	GetName() string
@@ -83,7 +85,7 @@ func extendLabelValuesWithStatus(status string, baseLabels ...string) []string {
 }
 
 func extendLabelValuesWithObject(obj Object, baseLabels ...string) ([]string, error) {
-	if obj == nil || !obj.MetricsEnabled() {
+	if obj == nil || (!obj.MetricsEnabled() && !DeepMetricsEnabled) {
 		return nil, fmt.Errorf("metrics are disabled")
 	}
 
