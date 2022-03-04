@@ -61,16 +61,16 @@ func (mr *MockObjectMockRecorder) GetType() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetType", reflect.TypeOf((*MockObject)(nil).GetType))
 }
 
-// Measured mocks base method.
-func (m *MockObject) Measured() bool {
+// MetricsEnabled mocks base method.
+func (m *MockObject) MetricsEnabled() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Measured")
+	ret := m.ctrl.Call(m, "MetricsEnabled")
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// Measured indicates an expected call of Measured.
-func (mr *MockObjectMockRecorder) Measured() *gomock.Call {
+// MetricsEnabled indicates an expected call of MetricsEnabled.
+func (mr *MockObjectMockRecorder) MetricsEnabled() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Measured", reflect.TypeOf((*MockObject)(nil).Measured))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MetricsEnabled", reflect.TypeOf((*MockObject)(nil).MetricsEnabled))
 }

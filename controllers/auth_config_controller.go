@@ -150,7 +150,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Priority:           identity.Priority,
 			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
 			ExtendedProperties: extendedProperties,
-			MetricsEnabled:     identity.Metrics,
+			Metrics:            identity.Metrics,
 		}
 
 		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
@@ -211,10 +211,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for _, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &config.MetadataConfig{
-			Name:           metadata.Name,
-			Priority:       metadata.Priority,
-			Conditions:     buildJSONPatternExpressions(authConfig, metadata.Conditions),
-			MetricsEnabled: metadata.Metrics,
+			Name:       metadata.Name,
+			Priority:   metadata.Priority,
+			Conditions: buildJSONPatternExpressions(authConfig, metadata.Conditions),
+			Metrics:    metadata.Metrics,
 		}
 
 		switch metadata.GetType() {
@@ -310,10 +310,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	for index, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &config.AuthorizationConfig{
-			Name:           authorization.Name,
-			Priority:       authorization.Priority,
-			Conditions:     buildJSONPatternExpressions(authConfig, authorization.Conditions),
-			MetricsEnabled: authorization.Metrics,
+			Name:       authorization.Name,
+			Priority:   authorization.Priority,
+			Conditions: buildJSONPatternExpressions(authConfig, authorization.Conditions),
+			Metrics:    authorization.Metrics,
 		}
 
 		switch authorization.GetType() {

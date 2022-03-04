@@ -16,10 +16,10 @@ const (
 )
 
 type MetadataConfig struct {
-	Name           string                           `yaml:"name"`
-	Priority       int                              `yaml:"priority"`
-	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	MetricsEnabled bool                             `yaml:"metrics"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                             `yaml:"metrics"`
 
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
@@ -85,6 +85,6 @@ func (config *MetadataConfig) GetConditions() []common.JSONPatternMatchingRule {
 
 // impl:metrics.Object
 
-func (config *MetadataConfig) Measured() bool {
-	return config.MetricsEnabled
+func (config *MetadataConfig) MetricsEnabled() bool {
+	return config.Metrics
 }

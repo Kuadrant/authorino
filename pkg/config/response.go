@@ -21,12 +21,12 @@ const (
 
 func NewResponseConfig(name string, priority int, conditions []common.JSONPatternMatchingRule, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
 	responseConfig := ResponseConfig{
-		Name:           name,
-		Priority:       priority,
-		Conditions:     conditions,
-		Wrapper:        DEFAULT_WRAPPER,
-		WrapperKey:     name,
-		MetricsEnabled: metricsEnabled,
+		Name:       name,
+		Priority:   priority,
+		Conditions: conditions,
+		Wrapper:    DEFAULT_WRAPPER,
+		WrapperKey: name,
+		Metrics:    metricsEnabled,
 	}
 
 	if wrapper != "" {
@@ -41,12 +41,12 @@ func NewResponseConfig(name string, priority int, conditions []common.JSONPatter
 }
 
 type ResponseConfig struct {
-	Name           string                           `yaml:"name"`
-	Priority       int                              `yaml:"priority"`
-	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	Wrapper        string                           `yaml:"wrapper"`
-	WrapperKey     string                           `yaml:"wrapperKey"`
-	MetricsEnabled bool                             `yaml:"metrics"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Wrapper    string                           `yaml:"wrapper"`
+	WrapperKey string                           `yaml:"wrapperKey"`
+	Metrics    bool                             `yaml:"metrics"`
 
 	Wristband   common.WristbandIssuer `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`
@@ -113,8 +113,8 @@ func (config *ResponseConfig) GetWristbandIssuer() common.WristbandIssuer {
 
 // impl:metrics.Object
 
-func (config *ResponseConfig) Measured() bool {
-	return config.MetricsEnabled
+func (config *ResponseConfig) MetricsEnabled() bool {
+	return config.Metrics
 }
 
 func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders map[string]string, responseMetadata map[string]interface{}) {

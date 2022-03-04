@@ -25,10 +25,10 @@ const (
 )
 
 type IdentityConfig struct {
-	Name           string                           `yaml:"name"`
-	Priority       int                              `yaml:"priority"`
-	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	MetricsEnabled bool                             `yaml:"metrics"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                             `yaml:"metrics"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
@@ -186,6 +186,6 @@ func (config *IdentityConfig) FindSecretByName(lookup types.NamespacedName) *v1.
 
 // impl:metrics.Object
 
-func (config *IdentityConfig) Measured() bool {
-	return config.MetricsEnabled
+func (config *IdentityConfig) MetricsEnabled() bool {
+	return config.Metrics
 }

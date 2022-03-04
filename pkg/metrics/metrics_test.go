@@ -33,12 +33,12 @@ func TestReportMetricWithObject(t *testing.T) {
 	object.EXPECT().GetType().Return("AUTHZ_X")
 	object.EXPECT().GetName().Return("foo")
 
-	object.EXPECT().Measured().Return(true)
+	object.EXPECT().MetricsEnabled().Return(true)
 	ReportMetricWithObject(metric, object)
 	assert.Equal(t, float64(1), testutil.ToFloat64(metric))
 	assert.Equal(t, float64(1), testutil.ToFloat64(metric.WithLabelValues("AUTHZ_X", "foo")))
 
-	object.EXPECT().Measured().Return(false)
+	object.EXPECT().MetricsEnabled().Return(false)
 	ReportMetricWithObject(metric, object)
 	assert.Equal(t, float64(1), testutil.ToFloat64(metric))
 
@@ -82,13 +82,13 @@ func TestReportTimedMetricWithObject(t *testing.T) {
 	object.EXPECT().GetType().Return("AUTHZ_X")
 	object.EXPECT().GetName().Return("foo")
 
-	object.EXPECT().Measured().Return(true)
+	object.EXPECT().MetricsEnabled().Return(true)
 	ReportTimedMetricWithObject(metric, f, object)
 	assert.Equal(t, 1, testutil.CollectAndCount(metric))
 	assert.Check(t, invoked)
 
 	invoked = false
-	object.EXPECT().Measured().Return(false)
+	object.EXPECT().MetricsEnabled().Return(false)
 	ReportTimedMetricWithObject(metric, f, object)
 	assert.Equal(t, 1, testutil.CollectAndCount(metric))
 	assert.Check(t, invoked)

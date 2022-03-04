@@ -9,8 +9,7 @@ import (
 type Object interface {
 	GetType() string
 	GetName() string
-
-	Measured() bool
+	MetricsEnabled() bool
 }
 
 func Register(metrics ...prometheus.Collector) {
@@ -84,7 +83,7 @@ func extendLabelValuesWithStatus(status string, baseLabels ...string) []string {
 }
 
 func extendLabelValuesWithObject(obj Object, baseLabels ...string) ([]string, error) {
-	if obj == nil || !obj.Measured() {
+	if obj == nil || !obj.MetricsEnabled() {
 		return nil, fmt.Errorf("metrics are disabled")
 	}
 

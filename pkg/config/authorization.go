@@ -16,10 +16,10 @@ const (
 )
 
 type AuthorizationConfig struct {
-	Name           string                           `yaml:"name"`
-	Priority       int                              `yaml:"priority"`
-	Conditions     []common.JSONPatternMatchingRule `yaml:"conditions"`
-	MetricsEnabled bool                             `yaml:"metrics"`
+	Name       string                           `yaml:"name"`
+	Priority   int                              `yaml:"priority"`
+	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                             `yaml:"metrics"`
 
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
@@ -79,6 +79,6 @@ func (config *AuthorizationConfig) GetConditions() []common.JSONPatternMatchingR
 
 // impl:metrics.Object
 
-func (config *AuthorizationConfig) Measured() bool {
-	return config.MetricsEnabled
+func (config *AuthorizationConfig) MetricsEnabled() bool {
+	return config.Metrics
 }
