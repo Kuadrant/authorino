@@ -9,10 +9,12 @@ require (
 	github.com/go-logr/logr v1.2.2
 	github.com/gogo/googleapis v1.3.0
 	github.com/golang/mock v1.6.0
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/open-policy-agent/opa v0.37.2
 	github.com/pquerna/cachecontrol v0.0.0-20201205024021-ac21108117ac // indirect
+	github.com/prometheus/client_golang v1.12.0
 	github.com/tidwall/gjson v1.6.8
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20211111083644-e5c967477495

@@ -199,31 +199,31 @@ func (mr *MockAuthConfigCleanerMockRecorder) Clean(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clean", reflect.TypeOf((*MockAuthConfigCleaner)(nil).Clean), arg0)
 }
 
-// MockNamedConfigEvaluator is a mock of NamedConfigEvaluator interface.
-type MockNamedConfigEvaluator struct {
+// MockNamedEvaluator is a mock of NamedEvaluator interface.
+type MockNamedEvaluator struct {
 	ctrl     *gomock.Controller
-	recorder *MockNamedConfigEvaluatorMockRecorder
+	recorder *MockNamedEvaluatorMockRecorder
 }
 
-// MockNamedConfigEvaluatorMockRecorder is the mock recorder for MockNamedConfigEvaluator.
-type MockNamedConfigEvaluatorMockRecorder struct {
-	mock *MockNamedConfigEvaluator
+// MockNamedEvaluatorMockRecorder is the mock recorder for MockNamedEvaluator.
+type MockNamedEvaluatorMockRecorder struct {
+	mock *MockNamedEvaluator
 }
 
-// NewMockNamedConfigEvaluator creates a new mock instance.
-func NewMockNamedConfigEvaluator(ctrl *gomock.Controller) *MockNamedConfigEvaluator {
-	mock := &MockNamedConfigEvaluator{ctrl: ctrl}
-	mock.recorder = &MockNamedConfigEvaluatorMockRecorder{mock}
+// NewMockNamedEvaluator creates a new mock instance.
+func NewMockNamedEvaluator(ctrl *gomock.Controller) *MockNamedEvaluator {
+	mock := &MockNamedEvaluator{ctrl: ctrl}
+	mock.recorder = &MockNamedEvaluatorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockNamedConfigEvaluator) EXPECT() *MockNamedConfigEvaluatorMockRecorder {
+func (m *MockNamedEvaluator) EXPECT() *MockNamedEvaluatorMockRecorder {
 	return m.recorder
 }
 
 // GetName mocks base method.
-func (m *MockNamedConfigEvaluator) GetName() string {
+func (m *MockNamedEvaluator) GetName() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetName")
 	ret0, _ := ret[0].(string)
@@ -231,9 +231,46 @@ func (m *MockNamedConfigEvaluator) GetName() string {
 }
 
 // GetName indicates an expected call of GetName.
-func (mr *MockNamedConfigEvaluatorMockRecorder) GetName() *gomock.Call {
+func (mr *MockNamedEvaluatorMockRecorder) GetName() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockNamedConfigEvaluator)(nil).GetName))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockNamedEvaluator)(nil).GetName))
+}
+
+// MockTypedEvaluator is a mock of TypedEvaluator interface.
+type MockTypedEvaluator struct {
+	ctrl     *gomock.Controller
+	recorder *MockTypedEvaluatorMockRecorder
+}
+
+// MockTypedEvaluatorMockRecorder is the mock recorder for MockTypedEvaluator.
+type MockTypedEvaluatorMockRecorder struct {
+	mock *MockTypedEvaluator
+}
+
+// NewMockTypedEvaluator creates a new mock instance.
+func NewMockTypedEvaluator(ctrl *gomock.Controller) *MockTypedEvaluator {
+	mock := &MockTypedEvaluator{ctrl: ctrl}
+	mock.recorder = &MockTypedEvaluatorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTypedEvaluator) EXPECT() *MockTypedEvaluatorMockRecorder {
+	return m.recorder
+}
+
+// GetType mocks base method.
+func (m *MockTypedEvaluator) GetType() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetType")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetType indicates an expected call of GetType.
+func (mr *MockTypedEvaluatorMockRecorder) GetType() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetType", reflect.TypeOf((*MockTypedEvaluator)(nil).GetType))
 }
 
 // MockPrioritizable is a mock of Prioritizable interface.

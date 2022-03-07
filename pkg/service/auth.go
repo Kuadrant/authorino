@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -32,7 +33,13 @@ var (
 		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
 		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
 	}
+
+	authServerResponseStatusMetric = metrics.NewCounterMetric("auth_server_response_status", "Response status of authconfigs sent by the auth server.", "status")
 )
+
+func init() {
+	metrics.Register(authServerResponseStatusMetric)
+}
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
@@ -82,9 +89,13 @@ func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.
 	if err != nil {
 		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
+
+	code := rpc.OK
+	reportStatusMetric(code)
+
 	return &envoy_auth.CheckResponse{
 		Status: &rpcstatus.Status{
-			Code: int32(rpc.OK),
+			Code: int32(code),
 		},
 		HttpResponse: &envoy_auth.CheckResponse_OkResponse{
 			OkResponse: &envoy_auth.OkHttpResponse{
@@ -97,6 +108,7 @@ func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.
 
 func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
+	reportStatusMetric(code)
 
 	httpCode := authResult.Status
 	if httpCode == 0 {
@@ -208,4 +220,8 @@ func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string
 	headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
 
 	return buildResponseHeaders(headers)
+}
+
+func reportStatusMetric(rpcStatusCode rpc.Code) {
+	metrics.ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)])
 }

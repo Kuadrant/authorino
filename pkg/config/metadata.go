@@ -19,28 +19,15 @@ type MetadataConfig struct {
 	Name       string                           `yaml:"name"`
 	Priority   int                              `yaml:"priority"`
 	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                             `yaml:"metrics"`
 
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
 }
 
-func (config *MetadataConfig) GetType() (string, error) {
-	switch {
-	case config.UserInfo != nil:
-		return metadataUserInfo, nil
-	case config.UMA != nil:
-		return metadataUMA, nil
-	case config.GenericHTTP != nil:
-		return metadataGenericHTTP, nil
-	default:
-		return "", fmt.Errorf("invalid metadata config")
-	}
-}
-
 func (config *MetadataConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
-	t, _ := config.GetType()
-	switch t {
+	switch config.GetType() {
 	case metadataUserInfo:
 		return config.UserInfo
 	case metadataUMA:
@@ -63,10 +50,25 @@ func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Con
 	}
 }
 
-// impl:NamedConfigEvaluator
+// impl:NamedEvaluator
 
 func (config *MetadataConfig) GetName() string {
 	return config.Name
+}
+
+// impl:TypedEvaluator
+
+func (config *MetadataConfig) GetType() string {
+	switch {
+	case config.UserInfo != nil:
+		return metadataUserInfo
+	case config.UMA != nil:
+		return metadataUMA
+	case config.GenericHTTP != nil:
+		return metadataGenericHTTP
+	default:
+		return ""
+	}
 }
 
 // impl:Prioritizable
@@ -79,4 +81,10 @@ func (config *MetadataConfig) GetPriority() int {
 
 func (config *MetadataConfig) GetConditions() []common.JSONPatternMatchingRule {
 	return config.Conditions
+}
+
+// impl:metrics.Object
+
+func (config *MetadataConfig) MetricsEnabled() bool {
+	return config.Metrics
 }

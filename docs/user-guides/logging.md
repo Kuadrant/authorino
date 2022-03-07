@@ -56,7 +56,7 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | logger | level | message | extra values |
 | -------|-------|---------|--------|
 | `authorino` | `info` | "setting instance base logger" | `min level=info\|debug`, `mode=production\|development` |
-| `authorino` | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `EXT_AUTH_GRPC_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `metrics-addr`, `enable-leader-election` |
+| `authorino` | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `EXT_AUTH_GRPC_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `DEEP_METRICS_ENABLED`, `metrics-addr`, `enable-leader-election` |
 | `authorino` | `info` | "attempting to acquire leader lease authorino/cb88a58a.authorino.kuadrant.io...\n" | |
 | `authorino` | `info` | "successfully acquired lease authorino/cb88a58a.authorino.kuadrant.io\n" | |
 | `authorino` | `info` | "starting grpc service" | `port`, `tls` |

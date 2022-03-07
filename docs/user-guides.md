@@ -63,6 +63,9 @@ Customize response status code and headers on failed requests. E.g. redirect use
 - **[Reducing the operational space: sharding, noise and multi-tenancy](./user-guides/sharding.md)**<br/>
 Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
 
+- **[Observability](./user-guides/metrics.md)**<br/>
+Prometheus metrics exported by Authorino.
+
 - **[Logging](./user-guides/logging.md)**<br/>
 Parse Authorino's structured JSON log messages; activate debug log level and get more user-friendly outputs in dev environment.
 

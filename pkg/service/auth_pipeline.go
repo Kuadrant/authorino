@@ -9,12 +9,41 @@ import (
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	"golang.org/x/net/context"
 )
+
+var (
+	evaluatorMetricLabels = []string{"evaluator_type", "evaluator_name"}
+
+	// evaluator metrics
+	authServerEvaluatorTotalMetric     = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_total", "Total number of evaluations of individual authconfig rule performed by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorCancelledMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_cancelled", "Number of evaluations of individual authconfig rule cancelled by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorIgnoredMetric   = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_ignored", "Number of evaluations of individual authconfig rule ignored by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorDeniedMetric    = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_denied", "Number of denials from individual authconfig rule evaluated by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorDurationMetric  = metrics.NewAuthConfigDurationMetric("auth_server_evaluator_duration_seconds", "Response latency of individual authconfig rule evaluated by the auth server (in seconds).", evaluatorMetricLabels...)
+	// authconfig metrics
+	authServerAuthConfigTotalMetric          = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_total", "Total number of authconfigs enforced by the auth server, partitioned by authconfig.")
+	authServerAuthConfigResponseStatusMetric = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_response_status", "Response status of authconfigs sent by the auth server, partitioned by authconfig.", "status")
+	authServerAuthConfigDurationMetric       = metrics.NewAuthConfigDurationMetric("auth_server_authconfig_duration_seconds", "Response latency of authconfig enforced by the auth server (in seconds).")
+)
+
+func init() {
+	metrics.Register(
+		authServerEvaluatorTotalMetric,
+		authServerEvaluatorCancelledMetric,
+		authServerEvaluatorIgnoredMetric,
+		authServerEvaluatorDeniedMetric,
+		authServerEvaluatorDurationMetric,
+		authServerAuthConfigTotalMetric,
+		authServerAuthConfigResponseStatusMetric,
+		authServerAuthConfigDurationMetric,
+	)
+}
 
 type EvaluationResponse struct {
 	Evaluator common.AuthConfigEvaluator
@@ -71,30 +100,41 @@ type AuthPipeline struct {
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
+	monitorable, _ := config.(metrics.Object)
+	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
+
 	if err := common.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
+		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
 		return
 	}
 
 	if conditionalEv, ok := config.(common.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
+			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
 			return
 		}
 	}
 
-	if authObj, err := config.Call(pipeline, ctx); err != nil {
-		*respChannel <- newEvaluationResponse(config, nil, err)
+	evaluateFunc := func() {
+		if authObj, err := config.Call(pipeline, ctx); err != nil {
+			*respChannel <- newEvaluationResponse(config, nil, err)
 
-		if failureCallback != nil {
-			failureCallback()
-		}
-	} else {
-		*respChannel <- newEvaluationResponse(config, authObj, nil)
+			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels()...)
 
-		if successCallback != nil {
-			successCallback()
+			if failureCallback != nil {
+				failureCallback()
+			}
+		} else {
+			*respChannel <- newEvaluationResponse(config, authObj, nil)
+
+			if successCallback != nil {
+				successCallback()
+			}
 		}
 	}
+
+	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
 }
 
 type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -322,36 +362,67 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 		}
 	}
 
-	// phase 1: identity verification
-	if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
-		return pipeline.customizeDenyWith(common.AuthResult{
-			Code:    rpc.UNAUTHENTICATED,
-			Message: resp.GetErrorMessage(),
-			Headers: pipeline.API.GetChallengeHeaders(),
-		}, pipeline.API.Unauthenticated)
-	}
+	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
 
-	// phase 2: external metadata
-	pipeline.evaluateMetadataConfigs()
+	authResult := make(chan common.AuthResult)
 
-	// phase 3: policy enforcement (authorization)
-	if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
-		return pipeline.customizeDenyWith(common.AuthResult{
-			Code:    rpc.PERMISSION_DENIED,
-			Message: resp.GetErrorMessage(),
-		}, pipeline.API.Unauthorized)
-	}
+	go func() {
+		defer close(authResult)
 
-	// phase 4: response
-	pipeline.evaluateResponseConfigs()
+		evaluateFunc := func() {
+			// phase 1: identity verification
+			if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
+				code := rpc.UNAUTHENTICATED
+				pipeline.reportStatusMetric(code)
+				authResult <- pipeline.customizeDenyWith(common.AuthResult{
+					Code:    code,
+					Message: resp.GetErrorMessage(),
+					Headers: pipeline.API.GetChallengeHeaders(),
+				}, pipeline.API.Unauthenticated)
+				return
+			}
 
-	// auth result
-	responseHeaders, responseMetadata := config.WrapResponses(pipeline.Response)
-	return common.AuthResult{
-		Code:     rpc.OK,
-		Headers:  []map[string]string{responseHeaders},
-		Metadata: responseMetadata,
-	}
+			// phase 2: external metadata
+			pipeline.evaluateMetadataConfigs()
+
+			// phase 3: policy enforcement (authorization)
+			if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
+				code := rpc.PERMISSION_DENIED
+				pipeline.reportStatusMetric(code)
+				authResult <- pipeline.customizeDenyWith(common.AuthResult{
+					Code:    code,
+					Message: resp.GetErrorMessage(),
+				}, pipeline.API.Unauthorized)
+				return
+			}
+
+			// phase 4: response
+			pipeline.evaluateResponseConfigs()
+
+			// auth result
+			responseHeaders, responseMetadata := config.WrapResponses(pipeline.Response)
+			code := rpc.OK
+			pipeline.reportStatusMetric(code)
+			authResult <- common.AuthResult{
+				Code:     code,
+				Headers:  []map[string]string{responseHeaders},
+				Metadata: responseMetadata,
+			}
+		}
+
+		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
+	}()
+
+	return <-authResult
+}
+
+func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
+	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
+}
+
+func (pipeline *AuthPipeline) metricLabels() []string {
+	labels := pipeline.API.Labels
+	return []string{labels["namespace"], labels["name"]}
 }
 
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {

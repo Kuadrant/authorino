@@ -150,6 +150,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Priority:           identity.Priority,
 			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
 			ExtendedProperties: extendedProperties,
+			Metrics:            identity.Metrics,
 		}
 
 		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
@@ -213,6 +214,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Name:       metadata.Name,
 			Priority:   metadata.Priority,
 			Conditions: buildJSONPatternExpressions(authConfig, metadata.Conditions),
+			Metrics:    metadata.Metrics,
 		}
 
 		switch metadata.GetType() {
@@ -311,6 +313,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Name:       authorization.Name,
 			Priority:   authorization.Priority,
 			Conditions: buildJSONPatternExpressions(authConfig, authorization.Conditions),
+			Metrics:    authorization.Metrics,
 		}
 
 		switch authorization.GetType() {
@@ -383,7 +386,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
 
 	for _, response := range authConfig.Spec.Response {
-		translatedResponse := config.NewResponseConfig(response.Name, response.Priority, buildJSONPatternExpressions(authConfig, response.Conditions), string(response.Wrapper), response.WrapperKey)
+		translatedResponse := config.NewResponseConfig(
+			response.Name,
+			response.Priority,
+			buildJSONPatternExpressions(authConfig, response.Conditions),
+			string(response.Wrapper),
+			response.WrapperKey,
+			response.Metrics,
+		)
 
 		switch response.GetType() {
 		// wristband
@@ -465,6 +475,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 		ResponseConfigs:      interfacedResponseConfigs,
+		Labels:               map[string]string{"namespace": authConfig.Namespace, "name": authConfig.Name},
 	}
 
 	// denyWith

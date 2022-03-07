@@ -25,17 +25,22 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,6 +63,7 @@ const (
 	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
 	envOIDCTLSCertPath                = "OIDC_TLS_CERT"
 	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
+	envDeepMetricsEnabled             = "DEEP_METRICS_ENABLED"
 	flagMetricsAddr                   = "metrics-addr"
 	flagEnableLeaderElection          = "enable-leader-election"
 
@@ -72,6 +78,7 @@ const (
 	defaultOIDCHTTPPort                   = "8083"
 	defaultOIDCTLSCertPath                = ""
 	defaultOIDCTLSCertKeyPath             = ""
+	defaultDeepMetricsEnabled             = "false"
 	defaultMetricsAddr                    = ":8080"
 	defaultEnableLeaderElection           = false
 
@@ -91,6 +98,7 @@ var (
 	oidcHTTPPort                   = common.FetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
 	oidcTLSCertPath                = common.FetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
 	oidcTLSCertKeyPath             = common.FetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
+	deepMetricEnabled              = common.FetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
 
 	scheme  = runtime.NewScheme()
 	logOpts = log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
@@ -104,6 +112,8 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 
 	log.SetLogger(logger, logOpts)
+
+	metrics.DeepMetricsEnabled, _ = strconv.ParseBool(deepMetricEnabled)
 }
 
 func main() {
@@ -125,6 +135,7 @@ func main() {
 		envOIDCHTTPPort, oidcHTTPPort,
 		envOIDCTLSCertPath, oidcTLSCertPath,
 		envOIDCTLSCertKeyPath, oidcTLSCertKeyPath,
+		envDeepMetricsEnabled, deepMetricEnabled,
 		flagMetricsAddr, metricsAddr,
 		flagEnableLeaderElection, enableLeaderElection,
 	)
@@ -181,6 +192,8 @@ func main() {
 	startExtAuthServer(cache)
 	startOIDCServer(cache)
 
+	_ = mgr.AddMetricsExtraHandler("/server-metrics", promhttp.Handler())
+
 	signalHandler := ctrl.SetupSignalHandler()
 
 	logger.Info("starting manager")
@@ -230,7 +243,11 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 		logger.Error(err, "failed to obtain port for grpc auth service")
 		os.Exit(1)
 	} else {
-		grpcServerOpts := []grpc.ServerOption{grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams)}
+		grpcServerOpts := []grpc.ServerOption{
+			grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams),
+			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		}
 
 		tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
 		logger.Info("starting grpc service", "port", extAuthGRPCPort, "tls", tlsEnabled)
@@ -252,6 +269,8 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 
 		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache})
 		healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
+		grpc_prometheus.Register(grpcServer)
+		grpc_prometheus.EnableHandlingTimeHistogram()
 
 		go func() {
 			if err := grpcServer.Serve(lis); err != nil {

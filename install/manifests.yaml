@@ -318,6 +318,11 @@ spec:
                       required:
                       - user
                       type: object
+                    metrics:
+                      default: false
+                      description: Whether this authorization config should generate
+                        individual observability metrics
+                      type: boolean
                     name:
                       description: Name of the authorization policy. It can be used
                         to refer to the resolved authorization object in other configs.
@@ -703,6 +708,11 @@ spec:
                             type: string
                           type: array
                       type: object
+                    metrics:
+                      default: false
+                      description: Whether this identity config should generate individual
+                        observability metrics
+                      type: boolean
                     name:
                       description: The name of this identity source/authentication
                         mode. It usually identifies a source of identities or group
@@ -980,6 +990,11 @@ spec:
                       required:
                       - endpoint
                       type: object
+                    metrics:
+                      default: false
+                      description: Whether this metadata config should generate individual
+                        observability metrics
+                      type: boolean
                     name:
                       description: The name of the metadata source. It can be used
                         to refer to the resolved metadata object in other configs.
@@ -1157,6 +1172,11 @@ spec:
                       required:
                       - properties
                       type: object
+                    metrics:
+                      default: false
+                      description: Whether this response config should generate individual
+                        observability metrics
+                      type: boolean
                     name:
                       description: Name of the custom response. It can be used to
                         refer to the resolved response object in other configs.

@@ -5,12 +5,26 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/metrics"
 )
+
+var (
+	oidcServerTotalRequestsMetric  = metrics.NewAuthConfigCounterMetric("oidc_server_requests_total", "Number of get requests received on the OIDC (Festival Wristband) server.", "wristband", "path")
+	oidcServerResponseStatusMetric = metrics.NewCounterMetric("oidc_server_response_status", "Status of HTTP response sent by the OIDC (Festival Wristband) server.", "status")
+)
+
+func init() {
+	metrics.Register(
+		oidcServerTotalRequestsMetric,
+		oidcServerResponseStatusMetric,
+	)
+}
 
 // OidcService implements an HTTP server for OpenID Connect Discovery
 type OidcService struct {
@@ -29,7 +43,9 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	uriParts := strings.Split(uri, "/")
 
 	if len(uriParts) >= 4 {
-		realm := strings.Join(uriParts[1:3], "/")
+		namespace := uriParts[1]
+		authconfig := uriParts[2]
+		realm := fmt.Sprintf("%s/%s", namespace, authconfig)
 		config := uriParts[3]
 		path := strings.Join(uriParts[4:], "/")
 		if strings.HasSuffix(path, "/") {
@@ -52,15 +68,20 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 				err = fmt.Errorf("Not found")
 			}
 
+			var pathMetric string
+
 			if err == nil {
 				statusCode = http.StatusOK
 				writer.Header().Add("Content-Type", "application/json")
+				pathMetric = path
 			} else {
 				if statusCode == 0 {
 					statusCode = http.StatusInternalServerError
 				}
 				responseBody = err.Error()
 			}
+
+			metrics.ReportMetric(oidcServerTotalRequestsMetric, namespace, authconfig, config, pathMetric)
 		} else {
 			statusCode = http.StatusNotFound
 			responseBody = "Not found"
@@ -78,6 +99,8 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	} else {
 		requestLogger.Info("response sent", "status", statusCode)
 	}
+
+	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
 }
 
 func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) common.WristbandIssuer {

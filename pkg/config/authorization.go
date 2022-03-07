@@ -9,10 +9,17 @@ import (
 	"github.com/kuadrant/authorino/pkg/config/authorization"
 )
 
+const (
+	authorizationOPA        = "AUTHORIZATION_OPA"
+	authorizationJSON       = "AUTHORIZATION_JSON"
+	authorizationKubernetes = "AUTHORIZATION_KUBERNETES"
+)
+
 type AuthorizationConfig struct {
 	Name       string                           `yaml:"name"`
 	Priority   int                              `yaml:"priority"`
 	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                             `yaml:"metrics"`
 
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
@@ -25,15 +32,36 @@ func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, parentCtx 
 	logger := log.FromContext(parentCtx).WithName("authorization")
 	ctx := log.IntoContext(parentCtx, logger)
 
-	switch {
-	case config.OPA != nil:
+	switch config.GetType() {
+	case authorizationOPA:
 		return config.OPA.Call(pipeline, ctx)
-	case config.JSON != nil:
+	case authorizationJSON:
 		return config.JSON.Call(pipeline, ctx)
-	case config.KubernetesAuthz != nil:
+	case authorizationKubernetes:
 		return config.KubernetesAuthz.Call(pipeline, ctx)
 	default:
 		return false, fmt.Errorf("invalid authorization config")
+	}
+}
+
+// impl:NamedEvaluator
+
+func (config *AuthorizationConfig) GetName() string {
+	return config.Name
+}
+
+// impl:TypedEvaluator
+
+func (config *AuthorizationConfig) GetType() string {
+	switch {
+	case config.OPA != nil:
+		return authorizationOPA
+	case config.JSON != nil:
+		return authorizationJSON
+	case config.KubernetesAuthz != nil:
+		return authorizationKubernetes
+	default:
+		return ""
 	}
 }
 
@@ -47,4 +75,10 @@ func (config *AuthorizationConfig) GetPriority() int {
 
 func (config *AuthorizationConfig) GetConditions() []common.JSONPatternMatchingRule {
 	return config.Conditions
+}
+
+// impl:metrics.Object
+
+func (config *AuthorizationConfig) MetricsEnabled() bool {
+	return config.Metrics
 }

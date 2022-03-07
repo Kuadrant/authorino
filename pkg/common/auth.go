@@ -31,8 +31,12 @@ type AuthConfigCleaner interface {
 	Clean(context.Context) error
 }
 
-type NamedConfigEvaluator interface {
+type NamedEvaluator interface {
 	GetName() string
+}
+
+type TypedEvaluator interface {
+	GetType() string
 }
 
 type Prioritizable interface {
@@ -61,7 +65,7 @@ type WristbandIssuer interface {
 }
 
 type ResponseConfigEvaluator interface {
-	NamedConfigEvaluator
+	NamedEvaluator
 	GetWristbandIssuer() WristbandIssuer
 }
 
