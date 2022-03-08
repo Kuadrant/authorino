@@ -371,6 +371,12 @@ type Authorization_OPA struct {
 
 	// External registry of OPA policies.
 	ExternalRegistry ExternalRegistry `json:"externalRegistry,omitempty"`
+
+	// Returns the value of all Rego rules in the virtual document. Values can be read in subsequent evaluators/phases of the Auth Pipeline.
+	// Otherwise, only the default `allow` rule will be exposed.
+	// Returning all Rego rules can affect performance of OPA policies during reconciliation (policy precompile) and at runtime.
+	// +kubebuilder:default:=false
+	AllValues bool `json:"allValues,omitempty"`
 }
 
 // JSON pattern matching authorization policy.
