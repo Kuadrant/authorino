@@ -8,7 +8,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/log"
-	"github.com/kuadrant/authorino/pkg/config"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -24,6 +23,8 @@ const (
 
 	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
 	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"
+
+	X_LOOKUP_KEY_NAME = "host"
 )
 
 var (
@@ -57,14 +58,20 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 	requestData := req.Attributes.Request.Http
 
 	// service config
-	host := requestData.Host
-	var apiConfig *config.APIConfig
-	apiConfig = a.Cache.Get(host)
+	var host string
+	if h, overridden := req.Attributes.ContextExtensions[X_LOOKUP_KEY_NAME]; overridden {
+		host = h
+	} else {
+		host = requestData.Host
+	}
+
+	apiConfig := a.Cache.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
 	if apiConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
 		apiConfig = a.Cache.Get(splitHost[0])
 	}
+
 	// If we couldn't find the APIConfig in the config, we return and deny.
 	if apiConfig == nil {
 		result := common.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
