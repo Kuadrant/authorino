@@ -182,6 +182,8 @@ Each phase is sequential to the other, from (i) to (iv), while the evaluators wi
 
 Authorino reads the request host from `Attributes.Http.Host` of Envoy's [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) type, and uses it as key to lookup in the [cache](#resource-reconciliation-and-status-update) of `AuthConfig`s.
 
+Alternatively, `host` can be supplied in `Attributes.ContextExtensions`, which takes precedence before the actual host attribute of the HTTP request. This is useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup**.
+
 If more than one host name is specified in the `AuthConfig`, all of them can be used as the key, i.e. all of them can be requested in the authorization request and will be mapped to the same config.
 
 The host can include the port number (i.e. `hostname:port`) or it can be just the name of the host. Authorino will first try finding a config in the cache that is associated to `hostname:port` as supplied in the authorization request; if the cache misses an entry for `hostname:port`, Authorino will then remove the `:port` suffix and lookup again using just `hostname` as key. This allows to change port numbers for a same host, as long as the name of the host is the same, without having to list multiple combinations of `hostname:port` to the `AuthConfig` spec.
