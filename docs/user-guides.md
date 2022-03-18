@@ -51,6 +51,9 @@ Leverage the power of Open Policy Agent (OPA) policies, evaluated against Author
 - **[Kubernetes RBAC for service authorization (SubjectAccessReview API)](./user-guides/kubernetes-subjectaccessreview.md)**<br/>
 Manage permissions in the Kubernetes RBAC and let Authorino to check them in request-time with the authorization system of the cluster.
 
+- **[Authorization with Keycloak Authorization Services](./user-guides/keycloak-authorization-services.md)**<br/>
+Use Authorino as an adapter for Keycloak Authorization Services without importing any library or rebuilding your application code.
+
 - **[Injecting data in the request](./user-guides/injecting-data.md)**<br/>
 Inject HTTP headers with serialized JSON content.
 
