@@ -60,6 +60,9 @@ Provide Envoy with dynamic metadata from the external authorization process to b
 - **[Redirecting to a login page](./user-guides/deny-with-redirect-to-login.md)**<br/>
 Customize response status code and headers on failed requests. E.g. redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`; mask resources on access denied behind a `404 Not Found` response instead of `403 Forbidden`.
 
+- **[Host override via context extension](./user-guides/host-override.md)**<br/>
+Induce the lookup of an AuthConfig by supplying extended host context, for use cases such as of path prefix-based lookup and wildcard subdomains lookup.
+
 - **[Reducing the operational space: sharding, noise and multi-tenancy](./user-guides/sharding.md)**<br/>
 Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
 

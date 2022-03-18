@@ -3,15 +3,19 @@ package service
 import (
 	"testing"
 
+	"golang.org/x/net/context"
 	"gotest.tools/assert"
 
 	"github.com/kuadrant/authorino/pkg/cache"
+	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/config"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
+	"github.com/golang/mock/gomock"
 )
 
 func getHeader(headers []*envoy_core.HeaderValueOption, key string) string {
@@ -70,4 +74,45 @@ func TestDeniedResponse(t *testing.T) {
 	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Please login")
 	assert.Equal(t, getHeader(resp.GetHeaders(), "Location"), "http://my-app.io/login")
 	assert.Equal(t, len(resp.GetHeaders()), 2)
+}
+
+func TestAuthConfigLookup(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	c := mock_cache.NewMockCache(ctrl)
+	service := AuthService{Cache: c}
+	authConfig := &config.APIConfig{}
+
+	var resp *envoy_auth.CheckResponse
+	var err error
+
+	c.EXPECT().Get("host.com").Return(nil)
+	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
+		Request: &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "host.com"}},
+	}})
+	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(404))
+	assert.NilError(t, err)
+
+	c.EXPECT().Get("host.com").Return(authConfig)
+	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
+		Request: &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "host.com"}},
+	}})
+	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(401))
+	assert.NilError(t, err)
+
+	c.EXPECT().Get("host-overwrite").Return(nil)
+	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
+		Request:           &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "actual-host.com"}},
+		ContextExtensions: map[string]string{"host": "host-overwrite"},
+	}})
+	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(404))
+	assert.NilError(t, err)
+
+	c.EXPECT().Get("host-overwrite").Return(authConfig)
+	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
+		Request:           &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "actual-host.com"}},
+		ContextExtensions: map[string]string{"host": "host-overwrite"},
+	}})
+	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(401))
+	assert.NilError(t, err)
 }
