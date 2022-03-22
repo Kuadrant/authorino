@@ -8,9 +8,9 @@ import (
 
 	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
 	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_cron "github.com/kuadrant/authorino/pkg/cron/mocks"
 
 	"github.com/golang/mock/gomock"
-
 	"gotest.tools/assert"
 )
 
@@ -113,8 +113,10 @@ func TestOidcProviderRefresh(t *testing.T) {
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 1, context.TODO())
 	defer evaluator.Clean(context.Background())
-	time.Sleep(2 * time.Second)
 
+	assert.Check(t, evaluator.refresher != nil)
+
+	time.Sleep(2 * time.Second)
 	assert.Equal(t, 2, count)
 	assert.Equal(t, fmt.Sprintf("http://%v/auth?count=2", oidcServerHost), evaluator.provider.Endpoint().AuthURL)
 }
@@ -133,14 +135,10 @@ func TestOidcProviderRefreshClean(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-
-	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 300, context.TODO())
-
-	assert.Check(t, evaluator.shutDown != nil)
-
+	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
+	refresher := mock_cron.NewMockWorker(ctrl)
+	evaluator.refresher = refresher
+	refresher.EXPECT().Stop()
 	err := evaluator.Clean(context.Background())
 	assert.NilError(t, err)
-
-	v := <-evaluator.shutDown // would wait forever if *OIDC.Clean(context.Context) was not called
-	assert.Check(t, !v)
 }
