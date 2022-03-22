@@ -108,8 +108,10 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino.service.auth.authpipeline.authorization` | `debug` | "evaluating for input" | `request id`, `input` |
 | `authorino.service.auth.authpipeline.authorization` | `debug` | "access granted" | `request id`, `config`, `object` |
 | `authorino.service.auth.authpipeline.authorization` | `debug` | "access denied" | `request id`, `config`, `reason` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "Invalid response from OPA policy evaluation" | `secret` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "Failed to precompile OPA policy" | `secret` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "invalid response from policy evaluation" | `policy` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to precompile policy" | `policy` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to refresh policy from external registry" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `info` | "policy updated from external registry" | `policy`, `endpoint` |
 | `authorino.service.auth.authpipeline.authorization.kubernetesauthz` | `debug` | "calling kubernetes subject access review api" | `request id`, `subjectaccessreview` |
 | `authorino.service.auth.authpipeline.response` | `debug` | "dynamic response built" | `request id`, `config`, `object` |
 | `authorino.service.auth.authpipeline.response` | `debug` | "cannot build dynamic response" | `request id`, `config`, `reason` |
