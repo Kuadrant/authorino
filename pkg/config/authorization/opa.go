@@ -13,6 +13,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/cron"
 
 	opaParser "github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -25,47 +26,58 @@ default allow = false
 	policyUIDHashSeparator = "|"
 	allowQuery             = "allow"
 
-	opaPolicyPrecompileErrorMsg = "Failed to precompile OPA policy"
-	regoDownloadErrorMsg        = "Failed to download Rego data"
-	invalidOPAResponseErrorMsg  = "Invalid response from OPA policy evaluation"
+	opaPolicyPrecompileErrorMsg          = "failed to precompile policy"
+	regoDownloadErrorMsg                 = "failed to download rego data"
+	invalidOPAResponseErrorMsg           = "invalid response from policy evaluation"
+	opaPolicyRefreshedFromRegistry       = "policy updated from external registry"
+	opaPolicyFailedToRefreshFromRegistry = "failed to refresh policy from external registry"
 )
 
-func NewOPAAuthorization(policyName string, rego string, externalSource OPAExternalSource, allValues bool, nonce int, ctx context.Context) (*OPA, error) {
+func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExternalSource, allValues bool, nonce int, ctx context.Context) (*OPA, error) {
 	logger := log.FromContext(ctx).WithName("opa")
 
-	if rego == "" && externalSource.Endpoint != "" {
-		downloadedRego, err := externalSource.downloadRegoDataFromUrl()
-		if err != nil {
-			logger.Error(err, regoDownloadErrorMsg, "secret", policyName)
+	pullFromRegistry := rego == "" && externalSource != nil && externalSource.Endpoint != ""
+
+	if pullFromRegistry {
+		if downloadedRego, err := externalSource.downloadRegoDataFromUrl(); err != nil {
+			logger.Error(err, regoDownloadErrorMsg, "policy", policyName)
 			return nil, err
+		} else {
+			rego = downloadedRego
 		}
-		rego = downloadedRego
 	}
 
 	rego = cleanUpRegoDocument(rego)
 
 	o := &OPA{
-		Rego:              rego,
-		OPAExternalSource: externalSource,
-		AllValues:         allValues,
-		policyUID:         generatePolicyUID(policyName, rego, nonce),
-		opaContext:        context.TODO(),
+		Rego:           rego,
+		ExternalSource: externalSource,
+		AllValues:      allValues,
+		policyName:     policyName,
+		policyUID:      generatePolicyUID(policyName, rego, nonce),
+		opaContext:     context.TODO(),
 	}
+
 	if err := o.precompilePolicy(); err != nil {
-		logger.Error(err, opaPolicyPrecompileErrorMsg, "secret", policyName)
+		logger.Error(err, opaPolicyPrecompileErrorMsg, "policy", policyName)
 		return nil, err
 	} else {
+		if pullFromRegistry {
+			externalSource.setupRefresher(log.IntoContext(ctx, logger), o)
+		}
+
 		return o, nil
 	}
 }
 
 type OPA struct {
-	Rego              string `yaml:"rego"`
-	OPAExternalSource OPAExternalSource
-	AllValues         bool
+	Rego           string `yaml:"rego"`
+	ExternalSource *OPAExternalSource
+	AllValues      bool
 
 	opaContext context.Context
 	policy     *rego.PreparedEvalQuery
+	policyName string
 	policyUID  string
 }
 
@@ -87,6 +99,15 @@ func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (interfa
 			return results[0].Bindings, nil
 		}
 	}
+}
+
+// Clean ensures the goroutine started by ExternalSource.setupRefresher is cleaned up
+func (opa *OPA) Clean(_ context.Context) error {
+	if opa.ExternalSource == nil {
+		return nil
+	}
+
+	return opa.ExternalSource.cleanupRefresher()
 }
 
 func (opa *OPA) precompilePolicy() error {
@@ -149,6 +170,8 @@ type OPAExternalSource struct {
 	Endpoint     string
 	SharedSecret string
 	auth_credentials.AuthCredentials
+	TTL       int
+	refresher cron.Worker
 }
 
 func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
@@ -182,4 +205,32 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
 		}
 		return result, nil
 	}
+}
+
+func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
+	logger := log.FromContext(ctx).WithValues("endpoint", ext.Endpoint, "policy", opa.policyName)
+	ext.refresher, _ = cron.StartWorker(ctx, ext.TTL, func() {
+		if downloadedRego, err := ext.downloadRegoDataFromUrl(); err == nil {
+			current := opa.Rego
+			new := cleanUpRegoDocument(downloadedRego)
+			if new != current {
+				opa.Rego = new
+				if err = opa.precompilePolicy(); err != nil {
+					opa.Rego = current
+					logger.Error(err, opaPolicyFailedToRefreshFromRegistry)
+				} else {
+					logger.Info(opaPolicyRefreshedFromRegistry)
+				}
+			}
+		} else {
+			logger.Error(err, opaPolicyFailedToRefreshFromRegistry)
+		}
+	})
+}
+
+func (ext *OPAExternalSource) cleanupRefresher() error {
+	if ext.refresher == nil {
+		return nil
+	}
+	return ext.refresher.Stop()
 }

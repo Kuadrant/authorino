@@ -360,6 +360,9 @@ type ExternalRegistry struct {
 	// Defines where client credentials will be passed in the request to the service.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
 	Credentials Credentials `json:"credentials,omitempty"`
+
+	// Duration (in seconds) of the external data in the cache before pulled again from the source.
+	TTL int `json:"ttl,omitempty"`
 }
 
 // Open Policy Agent (OPA) authorization policy.

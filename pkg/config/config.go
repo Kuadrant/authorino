@@ -1,9 +1,13 @@
 package config
 
 import (
+	"context"
 	"fmt"
+	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 // APIConfig holds the static configuration to be evaluated in the auth pipeline
@@ -29,6 +33,33 @@ func (config *APIConfig) GetChallengeHeaders() []map[string]string {
 	}
 
 	return challengeHeaders
+}
+
+func (config *APIConfig) Clean(ctx context.Context) error {
+	evaluators := []common.AuthConfigEvaluator{}
+	evaluators = append(evaluators, config.IdentityConfigs...)
+	evaluators = append(evaluators, config.MetadataConfigs...)
+	evaluators = append(evaluators, config.AuthorizationConfigs...)
+	evaluators = append(evaluators, config.ResponseConfigs...)
+
+	var errors error
+	var wait sync.WaitGroup
+	wait.Add(len(evaluators))
+
+	for _, evaluator := range evaluators {
+		go func(e common.AuthConfigEvaluator) {
+			defer wait.Done()
+			if cleaner, ok := e.(common.AuthConfigCleaner); ok {
+				if err := cleaner.Clean(ctx); err != nil {
+					errors = multierror.Append(errors, err)
+				}
+			}
+		}(evaluator)
+	}
+
+	wait.Wait()
+
+	return errors
 }
 
 type DenyWith struct {

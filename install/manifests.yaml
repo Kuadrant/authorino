@@ -400,6 +400,10 @@ spec:
                               - key
                               - name
                               type: object
+                            ttl:
+                              description: Duration (in seconds) of the external data
+                                in the cache before pulled again from the source.
+                              type: integer
                           type: object
                         inlineRego:
                           description: Authorization policy as a Rego language document.
