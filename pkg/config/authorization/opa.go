@@ -26,11 +26,13 @@ default allow = false
 	policyUIDHashSeparator = "|"
 	allowQuery             = "allow"
 
-	opaPolicyPrecompileErrorMsg          = "failed to precompile policy"
-	regoDownloadErrorMsg                 = "failed to download rego data"
-	invalidOPAResponseErrorMsg           = "invalid response from policy evaluation"
-	opaPolicyRefreshedFromRegistry       = "policy updated from external registry"
-	opaPolicyFailedToRefreshFromRegistry = "failed to refresh policy from external registry"
+	msg_opaPolicyInvalidResponseError        = "invalid response from policy evaluation"
+	msg_OpaPolicyPrecompileError             = "failed to precompile policy"
+	msg_opaPolicyDownloadError               = "failed to download policy from external registry"
+	msg_opaPolicyRefreshFromRegistryError    = "failed to refresh policy from external registry"
+	msg_opaPolicyRefreshFromRegistrySkipped  = "external policy unchanged"
+	msg_opaPolicyRefreshFromRegistrySuccess  = "policy updated from external registry"
+	msg_opaPolicyRefreshFromRegistryDisabled = "auto-refresh of external policy disabled"
 )
 
 func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExternalSource, allValues bool, nonce int, ctx context.Context) (*OPA, error) {
@@ -40,7 +42,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 
 	if pullFromRegistry {
 		if downloadedRego, err := externalSource.downloadRegoDataFromUrl(); err != nil {
-			logger.Error(err, regoDownloadErrorMsg, "policy", policyName)
+			logger.Error(err, msg_opaPolicyDownloadError, "policy", policyName, "endpoint", externalSource.Endpoint)
 			return nil, err
 		} else {
 			rego = downloadedRego
@@ -59,7 +61,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 	}
 
 	if err := o.precompilePolicy(); err != nil {
-		logger.Error(err, opaPolicyPrecompileErrorMsg, "policy", policyName)
+		logger.Error(err, msg_OpaPolicyPrecompileError, "policy", policyName)
 		return nil, err
 	} else {
 		if pullFromRegistry {
@@ -92,7 +94,7 @@ func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (interfa
 		if err != nil {
 			return nil, err
 		} else if len(results) == 0 {
-			return nil, fmt.Errorf(invalidOPAResponseErrorMsg)
+			return nil, fmt.Errorf(msg_opaPolicyInvalidResponseError)
 		} else if allowed, ok := results[0].Bindings[allowQuery].(bool); !ok || !allowed {
 			return nil, fmt.Errorf(unauthorizedErrorMsg)
 		} else {
@@ -208,8 +210,11 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
 }
 
 func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
-	logger := log.FromContext(ctx).WithValues("endpoint", ext.Endpoint, "policy", opa.policyName)
-	ext.refresher, _ = cron.StartWorker(ctx, ext.TTL, func() {
+	logger := log.FromContext(ctx).WithValues("policy", opa.policyName, "endpoint", ext.Endpoint)
+
+	var startErr error
+
+	ext.refresher, startErr = cron.StartWorker(ctx, ext.TTL, func() {
 		if downloadedRego, err := ext.downloadRegoDataFromUrl(); err == nil {
 			current := opa.Rego
 			new := cleanUpRegoDocument(downloadedRego)
@@ -217,15 +222,21 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 				opa.Rego = new
 				if err = opa.precompilePolicy(); err != nil {
 					opa.Rego = current
-					logger.Error(err, opaPolicyFailedToRefreshFromRegistry)
+					logger.Error(err, msg_opaPolicyRefreshFromRegistryError)
 				} else {
-					logger.Info(opaPolicyRefreshedFromRegistry)
+					logger.Info(msg_opaPolicyRefreshFromRegistrySuccess)
 				}
+			} else {
+				logger.V(1).Info(msg_opaPolicyRefreshFromRegistrySkipped)
 			}
 		} else {
-			logger.Error(err, opaPolicyFailedToRefreshFromRegistry)
+			logger.Error(err, msg_opaPolicyDownloadError)
 		}
 	})
+
+	if startErr != nil {
+		logger.V(1).Info(msg_opaPolicyRefreshFromRegistryDisabled, "reason", startErr)
+	}
 }
 
 func (ext *OPAExternalSource) cleanupRefresher() error {

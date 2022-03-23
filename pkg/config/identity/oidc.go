@@ -13,6 +13,13 @@ import (
 	goidc "github.com/coreos/go-oidc"
 )
 
+const (
+	msg_oidcProviderConfigMissingError    = "missing openid connect configuration"
+	msg_oidcProviderConfigRefreshSuccess  = "openid connect configuration updated"
+	msg_oidcProviderConfigRefreshError    = "failed to discovery openid connect configuration"
+	msg_oidcProviderConfigRefreshDisabled = "auto-refresh of openid connect configuration disabled"
+)
+
 type OIDC struct {
 	auth_credentials.AuthCredentials
 	Endpoint  string `yaml:"endpoint"`
@@ -51,9 +58,9 @@ func (oidc *OIDC) getProvider(ctx context.Context, force bool) *goidc.Provider {
 	if oidc.provider == nil || force {
 		endpoint := oidc.Endpoint
 		if provider, err := goidc.NewProvider(context.TODO(), endpoint); err != nil {
-			log.FromContext(ctx).Error(err, "failed to discovery openid connect configuration", "endpoint", endpoint)
+			log.FromContext(ctx).Error(err, msg_oidcProviderConfigRefreshError, "endpoint", endpoint)
 		} else {
-			log.FromContext(ctx).V(1).Info("openid connect configuration updated", "endpoint", endpoint)
+			log.FromContext(ctx).V(1).Info(msg_oidcProviderConfigRefreshSuccess, "endpoint", endpoint)
 			oidc.provider = provider
 		}
 	}
@@ -84,7 +91,7 @@ func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.I
 	provider := oidc.getProvider(ctx, false)
 
 	if provider == nil {
-		return nil, fmt.Errorf("missing openid connect configuration")
+		return nil, fmt.Errorf(msg_oidcProviderConfigMissingError)
 	}
 
 	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
@@ -107,9 +114,15 @@ func (oidc *OIDC) GetURL(name string, ctx context.Context) (*url.URL, error) {
 }
 
 func (oidc *OIDC) configureProviderRefresh(ttl int, ctx context.Context) {
-	oidc.refresher, _ = cron.StartWorker(ctx, ttl, func() {
+	var err error
+
+	oidc.refresher, err = cron.StartWorker(ctx, ttl, func() {
 		oidc.getProvider(ctx, true)
 	})
+
+	if err != nil {
+		log.FromContext(ctx).V(1).Info(msg_oidcProviderConfigRefreshDisabled, "reason", err)
+	}
 }
 
 // Clean ensures the goroutine started by configureProviderRefresh is cleaned up
