@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
@@ -49,10 +50,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 		}
 	}
 
-	rego = cleanUpRegoDocument(rego)
-
 	o := &OPA{
-		Rego:           rego,
 		ExternalSource: externalSource,
 		AllValues:      allValues,
 		policyName:     policyName,
@@ -60,14 +58,12 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 		opaContext:     context.TODO(),
 	}
 
-	if err := o.precompilePolicy(); err != nil {
-		logger.Error(err, msg_OpaPolicyPrecompileError, "policy", policyName)
+	if _, err := o.updateRego(rego, ctx, true); err != nil {
 		return nil, err
 	} else {
 		if pullFromRegistry {
 			externalSource.setupRefresher(log.IntoContext(ctx, logger), o)
 		}
-
 		return o, nil
 	}
 }
@@ -81,6 +77,8 @@ type OPA struct {
 	policy     *rego.PreparedEvalQuery
 	policyName string
 	policyUID  string
+
+	mu sync.Mutex
 }
 
 func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
@@ -150,8 +148,39 @@ func (opa *OPA) precompilePolicy() error {
 	}
 }
 
+func (opa *OPA) updateRego(rego string, ctx context.Context, force bool) (bool, error) {
+	opa.mu.Lock()
+	defer opa.mu.Unlock()
+
+	newRego := cleanUpRegoDocument(rego)
+	currentRego := opa.Rego
+
+	if !force && hash(newRego) == hash(currentRego) {
+		return false, nil
+	}
+
+	opa.Rego = newRego
+
+	if err := opa.precompilePolicy(); err != nil {
+		opa.Rego = currentRego
+		log.FromContext(ctx).Error(err, msg_OpaPolicyPrecompileError, "policy", opa.policyName)
+		return false, err
+	}
+
+	return true, nil
+}
+
+func cleanUpRegoDocument(rego string) string {
+	r, _ := regexp.Compile("(\\s)*package.*[;\\n]+")
+	return r.ReplaceAllString(rego, "")
+}
+
 func generatePolicyUID(policyName string, policyContent string, nonce int) string {
-	data := []byte(fmt.Sprint(nonce) + policyUIDHashSeparator + policyName + policyUIDHashSeparator + policyContent)
+	return hash(fmt.Sprint(nonce) + policyUIDHashSeparator + policyName + policyUIDHashSeparator + policyContent)
+}
+
+func hash(s string) string {
+	data := []byte(s)
 	return fmt.Sprintf("%x", md5.Sum(data))
 }
 
@@ -161,11 +190,6 @@ type responseOpaJson struct {
 
 type resultJson struct {
 	Raw string `json:"raw"`
-}
-
-func cleanUpRegoDocument(rego string) string {
-	r, _ := regexp.Compile("(\\s)*package.*[;\\n]+")
-	return r.ReplaceAllString(rego, "")
 }
 
 type OPAExternalSource struct {
@@ -216,18 +240,14 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 
 	ext.refresher, startErr = cron.StartWorker(ctx, ext.TTL, func() {
 		if downloadedRego, err := ext.downloadRegoDataFromUrl(); err == nil {
-			current := opa.Rego
-			new := cleanUpRegoDocument(downloadedRego)
-			if new != current {
-				opa.Rego = new
-				if err = opa.precompilePolicy(); err != nil {
-					opa.Rego = current
+			if updated, err := opa.updateRego(downloadedRego, ctx, false); updated {
+				logger.Info(msg_opaPolicyRefreshFromRegistrySuccess)
+			} else {
+				if err != nil {
 					logger.Error(err, msg_opaPolicyRefreshFromRegistryError)
 				} else {
-					logger.Info(msg_opaPolicyRefreshFromRegistrySuccess)
+					logger.V(1).Info(msg_opaPolicyRefreshFromRegistrySkipped)
 				}
-			} else {
-				logger.V(1).Info(msg_opaPolicyRefreshFromRegistrySkipped)
 			}
 		} else {
 			logger.Error(err, msg_opaPolicyDownloadError)
