@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -92,7 +93,7 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 }
 
 func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
-	dynamicMetadata, err := structpb.NewStruct(authResult.Metadata)
+	dynamicMetadata, err := buildEnvoyDynamicMetadata(authResult.Metadata)
 	if err != nil {
 		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
 	}
@@ -227,6 +228,21 @@ func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string
 	headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
 
 	return buildResponseHeaders(headers)
+}
+
+func buildEnvoyDynamicMetadata(data map[string]interface{}) (*structpb.Struct, error) {
+	var d map[string]interface{}
+
+	// handles unknown types among the values in the map
+	if b, err := json.Marshal(data); err != nil {
+		return nil, err
+	} else {
+		if err := json.Unmarshal(b, &d); err != nil {
+			return nil, err
+		}
+	}
+
+	return structpb.NewStruct(d)
 }
 
 func reportStatusMetric(rpcStatusCode rpc.Code) {

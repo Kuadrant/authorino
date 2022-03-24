@@ -16,6 +16,7 @@ import (
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	"github.com/golang/mock/gomock"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func getHeader(headers []*envoy_core.HeaderValueOption, key string) string {
@@ -114,5 +115,17 @@ func TestAuthConfigLookup(t *testing.T) {
 		ContextExtensions: map[string]string{"host": "host-overwrite"},
 	}})
 	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(401))
+	assert.NilError(t, err)
+}
+
+func TestBuildDynamicEnvoyMetadata(t *testing.T) {
+	data := map[string]interface{}{
+		"foo": runtime.RawExtension{
+			Raw: []byte(`"value"`),
+		},
+	}
+
+	_, err := buildEnvoyDynamicMetadata(data)
+
 	assert.NilError(t, err)
 }
