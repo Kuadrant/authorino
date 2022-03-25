@@ -11,8 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cron"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -81,7 +80,7 @@ type OPA struct {
 	mu sync.Mutex
 }
 
-func (opa *OPA) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (opa *OPA) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	var authJSON interface{}
 	if err := json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON); err != nil {
 		return false, err
@@ -195,7 +194,7 @@ type resultJson struct {
 type OPAExternalSource struct {
 	Endpoint     string
 	SharedSecret string
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 	TTL       int
 	refresher cron.Worker
 }

@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
 type OAuth2 struct {
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 
 	TokenIntrospectionUrl string `yaml:"tokenIntrospectionUrl"`
 	TokenTypeHint         string `yaml:"tokenTypeHint,omitempty"`
@@ -22,7 +22,7 @@ type OAuth2 struct {
 	ClientSecret          string `yaml:"clientSecret"`
 }
 
-func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clientID string, clientSecret string, creds auth_credentials.AuthCredentials) *OAuth2 {
+func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clientID string, clientSecret string, creds auth.AuthCredentials) *OAuth2 {
 	var tokenHint string
 	if tokenTypeHint == "" {
 		tokenHint = "access_token"
@@ -39,7 +39,7 @@ func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clien
 	}
 }
 
-func (oauth *OAuth2) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}

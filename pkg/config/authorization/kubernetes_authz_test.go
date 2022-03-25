@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/mock/gomock"
@@ -73,7 +73,7 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
@@ -101,7 +101,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
@@ -129,7 +129,7 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`)
 
 	kubernetesAuth := newKubernetesAuthz(
@@ -153,7 +153,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`)
 
 	kubernetesAuth := newKubernetesAuthz(

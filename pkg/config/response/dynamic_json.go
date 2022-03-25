@@ -3,6 +3,7 @@ package response
 import (
 	"context"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 )
 
@@ -16,7 +17,7 @@ type DynamicJSON struct {
 	Properties []common.JSONProperty
 }
 
-func (j *DynamicJSON) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (j *DynamicJSON) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	obj := make(map[string]interface{})
 
 	authJSON := pipeline.GetAuthorizationJSON()

@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	. "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 
 	. "github.com/golang/mock/gomock"
 
@@ -16,19 +15,23 @@ import (
 const oauthServerHost = "127.0.0.1:9004"
 
 func TestOAuth2Call(t *testing.T) {
-	authServer := NewHttpServerMock(oauthServerHost, map[string]HttpServerMockResponseFunc{
-		"/introspect-active":   func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{ "active": true }`} },
-		"/introspect-inactive": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{ "active": false }`} },
+	authServer := mock_auth.NewHttpServerMock(oauthServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/introspect-active": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{ "active": true }`}
+		},
+		"/introspect-inactive": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{ "active": false }`}
+		},
 	})
 	defer authServer.Close()
 
 	ctrl := NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("oauth-opaque-token", nil).AnyTimes()
 
-	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetHttp().Return(nil).AnyTimes()
 
 	ctx := context.Background()
@@ -52,7 +55,7 @@ func TestDefaultTokenTypeHint(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	{
 		oauthEvaluator := NewOAuth2Identity("http://server.example.com", "", "client-id", "client-secret", authCredMock)

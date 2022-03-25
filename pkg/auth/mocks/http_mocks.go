@@ -1,4 +1,4 @@
-package mock_common
+package mock_auth
 
 import (
 	"log"

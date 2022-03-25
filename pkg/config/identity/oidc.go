@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/cron"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -21,13 +21,13 @@ const (
 )
 
 type OIDC struct {
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 	Endpoint  string `yaml:"endpoint"`
 	provider  *goidc.Provider
 	refresher cron.Worker
 }
 
-func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials, ttl int, ctx context.Context) *OIDC {
+func NewOIDC(endpoint string, creds auth.AuthCredentials, ttl int, ctx context.Context) *OIDC {
 	oidc := &OIDC{
 		AuthCredentials: creds,
 		Endpoint:        endpoint,
@@ -38,7 +38,7 @@ func NewOIDC(endpoint string, creds auth_credentials.AuthCredentials, ttl int, c
 	return oidc
 }
 
-func (oidc *OIDC) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (oidc *OIDC) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// retrieve access token
 	accessToken, err := oidc.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {

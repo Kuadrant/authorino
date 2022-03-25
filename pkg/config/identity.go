@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -41,7 +41,7 @@ type IdentityConfig struct {
 	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
 }
 
-func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
+func (config *IdentityConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
 	switch config.GetType() {
 	case identityOAuth2:
 		return config.OAuth2
@@ -63,12 +63,12 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 }
 
 // ensure IdentityConfig implements AuthConfigEvaluator
-var _ common.AuthConfigEvaluator = (*IdentityConfig)(nil)
-var _ common.AuthConfigCleaner = (*IdentityConfig)(nil)
+var _ auth.AuthConfigEvaluator = (*IdentityConfig)(nil)
+var _ auth.AuthConfigCleaner = (*IdentityConfig)(nil)
 
 // impl:AuthConfigEvaluator
 
-func (config *IdentityConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *IdentityConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
 		logger := log.FromContext(ctx).WithName("identity")
 		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
@@ -129,7 +129,7 @@ func (config *IdentityConfig) Clean(ctx context.Context) error {
 	return nil
 }
 
-func (config *IdentityConfig) getCleaner() common.AuthConfigCleaner {
+func (config *IdentityConfig) getCleaner() auth.AuthConfigCleaner {
 	switch {
 	case config.OIDC != nil:
 		return config.OIDC
@@ -144,13 +144,13 @@ func (config *IdentityConfig) GetOIDC() interface{} {
 	return config.OIDC
 }
 
-func (config *IdentityConfig) GetAuthCredentials() auth_credentials.AuthCredentials {
+func (config *IdentityConfig) GetAuthCredentials() auth.AuthCredentials {
 	evaluator := config.GetAuthConfigEvaluator()
-	creds := evaluator.(auth_credentials.AuthCredentials)
+	creds := evaluator.(auth.AuthCredentials)
 	return creds
 }
 
-func (config *IdentityConfig) ResolveExtendedProperties(pipeline common.AuthPipeline) (interface{}, error) {
+func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeline) (interface{}, error) {
 	_, resolvedIdentityObj := pipeline.GetResolvedIdentity()
 
 	// return the original object if there is no extension property to resolve (to save the unnecessary json marshaling/unmarshaling overhead)

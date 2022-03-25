@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -15,13 +16,13 @@ type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
-func (userinfo *UserInfo) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+func (userinfo *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx context.Context) (interface{}, error) {
 	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("userinfo"))
 	oidc := userinfo.OIDC
 
 	// check if corresponding oidc identity was resolved
 	resolvedIdentity, _ := pipeline.GetResolvedIdentity()
-	identityEvaluator, _ := resolvedIdentity.(common.IdentityConfigEvaluator)
+	identityEvaluator, _ := resolvedIdentity.(auth.IdentityConfigEvaluator)
 	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC == nil || resolvedOIDC.Endpoint != oidc.Endpoint {
 		return nil, fmt.Errorf("Missing identity for OIDC issuer %v. Skipping related UserInfo metadata.", oidc.Endpoint)
 	}

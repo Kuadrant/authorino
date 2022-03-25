@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/config"
 
 	"gotest.tools/assert"
@@ -13,7 +13,7 @@ import (
 
 type BogusIdentity struct{}
 
-func (f *BogusIdentity) Call(_ common.AuthPipeline, _ context.Context) (interface{}, error) {
+func (f *BogusIdentity) Call(_ auth.AuthPipeline, _ context.Context) (interface{}, error) {
 	return true, nil
 }
 
@@ -21,7 +21,7 @@ func TestCache(t *testing.T) {
 	c := NewCache()
 
 	apiFindIdIdentityConfig := &BogusIdentity{}
-	identities := make([]common.AuthConfigEvaluator, 1)
+	identities := make([]auth.AuthConfigEvaluator, 1)
 	identities[0] = apiFindIdIdentityConfig
 	exampleConfig := config.APIConfig{
 		IdentityConfigs:      identities,

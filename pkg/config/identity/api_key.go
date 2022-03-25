@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	v1 "k8s.io/api/core/v1"
@@ -28,13 +27,13 @@ type apiKeyDetails struct {
 }
 
 type APIKey struct {
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 
 	apiKeyDetails
 }
 
 // NewApiKeyIdentity creates a new instance of APIKey
-func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace string, authCred auth_credentials.AuthCredentials, k8sClient client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace string, authCred auth.AuthCredentials, k8sClient client.Reader, ctx context.Context) *APIKey {
 	apiKey := &APIKey{
 		authCred,
 		apiKeyDetails{
@@ -71,7 +70,7 @@ func (apiKey *APIKey) GetCredentialsFromCluster(ctx context.Context) error {
 }
 
 // Call will evaluate the credentials within the request against the authorized ones
-func (apiKey *APIKey) Call(pipeline common.AuthPipeline, _ context.Context) (interface{}, error) {
+func (apiKey *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{}, error) {
 	if reqKey, err := apiKey.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
 		return nil, err
 	} else {

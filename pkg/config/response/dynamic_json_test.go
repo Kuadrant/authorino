@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 	"gotest.tools/assert"
 
 	"github.com/golang/mock/gomock"
@@ -31,7 +31,7 @@ func TestDynamicJSONCall(t *testing.T) {
 		} `json:"auth"`
 	}
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"auth":{"identity":{"username":"john"}}}`)
 
 	response, err := jsonResponseEvaluator.Call(pipelineMock, context.TODO())

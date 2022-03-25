@@ -1,9 +1,9 @@
-package common
+package auth
 
 import (
 	"golang.org/x/net/context"
 
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/common"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
@@ -44,11 +44,11 @@ type Prioritizable interface {
 }
 
 type ConditionalEvaluator interface {
-	GetConditions() []JSONPatternMatchingRule
+	GetConditions() []common.JSONPatternMatchingRule
 }
 
 type IdentityConfigEvaluator interface {
-	GetAuthCredentials() auth_credentials.AuthCredentials
+	GetAuthCredentials() AuthCredentials
 	GetOIDC() interface{}
 	ResolveExtendedProperties(AuthPipeline) (interface{}, error)
 }

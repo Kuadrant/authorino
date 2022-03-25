@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -27,11 +27,11 @@ type kubernetesAuthDetails struct {
 }
 
 type KubernetesAuth struct {
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 	kubernetesAuthDetails
 }
 
-func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audiences []string) (*KubernetesAuth, error) {
+func NewKubernetesAuthIdentity(authCred auth.AuthCredentials, audiences []string) (*KubernetesAuth, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func NewKubernetesAuthIdentity(authCred auth_credentials.AuthCredentials, audien
 	}, nil
 }
 
-func (kubeAuth *KubernetesAuth) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}

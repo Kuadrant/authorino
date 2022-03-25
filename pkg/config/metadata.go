@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/metadata"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -26,7 +27,7 @@ type MetadataConfig struct {
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
 }
 
-func (config *MetadataConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
+func (config *MetadataConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
 	switch config.GetType() {
 	case metadataUserInfo:
 		return config.UserInfo
@@ -41,7 +42,7 @@ func (config *MetadataConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 
 // impl:AuthConfigEvaluator
 
-func (config *MetadataConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *MetadataConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
 		logger := log.FromContext(ctx).WithName("metadata")
 		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))

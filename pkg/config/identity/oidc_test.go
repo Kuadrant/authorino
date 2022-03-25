@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	mock_cron "github.com/kuadrant/authorino/pkg/cron/mocks"
 
 	"github.com/golang/mock/gomock"
@@ -16,8 +15,8 @@ import (
 
 const oidcServerHost = "127.0.0.1:9006"
 
-func oidcServerMockResponse(count int) mock_common.HttpServerMockResponse {
-	return mock_common.HttpServerMockResponse{
+func oidcServerMockResponse(count int) mock_auth.HttpServerMockResponse {
+	return mock_auth.HttpServerMockResponse{
 		Status:  200,
 		Headers: map[string]string{"Content-Type": "application/json"},
 		Body:    fmt.Sprintf(`{ "issuer": "http://%v", "authorization_endpoint": "http://%v/auth?count=%v" }`, oidcServerHost, oidcServerHost, count),
@@ -28,7 +27,7 @@ func TestOidcVerifyTokenServerUnknownHost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC("http://unreachable-server", authCredMock, 0, context.TODO())
 	token, err := evaluator.verifyToken("token", context.TODO())
@@ -38,15 +37,15 @@ func TestOidcVerifyTokenServerUnknownHost(t *testing.T) {
 }
 
 func TestOidcVerifyTokenServerNotFound(t *testing.T) {
-	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse { return mock_common.HttpServerMockResponse{Status: 404} },
+	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse { return mock_auth.HttpServerMockResponse{Status: 404} },
 	})
 	defer authServer.Close()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
 	token, err := evaluator.verifyToken("token", context.TODO())
@@ -56,15 +55,15 @@ func TestOidcVerifyTokenServerNotFound(t *testing.T) {
 }
 
 func TestOidcVerifyTokenServerInternalError(t *testing.T) {
-	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse { return mock_common.HttpServerMockResponse{Status: 500} },
+	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse { return mock_auth.HttpServerMockResponse{Status: 500} },
 	})
 	defer authServer.Close()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
 	token, err := evaluator.verifyToken("token", context.TODO())
@@ -75,8 +74,8 @@ func TestOidcVerifyTokenServerInternalError(t *testing.T) {
 
 func TestOidcProviderRefreshDisabled(t *testing.T) {
 	count := 0
-	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse {
+	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
 			count += 1
 			return oidcServerMockResponse(count)
 		},
@@ -86,7 +85,7 @@ func TestOidcProviderRefreshDisabled(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
 	defer evaluator.Clean(context.Background())
@@ -98,8 +97,8 @@ func TestOidcProviderRefreshDisabled(t *testing.T) {
 
 func TestOidcProviderRefresh(t *testing.T) {
 	count := 0
-	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse {
+	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
 			count += 1
 			return oidcServerMockResponse(count)
 		},
@@ -109,7 +108,7 @@ func TestOidcProviderRefresh(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 1, context.TODO())
 	defer evaluator.Clean(context.Background())
@@ -123,8 +122,8 @@ func TestOidcProviderRefresh(t *testing.T) {
 
 func TestOidcProviderRefreshClean(t *testing.T) {
 	count := 0
-	authServer := mock_common.NewHttpServerMock(oidcServerHost, map[string]mock_common.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_common.HttpServerMockResponse {
+	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
 			count += 1
 			return oidcServerMockResponse(count)
 		},
@@ -134,7 +133,7 @@ func TestOidcProviderRefreshClean(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
 	refresher := mock_cron.NewMockWorker(ctrl)
 	evaluator.refresher = refresher

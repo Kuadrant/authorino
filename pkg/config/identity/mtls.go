@@ -3,16 +3,15 @@ package identity
 import (
 	"context"
 
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
+	"github.com/kuadrant/authorino/pkg/auth"
 )
 
 type MTLS struct {
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 
 	PEM string `yaml:"pem"`
 }
 
-func (self *MTLS) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (self *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	return "Authenticated with mTLS", nil // TODO: implement
 }

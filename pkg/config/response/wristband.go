@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
@@ -88,11 +89,11 @@ type Wristband struct {
 	SigningKeys   []jose.JSONWebKey
 }
 
-func (w *Wristband) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (w *Wristband) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// resolved identity
 	identityConfig, resolvedidentity := pipeline.GetResolvedIdentity()
 
-	identityEvaluator, _ := identityConfig.(common.IdentityConfigEvaluator)
+	identityEvaluator, _ := identityConfig.(auth.IdentityConfigEvaluator)
 	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC != nil && resolvedOIDC.Endpoint == w.GetIssuer() {
 		return nil, nil
 	}

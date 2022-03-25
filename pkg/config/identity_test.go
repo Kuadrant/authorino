@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
 	"github.com/golang/mock/gomock"
@@ -16,7 +16,7 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
 	var identityConfig IdentityConfig
 	var identityObject interface{}

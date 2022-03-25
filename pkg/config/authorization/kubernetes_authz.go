@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -55,7 +56,7 @@ type KubernetesAuthz struct {
 	authorizer kubernetesSubjectAccessReviewer
 }
 
-func (k *KubernetesAuthz) Call(pipeline common.AuthPipeline, ctx context.Context) (bool, error) {
+func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx context.Context) (bool, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return false, err
 	}

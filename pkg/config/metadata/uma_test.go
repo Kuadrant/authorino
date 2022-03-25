@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	. "github.com/golang/mock/gomock"
@@ -29,8 +29,10 @@ var (
 )
 
 func TestNewUMAMetadata(t *testing.T) {
-	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponseFunc{
-		"/uma/.well-known/uma2-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: umaWellKnownConfig} },
+	httpServer := mock_auth.NewHttpServerMock(umaServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/uma/.well-known/uma2-configuration": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: umaWellKnownConfig}
+		},
 	})
 	defer httpServer.Close()
 
@@ -41,8 +43,8 @@ func TestNewUMAMetadata(t *testing.T) {
 }
 
 func TestUMAMetadataFailToDecodeConfig(t *testing.T) {
-	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponseFunc{
-		"/uma/.well-known/uma2-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 500} },
+	httpServer := mock_auth.NewHttpServerMock(umaServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/uma/.well-known/uma2-configuration": func() mock_auth.HttpServerMockResponse { return mock_auth.HttpServerMockResponse{Status: 500} },
 	})
 	defer httpServer.Close()
 
@@ -53,14 +55,14 @@ func TestUMAMetadataFailToDecodeConfig(t *testing.T) {
 }
 
 func TestUMACall(t *testing.T) {
-	jsonResponse := func(body string) HttpServerMockResponseFunc {
-		return func() HttpServerMockResponse {
-			return HttpServerMockResponse{Status: 200, Headers: map[string]string{"Context-Type": "application/json"}, Body: body}
+	jsonResponse := func(body string) mock_auth.HttpServerMockResponseFunc {
+		return func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Headers: map[string]string{"Context-Type": "application/json"}, Body: body}
 		}
 	}
 
 	resourceData := `{"_id":"44f93c94-a8d0-4b33-8188-8173e86844d2","name":"some-resource","uris":["/someresource"]}`
-	httpServer := NewHttpServerMock(umaServerHost, map[string]HttpServerMockResponseFunc{
+	httpServer := mock_auth.NewHttpServerMock(umaServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
 		"/uma/.well-known/uma2-configuration":                    jsonResponse(umaWellKnownConfig),
 		"/uma/pat":                                               jsonResponse(`{"some-pat-claim": "some-value"}`),
 		"/uma/resource_set?uri=/someresource":                    jsonResponse(`["44f93c94-a8d0-4b33-8188-8173e86844d2"]`),
@@ -71,7 +73,7 @@ func TestUMACall(t *testing.T) {
 	ctrl := NewController(t)
 	defer ctrl.Finish()
 
-	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	request := &envoy_auth.AttributeContext_HttpRequest{Path: "/someresource"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 

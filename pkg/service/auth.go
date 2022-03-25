@@ -6,8 +6,8 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
@@ -75,7 +75,7 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 
 	// If we couldn't find the APIConfig in the config, we return and deny.
 	if apiConfig == nil {
-		result := common.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
+		result := auth.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
 		a.logAuthResult(result, ctx)
 		return a.deniedResponse(result), nil
 	}
@@ -92,7 +92,7 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 	}
 }
 
-func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult auth.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := buildEnvoyDynamicMetadata(authResult.Metadata)
 	if err != nil {
 		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
@@ -114,7 +114,7 @@ func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.
 	}
 }
 
-func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) deniedResponse(authResult auth.AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
 	reportStatusMetric(code)
 
@@ -175,14 +175,14 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx context.C
 	}
 }
 
-func (a *AuthService) logAuthResult(result common.AuthResult, ctx context.Context) {
+func (a *AuthService) logAuthResult(result auth.AuthResult, ctx context.Context) {
 	logger := log.FromContext(ctx)
 	success := result.Success()
 	baseLogData := []interface{}{"authorized", success, "response", result.Code.String()}
 
 	logData := baseLogData
 	if !success {
-		reducedResult := common.AuthResult{
+		reducedResult := auth.AuthResult{
 			Code:    result.Code,
 			Status:  result.Status,
 			Message: result.Message,

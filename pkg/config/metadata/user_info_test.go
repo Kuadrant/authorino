@@ -6,8 +6,7 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	. "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 
 	. "github.com/golang/mock/gomock"
 
@@ -31,13 +30,13 @@ type userInfoTestData struct {
 	cancel         context.CancelFunc
 	newOIDC        *identity.OIDC
 	userInfo       UserInfo
-	authCredMock   *MockAuthCredentials
-	pipelineMock   *MockAuthPipeline
-	idConfEvalMock *MockIdentityConfigEvaluator
+	authCredMock   *mock_auth.MockAuthCredentials
+	pipelineMock   *mock_auth.MockAuthPipeline
+	idConfEvalMock *mock_auth.MockIdentityConfigEvaluator
 }
 
 func newUserInfoTestData(ctrl *Controller) userInfoTestData {
-	authCredMock := NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, 0, context.TODO())
 	ctx, cancel := context.WithCancel(context.TODO())
 	return userInfoTestData{
@@ -46,14 +45,18 @@ func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 		newOIDC,
 		UserInfo{newOIDC},
 		authCredMock,
-		NewMockAuthPipeline(ctrl),
-		NewMockIdentityConfigEvaluator(ctrl),
+		mock_auth.NewMockAuthPipeline(ctrl),
+		mock_auth.NewMockIdentityConfigEvaluator(ctrl),
 	}
 }
 func TestMain(m *testing.M) {
-	authServer := NewHttpServerMock(authServerHost, map[string]HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: wellKnownOIDCConfig} },
-		"/userinfo":                         func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: userInfoClaims} },
+	authServer := mock_auth.NewHttpServerMock(authServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: wellKnownOIDCConfig}
+		},
+		"/userinfo": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: userInfoClaims}
+		},
 	})
 	defer authServer.Close()
 	os.Exit(m.Run())

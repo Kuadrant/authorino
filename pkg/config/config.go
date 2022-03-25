@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -15,10 +16,10 @@ type APIConfig struct {
 	Labels     map[string]string
 	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
 
-	IdentityConfigs      []common.AuthConfigEvaluator `yaml:"identity,omitempty"`
-	MetadataConfigs      []common.AuthConfigEvaluator `yaml:"metadata,omitempty"`
-	AuthorizationConfigs []common.AuthConfigEvaluator `yaml:"authorization,omitempty"`
-	ResponseConfigs      []common.AuthConfigEvaluator `yaml:"response,omitempty"`
+	IdentityConfigs      []auth.AuthConfigEvaluator `yaml:"identity,omitempty"`
+	MetadataConfigs      []auth.AuthConfigEvaluator `yaml:"metadata,omitempty"`
+	AuthorizationConfigs []auth.AuthConfigEvaluator `yaml:"authorization,omitempty"`
+	ResponseConfigs      []auth.AuthConfigEvaluator `yaml:"response,omitempty"`
 
 	DenyWith
 }
@@ -36,7 +37,7 @@ func (config *APIConfig) GetChallengeHeaders() []map[string]string {
 }
 
 func (config *APIConfig) Clean(ctx context.Context) error {
-	evaluators := []common.AuthConfigEvaluator{}
+	evaluators := []auth.AuthConfigEvaluator{}
 	evaluators = append(evaluators, config.IdentityConfigs...)
 	evaluators = append(evaluators, config.MetadataConfigs...)
 	evaluators = append(evaluators, config.AuthorizationConfigs...)
@@ -47,9 +48,9 @@ func (config *APIConfig) Clean(ctx context.Context) error {
 	wait.Add(len(evaluators))
 
 	for _, evaluator := range evaluators {
-		go func(e common.AuthConfigEvaluator) {
+		go func(e auth.AuthConfigEvaluator) {
 			defer wait.Done()
-			if cleaner, ok := e.(common.AuthConfigCleaner); ok {
+			if cleaner, ok := e.(auth.AuthConfigCleaner); ok {
 				if err := cleaner.Clean(ctx); err != nil {
 					errors = multierror.Append(errors, err)
 				}

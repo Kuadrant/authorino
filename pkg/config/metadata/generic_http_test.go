@@ -7,9 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
-	. "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	. "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	. "github.com/golang/mock/gomock"
@@ -22,8 +21,10 @@ const (
 )
 
 func TestGenericHttpCallWithGET(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
-		"/metadata": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
+	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/metadata": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+		},
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -33,10 +34,10 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
-	sharedCredsMock := NewMockAuthCredentials(ctrl)
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
 	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
 	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "secret", nil).Return(httpRequestMock, nil)
 
@@ -56,8 +57,10 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 }
 
 func TestGenericHttpCallWithPOST(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
-		"/metadata": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
+	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/metadata": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+		},
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -67,10 +70,10 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
-	sharedCredsMock := NewMockAuthCredentials(ctrl)
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
 	requestBody := bytes.NewBuffer([]byte("user=mock"))
 	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
 	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
@@ -93,8 +96,10 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 }
 
 func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
-		"/metadata?p=some-origin": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
+	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/metadata?p=some-origin": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+		},
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -105,10 +110,10 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	endpointWithPlaceholders := "http://" + extHttpServiceHost + "/metadata?p={context.request.http.headers.x-origin}"
 	endpoint := "http://" + extHttpServiceHost + "/metadata?p=some-origin"
 
-	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
-	sharedCredsMock := NewMockAuthCredentials(ctrl)
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
 	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
 	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "secret", nil).Return(httpRequestMock, nil)
 
@@ -128,8 +133,10 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 }
 
 func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
-	extHttpMetadataServer := NewHttpServerMock(extHttpServiceHost, map[string]HttpServerMockResponseFunc{
-		"/metadata": func() HttpServerMockResponse { return HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`} },
+	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
+		"/metadata": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+		},
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -139,10 +146,10 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
 
-	pipelineMock := NewMockAuthPipeline(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
-	sharedCredsMock := NewMockAuthCredentials(ctrl)
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
 	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
 	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "", nil).Return(httpRequestMock, nil)
 

@@ -1,4 +1,4 @@
-package auth_credentials
+package auth
 
 import (
 	"context"

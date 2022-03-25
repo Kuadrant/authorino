@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kuadrant/authorino/pkg/auth"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
-	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
 	"github.com/kuadrant/authorino/pkg/config"
 	"github.com/kuadrant/authorino/pkg/config/identity"
 
@@ -49,7 +50,7 @@ type failConfig struct {
 	priority int
 }
 
-func (c *successConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (c *successConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	c.called = true
 	return nil, nil
 }
@@ -62,7 +63,7 @@ func (c *successConfig) GetConditions() []common.JSONPatternMatchingRule {
 	return c.conditions
 }
 
-func (c *failConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (c *failConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	c.called = true
 	return nil, fmt.Errorf("Failed")
 }
@@ -79,7 +80,7 @@ func newTestAuthPipeline(apiConfig config.APIConfig, req *envoy_auth.CheckReques
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -101,7 +102,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 
 func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -127,7 +128,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -153,7 +154,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 
 func TestEvaluateAllAuthConfigs(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -179,7 +180,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -201,7 +202,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 
 func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -227,7 +228,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 
 func TestEvaluateAnyAuthConfig(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -253,7 +254,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -279,7 +280,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 
 func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
 	respChannel := make(chan EvaluationResponse, 2)
@@ -305,7 +306,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 
 func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
 	requestJSON, _ := json.Marshal(requestMock.GetAttributes())
@@ -319,12 +320,12 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	authCredMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	authCredMock.EXPECT().GetCredentialsFromReq(request.GetAttributes().GetRequest().Http).Return("xxx", nil)
 	authCredMock.EXPECT().GetCredentialsKeySelector().Return("APIKEY")
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []common.AuthConfigEvaluator{&config.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&config.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
 		DenyWith: config.DenyWith{
 			Unauthenticated: &config.DenyWithValues{
 				Code: 302,
@@ -359,8 +360,8 @@ func TestEvaluatePriorities(t *testing.T) {
 	authzConfig2 := &successConfig{priority: 1} // should never be called
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig1, idConfig2},
-		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig1, authzConfig2},
+		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig1, idConfig2},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig1, authzConfig2},
 	}, &request)
 
 	_ = pipeline.Evaluate()
@@ -387,7 +388,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
 				Value:    "/operation",
 			},
 		},
-		IdentityConfigs: []common.AuthConfigEvaluator{idConfig},
+		IdentityConfigs: []auth.AuthConfigEvaluator{idConfig},
 	}, &request)
 
 	_ = pipeline.Evaluate()
@@ -413,8 +414,8 @@ func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 				Value:    "/operation",
 			},
 		},
-		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig},
-		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig},
+		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)
 
 	_ = pipeline.Evaluate()
@@ -441,8 +442,8 @@ func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 	}
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig},
-		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig},
+		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)
 
 	_ = pipeline.Evaluate()
@@ -469,8 +470,8 @@ func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 	}
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs:      []common.AuthConfigEvaluator{idConfig},
-		AuthorizationConfigs: []common.AuthConfigEvaluator{authzConfig},
+		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)
 
 	_ = pipeline.Evaluate()

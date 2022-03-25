@@ -5,7 +5,7 @@ import (
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/auth"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -52,7 +52,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			for _, host := range authConfig.Spec.Hosts {
 				authConfigReconciler, _ := r.AuthConfigReconciler.(*AuthConfigReconciler)
 				for _, id := range authConfigReconciler.Cache.Get(host).IdentityConfigs {
-					i, _ := id.(common.APIKeySecretFinder)
+					i, _ := id.(auth.APIKeySecretFinder)
 					if s := i.FindSecretByName(req.NamespacedName); s != nil {
 						r.reconcileAuthConfig(ctx, authConfig)
 						return

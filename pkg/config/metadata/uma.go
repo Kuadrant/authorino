@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/log"
 )
@@ -193,7 +194,7 @@ func (uma *UMA) discover() error {
 	}
 }
 
-func (uma *UMA) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+func (uma *UMA) Call(pipeline auth.AuthPipeline, parentCtx context.Context) (interface{}, error) {
 	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("uma"))
 
 	// get the protection API token (PAT)

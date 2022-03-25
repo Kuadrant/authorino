@@ -22,9 +22,9 @@ import (
 	"strings"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/config"
 	authorinoService "github.com/kuadrant/authorino/pkg/config"
 	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
@@ -126,7 +126,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	var ctxWithLogger context.Context
 
 	identityConfigs := make([]config.IdentityConfig, 0)
-	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedIdentityConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
 	for _, identity := range authConfig.Spec.Identity {
@@ -149,7 +149,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Metrics:            identity.Metrics,
 		}
 
-		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
+		authCred := auth.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
 
 		switch identity.GetType() {
 		// oauth2
@@ -203,7 +203,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedIdentityConfigs = append(interfacedIdentityConfigs, translatedIdentity)
 	}
 
-	interfacedMetadataConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for _, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &config.MetadataConfig{
@@ -291,7 +291,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				Headers:         headers,
 				ContentType:     string(genericHttp.ContentType),
 				SharedSecret:    sharedSecret,
-				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),
+				AuthCredentials: auth.NewAuthCredential(creds.KeySelector, string(creds.In)),
 			}
 
 		case api.TypeUnknown:
@@ -301,7 +301,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedMetadataConfigs = append(interfacedMetadataConfigs, translatedMetadata)
 	}
 
-	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedAuthorizationConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
 	for index, authorization := range authConfig.Spec.Authorization {
@@ -334,7 +334,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			externalSource := &authorinoAuthorization.OPAExternalSource{
 				Endpoint:        externalRegistry.Endpoint,
 				SharedSecret:    sharedSecret,
-				AuthCredentials: auth_credentials.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
+				AuthCredentials: auth.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
 				TTL:             externalRegistry.TTL,
 			}
 
@@ -380,7 +380,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, translatedAuthorization)
 	}
 
-	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for _, response := range authConfig.Spec.Response {
 		translatedResponse := config.NewResponseConfig(

@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
-	mocks "github.com/kuadrant/authorino/pkg/common/mocks"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/golang/mock/gomock"
@@ -25,12 +25,12 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	authServer := mocks.NewHttpServerMock("127.0.0.1:9001", map[string]mocks.HttpServerMockResponseFunc{
-		"/auth/realms/demo/.well-known/openid-configuration": func() mocks.HttpServerMockResponse {
-			return mocks.HttpServerMockResponse{Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`}
+	authServer := mock_auth.NewHttpServerMock("127.0.0.1:9001", map[string]mock_auth.HttpServerMockResponseFunc{
+		"/auth/realms/demo/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`}
 		},
-		"/auth/realms/demo/.well-known/uma2-configuration": func() mocks.HttpServerMockResponse {
-			return mocks.HttpServerMockResponse{Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`}
+		"/auth/realms/demo/.well-known/uma2-configuration": func() mock_auth.HttpServerMockResponse {
+			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{ "issuer": "http://127.0.0.1:9001/auth/realms/demo" }`}
 		},
 	})
 	defer authServer.Close()

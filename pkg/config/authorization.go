@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/authorization"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -28,7 +29,7 @@ type AuthorizationConfig struct {
 
 // impl:AuthConfigEvaluator
 
-func (config *AuthorizationConfig) Call(pipeline common.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+func (config *AuthorizationConfig) Call(pipeline auth.AuthPipeline, parentCtx context.Context) (interface{}, error) {
 	logger := log.FromContext(parentCtx).WithName("authorization")
 	ctx := log.IntoContext(parentCtx, logger)
 
@@ -94,7 +95,7 @@ func (config *AuthorizationConfig) Clean(ctx context.Context) error {
 	return nil
 }
 
-func (config *AuthorizationConfig) getCleaner() common.AuthConfigCleaner {
+func (config *AuthorizationConfig) getCleaner() auth.AuthConfigCleaner {
 	switch {
 	case config.OPA != nil:
 		return config.OPA

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -21,10 +21,10 @@ type GenericHttp struct {
 	Headers      []common.JSONProperty
 	ContentType  string
 	SharedSecret string
-	auth_credentials.AuthCredentials
+	auth.AuthCredentials
 }
 
-func (h *GenericHttp) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if err := common.CheckContext(ctx); err != nil {
 		return nil, err
 	}

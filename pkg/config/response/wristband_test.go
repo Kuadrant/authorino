@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/common"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/mock/gomock"
@@ -192,8 +192,8 @@ func TestWristbandCall(t *testing.T) {
 		},
 	})
 
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
-	identityConfigMock := mock_common.NewMockIdentityConfigEvaluator(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	identityConfigMock := mock_auth.NewMockIdentityConfigEvaluator(ctrl)
 	identityConfigMock.EXPECT().GetOIDC()
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(identityConfigMock, nil)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(string(authJSON))

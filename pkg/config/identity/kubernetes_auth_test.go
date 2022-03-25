@@ -5,8 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	mock_auth_credentials "github.com/kuadrant/authorino/pkg/common/auth_credentials/mocks"
-	mock_common "github.com/kuadrant/authorino/pkg/common/mocks"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/mock/gomock"
@@ -70,7 +69,7 @@ func (client *k8sAuthenticationClientMock) TokenReviews() authenticationv1.Token
 	}
 }
 
-func newKubernetesAuth(authCreds *mock_auth_credentials.MockAuthCredentials, audiences []string, token tokenReviewData) *KubernetesAuth {
+func newKubernetesAuth(authCreds *mock_auth.MockAuthCredentials, audiences []string, token tokenReviewData) *KubernetesAuth {
 	authenticator := &k8sAuthenticationClientMock{token}
 
 	return &KubernetesAuth{
@@ -90,8 +89,8 @@ func TestAuthenticatedToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	authCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
@@ -112,8 +111,8 @@ func TestUnauthenticatedToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	authCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
@@ -133,8 +132,8 @@ func TestOpaqueToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	authCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
@@ -156,8 +155,8 @@ func TestCustomAudiences(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	authCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
@@ -178,8 +177,8 @@ func TestCustomAudiencesUnmatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	authCredsMock := mock_auth_credentials.NewMockAuthCredentials(ctrl)
-	pipelineMock := mock_common.NewMockAuthPipeline(ctrl)
+	authCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()

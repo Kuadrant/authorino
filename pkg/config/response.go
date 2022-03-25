@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/response"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -48,11 +49,11 @@ type ResponseConfig struct {
 	WrapperKey string                           `yaml:"wrapperKey"`
 	Metrics    bool                             `yaml:"metrics"`
 
-	Wristband   common.WristbandIssuer `yaml:"wristband,omitempty"`
-	DynamicJSON *response.DynamicJSON  `yaml:"json,omitempty"`
+	Wristband   auth.WristbandIssuer  `yaml:"wristband,omitempty"`
+	DynamicJSON *response.DynamicJSON `yaml:"json,omitempty"`
 }
 
-func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluator {
+func (config *ResponseConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
 	switch config.GetType() {
 	case responseWristband:
 		return config.Wristband
@@ -65,7 +66,7 @@ func (config *ResponseConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 
 // impl:AuthConfigEvaluator
 
-func (config *ResponseConfig) Call(pipeline common.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *ResponseConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
 		logger := log.FromContext(ctx).WithName("response")
 		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
@@ -107,7 +108,7 @@ func (config *ResponseConfig) GetConditions() []common.JSONPatternMatchingRule {
 
 // impl:ResponseConfigEvaluator
 
-func (config *ResponseConfig) GetWristbandIssuer() common.WristbandIssuer {
+func (config *ResponseConfig) GetWristbandIssuer() auth.WristbandIssuer {
 	return config.Wristband
 }
 
