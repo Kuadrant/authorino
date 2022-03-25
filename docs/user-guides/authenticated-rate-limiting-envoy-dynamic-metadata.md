@@ -181,7 +181,7 @@ curl -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://talker-a
 # HTTP/1.1 200 OK
 ```
 
-Repeat the request a few more times within the 60-second time window, until the response status is `409 429 Too Many Requests`.
+Repeat the request a few more times within the 60-second time window, until the response status is `429 Too Many Requests`.
 
 While the API is still limited to John, send requests as Jane:
 
