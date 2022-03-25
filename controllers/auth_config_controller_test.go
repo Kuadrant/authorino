@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
@@ -37,8 +37,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
-	return v1beta1.AuthConfig{
+func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
+	return api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
 			APIVersion: "authorino.kuadrant.io/v1beta1",
@@ -48,26 +48,26 @@ func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
 			Namespace: "authorino",
 			Labels:    authConfigLabels,
 		},
-		Spec: v1beta1.AuthConfigSpec{
+		Spec: api.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
-			Identity: []*v1beta1.Identity{
+			Identity: []*api.Identity{
 				{
 					Name: "keycloak",
-					Oidc: &v1beta1.Identity_OidcConfig{
+					Oidc: &api.Identity_OidcConfig{
 						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
 					},
 				},
 			},
-			Metadata: []*v1beta1.Metadata{
+			Metadata: []*api.Metadata{
 				{
 					Name: "userinfo",
-					UserInfo: &v1beta1.Metadata_UserInfo{
+					UserInfo: &api.Metadata_UserInfo{
 						IdentitySource: "keycloak",
 					},
 				},
 				{
 					Name: "resource-data",
-					UMA: &v1beta1.Metadata_UMA{
+					UMA: &api.Metadata_UMA{
 						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
 						Credentials: &v1.LocalObjectReference{
 							Name: "secret",
@@ -75,10 +75,10 @@ func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
 					},
 				},
 			},
-			Authorization: []*v1beta1.Authorization{
+			Authorization: []*api.Authorization{
 				{
 					Name: "main-policy",
-					OPA: &v1beta1.Authorization_OPA{
+					OPA: &api.Authorization_OPA{
 						InlineRego: `
 			method = object.get(input.context.request.http, "method", "")
 			path = object.get(input.context.request.http, "path", "")
@@ -91,17 +91,17 @@ func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
 				},
 				{
 					Name: "some-extra-rules",
-					JSON: &v1beta1.Authorization_JSONPatternMatching{
-						Rules: []v1beta1.JSONPattern{
+					JSON: &api.Authorization_JSONPatternMatching{
+						Rules: []api.JSONPattern{
 							{
-								JSONPatternExpression: v1beta1.JSONPatternExpression{
+								JSONPatternExpression: api.JSONPatternExpression{
 									Selector: "context.identity.role",
 									Operator: "eq",
 									Value:    "admin",
 								},
 							},
 							{
-								JSONPatternExpression: v1beta1.JSONPatternExpression{
+								JSONPatternExpression: api.JSONPatternExpression{
 									Selector: "attributes.source.address.Address.SocketAddress.address",
 									Operator: "eq",
 									Value:    "80.133.21.75",
@@ -112,7 +112,7 @@ func newTestAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
 				},
 			},
 		},
-		Status: v1beta1.AuthConfigStatus{
+		Status: api.AuthConfigStatus{
 			Ready: false,
 		},
 	}
@@ -137,7 +137,7 @@ func newTestOAuthClientSecret() v1.Secret {
 
 func newTestK8sClient(initObjs ...runtime.Object) client.WithWatch {
 	scheme := runtime.NewScheme()
-	_ = v1beta1.AddToScheme(scheme)
+	_ = api.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjs...).Build()
 }

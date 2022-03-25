@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"gotest.tools/assert"
@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func newStatusUpdateAuthConfig(authConfigLabels map[string]string) v1beta1.AuthConfig {
-	return v1beta1.AuthConfig{
+func newStatusUpdateAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
+	return api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
 			APIVersion: "authorino.kuadrant.io/v1beta1",
@@ -26,10 +26,10 @@ func newStatusUpdateAuthConfig(authConfigLabels map[string]string) v1beta1.AuthC
 			Namespace: "authorino",
 			Labels:    authConfigLabels,
 		},
-		Spec: v1beta1.AuthConfigSpec{
+		Spec: api.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
 		},
-		Status: v1beta1.AuthConfigStatus{
+		Status: api.AuthConfigStatus{
 			Ready: false,
 		},
 	}
@@ -53,7 +53,7 @@ func TestAuthConfigStatusUpdater_Reconcile(t *testing.T) {
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
 
-	authConfigCheck := v1beta1.AuthConfig{}
+	authConfigCheck := api.AuthConfig{}
 	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
 	assert.Check(t, authConfigCheck.Status.Ready)
 }
@@ -69,7 +69,7 @@ func TestAuthConfigStatusUpdater_MissingWatchedAuthConfigLabels(t *testing.T) {
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
 
-	authConfigCheck := v1beta1.AuthConfig{}
+	authConfigCheck := api.AuthConfig{}
 	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
 	assert.Check(t, authConfigCheck.Status.Ready)
 }
@@ -86,7 +86,7 @@ func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
 
-	authConfigCheck := v1beta1.AuthConfig{}
+	authConfigCheck := api.AuthConfig{}
 	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
 	assert.Check(t, authConfigCheck.Status.Ready)
 }
@@ -103,7 +103,7 @@ func TestAuthConfigStatusUpdater_UnmatchingAuthConfigLabels(t *testing.T) {
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
 
-	authConfigCheck := v1beta1.AuthConfig{}
+	authConfigCheck := api.AuthConfig{}
 	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
 	assert.Check(t, !authConfigCheck.Status.Ready)
 }

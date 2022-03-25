@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/assert"
 
-	"github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	mock_controller_builder "github.com/kuadrant/authorino/controllers/builder/mocks"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -50,7 +50,7 @@ func (c *isPredicate) String() string {
 
 type secretReconcilerTest struct {
 	secret               v1.Secret
-	authConfig           v1beta1.AuthConfig
+	authConfig           api.AuthConfig
 	authConfigReconciler *fakeReconciler
 	secretReconciler     *SecretReconciler
 }
@@ -71,7 +71,7 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		},
 	}
 
-	authConfig := v1beta1.AuthConfig{
+	authConfig := api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
 			APIVersion: "authorino.kuadrant.io/v1beta1",
@@ -80,12 +80,12 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 			Name:      "auth-config-1",
 			Namespace: "authorino",
 		},
-		Spec: v1beta1.AuthConfigSpec{
+		Spec: api.AuthConfigSpec{
 			Hosts: []string{"echo-api"},
-			Identity: []*v1beta1.Identity{
+			Identity: []*api.Identity{
 				{
 					Name: "friends",
-					APIKey: &v1beta1.Identity_APIKey{
+					APIKey: &api.Identity_APIKey{
 						LabelSelectors: map[string]string{
 							"authorino.kuadrant.io/managed-by": "authorino",
 							"target":                           "echo-api",
@@ -93,16 +93,16 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 					},
 				},
 			},
-			Metadata:      []*v1beta1.Metadata{},
-			Authorization: []*v1beta1.Authorization{},
+			Metadata:      []*api.Metadata{},
+			Authorization: []*api.Authorization{},
 		},
-		Status: v1beta1.AuthConfigStatus{
+		Status: api.AuthConfigStatus{
 			Ready: false,
 		},
 	}
 
 	scheme := runtime.NewScheme()
-	_ = v1beta1.AddToScheme(scheme)
+	_ = api.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
 	// Create a fake client with an auth config and a secret.
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&authConfig, &secret).Build()

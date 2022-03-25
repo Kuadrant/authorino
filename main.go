@@ -35,7 +35,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -107,7 +107,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(configv1beta1.AddToScheme(scheme))
+	utilruntime.Must(api.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
 	log.SetLogger(logger, logOpts)
