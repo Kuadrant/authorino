@@ -6,7 +6,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
-	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	authv1 "k8s.io/api/authentication/v1"

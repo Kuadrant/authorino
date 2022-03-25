@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"

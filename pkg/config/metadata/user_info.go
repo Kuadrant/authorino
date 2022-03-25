@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/log"
 )
 
 type UserInfo struct {

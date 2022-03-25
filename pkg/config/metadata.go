@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/config/metadata"
+	"github.com/kuadrant/authorino/pkg/log"
 )
 
 const (

@@ -8,8 +8,8 @@ import (
 	"github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	mocks "github.com/kuadrant/authorino/pkg/common/mocks"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"

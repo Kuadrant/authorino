@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
-	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	"gotest.tools/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

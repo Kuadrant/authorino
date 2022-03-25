@@ -7,8 +7,8 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
-	"github.com/kuadrant/authorino/pkg/common/log"
 	"github.com/kuadrant/authorino/pkg/cron"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	goidc "github.com/coreos/go-oidc"
 )
