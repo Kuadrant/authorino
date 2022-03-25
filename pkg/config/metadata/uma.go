@@ -2,7 +2,7 @@ package metadata
 
 import (
 	"bytes"
-	"context"
+	gocontext "context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )
@@ -34,8 +34,8 @@ func (provider *Provider) GetTokenURL() string {
 	return provider.tokenURL
 }
 
-func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Context) ([]interface{}, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx gocontext.Context) ([]interface{}, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -46,8 +46,8 @@ func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx context.Con
 	return provider.getResourcesByIDs(resourceIDs, pat, ctx)
 }
 
-func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.Context) ([]string, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext.Context) ([]string, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -64,8 +64,8 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx context.C
 	}
 }
 
-func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx context.Context) ([]interface{}, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx gocontext.Context) ([]interface{}, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -94,8 +94,8 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx c
 	return resourceData, nil
 }
 
-func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx context.Context) (interface{}, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocontext.Context) (interface{}, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -119,8 +119,8 @@ func (pat *PAT) String() string {
 	return pat.AccessToken
 }
 
-func (pat *PAT) Get(rawurl string, ctx context.Context, v interface{}) error {
-	if err := common.CheckContext(ctx); err != nil {
+func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
+	if err := context.CheckContext(ctx); err != nil {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func (uma *UMA) discover() error {
 	}
 }
 
-func (uma *UMA) Call(pipeline auth.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+func (uma *UMA) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context) (interface{}, error) {
 	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("uma"))
 
 	// get the protection API token (PAT)
@@ -224,8 +224,8 @@ func (uma *UMA) clientAuthenticatedURL(rawurl string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
-func (uma *UMA) requestPAT(ctx context.Context, pat *PAT) error {
-	if err := common.CheckContext(ctx); err != nil {
+func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
+	if err := context.CheckContext(ctx); err != nil {
 		return err
 	}
 

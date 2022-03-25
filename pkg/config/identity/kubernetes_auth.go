@@ -1,11 +1,11 @@
 package identity
 
 import (
-	"context"
+	gocontext "context"
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -52,8 +52,8 @@ func NewKubernetesAuthIdentity(authCred auth.AuthCredentials, audiences []string
 	}, nil
 }
 
-func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (interface{}, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 

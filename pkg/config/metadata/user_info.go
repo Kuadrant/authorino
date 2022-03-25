@@ -1,14 +1,14 @@
 package metadata
 
 import (
-	"context"
+	gocontext "context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -16,7 +16,7 @@ type UserInfo struct {
 	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
 }
 
-func (userinfo *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx context.Context) (interface{}, error) {
+func (userinfo *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context) (interface{}, error) {
 	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("userinfo"))
 	oidc := userinfo.OIDC
 
@@ -41,8 +41,8 @@ func (userinfo *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx context.Con
 	}
 }
 
-func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx context.Context) (interface{}, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Context) (interface{}, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 

@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
@@ -16,7 +16,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
-	"golang.org/x/net/context"
+	gocontext "golang.org/x/net/context"
 )
 
 var (
@@ -70,7 +70,7 @@ func newEvaluationResponse(evaluator auth.AuthConfigEvaluator, obj interface{}, 
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) auth.AuthPipeline {
+func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) auth.AuthPipeline {
 	logger := log.FromContext(parentCtx).WithName("authpipeline")
 
 	return &AuthPipeline{
@@ -89,7 +89,7 @@ func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, ap
 // Throughout the pipeline, user identity, ad hoc metadata and authorization policies are evaluated and their
 // corresponding resulting objects stored in the respective maps.
 type AuthPipeline struct {
-	Context context.Context
+	Context gocontext.Context
 	Request *envoy_auth.CheckRequest
 	API     *config.APIConfig
 
@@ -101,11 +101,11 @@ type AuthPipeline struct {
 	Logger log.Logger
 }
 
-func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
+func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
 	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
 
-	if err := common.CheckContext(ctx); err != nil {
+	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
 		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
 		return
@@ -139,10 +139,10 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
 }
 
-type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
+type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
 
 func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
-	ctx, cancel := context.WithCancel(pipeline.Context)
+	ctx, cancel := gocontext.WithCancel(pipeline.Context)
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
 
@@ -158,19 +158,19 @@ func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []auth.AuthConfigE
 }
 
 func (pipeline *AuthPipeline) evaluateOneAuthConfig(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
-	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func()) {
+	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func()) {
 		pipeline.evaluateAuthConfig(conf, ctx, respChannel, cancel, nil) // cancels the context if at least one thread succeeds
 	})
 }
 
 func (pipeline *AuthPipeline) evaluateAllAuthConfigs(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
-	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func()) {
+	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func()) {
 		pipeline.evaluateAuthConfig(conf, ctx, respChannel, nil, cancel) // cancels the context if at least one thread fails
 	})
 }
 
 func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
-	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, _ func()) {
+	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, _ func()) {
 		pipeline.evaluateAuthConfig(conf, ctx, respChannel, nil, nil)
 	})
 }

@@ -2,7 +2,7 @@ package metadata
 
 import (
 	"bytes"
-	"context"
+	gocontext "context"
 	gojson "encoding/json"
 	"fmt"
 	"io"
@@ -10,7 +10,7 @@ import (
 	"net/url"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )
@@ -25,8 +25,8 @@ type GenericHttp struct {
 	auth.AuthCredentials
 }
 
-func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (interface{}, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 

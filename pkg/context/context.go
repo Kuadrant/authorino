@@ -1,7 +1,7 @@
-package common
+package context
 
 import (
-	"context"
+	gocontext "context"
 )
 
 // CheckContext checks if a go context is still active or done
@@ -14,7 +14,7 @@ import (
 //     doSomething()
 //   }
 // }
-func CheckContext(ctx context.Context) error {
+func CheckContext(ctx gocontext.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

@@ -1,12 +1,12 @@
 package identity
 
 import (
-	"context"
+	gocontext "context"
 	"fmt"
 	"net/url"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/cron"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -27,7 +27,7 @@ type OIDC struct {
 	refresher cron.Worker
 }
 
-func NewOIDC(endpoint string, creds auth.AuthCredentials, ttl int, ctx context.Context) *OIDC {
+func NewOIDC(endpoint string, creds auth.AuthCredentials, ttl int, ctx gocontext.Context) *OIDC {
 	oidc := &OIDC{
 		AuthCredentials: creds,
 		Endpoint:        endpoint,
@@ -38,7 +38,7 @@ func NewOIDC(endpoint string, creds auth.AuthCredentials, ttl int, ctx context.C
 	return oidc
 }
 
-func (oidc *OIDC) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (oidc *OIDC) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (interface{}, error) {
 	// retrieve access token
 	accessToken, err := oidc.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
@@ -54,10 +54,10 @@ func (oidc *OIDC) Call(pipeline auth.AuthPipeline, ctx context.Context) (interfa
 	}
 }
 
-func (oidc *OIDC) getProvider(ctx context.Context, force bool) *goidc.Provider {
+func (oidc *OIDC) getProvider(ctx gocontext.Context, force bool) *goidc.Provider {
 	if oidc.provider == nil || force {
 		endpoint := oidc.Endpoint
-		if provider, err := goidc.NewProvider(context.TODO(), endpoint); err != nil {
+		if provider, err := goidc.NewProvider(gocontext.TODO(), endpoint); err != nil {
 			log.FromContext(ctx).Error(err, msg_oidcProviderConfigRefreshError, "endpoint", endpoint)
 		} else {
 			log.FromContext(ctx).V(1).Info(msg_oidcProviderConfigRefreshSuccess, "endpoint", endpoint)
@@ -68,8 +68,8 @@ func (oidc *OIDC) getProvider(ctx context.Context, force bool) *goidc.Provider {
 	return oidc.provider
 }
 
-func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, claims *interface{}) (*goidc.IDToken, error) {
-	if err := common.CheckContext(ctx); err != nil {
+func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx gocontext.Context, claims *interface{}) (*goidc.IDToken, error) {
+	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
@@ -87,7 +87,7 @@ func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx context.Context, 
 	return idToken, nil
 }
 
-func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.IDToken, error) {
+func (oidc *OIDC) verifyToken(accessToken string, ctx gocontext.Context) (*goidc.IDToken, error) {
 	provider := oidc.getProvider(ctx, false)
 
 	if provider == nil {
@@ -102,7 +102,7 @@ func (oidc *OIDC) verifyToken(accessToken string, ctx context.Context) (*goidc.I
 	}
 }
 
-func (oidc *OIDC) GetURL(name string, ctx context.Context) (*url.URL, error) {
+func (oidc *OIDC) GetURL(name string, ctx gocontext.Context) (*url.URL, error) {
 	var providerClaims map[string]interface{}
 	_ = oidc.getProvider(ctx, false).Claims(&providerClaims)
 
@@ -113,7 +113,7 @@ func (oidc *OIDC) GetURL(name string, ctx context.Context) (*url.URL, error) {
 	}
 }
 
-func (oidc *OIDC) configureProviderRefresh(ttl int, ctx context.Context) {
+func (oidc *OIDC) configureProviderRefresh(ttl int, ctx gocontext.Context) {
 	var err error
 
 	oidc.refresher, err = cron.StartWorker(ctx, ttl, func() {
@@ -126,7 +126,7 @@ func (oidc *OIDC) configureProviderRefresh(ttl int, ctx context.Context) {
 }
 
 // Clean ensures the goroutine started by configureProviderRefresh is cleaned up
-func (oidc *OIDC) Clean(ctx context.Context) error {
+func (oidc *OIDC) Clean(ctx gocontext.Context) error {
 	if oidc.refresher == nil {
 		return nil
 	}
