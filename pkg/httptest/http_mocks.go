@@ -1,10 +1,10 @@
-package mock_auth
+package httptest
 
 import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/httptest"
+	gohttptest "net/http/httptest"
 )
 
 type HttpServerMockResponse struct {
@@ -15,7 +15,7 @@ type HttpServerMockResponse struct {
 
 type HttpServerMockResponseFunc func() HttpServerMockResponse
 
-func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerMockResponseFunc) *httptest.Server {
+func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerMockResponseFunc) *gohttptest.Server {
 	log.Printf("starting mock http server at %v", serverHost)
 
 	listener, err := net.Listen("tcp", serverHost)
@@ -37,7 +37,7 @@ func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerM
 		}
 	}
 
-	server := &httptest.Server{Listener: listener, Config: &http.Server{Handler: http.HandlerFunc(handler)}}
+	server := &gohttptest.Server{Listener: listener, Config: &http.Server{Handler: http.HandlerFunc(handler)}}
 	server.Start()
 
 	return server

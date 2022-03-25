@@ -7,12 +7,11 @@ import (
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-
-	. "github.com/golang/mock/gomock"
-
-	"gotest.tools/assert"
-
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
+	"github.com/kuadrant/authorino/pkg/httptest"
+
+	"github.com/golang/mock/gomock"
+	"gotest.tools/assert"
 )
 
 const (
@@ -35,7 +34,7 @@ type userInfoTestData struct {
 	idConfEvalMock *mock_auth.MockIdentityConfigEvaluator
 }
 
-func newUserInfoTestData(ctrl *Controller) userInfoTestData {
+func newUserInfoTestData(ctrl *gomock.Controller) userInfoTestData {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, 0, context.TODO())
 	ctx, cancel := context.WithCancel(context.TODO())
@@ -50,12 +49,12 @@ func newUserInfoTestData(ctrl *Controller) userInfoTestData {
 	}
 }
 func TestMain(m *testing.M) {
-	authServer := mock_auth.NewHttpServerMock(authServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: wellKnownOIDCConfig}
+	authServer := httptest.NewHttpServerMock(authServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: wellKnownOIDCConfig}
 		},
-		"/userinfo": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: userInfoClaims}
+		"/userinfo": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: userInfoClaims}
 		},
 	})
 	defer authServer.Close()
@@ -63,11 +62,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestUserInfoCall(t *testing.T) {
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	ta.authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", nil)
+	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
@@ -81,11 +80,11 @@ func TestUserInfoCall(t *testing.T) {
 }
 
 func TestUserInfoCanceledContext(t *testing.T) {
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	ta.authCredMock.EXPECT().GetCredentialsFromReq(Any()).Return("", nil)
+	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
 	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
@@ -97,7 +96,7 @@ func TestUserInfoCanceledContext(t *testing.T) {
 }
 
 func TestUserInfoMissingOIDCConfig(t *testing.T) {
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 

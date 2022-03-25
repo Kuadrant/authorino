@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	. "github.com/golang/mock/gomock"
-
+	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
 )
 
@@ -21,15 +21,15 @@ const (
 )
 
 func TestGenericHttpCallWithGET(t *testing.T) {
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/metadata": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
 		},
 	})
 	defer extHttpMetadataServer.Close()
 
 	ctx := context.TODO()
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
@@ -57,15 +57,15 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 }
 
 func TestGenericHttpCallWithPOST(t *testing.T) {
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/metadata": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
 		},
 	})
 	defer extHttpMetadataServer.Close()
 
 	ctx := context.TODO()
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"
@@ -96,15 +96,15 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 }
 
 func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/metadata?p=some-origin": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata?p=some-origin": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
 		},
 	})
 	defer extHttpMetadataServer.Close()
 
 	ctx := context.TODO()
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	endpointWithPlaceholders := "http://" + extHttpServiceHost + "/metadata?p={context.request.http.headers.x-origin}"
@@ -133,15 +133,15 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 }
 
 func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(extHttpServiceHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/metadata": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
 		},
 	})
 	defer extHttpMetadataServer.Close()
 
 	ctx := context.TODO()
-	ctrl := NewController(t)
+	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	endpoint := "http://" + extHttpServiceHost + "/metadata"

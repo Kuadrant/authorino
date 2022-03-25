@@ -10,6 +10,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/httptest"
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -34,9 +35,9 @@ func TestOPAInlineRego(t *testing.T) {
 }
 
 func TestOPAExternalUrl(t *testing.T) {
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/rego": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: opaInlineRegoDataMock}
+	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+		"/rego": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoDataMock}
 		},
 	})
 	defer extHttpMetadataServer.Close()
@@ -53,9 +54,9 @@ func TestOPAExternalUrl(t *testing.T) {
 }
 
 func TestOPAInlineRegoAndExternalUrl(t *testing.T) {
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/rego": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: "won't work"}
+	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+		"/rego": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: "won't work"}
 		},
 	})
 	defer extHttpMetadataServer.Close()
@@ -84,9 +85,9 @@ func TestOPAWithPackageInRego(t *testing.T) {
 func TestOPAExternalUrlJsonResponse(t *testing.T) {
 	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod = object.get(input.context.request.http, \"method\", \"\")\npath = object.get(input.context.request.http, \"path\", \"\")\n\nallow { method == \"GET\"; path = \"/allow\" }"}}`
 
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/rego": func() mock_auth.HttpServerMockResponse {
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: jsonData, Headers: map[string]string{"Content-Type": "application/json"}}
+	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+		"/rego": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: jsonData, Headers: map[string]string{"Content-Type": "application/json"}}
 		},
 	})
 	defer extHttpMetadataServer.Close()
@@ -106,8 +107,8 @@ func TestOPAExternalUrlJsonResponse(t *testing.T) {
 
 func TestOPAExternalUrlWithTTL(t *testing.T) {
 	changed := false
-	extHttpMetadataServer := mock_auth.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/rego": func() mock_auth.HttpServerMockResponse {
+	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+		"/rego": func() httptest.HttpServerMockResponse {
 			var rego string
 			if changed {
 				rego = opaInlineRegoDataMock + `allow { method == "POST"; path = "/allow" }`
@@ -116,7 +117,7 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 				changed = true
 			}
 
-			return mock_auth.HttpServerMockResponse{Status: 200, Body: rego}
+			return httptest.HttpServerMockResponse{Status: 200, Body: rego}
 		},
 	})
 	defer extHttpMetadataServer.Close()

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/httptest"
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	"github.com/golang/mock/gomock"
@@ -15,8 +16,8 @@ import (
 
 const oidcServerHost = "127.0.0.1:9006"
 
-func oidcServerMockResponse(count int) mock_auth.HttpServerMockResponse {
-	return mock_auth.HttpServerMockResponse{
+func oidcServerMockResponse(count int) httptest.HttpServerMockResponse {
+	return httptest.HttpServerMockResponse{
 		Status:  200,
 		Headers: map[string]string{"Content-Type": "application/json"},
 		Body:    fmt.Sprintf(`{ "issuer": "http://%v", "authorization_endpoint": "http://%v/auth?count=%v" }`, oidcServerHost, oidcServerHost, count),
@@ -37,8 +38,8 @@ func TestOidcVerifyTokenServerUnknownHost(t *testing.T) {
 }
 
 func TestOidcVerifyTokenServerNotFound(t *testing.T) {
-	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse { return mock_auth.HttpServerMockResponse{Status: 404} },
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse { return httptest.HttpServerMockResponse{Status: 404} },
 	})
 	defer authServer.Close()
 
@@ -55,8 +56,8 @@ func TestOidcVerifyTokenServerNotFound(t *testing.T) {
 }
 
 func TestOidcVerifyTokenServerInternalError(t *testing.T) {
-	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse { return mock_auth.HttpServerMockResponse{Status: 500} },
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse { return httptest.HttpServerMockResponse{Status: 500} },
 	})
 	defer authServer.Close()
 
@@ -74,8 +75,8 @@ func TestOidcVerifyTokenServerInternalError(t *testing.T) {
 
 func TestOidcProviderRefreshDisabled(t *testing.T) {
 	count := 0
-	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
 			count += 1
 			return oidcServerMockResponse(count)
 		},
@@ -97,8 +98,8 @@ func TestOidcProviderRefreshDisabled(t *testing.T) {
 
 func TestOidcProviderRefresh(t *testing.T) {
 	count := 0
-	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
 			count += 1
 			return oidcServerMockResponse(count)
 		},
@@ -122,8 +123,8 @@ func TestOidcProviderRefresh(t *testing.T) {
 
 func TestOidcProviderRefreshClean(t *testing.T) {
 	count := 0
-	authServer := mock_auth.NewHttpServerMock(oidcServerHost, map[string]mock_auth.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": func() mock_auth.HttpServerMockResponse {
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
 			count += 1
 			return oidcServerMockResponse(count)
 		},
