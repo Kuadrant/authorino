@@ -72,14 +72,14 @@ func (c *failConfig) GetPriority() int {
 	return c.priority
 }
 
-func newTestAuthPipeline(apiConfig evaluators.APIConfig, req *envoy_auth.CheckRequest) AuthPipeline {
-	p := NewAuthPipeline(context.TODO(), req, apiConfig)
+func newTestAuthPipeline(authConfig evaluators.AuthConfig, req *envoy_auth.CheckRequest) AuthPipeline {
+	p := NewAuthPipeline(context.TODO(), req, authConfig)
 	pipeline, _ := p.(*AuthPipeline)
 	return *pipeline
 }
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -88,7 +88,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateOneAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateOneAuthConfig(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -101,7 +101,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 }
 
 func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -111,7 +111,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateOneAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateOneAuthConfig(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -127,7 +127,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 }
 
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -137,7 +137,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateOneAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateOneAuthConfig(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -153,7 +153,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 }
 
 func TestEvaluateAllAuthConfigs(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -163,7 +163,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateAllAuthConfigs(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAllAuthConfigs(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -179,7 +179,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 }
 
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -188,7 +188,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateAllAuthConfigs(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAllAuthConfigs(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -201,7 +201,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 }
 
 func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -211,7 +211,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateAllAuthConfigs(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAllAuthConfigs(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -227,7 +227,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 }
 
 func TestEvaluateAnyAuthConfig(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -237,7 +237,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateAnyAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAnyAuthConfig(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -253,7 +253,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 }
 
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -263,7 +263,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateAnyAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAnyAuthConfig(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -279,7 +279,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 }
 
 func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -289,7 +289,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 
 	go func() {
 		defer close(respChannel)
-		pipeline.evaluateAnyAuthConfig(pipeline.API.IdentityConfigs, &respChannel)
+		pipeline.evaluateAnyAuthConfig(pipeline.AuthConfig.IdentityConfigs, &respChannel)
 	}()
 
 	for resp := range respChannel {
@@ -305,7 +305,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 }
 
 func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -324,7 +324,7 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(request.GetAttributes().GetRequest().Http).Return("xxx", nil)
 	authCredMock.EXPECT().GetCredentialsKeySelector().Return("APIKEY")
 
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
 		DenyWith: evaluators.DenyWith{
 			Unauthenticated: &evaluators.DenyWithValues{
@@ -359,7 +359,7 @@ func TestEvaluatePriorities(t *testing.T) {
 	authzConfig1 := &failConfig{priority: 0}
 	authzConfig2 := &successConfig{priority: 1} // should never be called
 
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig1, idConfig2},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig1, authzConfig2},
 	}, &request)
@@ -380,7 +380,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
 
 	idConfig := &successConfig{}
 
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		Conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
@@ -406,7 +406,7 @@ func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{}
 
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		Conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
@@ -441,7 +441,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 		},
 	}
 
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)
@@ -469,7 +469,7 @@ func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 		},
 	}
 
-	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)

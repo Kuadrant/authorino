@@ -66,21 +66,21 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 		host = requestData.Host
 	}
 
-	apiConfig := a.Cache.Get(host)
+	authConfig := a.Cache.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
-	if apiConfig == nil && strings.Contains(host, ":") {
+	if authConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
-		apiConfig = a.Cache.Get(splitHost[0])
+		authConfig = a.Cache.Get(splitHost[0])
 	}
 
-	// If we couldn't find the APIConfig in the config, we return and deny.
-	if apiConfig == nil {
+	// If we couldn't find the AuthConfig in the config, we return and deny.
+	if authConfig == nil {
 		result := auth.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
 		a.logAuthResult(result, ctx)
 		return a.deniedResponse(result), nil
 	}
 
-	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *apiConfig)
+	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *authConfig)
 	result := pipeline.Evaluate()
 
 	a.logAuthResult(result, ctx)

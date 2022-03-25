@@ -11,8 +11,8 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-// APIConfig holds the static configuration to be evaluated in the auth pipeline
-type APIConfig struct {
+// AuthConfig holds the static configuration to be evaluated in the auth pipeline
+type AuthConfig struct {
 	Labels     map[string]string
 	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
 
@@ -24,7 +24,7 @@ type APIConfig struct {
 	DenyWith
 }
 
-func (config *APIConfig) GetChallengeHeaders() []map[string]string {
+func (config *AuthConfig) GetChallengeHeaders() []map[string]string {
 	challengeHeaders := make([]map[string]string, 0)
 
 	for _, authConfig := range config.IdentityConfigs {
@@ -36,7 +36,7 @@ func (config *APIConfig) GetChallengeHeaders() []map[string]string {
 	return challengeHeaders
 }
 
-func (config *APIConfig) Clean(ctx context.Context) error {
+func (config *AuthConfig) Clean(ctx context.Context) error {
 	evaluators := []auth.AuthConfigEvaluator{}
 	evaluators = append(evaluators, config.IdentityConfigs...)
 	evaluators = append(evaluators, config.MetadataConfigs...)

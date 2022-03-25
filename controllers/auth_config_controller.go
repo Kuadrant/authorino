@@ -86,12 +86,12 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Error(err, failedToCleanConfig)
 		}
 
-		authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
+		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		for host, apiConfig := range authConfigByHost {
+		for host, evaluatorConfig := range evaluatorConfigByHost {
 			// Check for host collision with another namespace
 			if cachedKey, found := r.Cache.FindId(host); found {
 				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
@@ -100,7 +100,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				}
 			}
 
-			if err := r.Cache.Set(cacheId, host, apiConfig, true); err != nil {
+			if err := r.Cache.Set(cacheId, host, evaluatorConfig, true); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -121,7 +121,7 @@ func (r *AuthConfigReconciler) cleanConfigs(cacheId string, ctx context.Context)
 	return nil
 }
 
-func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (map[string]evaluators.APIConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (map[string]evaluators.AuthConfig, error) {
 	var ctxWithLogger context.Context
 
 	identityConfigs := make([]evaluators.IdentityConfig, 0)
@@ -463,9 +463,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 	}
 
-	config := make(map[string]evaluators.APIConfig)
-
-	apiConfig := evaluators.APIConfig{
+	evaluatorConfig := evaluators.AuthConfig{
 		Conditions:           buildJSONPatternExpressions(authConfig, authConfig.Spec.Conditions),
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
@@ -476,14 +474,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	// denyWith
 	if denyWith := authConfig.Spec.DenyWith; denyWith != nil {
-		apiConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
-		apiConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
+		evaluatorConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
+		evaluatorConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
 	}
 
+	evaluatorConfigByHost := make(map[string]evaluators.AuthConfig)
 	for _, host := range authConfig.Spec.Hosts {
-		config[host] = apiConfig
+		evaluatorConfigByHost[host] = evaluatorConfig
 	}
-	return config, nil
+	return evaluatorConfigByHost, nil
 }
 
 func (r *AuthConfigReconciler) ClusterWide() bool {

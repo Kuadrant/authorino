@@ -23,7 +23,7 @@ func TestCache(t *testing.T) {
 	apiFindIdIdentityConfig := &BogusIdentity{}
 	identities := make([]auth.AuthConfigEvaluator, 1)
 	identities[0] = apiFindIdIdentityConfig
-	exampleConfig := evaluators.APIConfig{
+	exampleConfig := evaluators.AuthConfig{
 		IdentityConfigs:      identities,
 		MetadataConfigs:      nil,
 		AuthorizationConfigs: nil,

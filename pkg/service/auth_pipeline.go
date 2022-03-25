@@ -70,13 +70,13 @@ func newEvaluationResponse(evaluator auth.AuthConfigEvaluator, obj interface{}, 
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, apiConfig evaluators.APIConfig) auth.AuthPipeline {
+func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, authConfig evaluators.AuthConfig) auth.AuthPipeline {
 	logger := log.FromContext(parentCtx).WithName("authpipeline")
 
 	return &AuthPipeline{
 		Context:       log.IntoContext(parentCtx, logger),
 		Request:       req,
-		API:           &apiConfig,
+		AuthConfig:    &authConfig,
 		Identity:      make(map[*evaluators.IdentityConfig]interface{}),
 		Metadata:      make(map[*evaluators.MetadataConfig]interface{}),
 		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
@@ -89,9 +89,9 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 // Throughout the pipeline, user identity, ad hoc metadata and authorization policies are evaluated and their
 // corresponding resulting objects stored in the respective maps.
 type AuthPipeline struct {
-	Context gocontext.Context
-	Request *envoy_auth.CheckRequest
-	API     *evaluators.APIConfig
+	Context    gocontext.Context
+	Request    *envoy_auth.CheckRequest
+	AuthConfig *evaluators.AuthConfig
 
 	Identity      map[*evaluators.IdentityConfig]interface{}
 	Metadata      map[*evaluators.MetadataConfig]interface{}
@@ -196,8 +196,8 @@ func groupAuthConfigsByPriority(authConfigs []auth.AuthConfigEvaluator) (map[int
 
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 	logger := pipeline.Logger.WithName("identity").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.IdentityConfigs)
-	count := len(pipeline.API.IdentityConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.IdentityConfigs)
+	count := len(pipeline.AuthConfig.IdentityConfigs)
 	errors := make(map[string]string)
 
 	for _, priority := range priorities {
@@ -253,7 +253,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 	logger := pipeline.Logger.WithName("metadata").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.MetadataConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.MetadataConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -287,7 +287,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 		logger.Info("evaluating for input", "input", authJSON)
 	}
 
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.AuthorizationConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.AuthorizationConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -317,7 +317,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 
 func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	logger := pipeline.Logger.WithName("response").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.ResponseConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.ResponseConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -356,7 +356,7 @@ func (pipeline *AuthPipeline) evaluateConditions(conditions []json.JSONPatternMa
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
-	if err := pipeline.evaluateConditions(pipeline.API.Conditions); err != nil {
+	if err := pipeline.evaluateConditions(pipeline.AuthConfig.Conditions); err != nil {
 		pipeline.Logger.V(1).Info("skipping", "reason", err)
 
 		return auth.AuthResult{
@@ -379,8 +379,8 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 				authResult <- pipeline.customizeDenyWith(auth.AuthResult{
 					Code:    code,
 					Message: resp.GetErrorMessage(),
-					Headers: pipeline.API.GetChallengeHeaders(),
-				}, pipeline.API.Unauthenticated)
+					Headers: pipeline.AuthConfig.GetChallengeHeaders(),
+				}, pipeline.AuthConfig.Unauthenticated)
 				return
 			}
 
@@ -394,7 +394,7 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 				authResult <- pipeline.customizeDenyWith(auth.AuthResult{
 					Code:    code,
 					Message: resp.GetErrorMessage(),
-				}, pipeline.API.Unauthorized)
+				}, pipeline.AuthConfig.Unauthorized)
 				return
 			}
 
@@ -423,7 +423,7 @@ func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
 }
 
 func (pipeline *AuthPipeline) metricLabels() []string {
-	labels := pipeline.API.Labels
+	labels := pipeline.AuthConfig.Labels
 	return []string{labels["namespace"], labels["name"]}
 }
 
@@ -436,7 +436,7 @@ func (pipeline *AuthPipeline) GetHttp() *envoy_auth.AttributeContext_HttpRequest
 }
 
 func (pipeline *AuthPipeline) GetAPI() interface{} {
-	return pipeline.API
+	return pipeline.AuthConfig
 }
 
 func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {

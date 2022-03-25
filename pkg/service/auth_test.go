@@ -82,7 +82,7 @@ func TestAuthConfigLookup(t *testing.T) {
 	defer ctrl.Finish()
 	c := mock_cache.NewMockCache(ctrl)
 	service := AuthService{Cache: c}
-	authConfig := &evaluators.APIConfig{}
+	authConfig := &evaluators.AuthConfig{}
 
 	var resp *envoy_auth.CheckResponse
 	var err error
