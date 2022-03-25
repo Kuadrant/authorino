@@ -2,15 +2,15 @@ package service
 
 import (
 	"context"
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
 	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type_v3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
@@ -36,13 +36,13 @@ const rawRequest string = `{
 
 var (
 	requestMock = envoy_auth.CheckRequest{}
-	_           = json.Unmarshal([]byte(rawRequest), &requestMock)
+	_           = gojson.Unmarshal([]byte(rawRequest), &requestMock)
 )
 
 type successConfig struct {
 	called     bool
 	priority   int
-	conditions []common.JSONPatternMatchingRule
+	conditions []json.JSONPatternMatchingRule
 }
 
 type failConfig struct {
@@ -59,7 +59,7 @@ func (c *successConfig) GetPriority() int {
 	return c.priority
 }
 
-func (c *successConfig) GetConditions() []common.JSONPatternMatchingRule {
+func (c *successConfig) GetConditions() []json.JSONPatternMatchingRule {
 	return c.conditions
 }
 
@@ -309,14 +309,14 @@ func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
-	requestJSON, _ := json.Marshal(requestMock.GetAttributes())
+	requestJSON, _ := gojson.Marshal(requestMock.GetAttributes())
 	expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"authorization":{},"identity":null,"metadata":{},"response":{}}}`, requestJSON)
 	assert.Equal(t, pipeline.GetAuthorizationJSON(), expectedJSON)
 }
 
 func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -329,9 +329,9 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 		DenyWith: config.DenyWith{
 			Unauthenticated: &config.DenyWithValues{
 				Code: 302,
-				Headers: []common.JSONProperty{
-					{Name: "X-Static-Header", Value: common.JSONValue{Static: "some-value"}},
-					{Name: "Location", Value: common.JSONValue{Pattern: "https://my-app.io/login?redirect_to=https://{context.request.http.host}{context.request.http.path}"}},
+				Headers: []json.JSONProperty{
+					{Name: "X-Static-Header", Value: json.JSONValue{Static: "some-value"}},
+					{Name: "Location", Value: json.JSONValue{Pattern: "https://my-app.io/login?redirect_to=https://{context.request.http.host}{context.request.http.path}"}},
 				},
 			},
 		},
@@ -342,13 +342,13 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_Found)
 	assert.Equal(t, authResult.Message, "the API Key provided is invalid")
 	assert.Equal(t, len(authResult.Headers), 2)
-	headers, _ := json.Marshal(authResult.Headers)
+	headers, _ := gojson.Marshal(authResult.Headers)
 	assert.Equal(t, string(headers), `[{"X-Static-Header":"some-value"},{"Location":"https://my-app.io/login?redirect_to=https://my-api/operation"}]`)
 }
 
 func TestEvaluatePriorities(t *testing.T) {
 	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -373,7 +373,7 @@ func TestEvaluatePriorities(t *testing.T) {
 
 func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
 	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -381,7 +381,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
 	idConfig := &successConfig{}
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		Conditions: []common.JSONPatternMatchingRule{
+		Conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
 				Operator: "neq",
@@ -398,7 +398,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
 
 func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -407,7 +407,7 @@ func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 	authzConfig := &successConfig{}
 
 	pipeline := newTestAuthPipeline(config.APIConfig{
-		Conditions: []common.JSONPatternMatchingRule{
+		Conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
 				Operator: "eq",
@@ -425,14 +425,14 @@ func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 
 func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{
-		conditions: []common.JSONPatternMatchingRule{
+		conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
 				Operator: "neq",
@@ -453,14 +453,14 @@ func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 
 func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 	request := envoy_auth.CheckRequest{}
-	_ = json.Unmarshal([]byte(rawRequest), &request)
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{
-		conditions: []common.JSONPatternMatchingRule{
+		conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
 				Operator: "eq",

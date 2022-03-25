@@ -10,7 +10,7 @@ import (
 	envoy_service_auth_v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	gomock "github.com/golang/mock/gomock"
 	auth "github.com/kuadrant/authorino/pkg/auth"
-	common "github.com/kuadrant/authorino/pkg/common"
+	json "github.com/kuadrant/authorino/pkg/json"
 	context "golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -334,10 +334,10 @@ func (m *MockConditionalEvaluator) EXPECT() *MockConditionalEvaluatorMockRecorde
 }
 
 // GetConditions mocks base method.
-func (m *MockConditionalEvaluator) GetConditions() []common.JSONPatternMatchingRule {
+func (m *MockConditionalEvaluator) GetConditions() []json.JSONPatternMatchingRule {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetConditions")
-	ret0, _ := ret[0].([]common.JSONPatternMatchingRule)
+	ret0, _ := ret[0].([]json.JSONPatternMatchingRule)
 	return ret0
 }
 

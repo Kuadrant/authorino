@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	multierror "github.com/hashicorp/go-multierror"
 )
@@ -14,7 +14,7 @@ import (
 // APIConfig holds the static configuration to be evaluated in the auth pipeline
 type APIConfig struct {
 	Labels     map[string]string
-	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
+	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
 
 	IdentityConfigs      []auth.AuthConfigEvaluator `yaml:"identity,omitempty"`
 	MetadataConfigs      []auth.AuthConfigEvaluator `yaml:"metadata,omitempty"`
@@ -71,5 +71,5 @@ type DenyWith struct {
 type DenyWithValues struct {
 	Code    int32
 	Message string
-	Headers []common.JSONProperty
+	Headers []json.JSONProperty
 }

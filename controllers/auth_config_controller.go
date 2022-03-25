@@ -24,13 +24,13 @@ import (
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
 	authorinoService "github.com/kuadrant/authorino/pkg/config"
 	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
 	authorinoIdentity "github.com/kuadrant/authorino/pkg/config/identity"
 	authorinoMetadata "github.com/kuadrant/authorino/pkg/config/metadata"
 	authorinoResponse "github.com/kuadrant/authorino/pkg/config/response"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -130,11 +130,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
 	for _, identity := range authConfig.Spec.Identity {
-		extendedProperties := make([]common.JSONProperty, 0)
+		extendedProperties := make([]json.JSONProperty, 0)
 		for _, property := range identity.ExtendedProperties {
-			extendedProperties = append(extendedProperties, common.JSONProperty{
+			extendedProperties = append(extendedProperties, json.JSONProperty{
 				Name: property.Name,
-				Value: common.JSONValue{
+				Value: json.JSONValue{
 					Static:  property.Value,
 					Pattern: property.ValueFrom.AuthJSON,
 				},
@@ -262,22 +262,22 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[sharedSecretRef.Key])
 			}
 
-			params := make([]common.JSONProperty, 0, len(genericHttp.Parameters))
+			params := make([]json.JSONProperty, 0, len(genericHttp.Parameters))
 			for _, param := range genericHttp.Parameters {
-				params = append(params, common.JSONProperty{
+				params = append(params, json.JSONProperty{
 					Name: param.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  param.Value,
 						Pattern: param.ValueFrom.AuthJSON,
 					},
 				})
 			}
 
-			headers := make([]common.JSONProperty, 0, len(genericHttp.Headers))
+			headers := make([]json.JSONProperty, 0, len(genericHttp.Headers))
 			for _, header := range genericHttp.Headers {
-				headers = append(headers, common.JSONProperty{
+				headers = append(headers, json.JSONProperty{
 					Name: header.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  header.Value,
 						Pattern: header.ValueFrom.AuthJSON,
 					},
@@ -352,18 +352,18 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		case api.AuthorizationKubernetesAuthz:
 			user := authorization.KubernetesAuthz.User
-			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
+			authorinoUser := json.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
 
 			var authorinoResourceAttributes *authorinoAuthorization.KubernetesAuthzResourceAttributes
 			resourceAttributes := authorization.KubernetesAuthz.ResourceAttributes
 			if resourceAttributes != nil {
 				authorinoResourceAttributes = &authorinoAuthorization.KubernetesAuthzResourceAttributes{
-					Namespace:   common.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
-					Group:       common.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
-					Resource:    common.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
-					Name:        common.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
-					SubResource: common.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
-					Verb:        common.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
+					Namespace:   json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
+					Group:       json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
+					Resource:    json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
+					Name:        json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
+					SubResource: json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
+					Verb:        json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
 				}
 			}
 
@@ -419,11 +419,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				}
 			}
 
-			customClaims := make([]common.JSONProperty, 0)
+			customClaims := make([]json.JSONProperty, 0)
 			for _, claim := range wristband.CustomClaims {
-				customClaims = append(customClaims, common.JSONProperty{
+				customClaims = append(customClaims, json.JSONProperty{
 					Name: claim.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  claim.Value,
 						Pattern: claim.ValueFrom.AuthJSON,
 					},
@@ -443,12 +443,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// dynamic json
 		case api.ResponseDynamicJSON:
-			jsonProperties := make([]common.JSONProperty, 0)
+			jsonProperties := make([]json.JSONProperty, 0)
 
 			for _, property := range response.JSON.Properties {
-				jsonProperties = append(jsonProperties, common.JSONProperty{
+				jsonProperties = append(jsonProperties, json.JSONProperty{
 					Name: property.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  property.Value,
 						Pattern: property.ValueFrom.AuthJSON,
 					},
@@ -506,8 +506,8 @@ func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name stri
 	return nil, fmt.Errorf("missing identity config %v", name)
 }
 
-func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSONPattern) []common.JSONPatternMatchingRule {
-	expressions := []common.JSONPatternMatchingRule{}
+func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSONPattern) []json.JSONPatternMatchingRule {
+	expressions := []json.JSONPatternMatchingRule{}
 
 	for _, pattern := range patterns {
 		expressionsToAdd := api.JSONPatternExpressions{}
@@ -519,7 +519,7 @@ func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSON
 		}
 
 		for _, expression := range expressionsToAdd {
-			expressions = append(expressions, common.JSONPatternMatchingRule{
+			expressions = append(expressions, json.JSONPatternMatchingRule{
 				Selector: expression.Selector,
 				Operator: string(expression.Operator),
 				Value:    expression.Value,
@@ -535,9 +535,9 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *authorinoServ
 		return nil
 	}
 
-	headers := make([]common.JSONProperty, 0, len(denyWithSpec.Headers))
+	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
 	for _, header := range denyWithSpec.Headers {
-		headers = append(headers, common.JSONProperty{Name: header.Name, Value: common.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
+		headers = append(headers, json.JSONProperty{Name: header.Name, Value: json.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
 	}
 
 	return &authorinoService.DenyWithValues{

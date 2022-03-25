@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 )
 
-func NewDynamicJSONResponse(properties []common.JSONProperty) *DynamicJSON {
+func NewDynamicJSONResponse(properties []json.JSONProperty) *DynamicJSON {
 	return &DynamicJSON{
 		Properties: properties,
 	}
 }
 
 type DynamicJSON struct {
-	Properties []common.JSONProperty
+	Properties []json.JSONProperty
 }
 
 func (j *DynamicJSON) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {

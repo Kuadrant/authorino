@@ -1,7 +1,7 @@
 package service
 
 import (
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
@@ -244,7 +245,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 		}
 	}
 
-	errorsJSON, _ := json.Marshal(errors)
+	errorsJSON, _ := gojson.Marshal(errors)
 	return EvaluationResponse{
 		Error: fmt.Errorf("%s", errorsJSON),
 	}
@@ -282,7 +283,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 
 	if logger.Enabled() {
 		var authJSON interface{}
-		json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON)
+		gojson.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON)
 		logger.Info("evaluating for input", "input", authJSON)
 	}
 
@@ -341,7 +342,7 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	}
 }
 
-func (pipeline *AuthPipeline) evaluateConditions(conditions []common.JSONPatternMatchingRule) error {
+func (pipeline *AuthPipeline) evaluateConditions(conditions []json.JSONPatternMatchingRule) error {
 	authJSON := pipeline.GetAuthorizationJSON()
 	for _, condition := range conditions {
 		if match, err := condition.EvaluateFor(authJSON); err != nil {
@@ -481,7 +482,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	}
 	authData["response"] = response
 
-	authJSON, _ := json.Marshal(&authorizationJSON{
+	authJSON, _ := gojson.Marshal(&authorizationJSON{
 		Context:  pipeline.GetRequest().Attributes,
 		AuthData: authData,
 	})
@@ -504,7 +505,7 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 		if len(denyWith.Headers) > 0 {
 			headers := make([]map[string]string, 0)
 			for _, header := range denyWith.Headers {
-				value, _ := common.StringifyJSON(header.Value.ResolveFor(authJSON))
+				value, _ := json.StringifyJSON(header.Value.ResolveFor(authJSON))
 				headers = append(headers, map[string]string{header.Name: value})
 			}
 			authResult.Headers = headers

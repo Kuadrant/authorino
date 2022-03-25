@@ -3,13 +3,13 @@ package response
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/mock/gomock"
@@ -141,14 +141,14 @@ func TestNewWristbandConfig(t *testing.T) {
 	var err error
 
 	tokenDuration := int64(500)
-	wristbandIssuer, err = NewWristbandConfig("http://authorino", []common.JSONProperty{}, &tokenDuration, signingKeys)
+	wristbandIssuer, err = NewWristbandConfig("http://authorino", []json.JSONProperty{}, &tokenDuration, signingKeys)
 	assert.Check(t, wristbandIssuer == nil)
 	assert.Error(t, err, "missing at least one signing key")
 
 	signingKey, _ := NewSigningKey("my-signing-key", "ES256", []byte(ellipticCurveSigningKey))
 	signingKeys = append(signingKeys, *signingKey)
 
-	wristbandIssuer, err = NewWristbandConfig("http://authorino", []common.JSONProperty{}, nil, signingKeys)
+	wristbandIssuer, err = NewWristbandConfig("http://authorino", []json.JSONProperty{}, nil, signingKeys)
 	assert.NilError(t, err)
 	assert.Equal(t, wristbandIssuer.TokenDuration, DEFAULT_WRISTBAND_DURATION)
 }
@@ -157,14 +157,14 @@ func TestWristbandCall(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	claims := []common.JSONProperty{
+	claims := []json.JSONProperty{
 		{
 			Name:  "sta",
-			Value: common.JSONValue{Static: "foo"},
+			Value: json.JSONValue{Static: "foo"},
 		},
 		{
 			Name:  "dyn",
-			Value: common.JSONValue{Pattern: "auth.identity"},
+			Value: json.JSONValue{Pattern: "auth.identity"},
 		},
 	}
 	signingKey, _ := NewSigningKey("my-signing-key", "ES256", []byte(ellipticCurveSigningKey))
@@ -176,7 +176,7 @@ func TestWristbandCall(t *testing.T) {
 		AuthData map[string]interface{}       `json:"auth"`
 	}
 
-	authJSON, _ := json.Marshal(&authorizationJSON{
+	authJSON, _ := gojson.Marshal(&authorizationJSON{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{
@@ -209,7 +209,7 @@ func TestWristbandCall(t *testing.T) {
 
 	jwt, _ := parseJWT(fmt.Sprintf("%v", encodedWristband))
 	var wristband wristbandData
-	_ = json.Unmarshal(jwt, &wristband)
+	_ = gojson.Unmarshal(jwt, &wristband)
 
 	assert.Equal(t, wristband.Issuer, "http://authorino")
 	assert.Equal(t, wristband.Subject, "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b")

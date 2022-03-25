@@ -3,12 +3,12 @@ package metadata
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	gojson "encoding/json"
 	"net/http"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	. "github.com/golang/mock/gomock"
@@ -81,7 +81,7 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
 		Method:          "POST",
-		Parameters:      []common.JSONProperty{{Name: "user", Value: common.JSONValue{Pattern: "auth.identity.user"}}},
+		Parameters:      []json.JSONProperty{{Name: "user", Value: json.JSONValue{Pattern: "auth.identity.user"}}},
 		ContentType:     "application/x-www-form-urlencoded",
 		SharedSecret:    "secret",
 		AuthCredentials: sharedCredsMock,
@@ -156,9 +156,9 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	metadata := &GenericHttp{
 		Endpoint: endpoint,
 		Method:   "GET",
-		Headers: []common.JSONProperty{
-			{Name: "X-Requested-By", Value: common.JSONValue{Static: "authorino"}},
-			{Name: "Content-Type", Value: common.JSONValue{Static: "to-be-overwritten"}},
+		Headers: []json.JSONProperty{
+			{Name: "X-Requested-By", Value: json.JSONValue{Static: "authorino"}},
+			{Name: "Content-Type", Value: json.JSONValue{Static: "to-be-overwritten"}},
 		},
 		AuthCredentials: sharedCredsMock,
 	}
@@ -180,7 +180,7 @@ func genericHttpAuthDataMock() string {
 		AuthData map[string]interface{}       `json:"auth"`
 	}
 
-	authJSON, _ := json.Marshal(&authorizationJSON{
+	authJSON, _ := gojson.Marshal(&authorizationJSON{
 		Context: &envoy_auth.AttributeContext{
 			Request: &envoy_auth.AttributeContext_Request{
 				Http: &envoy_auth.AttributeContext_HttpRequest{

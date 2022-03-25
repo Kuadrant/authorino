@@ -2,12 +2,12 @@ package config
 
 import (
 	"context"
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	v1 "k8s.io/api/core/v1"
@@ -25,10 +25,10 @@ const (
 )
 
 type IdentityConfig struct {
-	Name       string                           `yaml:"name"`
-	Priority   int                              `yaml:"priority"`
-	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
-	Metrics    bool                             `yaml:"metrics"`
+	Name       string                         `yaml:"name"`
+	Priority   int                            `yaml:"priority"`
+	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                           `yaml:"metrics"`
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
 	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
@@ -38,7 +38,7 @@ type IdentityConfig struct {
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
 	Noop           *identity.Noop           `yaml:"noop,omitempty"`
 
-	ExtendedProperties []common.JSONProperty `yaml:"extendedProperties"`
+	ExtendedProperties []json.JSONProperty `yaml:"extendedProperties"`
 }
 
 func (config *IdentityConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
@@ -114,7 +114,7 @@ func (config *IdentityConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *IdentityConfig) GetConditions() []common.JSONPatternMatchingRule {
+func (config *IdentityConfig) GetConditions() []json.JSONPatternMatchingRule {
 	return config.Conditions
 }
 
@@ -158,9 +158,9 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 		return resolvedIdentityObj, nil
 	}
 
-	identityObjAsJSON, _ := json.Marshal(resolvedIdentityObj)
+	identityObjAsJSON, _ := gojson.Marshal(resolvedIdentityObj)
 	var extendedIdentityObject map[string]interface{}
-	err := json.Unmarshal(identityObjAsJSON, &extendedIdentityObject)
+	err := gojson.Unmarshal(identityObjAsJSON, &extendedIdentityObject)
 	if err != nil {
 		return nil, err
 	}

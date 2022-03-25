@@ -1,12 +1,12 @@
 package config
 
 import (
-	"encoding/json"
+	gojson "encoding/json"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
@@ -29,7 +29,7 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 		KubernetesAuth: &identity.KubernetesAuth{},
 	}
 
-	_ = json.Unmarshal([]byte(`{"sub":"foo","exp":1629884250}`), &identityObject)
+	_ = gojson.Unmarshal([]byte(`{"sub":"foo","exp":1629884250}`), &identityObject)
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(nil, identityObject)
 
 	extendedIdentityObject, err = identityConfig.ResolveExtendedProperties(pipelineMock)
@@ -40,9 +40,9 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 	identityConfig = IdentityConfig{
 		Name:           "test",
 		KubernetesAuth: &identity.KubernetesAuth{},
-		ExtendedProperties: []common.JSONProperty{
-			{Name: "prop1", Value: common.JSONValue{Static: "value1"}},
-			{Name: "prop2", Value: common.JSONValue{Pattern: "auth.identity.sub"}},
+		ExtendedProperties: []json.JSONProperty{
+			{Name: "prop1", Value: json.JSONValue{Static: "value1"}},
+			{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.sub"}},
 		},
 	}
 
@@ -51,6 +51,6 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 
 	extendedIdentityObject, err = identityConfig.ResolveExtendedProperties(pipelineMock)
 	assert.NilError(t, err)
-	extendedIdentityObjectJSON, _ := json.Marshal(extendedIdentityObject)
+	extendedIdentityObjectJSON, _ := gojson.Marshal(extendedIdentityObject)
 	assert.Equal(t, string(extendedIdentityObjectJSON), `{"exp":1629884250,"prop1":"value1","prop2":"foo","sub":"foo"}`)
 }

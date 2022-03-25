@@ -7,6 +7,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
@@ -20,7 +21,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(user common.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user json.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -40,16 +41,16 @@ func NewKubernetesAuthz(user common.JSONValue, groups []string, resourceAttribut
 }
 
 type KubernetesAuthzResourceAttributes struct {
-	Namespace   common.JSONValue
-	Group       common.JSONValue
-	Resource    common.JSONValue
-	Name        common.JSONValue
-	SubResource common.JSONValue
-	Verb        common.JSONValue
+	Namespace   json.JSONValue
+	Group       json.JSONValue
+	Resource    json.JSONValue
+	Name        json.JSONValue
+	SubResource json.JSONValue
+	Verb        json.JSONValue
 }
 
 type KubernetesAuthz struct {
-	User               common.JSONValue
+	User               json.JSONValue
 	Groups             []string
 	ResourceAttributes *KubernetesAuthzResourceAttributes
 
@@ -62,7 +63,7 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx context.Context) 
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-	jsonValueToStr := func(value common.JSONValue) string {
+	jsonValueToStr := func(value json.JSONValue) string {
 		return fmt.Sprintf("%s", value.ResolveFor(authJSON))
 	}
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -138,7 +139,7 @@ func (pat *PAT) Get(rawurl string, ctx context.Context, v interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	return common.UnmashalJSONResponse(resp, &v, nil)
+	return json.UnmashalJSONResponse(resp, &v, nil)
 }
 
 func NewUMAMetadata(endpoint string, clientID string, clientSecret string) (*UMA, error) {
@@ -174,7 +175,7 @@ func (uma *UMA) discover() error {
 
 		var p providerJSON
 		var rawClaims []byte
-		if err = common.UnmashalJSONResponse(resp, &p, &rawClaims); err != nil {
+		if err = json.UnmashalJSONResponse(resp, &p, &rawClaims); err != nil {
 			return fmt.Errorf("failed to decode uma provider discovery object: %v", err)
 		}
 
@@ -247,7 +248,7 @@ func (uma *UMA) requestPAT(ctx context.Context, pat *PAT) error {
 	}
 
 	// parse the pat
-	if err := common.UnmashalJSONResponse(resp, pat, nil); err != nil {
+	if err := json.UnmashalJSONResponse(resp, pat, nil); err != nil {
 		return fmt.Errorf("failed to decode uma pat: %v", err)
 	}
 

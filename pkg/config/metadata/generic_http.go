@@ -3,7 +3,7 @@ package metadata
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,14 +11,15 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
 type GenericHttp struct {
 	Endpoint     string
 	Method       string
-	Parameters   []common.JSONProperty
-	Headers      []common.JSONProperty
+	Parameters   []json.JSONProperty
+	Headers      []json.JSONProperty
 	ContentType  string
 	SharedSecret string
 	auth.AuthCredentials
@@ -30,7 +31,7 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx context.Context) (int
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-	endpoint := common.ReplaceJSONPlaceholders(h.Endpoint, authJSON)
+	endpoint := json.ReplaceJSONPlaceholders(h.Endpoint, authJSON)
 
 	var requestBody io.Reader
 	var contentType string
@@ -84,7 +85,7 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx context.Context) (int
 
 	// parse the response
 	var claims map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&claims)
+	err = gojson.NewDecoder(resp.Body).Decode(&claims)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
 	case "application/x-www-form-urlencoded":
 		formData := url.Values{}
 		for key, value := range data {
-			if valueAsStr, err := common.StringifyJSON(value); err != nil {
+			if valueAsStr, err := json.StringifyJSON(value); err != nil {
 				return nil, fmt.Errorf("failed to encode http request")
 			} else {
 				formData.Set(key, valueAsStr)
@@ -111,7 +112,7 @@ func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
 		return bytes.NewBufferString(formData.Encode()), nil
 
 	case "application/json":
-		if dataJSON, err := json.Marshal(data); err != nil {
+		if dataJSON, err := gojson.Marshal(data); err != nil {
 			return nil, err
 		} else {
 			return bytes.NewBuffer(dataJSON), nil

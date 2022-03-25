@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
+	"github.com/kuadrant/authorino/pkg/json"
 )
 
 type JSONPatternMatching struct {
-	Rules []common.JSONPatternMatchingRule
+	Rules []json.JSONPatternMatchingRule
 }
 
 func (jsonAuth *JSONPatternMatching) Call(pipeline auth.AuthPipeline, ctx context.Context) (bool, error) {

@@ -3,15 +3,15 @@ package response
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	gojson "encoding/json"
 	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	jose "gopkg.in/square/go-jose.v2"
@@ -60,7 +60,7 @@ func (c *Claims) Valid() error {
 	return nil
 }
 
-func NewWristbandConfig(issuer string, claims []common.JSONProperty, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
+func NewWristbandConfig(issuer string, claims []json.JSONProperty, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
 	// token duration
 	var duration int64
 	if tokenDuration != nil {
@@ -84,7 +84,7 @@ func NewWristbandConfig(issuer string, claims []common.JSONProperty, tokenDurati
 
 type Wristband struct {
 	Issuer        string
-	CustomClaims  []common.JSONProperty
+	CustomClaims  []json.JSONProperty
 	TokenDuration int64
 	SigningKeys   []jose.JSONWebKey
 }
@@ -98,7 +98,7 @@ func (w *Wristband) Call(pipeline auth.AuthPipeline, ctx context.Context) (inter
 		return nil, nil
 	}
 
-	idStr, _ := json.Marshal(resolvedidentity)
+	idStr, _ := gojson.Marshal(resolvedidentity)
 	hash := sha256.New()
 	hash.Write(idStr)
 	sub := fmt.Sprintf("%x", hash.Sum(nil))
@@ -155,7 +155,7 @@ func (w *Wristband) OpenIDConfig() (string, error) {
 		SupportedSigningAlgs: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"},
 	}
 
-	if configJSON, err := json.Marshal(config); err != nil {
+	if configJSON, err := gojson.Marshal(config); err != nil {
 		return "", err
 	} else {
 		return string(configJSON), nil
@@ -173,7 +173,7 @@ func (w *Wristband) JWKS() (string, error) {
 		Keys: publicKeys,
 	}
 
-	if encodedJWKS, err := json.Marshal(jwks); err != nil {
+	if encodedJWKS, err := gojson.Marshal(jwks); err != nil {
 		return "", err
 	} else {
 		return string(encodedJWKS), nil

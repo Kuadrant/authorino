@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/response"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -20,7 +20,7 @@ const (
 	DEFAULT_WRAPPER = HTTP_HEADER_WRAPPER
 )
 
-func NewResponseConfig(name string, priority int, conditions []common.JSONPatternMatchingRule, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
+func NewResponseConfig(name string, priority int, conditions []json.JSONPatternMatchingRule, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
 	responseConfig := ResponseConfig{
 		Name:       name,
 		Priority:   priority,
@@ -42,12 +42,12 @@ func NewResponseConfig(name string, priority int, conditions []common.JSONPatter
 }
 
 type ResponseConfig struct {
-	Name       string                           `yaml:"name"`
-	Priority   int                              `yaml:"priority"`
-	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
-	Wrapper    string                           `yaml:"wrapper"`
-	WrapperKey string                           `yaml:"wrapperKey"`
-	Metrics    bool                             `yaml:"metrics"`
+	Name       string                         `yaml:"name"`
+	Priority   int                            `yaml:"priority"`
+	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
+	Wrapper    string                         `yaml:"wrapper"`
+	WrapperKey string                         `yaml:"wrapperKey"`
+	Metrics    bool                           `yaml:"metrics"`
 
 	Wristband   auth.WristbandIssuer  `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON `yaml:"json,omitempty"`
@@ -102,7 +102,7 @@ func (config *ResponseConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *ResponseConfig) GetConditions() []common.JSONPatternMatchingRule {
+func (config *ResponseConfig) GetConditions() []json.JSONPatternMatchingRule {
 	return config.Conditions
 }
 
@@ -125,7 +125,7 @@ func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders m
 	for responseConfig, authObj := range responses {
 		switch responseConfig.Wrapper {
 		case HTTP_HEADER_WRAPPER:
-			responseHeaders[responseConfig.WrapperKey], _ = common.StringifyJSON(authObj)
+			responseHeaders[responseConfig.WrapperKey], _ = json.StringifyJSON(authObj)
 		case ENVOY_DYNAMIC_METADATA_WRAPPER:
 			responseMetadata[responseConfig.WrapperKey] = authObj
 		}

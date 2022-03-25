@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/common"
 	"github.com/kuadrant/authorino/pkg/config/authorization"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -17,10 +17,10 @@ const (
 )
 
 type AuthorizationConfig struct {
-	Name       string                           `yaml:"name"`
-	Priority   int                              `yaml:"priority"`
-	Conditions []common.JSONPatternMatchingRule `yaml:"conditions"`
-	Metrics    bool                             `yaml:"metrics"`
+	Name       string                         `yaml:"name"`
+	Priority   int                            `yaml:"priority"`
+	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
+	Metrics    bool                           `yaml:"metrics"`
 
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
@@ -74,7 +74,7 @@ func (config *AuthorizationConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *AuthorizationConfig) GetConditions() []common.JSONPatternMatchingRule {
+func (config *AuthorizationConfig) GetConditions() []json.JSONPatternMatchingRule {
 	return config.Conditions
 }
 
