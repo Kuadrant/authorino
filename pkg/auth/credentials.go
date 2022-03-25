@@ -8,24 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kuadrant/authorino/pkg/log"
-
-	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
-
-// AuthCredentials interface represents the methods needed to fetch credentials from input
-type AuthCredentials interface {
-	GetCredentialsFromReq(*envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error)
-	GetCredentialsKeySelector() string
-	GetCredentialsIn() string
-	BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error)
-}
-
-// AuthCredential struct implements the AuthCredentials interface
-type AuthCredential struct {
-	KeySelector string `yaml:"keySelector"`
-	In          string `yaml:"in"`
-}
 
 const (
 	inCustomHeader = "custom_header"
@@ -42,11 +26,15 @@ const (
 	cookieHeaderNotSetMsg             = "the Cookie header is not set"
 )
 
-var (
-	logger = log.WithName("authcredential").V(1)
+var notFoundErr = fmt.Errorf(credentialNotFoundMsg)
 
-	notFoundErr = fmt.Errorf(credentialNotFoundMsg)
-)
+// AuthCredentials interface represents the methods needed to fetch credentials from input
+type AuthCredentials interface {
+	GetCredentialsFromReq(*envoy_auth.AttributeContext_HttpRequest) (string, error)
+	GetCredentialsKeySelector() string
+	GetCredentialsIn() string
+	BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error)
+}
 
 // NewAuthCredential creates a new instance of AuthCredential
 func NewAuthCredential(selector string, location string) *AuthCredential {
@@ -64,8 +52,14 @@ func NewAuthCredential(selector string, location string) *AuthCredential {
 	}
 }
 
+// AuthCredential struct implements the AuthCredentials interface
+type AuthCredential struct {
+	KeySelector string `yaml:"keySelector"`
+	In          string `yaml:"in"`
+}
+
 // GetCredentialsFromReq will retrieve the secrets from a given location
-func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoyServiceAuthV3.AttributeContext_HttpRequest) (string, error) {
+func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoy_auth.AttributeContext_HttpRequest) (string, error) {
 	switch c.In {
 	case inCustomHeader:
 		return getCredFromCustomHeader(httpReq.GetHeaders(), c.KeySelector)
@@ -131,7 +125,6 @@ func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoi
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {
 	cred, ok := headers[strings.ToLower(keyName)]
 	if !ok {
-		logger.Error(notFoundErr, credentialNotFoundInHeaderMsg)
 		return "", notFoundErr
 	}
 	return cred, nil
@@ -141,7 +134,6 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 	authHeader, ok := headers["authorization"]
 
 	if !ok {
-		logger.Error(notFoundErr, authHeaderNotSetMsg)
 		return "", notFoundErr
 	}
 	prefix := keyName + " "
@@ -154,7 +146,6 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 func getFromCookieHeader(headers map[string]string, keyName string) (string, error) {
 	header, ok := headers["cookie"]
 	if !ok {
-		logger.Error(notFoundErr, cookieHeaderNotSetMsg)
 		return "", notFoundErr
 	}
 

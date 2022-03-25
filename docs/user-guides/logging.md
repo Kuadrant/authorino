@@ -120,9 +120,6 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino.service.auth.authpipeline.authorization.kubernetesauthz` | `debug` | "calling kubernetes subject access review api" | `request id`, `subjectaccessreview` |
 | `authorino.service.auth.authpipeline.response` | `debug` | "dynamic response built" | `request id`, `config`, `object` |
 | `authorino.service.auth.authpipeline.response` | `debug` | "cannot build dynamic response" | `request id`, `config`, `reason` |
-| `authorino.authcredential` | `error` | "the credential was not found in the request header" | |
-| `authorino.authcredential` | `error` | "the Authorization header is not set" | |
-| `authorino.authcredential` | `error` | "the Cookie header is not set" | |
 
 ### Examples
 
