@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 
 	"gotest.tools/assert"
 )
@@ -23,7 +23,7 @@ func TestCache(t *testing.T) {
 	apiFindIdIdentityConfig := &BogusIdentity{}
 	identities := make([]auth.AuthConfigEvaluator, 1)
 	identities[0] = apiFindIdIdentityConfig
-	exampleConfig := config.APIConfig{
+	exampleConfig := evaluators.APIConfig{
 		IdentityConfigs:      identities,
 		MetadataConfigs:      nil,
 		AuthorizationConfigs: nil,

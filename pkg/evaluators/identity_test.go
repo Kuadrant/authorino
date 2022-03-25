@@ -1,11 +1,11 @@
-package config
+package evaluators
 
 import (
 	gojson "encoding/json"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	"github.com/golang/mock/gomock"

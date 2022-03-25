@@ -7,8 +7,8 @@ import (
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/config/identity"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 

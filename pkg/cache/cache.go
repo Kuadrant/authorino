@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 )
 
 type Cache interface {
-	Set(id string, key string, config config.APIConfig, override bool) error
-	Get(key string) *config.APIConfig
+	Set(id string, key string, config evaluators.APIConfig, override bool) error
+	Get(key string) *evaluators.APIConfig
 	Delete(id string)
 
 	FindId(key string) (id string, found bool)
@@ -18,7 +18,7 @@ type Cache interface {
 
 type cacheEntry struct {
 	Id        string
-	APIConfig config.APIConfig
+	APIConfig evaluators.APIConfig
 }
 
 type APIConfigsCache struct {
@@ -36,7 +36,7 @@ func NewCache() Cache {
 	}
 }
 
-func (c *APIConfigsCache) Get(key string) *config.APIConfig {
+func (c *APIConfigsCache) Get(key string) *evaluators.APIConfig {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -47,7 +47,7 @@ func (c *APIConfigsCache) Get(key string) *config.APIConfig {
 	}
 }
 
-func (c *APIConfigsCache) Set(id string, key string, config config.APIConfig, override bool) error {
+func (c *APIConfigsCache) Set(id string, key string, config evaluators.APIConfig, override bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

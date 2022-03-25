@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/config"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
@@ -70,17 +70,17 @@ func newEvaluationResponse(evaluator auth.AuthConfigEvaluator, obj interface{}, 
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) auth.AuthPipeline {
+func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, apiConfig evaluators.APIConfig) auth.AuthPipeline {
 	logger := log.FromContext(parentCtx).WithName("authpipeline")
 
 	return &AuthPipeline{
 		Context:       log.IntoContext(parentCtx, logger),
 		Request:       req,
 		API:           &apiConfig,
-		Identity:      make(map[*config.IdentityConfig]interface{}),
-		Metadata:      make(map[*config.MetadataConfig]interface{}),
-		Authorization: make(map[*config.AuthorizationConfig]interface{}),
-		Response:      make(map[*config.ResponseConfig]interface{}),
+		Identity:      make(map[*evaluators.IdentityConfig]interface{}),
+		Metadata:      make(map[*evaluators.MetadataConfig]interface{}),
+		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
+		Response:      make(map[*evaluators.ResponseConfig]interface{}),
 		Logger:        logger,
 	}
 }
@@ -91,12 +91,12 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 type AuthPipeline struct {
 	Context gocontext.Context
 	Request *envoy_auth.CheckRequest
-	API     *config.APIConfig
+	API     *evaluators.APIConfig
 
-	Identity      map[*config.IdentityConfig]interface{}
-	Metadata      map[*config.MetadataConfig]interface{}
-	Authorization map[*config.AuthorizationConfig]interface{}
-	Response      map[*config.ResponseConfig]interface{}
+	Identity      map[*evaluators.IdentityConfig]interface{}
+	Metadata      map[*evaluators.MetadataConfig]interface{}
+	Authorization map[*evaluators.AuthorizationConfig]interface{}
+	Response      map[*evaluators.ResponseConfig]interface{}
 
 	Logger log.Logger
 }
@@ -210,7 +210,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.IdentityConfig)
+			conf, _ := resp.Evaluator.(*evaluators.IdentityConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -265,7 +265,7 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.MetadataConfig)
+			conf, _ := resp.Evaluator.(*evaluators.MetadataConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -299,7 +299,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.AuthorizationConfig)
+			conf, _ := resp.Evaluator.(*evaluators.AuthorizationConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -329,7 +329,7 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.ResponseConfig)
+			conf, _ := resp.Evaluator.(*evaluators.ResponseConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -402,7 +402,7 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 			pipeline.evaluateResponseConfigs()
 
 			// auth result
-			responseHeaders, responseMetadata := config.WrapResponses(pipeline.Response)
+			responseHeaders, responseMetadata := evaluators.WrapResponses(pipeline.Response)
 			code := rpc.OK
 			pipeline.reportStatusMetric(code)
 			authResult <- auth.AuthResult{
@@ -490,7 +490,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	return string(authJSON)
 }
 
-func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, denyWith *config.DenyWithValues) auth.AuthResult {
+func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, denyWith *evaluators.DenyWithValues) auth.AuthResult {
 	if denyWith != nil {
 		if denyWith.Code != 0 {
 			authResult.Status = envoy_type.StatusCode(denyWith.Code)

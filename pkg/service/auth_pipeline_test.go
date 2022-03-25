@@ -8,8 +8,8 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	"github.com/kuadrant/authorino/pkg/config"
-	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -72,14 +72,14 @@ func (c *failConfig) GetPriority() int {
 	return c.priority
 }
 
-func newTestAuthPipeline(apiConfig config.APIConfig, req *envoy_auth.CheckRequest) AuthPipeline {
+func newTestAuthPipeline(apiConfig evaluators.APIConfig, req *envoy_auth.CheckRequest) AuthPipeline {
 	p := NewAuthPipeline(context.TODO(), req, apiConfig)
 	pipeline, _ := p.(*AuthPipeline)
 	return *pipeline
 }
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -101,7 +101,7 @@ func TestEvaluateOneAuthConfig(t *testing.T) {
 }
 
 func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -127,7 +127,7 @@ func TestEvaluateOneAuthConfigWithoutSuccess(t *testing.T) {
 }
 
 func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -153,7 +153,7 @@ func TestEvaluateOneAuthConfigWithoutError(t *testing.T) {
 }
 
 func TestEvaluateAllAuthConfigs(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -179,7 +179,7 @@ func TestEvaluateAllAuthConfigs(t *testing.T) {
 }
 
 func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -201,7 +201,7 @@ func TestEvaluateAllAuthConfigsWithError(t *testing.T) {
 }
 
 func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -227,7 +227,7 @@ func TestEvaluateAllAuthConfigsWithoutSuccess(t *testing.T) {
 }
 
 func TestEvaluateAnyAuthConfig(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -253,7 +253,7 @@ func TestEvaluateAnyAuthConfig(t *testing.T) {
 }
 
 func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&failConfig{}, &failConfig{}},
 	}, &requestMock)
 
@@ -279,7 +279,7 @@ func TestEvaluateAnyAuthConfigsWithoutSuccess(t *testing.T) {
 }
 
 func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -305,7 +305,7 @@ func TestEvaluateAnyAuthConfigsWithoutError(t *testing.T) {
 }
 
 func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&successConfig{}, &successConfig{}},
 	}, &requestMock)
 
@@ -324,10 +324,10 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(request.GetAttributes().GetRequest().Http).Return("xxx", nil)
 	authCredMock.EXPECT().GetCredentialsKeySelector().Return("APIKEY")
 
-	pipeline := newTestAuthPipeline(config.APIConfig{
-		IdentityConfigs: []auth.AuthConfigEvaluator{&config.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
-		DenyWith: config.DenyWith{
-			Unauthenticated: &config.DenyWithValues{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
+		IdentityConfigs: []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
+		DenyWith: evaluators.DenyWith{
+			Unauthenticated: &evaluators.DenyWithValues{
 				Code: 302,
 				Headers: []json.JSONProperty{
 					{Name: "X-Static-Header", Value: json.JSONValue{Static: "some-value"}},
@@ -353,13 +353,13 @@ func TestEvaluatePriorities(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig1 := &config.IdentityConfig{Priority: 0, MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
-	idConfig2 := &failConfig{priority: 1}                                    // should never be called; otherwise, it would throw an error as it's not a config.IdentityConfig
+	idConfig1 := &evaluators.IdentityConfig{Priority: 0, MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig2 := &failConfig{priority: 1}                                        // should never be called; otherwise, it would throw an error as it's not a config.IdentityConfig
 
 	authzConfig1 := &failConfig{priority: 0}
 	authzConfig2 := &successConfig{priority: 1} // should never be called
 
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig1, idConfig2},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig1, authzConfig2},
 	}, &request)
@@ -380,7 +380,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheAuthConfig(t *testing.T) {
 
 	idConfig := &successConfig{}
 
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		Conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
@@ -403,10 +403,10 @@ func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{}
 
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		Conditions: []json.JSONPatternMatchingRule{
 			{
 				Selector: "context.request.http.path",
@@ -430,7 +430,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{
 		conditions: []json.JSONPatternMatchingRule{
 			{
@@ -441,7 +441,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 		},
 	}
 
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)
@@ -458,7 +458,7 @@ func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig := &config.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{
 		conditions: []json.JSONPatternMatchingRule{
 			{
@@ -469,7 +469,7 @@ func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 		},
 	}
 
-	pipeline := newTestAuthPipeline(config.APIConfig{
+	pipeline := newTestAuthPipeline(evaluators.APIConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{idConfig},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
 	}, &request)

@@ -9,7 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
-	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -82,7 +82,7 @@ func TestAuthConfigLookup(t *testing.T) {
 	defer ctrl.Finish()
 	c := mock_cache.NewMockCache(ctrl)
 	service := AuthService{Cache: c}
-	authConfig := &config.APIConfig{}
+	authConfig := &evaluators.APIConfig{}
 
 	var resp *envoy_auth.CheckResponse
 	var err error

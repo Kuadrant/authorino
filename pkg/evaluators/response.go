@@ -1,11 +1,11 @@
-package config
+package evaluators
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/config/response"
+	"github.com/kuadrant/authorino/pkg/evaluators/response"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 )

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	jwt "github.com/dgrijalva/jwt-go"

@@ -12,7 +12,7 @@ import (
 
 	"gotest.tools/assert"
 
-	"github.com/kuadrant/authorino/pkg/config/identity"
+	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 )
 
 const (
