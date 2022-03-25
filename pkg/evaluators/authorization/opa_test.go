@@ -10,7 +10,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	mock_cron "github.com/kuadrant/authorino/pkg/cron/mocks"
+	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/mock/gomock"
@@ -142,7 +142,7 @@ func TestOPAClean(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	refresher := mock_cron.NewMockWorker(ctrl)
+	refresher := mock_workers.NewMockWorker(ctrl)
 	opa, _ := NewOPAAuthorization("test-opa", "", nil, false, 0, context.TODO())
 	opa.ExternalSource = &OPAExternalSource{
 		Endpoint:        "http://" + opaExtHttpServerMockAddr + "/rego",

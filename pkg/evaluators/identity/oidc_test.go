@@ -7,7 +7,7 @@ import (
 	"time"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
-	mock_cron "github.com/kuadrant/authorino/pkg/cron/mocks"
+	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
@@ -135,7 +135,7 @@ func TestOidcProviderRefreshClean(t *testing.T) {
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
-	refresher := mock_cron.NewMockWorker(ctrl)
+	refresher := mock_workers.NewMockWorker(ctrl)
 	evaluator.refresher = refresher
 	refresher.EXPECT().Stop()
 	err := evaluator.Clean(context.Background())

@@ -7,8 +7,8 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
-	"github.com/kuadrant/authorino/pkg/cron"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/workers"
 
 	goidc "github.com/coreos/go-oidc"
 )
@@ -24,7 +24,7 @@ type OIDC struct {
 	auth.AuthCredentials
 	Endpoint  string `yaml:"endpoint"`
 	provider  *goidc.Provider
-	refresher cron.Worker
+	refresher workers.Worker
 }
 
 func NewOIDC(endpoint string, creds auth.AuthCredentials, ttl int, ctx gocontext.Context) *OIDC {
@@ -116,7 +116,7 @@ func (oidc *OIDC) GetURL(name string, ctx gocontext.Context) (*url.URL, error) {
 func (oidc *OIDC) configureProviderRefresh(ttl int, ctx gocontext.Context) {
 	var err error
 
-	oidc.refresher, err = cron.StartWorker(ctx, ttl, func() {
+	oidc.refresher, err = workers.StartWorker(ctx, ttl, func() {
 		oidc.getProvider(ctx, true)
 	})
 

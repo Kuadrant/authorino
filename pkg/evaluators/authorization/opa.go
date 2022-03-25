@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/cron"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/workers"
 
 	opaParser "github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -196,7 +196,7 @@ type OPAExternalSource struct {
 	SharedSecret string
 	auth.AuthCredentials
 	TTL       int
-	refresher cron.Worker
+	refresher workers.Worker
 }
 
 func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
@@ -237,7 +237,7 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 
 	var startErr error
 
-	ext.refresher, startErr = cron.StartWorker(ctx, ext.TTL, func() {
+	ext.refresher, startErr = workers.StartWorker(ctx, ext.TTL, func() {
 		if downloadedRego, err := ext.downloadRegoDataFromUrl(); err == nil {
 			if updated, err := opa.updateRego(downloadedRego, ctx, false); updated {
 				logger.Info(msg_opaPolicyRefreshFromRegistrySuccess)
