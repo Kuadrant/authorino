@@ -45,6 +45,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const failedToCleanConfig = "failed to clean up all asynchronous workers"
+
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
@@ -69,9 +71,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// could not find the resouce: 404 Not found (resouce must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 
-		// clean the identity configs, i.e. shuts down channels and go routines
-		if err := r.cleanAllIdentityConfigs(cacheId, ctx); err != nil {
-			logger.Error(err, "failed to clean identity configs")
+		// clean all async workers of the config, i.e. shuts down channels and goroutines
+		if err := r.cleanConfigs(cacheId, ctx); err != nil {
+			logger.Error(err, failedToCleanConfig)
 		}
 
 		// delete related authconfigs from cache.
@@ -80,9 +82,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the cache
 
-		// clean the identity configs, i.e. shuts down channels and go routines
-		if err := r.cleanAllIdentityConfigs(cacheId, ctx); err != nil {
-			logger.Error(err, "failed to clean identity configs")
+		// clean all async workers of the config, i.e. shuts down channels and goroutines
+		if err := r.cleanConfigs(cacheId, ctx); err != nil {
+			logger.Error(err, failedToCleanConfig)
 		}
 
 		authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
@@ -110,17 +112,11 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
-func (r *AuthConfigReconciler) cleanAllIdentityConfigs(cacheId string, ctx context.Context) error {
+func (r *AuthConfigReconciler) cleanConfigs(cacheId string, ctx context.Context) error {
 	if hosts := r.Cache.FindKeys(cacheId); len(hosts) > 0 {
 		// no need to clean for all the hosts as the config should be the same
-		if apiConfig := r.Cache.Get(hosts[0]); apiConfig != nil {
-			for _, identityConfig := range apiConfig.IdentityConfigs {
-				if cleaner, ok := identityConfig.(common.AuthConfigCleaner); ok {
-					if err := cleaner.Clean(ctx); err != nil {
-						return err
-					}
-				}
-			}
+		if authConfig := r.Cache.Get(hosts[0]); authConfig != nil {
+			return authConfig.Clean(ctx)
 		}
 	}
 	return nil
@@ -335,10 +331,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[externalRegistry.SharedSecret.Key])
 			}
 
-			externalSource := authorinoAuthorization.OPAExternalSource{
+			externalSource := &authorinoAuthorization.OPAExternalSource{
 				Endpoint:        externalRegistry.Endpoint,
 				SharedSecret:    sharedSecret,
 				AuthCredentials: auth_credentials.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
+				TTL:             externalRegistry.TTL,
 			}
 
 			var err error

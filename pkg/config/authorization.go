@@ -82,3 +82,23 @@ func (config *AuthorizationConfig) GetConditions() []common.JSONPatternMatchingR
 func (config *AuthorizationConfig) MetricsEnabled() bool {
 	return config.Metrics
 }
+
+// impl:AuthConfigCleaner
+
+func (config *AuthorizationConfig) Clean(ctx context.Context) error {
+	if cleaner := config.getCleaner(); cleaner != nil {
+		logger := log.FromContext(ctx).WithName("authorization")
+		return cleaner.Clean(log.IntoContext(ctx, logger))
+	}
+	// it is ok for there to be no clean method as not all config types need it
+	return nil
+}
+
+func (config *AuthorizationConfig) getCleaner() common.AuthConfigCleaner {
+	switch {
+	case config.OPA != nil:
+		return config.OPA
+	default:
+		return nil
+	}
+}

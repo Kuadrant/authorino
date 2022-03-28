@@ -62,15 +62,6 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() common.AuthConfigEvaluato
 	}
 }
 
-func (config *IdentityConfig) GetAuthConfigCleaner() common.AuthConfigCleaner {
-	switch {
-	case config.OIDC != nil:
-		return config.OIDC
-	default:
-		return nil
-	}
-}
-
 // ensure IdentityConfig implements AuthConfigEvaluator
 var _ common.AuthConfigEvaluator = (*IdentityConfig)(nil)
 var _ common.AuthConfigCleaner = (*IdentityConfig)(nil)
@@ -128,13 +119,23 @@ func (config *IdentityConfig) GetConditions() []common.JSONPatternMatchingRule {
 }
 
 // impl:AuthConfigCleaner
+
 func (config *IdentityConfig) Clean(ctx context.Context) error {
-	if evaluator := config.GetAuthConfigCleaner(); evaluator != nil {
+	if cleaner := config.getCleaner(); cleaner != nil {
 		logger := log.FromContext(ctx).WithName("identity")
-		return evaluator.Clean(log.IntoContext(ctx, logger))
+		return cleaner.Clean(log.IntoContext(ctx, logger))
 	}
 	// it is ok for there to be no clean method as not all config types need it
 	return nil
+}
+
+func (config *IdentityConfig) getCleaner() common.AuthConfigCleaner {
+	switch {
+	case config.OIDC != nil:
+		return config.OIDC
+	default:
+		return nil
+	}
 }
 
 // impl:IdentityConfigEvaluator

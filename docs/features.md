@@ -209,7 +209,7 @@ The `kid` claim stated in the JWT header must match one of the keys cached by Au
 
 The decoded payload of the validated JWT is appended to the authorization JSON as the resolved identity.
 
-Users can control the refreshing frequency of OpenID Connect configurations by setting the `identity.oidc.ttl` field.
+OpenID Connect configurations and linked JSON Web Ket Sets can be configured to be automatically refreshed (pull again from the OpenID Connect Discovery well-known endpoints), by setting the `identity.oidc.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
 
 For an excellent summary of the underlying concepts and standards that relate OpenID Connect and JSON Object Signing and Encryption (JOSE), see this [article](https://access.redhat.com/blogs/766093/posts/1976593) by Jan Rusnacko. For official specification and RFCs, see [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html), [JSON Web Token (JWT) (RFC7519)](https://datatracker.ietf.org/doc/html/rfc7519), and [JSON Object Signing and Encryption (JOSE)](http://www.iana.org/assignments/jose/jose.xhtml).
 
@@ -387,6 +387,8 @@ spec:
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs.
 
 Policies can be either declared in-line in Rego language (`inlineRego`) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time (`externalRegistry`).
+
+Policies pulled from external registries can be configured to be automatically refreshed (pulled again from the external registry), by setting the `authorization.opa.externalRegistry.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
 
 Authorino's built-in OPA module precompiles the policies during reconciliation of the AUthConfig and caches the precompiled policies for fast evaluation in runtime, where they receive the Authorization JSON as input.
 

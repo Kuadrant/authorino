@@ -265,11 +265,13 @@ For information about reading and fetching data from the Authorization JSON (syn
 
 ### OpenID Connect and User-Managed Access configs
 
-OpenID Connect and User-Managed Access configurations discovered in reconciliation-time.
+OpenID Connect and User-Managed Access configurations, discovered usually at reconciliation-time from well-known discovery endpoints.
+
+Cached individual OpenID Connect configurations discovered by Authorino can be configured to be auto-refreshed (updated in the cache), by setting the corresponding `spec.identity.oidc.ttl` field in the AuthConfig (given in seconds, default: `0` – i.e. no cache update).
 
 ### JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)
 
-JSON signature verification certificates discovered usually in reconciliation-time, following an OIDC discovery associated to an identity source.
+JSON signature verification certificates linked by discovered OpenID Connect configurations, fetched usually at reconciliation-time.
 
 ### Revoked access tokens
 
@@ -293,7 +295,9 @@ Caching of resource data obtained in previous requests.
 
 ### Compiled Rego policies
 
-Performed automatically by Authorino in reconciliation-time for the authorization policies based on the built-in OPA module.
+Performed automatically by Authorino at reconciliation-time for the authorization policies based on the built-in OPA module.
+
+Precompiled and cached individual Rego policies originally pulled by Authorino from external registries can be configured to be auto-refreshed (updated in the cache), by setting the corresponding `spec.authorization.opa.externalRegistry.ttl` field in the AuthConfig (given in seconds, default: `0` – i.e. no cache update).
 
 ### Repeated requests
 

@@ -10,6 +10,7 @@ require (
 	github.com/gogo/googleapis v1.3.0
 	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/open-policy-agent/opa v0.37.2

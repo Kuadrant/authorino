@@ -95,6 +95,8 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino.service.auth.authpipeline.identity` | `debug` | "cannot validate identity" | `request id`, `config`, `reason` |
 | `authorino.service.auth.authpipeline.identity` | `error` | "failed to extend identity object" | `request id`, `config`, `object` |
 | `authorino.service.auth.authpipeline.identity.oidc` | `error` | "failed to discovery openid connect configuration" | `endpoint` |
+| `authorino.service.auth.authpipeline.identity.oidc` | `debug` | "auto-refresh of openid connect configuration disabled" | `endpoint`, `reason` |
+| `authorino.service.auth.authpipeline.identity.oidc` | `debug` | "openid connect configuration updated" | `endpoint` |
 | `authorino.service.auth.authpipeline.identity.oauth2` | `debug` | "sending token introspection request" | `request id`, `url`, `data` |
 | `authorino.service.auth.authpipeline.identity.kubernetesauth` | `debug` | "calling kubernetes token review api" | `request id`, `tokenreview` |
 | `authorino.service.auth.authpipeline.identity.apikey` | `error` | "Something went wrong fetching the authorized credentials" | |
@@ -108,8 +110,13 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino.service.auth.authpipeline.authorization` | `debug` | "evaluating for input" | `request id`, `input` |
 | `authorino.service.auth.authpipeline.authorization` | `debug` | "access granted" | `request id`, `config`, `object` |
 | `authorino.service.auth.authpipeline.authorization` | `debug` | "access denied" | `request id`, `config`, `reason` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "Invalid response from OPA policy evaluation" | `secret` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "Failed to precompile OPA policy" | `secret` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "invalid response from policy evaluation" | `policy` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to precompile policy" | `policy` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to download policy from external registry" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to refresh policy from external registry" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `debug` | "external policy unchanged" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `debug` | "auto-refresh  of external policy disabled" | `policy`, `endpoint`, `reason` |
+| `authorino.service.auth.authpipeline.authorization.opa` | `info` | "policy updated from external registry" | `policy`, `endpoint` |
 | `authorino.service.auth.authpipeline.authorization.kubernetesauthz` | `debug` | "calling kubernetes subject access review api" | `request id`, `subjectaccessreview` |
 | `authorino.service.auth.authpipeline.response` | `debug` | "dynamic response built" | `request id`, `config`, `object` |
 | `authorino.service.auth.authpipeline.response` | `debug` | "cannot build dynamic response" | `request id`, `config`, `reason` |
