@@ -1,0 +1,28 @@
+name: End-to-end Tests
+
+on: [workflow_dispatch, push]
+
+jobs:
+  e2e-tests:
+    name: End-to-end Tests
+    strategy:
+      matrix:
+        go-version: [1.17.x]
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+        id: go
+      - name: Install jq
+        run: sudo apt-get install jq
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Run make e2e
+        run: |
+          make e2e
