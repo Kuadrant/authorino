@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/pkg/cache"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +19,7 @@ import (
 type AuthConfigStatusUpdater struct {
 	client.Client
 	Logger        logr.Logger
+	Cache         cache.Cache
 	LabelSelector labels.Selector
 }
 
@@ -38,17 +41,21 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to update its status
-		err := u.updateAuthConfigStatus(ctx, &authConfig, true)
-
-		if err == nil {
+		if err := u.updateAuthConfigStatus(ctx, req.String(), &authConfig, true); err != nil {
+			logger.Info(err.Error())
+			return ctrl.Result{Requeue: true}, nil
+		} else {
 			logger.Info("resource status updated")
+			return ctrl.Result{}, nil
 		}
-
-		return ctrl.Result{}, err
 	}
 }
 
-func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, authConfig *api.AuthConfig, ready bool) error {
+func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, cacheId string, authConfig *api.AuthConfig, ready bool) error {
+	if len(u.Cache.FindKeys(cacheId)) == 0 {
+		return fmt.Errorf("resource not ready")
+	}
+
 	authConfig.Status.Ready = ready
 	authConfig.Status.NumIdentitySources = int64(len(authConfig.Spec.Identity))
 	authConfig.Status.NumMetadataSources = int64(len(authConfig.Spec.Metadata))
