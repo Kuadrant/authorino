@@ -6,9 +6,9 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -66,21 +66,21 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 		host = requestData.Host
 	}
 
-	apiConfig := a.Cache.Get(host)
+	authConfig := a.Cache.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
-	if apiConfig == nil && strings.Contains(host, ":") {
+	if authConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
-		apiConfig = a.Cache.Get(splitHost[0])
+		authConfig = a.Cache.Get(splitHost[0])
 	}
 
-	// If we couldn't find the APIConfig in the config, we return and deny.
-	if apiConfig == nil {
-		result := common.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
+	// If we couldn't find the AuthConfig in the config, we return and deny.
+	if authConfig == nil {
+		result := auth.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
 		a.logAuthResult(result, ctx)
 		return a.deniedResponse(result), nil
 	}
 
-	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *apiConfig)
+	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *authConfig)
 	result := pipeline.Evaluate()
 
 	a.logAuthResult(result, ctx)
@@ -92,7 +92,7 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 	}
 }
 
-func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult auth.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := buildEnvoyDynamicMetadata(authResult.Metadata)
 	if err != nil {
 		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
@@ -114,7 +114,7 @@ func (a *AuthService) successResponse(authResult common.AuthResult, ctx context.
 	}
 }
 
-func (a *AuthService) deniedResponse(authResult common.AuthResult) *envoy_auth.CheckResponse {
+func (a *AuthService) deniedResponse(authResult auth.AuthResult) *envoy_auth.CheckResponse {
 	code := authResult.Code
 	reportStatusMetric(code)
 
@@ -175,14 +175,14 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx context.C
 	}
 }
 
-func (a *AuthService) logAuthResult(result common.AuthResult, ctx context.Context) {
+func (a *AuthService) logAuthResult(result auth.AuthResult, ctx context.Context) {
 	logger := log.FromContext(ctx)
 	success := result.Success()
 	baseLogData := []interface{}{"authorized", success, "response", result.Code.String()}
 
 	logData := baseLogData
 	if !success {
-		reducedResult := common.AuthResult{
+		reducedResult := auth.AuthResult{
 			Code:    result.Code,
 			Status:  result.Status,
 			Message: result.Message,

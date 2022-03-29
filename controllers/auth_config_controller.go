@@ -22,16 +22,15 @@ import (
 	"strings"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/auth_credentials"
-	"github.com/kuadrant/authorino/pkg/common/log"
-	"github.com/kuadrant/authorino/pkg/config"
-	authorinoService "github.com/kuadrant/authorino/pkg/config"
-	authorinoAuthorization "github.com/kuadrant/authorino/pkg/config/authorization"
-	authorinoIdentity "github.com/kuadrant/authorino/pkg/config/identity"
-	authorinoMetadata "github.com/kuadrant/authorino/pkg/config/metadata"
-	authorinoResponse "github.com/kuadrant/authorino/pkg/config/response"
+	"github.com/kuadrant/authorino/pkg/evaluators"
+	authorization_evaluators "github.com/kuadrant/authorino/pkg/evaluators/authorization"
+	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
+	metadata_evaluators "github.com/kuadrant/authorino/pkg/evaluators/metadata"
+	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/go-logr/logr"
 	"gopkg.in/square/go-jose.v2"
@@ -87,12 +86,12 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Error(err, failedToCleanConfig)
 		}
 
-		authConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
+		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		for host, apiConfig := range authConfigByHost {
+		for host, evaluatorConfig := range evaluatorConfigByHost {
 			// Check for host collision with another namespace
 			if cachedKey, found := r.Cache.FindId(host); found {
 				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
@@ -101,7 +100,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				}
 			}
 
-			if err := r.Cache.Set(cacheId, host, apiConfig, true); err != nil {
+			if err := r.Cache.Set(cacheId, host, evaluatorConfig, true); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -122,26 +121,26 @@ func (r *AuthConfigReconciler) cleanConfigs(cacheId string, ctx context.Context)
 	return nil
 }
 
-func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (map[string]authorinoService.APIConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (map[string]evaluators.AuthConfig, error) {
 	var ctxWithLogger context.Context
 
-	identityConfigs := make([]config.IdentityConfig, 0)
-	interfacedIdentityConfigs := make([]common.AuthConfigEvaluator, 0)
+	identityConfigs := make([]evaluators.IdentityConfig, 0)
+	interfacedIdentityConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
 	for _, identity := range authConfig.Spec.Identity {
-		extendedProperties := make([]common.JSONProperty, 0)
+		extendedProperties := make([]json.JSONProperty, 0)
 		for _, property := range identity.ExtendedProperties {
-			extendedProperties = append(extendedProperties, common.JSONProperty{
+			extendedProperties = append(extendedProperties, json.JSONProperty{
 				Name: property.Name,
-				Value: common.JSONValue{
+				Value: json.JSONValue{
 					Static:  property.Value,
 					Pattern: property.ValueFrom.AuthJSON,
 				},
 			})
 		}
 
-		translatedIdentity := &config.IdentityConfig{
+		translatedIdentity := &evaluators.IdentityConfig{
 			Name:               identity.Name,
 			Priority:           identity.Priority,
 			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
@@ -149,7 +148,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Metrics:            identity.Metrics,
 		}
 
-		authCred := auth_credentials.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
+		authCred := auth.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
 
 		switch identity.GetType() {
 		// oauth2
@@ -164,7 +163,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
-			translatedIdentity.OAuth2 = authorinoIdentity.NewOAuth2Identity(
+			translatedIdentity.OAuth2 = identity_evaluators.NewOAuth2Identity(
 				oauth2Identity.TokenIntrospectionUrl,
 				oauth2Identity.TokenTypeHint,
 				string(secret.Data["clientID"]),
@@ -174,7 +173,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// oidc
 		case api.IdentityOidc:
-			translatedIdentity.OIDC = authorinoIdentity.NewOIDC(identity.Oidc.Endpoint, authCred, identity.Oidc.TTL, ctxWithLogger)
+			translatedIdentity.OIDC = identity_evaluators.NewOIDC(identity.Oidc.Endpoint, authCred, identity.Oidc.TTL, ctxWithLogger)
 
 		// apiKey
 		case api.IdentityApiKey:
@@ -182,18 +181,18 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if identity.APIKey.AllNamespaces && r.ClusterWide() {
 				namespace = ""
 			}
-			translatedIdentity.APIKey = authorinoIdentity.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, namespace, authCred, r.Client, ctxWithLogger)
+			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, namespace, authCred, r.Client, ctxWithLogger)
 
 		// kubernetes auth
 		case api.IdentityKubernetesAuth:
-			if k8sAuthConfig, err := authorinoIdentity.NewKubernetesAuthIdentity(authCred, identity.KubernetesAuth.Audiences); err != nil {
+			if k8sAuthConfig, err := identity_evaluators.NewKubernetesAuthIdentity(authCred, identity.KubernetesAuth.Audiences); err != nil {
 				return nil, err
 			} else {
 				translatedIdentity.KubernetesAuth = k8sAuthConfig
 			}
 
 		case api.IdentityAnonymous:
-			translatedIdentity.Noop = &authorinoIdentity.Noop{AuthCredentials: authCred}
+			translatedIdentity.Noop = &identity_evaluators.Noop{AuthCredentials: authCred}
 
 		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown identity type %v", identity)
@@ -203,10 +202,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedIdentityConfigs = append(interfacedIdentityConfigs, translatedIdentity)
 	}
 
-	interfacedMetadataConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for _, metadata := range authConfig.Spec.Metadata {
-		translatedMetadata := &config.MetadataConfig{
+		translatedMetadata := &evaluators.MetadataConfig{
 			Name:       metadata.Name,
 			Priority:   metadata.Priority,
 			Conditions: buildJSONPatternExpressions(authConfig, metadata.Conditions),
@@ -224,7 +223,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
-			if uma, err := authorinoMetadata.NewUMAMetadata(
+			if uma, err := metadata_evaluators.NewUMAMetadata(
 				metadata.UMA.Endpoint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
@@ -236,7 +235,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// user_info
 		case api.MetadataUserinfo:
-			translatedMetadata.UserInfo = &authorinoMetadata.UserInfo{}
+			translatedMetadata.UserInfo = &metadata_evaluators.UserInfo{}
 
 			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource); err != nil {
 				return nil, err
@@ -262,36 +261,36 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[sharedSecretRef.Key])
 			}
 
-			params := make([]common.JSONProperty, 0, len(genericHttp.Parameters))
+			params := make([]json.JSONProperty, 0, len(genericHttp.Parameters))
 			for _, param := range genericHttp.Parameters {
-				params = append(params, common.JSONProperty{
+				params = append(params, json.JSONProperty{
 					Name: param.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  param.Value,
 						Pattern: param.ValueFrom.AuthJSON,
 					},
 				})
 			}
 
-			headers := make([]common.JSONProperty, 0, len(genericHttp.Headers))
+			headers := make([]json.JSONProperty, 0, len(genericHttp.Headers))
 			for _, header := range genericHttp.Headers {
-				headers = append(headers, common.JSONProperty{
+				headers = append(headers, json.JSONProperty{
 					Name: header.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  header.Value,
 						Pattern: header.ValueFrom.AuthJSON,
 					},
 				})
 			}
 
-			translatedMetadata.GenericHTTP = &authorinoMetadata.GenericHttp{
+			translatedMetadata.GenericHTTP = &metadata_evaluators.GenericHttp{
 				Endpoint:        genericHttp.Endpoint,
 				Method:          string(genericHttp.Method),
 				Parameters:      params,
 				Headers:         headers,
 				ContentType:     string(genericHttp.ContentType),
 				SharedSecret:    sharedSecret,
-				AuthCredentials: auth_credentials.NewAuthCredential(creds.KeySelector, string(creds.In)),
+				AuthCredentials: auth.NewAuthCredential(creds.KeySelector, string(creds.In)),
 			}
 
 		case api.TypeUnknown:
@@ -301,11 +300,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedMetadataConfigs = append(interfacedMetadataConfigs, translatedMetadata)
 	}
 
-	interfacedAuthorizationConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedAuthorizationConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
 	for index, authorization := range authConfig.Spec.Authorization {
-		translatedAuthorization := &config.AuthorizationConfig{
+		translatedAuthorization := &evaluators.AuthorizationConfig{
 			Name:       authorization.Name,
 			Priority:   authorization.Priority,
 			Conditions: buildJSONPatternExpressions(authConfig, authorization.Conditions),
@@ -331,44 +330,44 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[externalRegistry.SharedSecret.Key])
 			}
 
-			externalSource := &authorinoAuthorization.OPAExternalSource{
+			externalSource := &authorization_evaluators.OPAExternalSource{
 				Endpoint:        externalRegistry.Endpoint,
 				SharedSecret:    sharedSecret,
-				AuthCredentials: auth_credentials.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
+				AuthCredentials: auth.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
 				TTL:             externalRegistry.TTL,
 			}
 
 			var err error
-			translatedAuthorization.OPA, err = authorinoAuthorization.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, opa.AllValues, index, ctxWithLogger)
+			translatedAuthorization.OPA, err = authorization_evaluators.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, opa.AllValues, index, ctxWithLogger)
 			if err != nil {
 				return nil, err
 			}
 
 		// json
 		case api.AuthorizationJSONPatternMatching:
-			translatedAuthorization.JSON = &authorinoAuthorization.JSONPatternMatching{
+			translatedAuthorization.JSON = &authorization_evaluators.JSONPatternMatching{
 				Rules: buildJSONPatternExpressions(authConfig, authorization.JSON.Rules),
 			}
 
 		case api.AuthorizationKubernetesAuthz:
 			user := authorization.KubernetesAuthz.User
-			authorinoUser := common.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
+			authorinoUser := json.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
 
-			var authorinoResourceAttributes *authorinoAuthorization.KubernetesAuthzResourceAttributes
+			var authorinoResourceAttributes *authorization_evaluators.KubernetesAuthzResourceAttributes
 			resourceAttributes := authorization.KubernetesAuthz.ResourceAttributes
 			if resourceAttributes != nil {
-				authorinoResourceAttributes = &authorinoAuthorization.KubernetesAuthzResourceAttributes{
-					Namespace:   common.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
-					Group:       common.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
-					Resource:    common.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
-					Name:        common.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
-					SubResource: common.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
-					Verb:        common.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
+				authorinoResourceAttributes = &authorization_evaluators.KubernetesAuthzResourceAttributes{
+					Namespace:   json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
+					Group:       json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
+					Resource:    json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
+					Name:        json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
+					SubResource: json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
+					Verb:        json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
 				}
 			}
 
 			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorinoAuthorization.NewKubernetesAuthz(authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
+			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}
@@ -380,10 +379,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, translatedAuthorization)
 	}
 
-	interfacedResponseConfigs := make([]common.AuthConfigEvaluator, 0)
+	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for _, response := range authConfig.Spec.Response {
-		translatedResponse := config.NewResponseConfig(
+		translatedResponse := evaluators.NewResponseConfig(
 			response.Name,
 			response.Priority,
 			buildJSONPatternExpressions(authConfig, response.Conditions),
@@ -407,7 +406,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				if err := r.Client.Get(ctx, secretName, secret); err != nil {
 					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 				} else {
-					if signingKey, err := authorinoResponse.NewSigningKey(
+					if signingKey, err := response_evaluators.NewSigningKey(
 						signingKeyRef.Name,
 						string(signingKeyRef.Algorithm),
 						secret.Data["key.pem"],
@@ -419,18 +418,18 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				}
 			}
 
-			customClaims := make([]common.JSONProperty, 0)
+			customClaims := make([]json.JSONProperty, 0)
 			for _, claim := range wristband.CustomClaims {
-				customClaims = append(customClaims, common.JSONProperty{
+				customClaims = append(customClaims, json.JSONProperty{
 					Name: claim.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  claim.Value,
 						Pattern: claim.ValueFrom.AuthJSON,
 					},
 				})
 			}
 
-			if authorinoWristband, err := authorinoResponse.NewWristbandConfig(
+			if authorinoWristband, err := response_evaluators.NewWristbandConfig(
 				wristband.Issuer,
 				customClaims,
 				wristband.TokenDuration,
@@ -443,19 +442,19 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// dynamic json
 		case api.ResponseDynamicJSON:
-			jsonProperties := make([]common.JSONProperty, 0)
+			jsonProperties := make([]json.JSONProperty, 0)
 
 			for _, property := range response.JSON.Properties {
-				jsonProperties = append(jsonProperties, common.JSONProperty{
+				jsonProperties = append(jsonProperties, json.JSONProperty{
 					Name: property.Name,
-					Value: common.JSONValue{
+					Value: json.JSONValue{
 						Static:  property.Value,
 						Pattern: property.ValueFrom.AuthJSON,
 					},
 				})
 			}
 
-			translatedResponse.DynamicJSON = authorinoResponse.NewDynamicJSONResponse(jsonProperties)
+			translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
 		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown response type %v", response)
@@ -464,9 +463,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 	}
 
-	config := make(map[string]authorinoService.APIConfig)
-
-	apiConfig := authorinoService.APIConfig{
+	evaluatorConfig := evaluators.AuthConfig{
 		Conditions:           buildJSONPatternExpressions(authConfig, authConfig.Spec.Conditions),
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
@@ -477,14 +474,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	// denyWith
 	if denyWith := authConfig.Spec.DenyWith; denyWith != nil {
-		apiConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
-		apiConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
+		evaluatorConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
+		evaluatorConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
 	}
 
+	evaluatorConfigByHost := make(map[string]evaluators.AuthConfig)
 	for _, host := range authConfig.Spec.Hosts {
-		config[host] = apiConfig
+		evaluatorConfigByHost[host] = evaluatorConfig
 	}
-	return config, nil
+	return evaluatorConfigByHost, nil
 }
 
 func (r *AuthConfigReconciler) ClusterWide() bool {
@@ -497,7 +495,7 @@ func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name string) (*config.IdentityConfig, error) {
+func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {
 	for _, id := range identityConfigs {
 		if id.Name == name {
 			return &id, nil
@@ -506,8 +504,8 @@ func findIdentityConfigByName(identityConfigs []config.IdentityConfig, name stri
 	return nil, fmt.Errorf("missing identity config %v", name)
 }
 
-func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSONPattern) []common.JSONPatternMatchingRule {
-	expressions := []common.JSONPatternMatchingRule{}
+func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSONPattern) []json.JSONPatternMatchingRule {
+	expressions := []json.JSONPatternMatchingRule{}
 
 	for _, pattern := range patterns {
 		expressionsToAdd := api.JSONPatternExpressions{}
@@ -519,7 +517,7 @@ func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSON
 		}
 
 		for _, expression := range expressionsToAdd {
-			expressions = append(expressions, common.JSONPatternMatchingRule{
+			expressions = append(expressions, json.JSONPatternMatchingRule{
 				Selector: expression.Selector,
 				Operator: string(expression.Operator),
 				Value:    expression.Value,
@@ -530,17 +528,17 @@ func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSON
 	return expressions
 }
 
-func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *authorinoService.DenyWithValues {
+func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.DenyWithValues {
 	if denyWithSpec == nil {
 		return nil
 	}
 
-	headers := make([]common.JSONProperty, 0, len(denyWithSpec.Headers))
+	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
 	for _, header := range denyWithSpec.Headers {
-		headers = append(headers, common.JSONProperty{Name: header.Name, Value: common.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
+		headers = append(headers, json.JSONProperty{Name: header.Name, Value: json.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
 	}
 
-	return &authorinoService.DenyWithValues{
+	return &evaluators.DenyWithValues{
 		Code:    int32(denyWithSpec.Code),
 		Message: denyWithSpec.Message,
 		Headers: headers,

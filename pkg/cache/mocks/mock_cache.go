@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	config "github.com/kuadrant/authorino/pkg/config"
+	evaluators "github.com/kuadrant/authorino/pkg/evaluators"
 )
 
 // MockCache is a mock of Cache interface.
@@ -76,10 +76,10 @@ func (mr *MockCacheMockRecorder) FindKeys(id interface{}) *gomock.Call {
 }
 
 // Get mocks base method.
-func (m *MockCache) Get(key string) *config.APIConfig {
+func (m *MockCache) Get(key string) *evaluators.AuthConfig {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", key)
-	ret0, _ := ret[0].(*config.APIConfig)
+	ret0, _ := ret[0].(*evaluators.AuthConfig)
 	return ret0
 }
 
@@ -90,7 +90,7 @@ func (mr *MockCacheMockRecorder) Get(key interface{}) *gomock.Call {
 }
 
 // Set mocks base method.
-func (m *MockCache) Set(id, key string, config config.APIConfig, override bool) error {
+func (m *MockCache) Set(id, key string, config evaluators.AuthConfig, override bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", id, key, config, override)
 	ret0, _ := ret[0].(error)

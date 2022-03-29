@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 )
 
 type Cache interface {
-	Set(id string, key string, config config.APIConfig, override bool) error
-	Get(key string) *config.APIConfig
+	Set(id string, key string, config evaluators.AuthConfig, override bool) error
+	Get(key string) *evaluators.AuthConfig
 	Delete(id string)
 
 	FindId(key string) (id string, found bool)
@@ -17,11 +17,11 @@ type Cache interface {
 }
 
 type cacheEntry struct {
-	Id        string
-	APIConfig config.APIConfig
+	Id         string
+	AuthConfig evaluators.AuthConfig
 }
 
-type APIConfigsCache struct {
+type AuthConfigsCache struct {
 	// TODO: move to RWMutex?
 	mu      sync.Mutex
 	entries map[string]cacheEntry
@@ -29,32 +29,32 @@ type APIConfigsCache struct {
 }
 
 func NewCache() Cache {
-	return &APIConfigsCache{
+	return &AuthConfigsCache{
 		mu:      sync.Mutex{},
 		entries: make(map[string]cacheEntry),
 		keys:    make(map[string][]string),
 	}
 }
 
-func (c *APIConfigsCache) Get(key string) *config.APIConfig {
+func (c *AuthConfigsCache) Get(key string) *evaluators.AuthConfig {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if entry, ok := c.entries[key]; ok {
-		return &entry.APIConfig
+		return &entry.AuthConfig
 	} else {
 		return nil
 	}
 }
 
-func (c *APIConfigsCache) Set(id string, key string, config config.APIConfig, override bool) error {
+func (c *AuthConfigsCache) Set(id string, key string, config evaluators.AuthConfig, override bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if _, ok := c.entries[key]; !ok || override {
 		c.entries[key] = cacheEntry{
-			Id:        id,
-			APIConfig: config,
+			Id:         id,
+			AuthConfig: config,
 		}
 	} else {
 		return fmt.Errorf("service already exists in cache: %s", key)
@@ -64,7 +64,7 @@ func (c *APIConfigsCache) Set(id string, key string, config config.APIConfig, ov
 	return nil
 }
 
-func (c *APIConfigsCache) Delete(id string) {
+func (c *AuthConfigsCache) Delete(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -73,7 +73,7 @@ func (c *APIConfigsCache) Delete(id string) {
 	}
 }
 
-func (c *APIConfigsCache) FindId(key string) (id string, found bool) {
+func (c *AuthConfigsCache) FindId(key string) (id string, found bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -84,7 +84,7 @@ func (c *APIConfigsCache) FindId(key string) (id string, found bool) {
 	}
 }
 
-func (c *APIConfigsCache) FindKeys(id string) []string {
+func (c *AuthConfigsCache) FindKeys(id string) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

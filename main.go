@@ -35,11 +35,10 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	configv1beta1 "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/cache"
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
 
@@ -87,18 +86,18 @@ const (
 )
 
 var (
-	watchNamespace                 = common.FetchEnv(envWatchNamespace, defaultWatchNamespace)
-	watchedAuthConfigLabelSelector = common.FetchEnv(envWatchedAuthConfigLabelSelector, defaultWatchedAuthConfigLabelSelector)
-	watchedSecretLabelSelector     = common.FetchEnv(envWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector)
-	logLevel                       = common.FetchEnv(envLogLevel, defaultLogLevel)
-	logMode                        = common.FetchEnv(envLogMode, defaultLogMode)
-	extAuthGRPCPort                = common.FetchEnv(envExtAuthGRPCPort, defaultExtAuthGRPCPort)
-	tlsCertPath                    = common.FetchEnv(envTLSCertPath, defaultTLSCertPath)
-	tlsCertKeyPath                 = common.FetchEnv(envTLSCertKeyPath, defaultTLSCertKeyPath)
-	oidcHTTPPort                   = common.FetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
-	oidcTLSCertPath                = common.FetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
-	oidcTLSCertKeyPath             = common.FetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
-	deepMetricEnabled              = common.FetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
+	watchNamespace                 = fetchEnv(envWatchNamespace, defaultWatchNamespace)
+	watchedAuthConfigLabelSelector = fetchEnv(envWatchedAuthConfigLabelSelector, defaultWatchedAuthConfigLabelSelector)
+	watchedSecretLabelSelector     = fetchEnv(envWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector)
+	logLevel                       = fetchEnv(envLogLevel, defaultLogLevel)
+	logMode                        = fetchEnv(envLogMode, defaultLogMode)
+	extAuthGRPCPort                = fetchEnv(envExtAuthGRPCPort, defaultExtAuthGRPCPort)
+	tlsCertPath                    = fetchEnv(envTLSCertPath, defaultTLSCertPath)
+	tlsCertKeyPath                 = fetchEnv(envTLSCertKeyPath, defaultTLSCertKeyPath)
+	oidcHTTPPort                   = fetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
+	oidcTLSCertPath                = fetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
+	oidcTLSCertKeyPath             = fetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
+	deepMetricEnabled              = fetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
 
 	scheme  = runtime.NewScheme()
 	logOpts = log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
@@ -108,7 +107,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(configv1beta1.AddToScheme(scheme))
+	utilruntime.Must(api.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
 	log.SetLogger(logger, logOpts)
@@ -311,5 +310,14 @@ func startOIDCServer(authConfigCache cache.Cache) {
 				os.Exit(1)
 			}
 		}()
+	}
+}
+
+func fetchEnv(key string, def string) string {
+	val, ok := os.LookupEnv(key)
+	if !ok {
+		return def
+	} else {
+		return val
 	}
 }

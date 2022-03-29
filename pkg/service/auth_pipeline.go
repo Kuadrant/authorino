@@ -1,20 +1,22 @@
 package service
 
 import (
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"sort"
 	"sync"
 
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
-	"github.com/kuadrant/authorino/pkg/config"
+	"github.com/kuadrant/authorino/pkg/auth"
+	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
-	"golang.org/x/net/context"
+	gocontext "golang.org/x/net/context"
 )
 
 var (
@@ -46,7 +48,7 @@ func init() {
 }
 
 type EvaluationResponse struct {
-	Evaluator common.AuthConfigEvaluator
+	Evaluator auth.AuthConfigEvaluator
 	Object    interface{}
 	Error     error
 }
@@ -59,7 +61,7 @@ func (evresp *EvaluationResponse) GetErrorMessage() string {
 	return evresp.Error.Error()
 }
 
-func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}, err error) EvaluationResponse {
+func newEvaluationResponse(evaluator auth.AuthConfigEvaluator, obj interface{}, err error) EvaluationResponse {
 	return EvaluationResponse{
 		Evaluator: evaluator,
 		Object:    obj,
@@ -68,17 +70,17 @@ func newEvaluationResponse(evaluator common.AuthConfigEvaluator, obj interface{}
 }
 
 // NewAuthPipeline creates an AuthPipeline instance
-func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, apiConfig config.APIConfig) common.AuthPipeline {
+func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, authConfig evaluators.AuthConfig) auth.AuthPipeline {
 	logger := log.FromContext(parentCtx).WithName("authpipeline")
 
 	return &AuthPipeline{
 		Context:       log.IntoContext(parentCtx, logger),
 		Request:       req,
-		API:           &apiConfig,
-		Identity:      make(map[*config.IdentityConfig]interface{}),
-		Metadata:      make(map[*config.MetadataConfig]interface{}),
-		Authorization: make(map[*config.AuthorizationConfig]interface{}),
-		Response:      make(map[*config.ResponseConfig]interface{}),
+		AuthConfig:    &authConfig,
+		Identity:      make(map[*evaluators.IdentityConfig]interface{}),
+		Metadata:      make(map[*evaluators.MetadataConfig]interface{}),
+		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
+		Response:      make(map[*evaluators.ResponseConfig]interface{}),
 		Logger:        logger,
 	}
 }
@@ -87,29 +89,29 @@ func NewAuthPipeline(parentCtx context.Context, req *envoy_auth.CheckRequest, ap
 // Throughout the pipeline, user identity, ad hoc metadata and authorization policies are evaluated and their
 // corresponding resulting objects stored in the respective maps.
 type AuthPipeline struct {
-	Context context.Context
-	Request *envoy_auth.CheckRequest
-	API     *config.APIConfig
+	Context    gocontext.Context
+	Request    *envoy_auth.CheckRequest
+	AuthConfig *evaluators.AuthConfig
 
-	Identity      map[*config.IdentityConfig]interface{}
-	Metadata      map[*config.MetadataConfig]interface{}
-	Authorization map[*config.AuthorizationConfig]interface{}
-	Response      map[*config.ResponseConfig]interface{}
+	Identity      map[*evaluators.IdentityConfig]interface{}
+	Metadata      map[*evaluators.MetadataConfig]interface{}
+	Authorization map[*evaluators.AuthorizationConfig]interface{}
+	Response      map[*evaluators.ResponseConfig]interface{}
 
 	Logger log.Logger
 }
 
-func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
+func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
 	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
 
-	if err := common.CheckContext(ctx); err != nil {
+	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
 		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
 		return
 	}
 
-	if conditionalEv, ok := config.(common.ConditionalEvaluator); ok {
+	if conditionalEv, ok := config.(auth.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
 			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
 			return
@@ -137,10 +139,10 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config common.AuthConfigEvaluat
 	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
 }
 
-type authConfigEvaluationStrategy func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func())
+type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
 
-func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
-	ctx, cancel := context.WithCancel(pipeline.Context)
+func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
+	ctx, cancel := gocontext.WithCancel(pipeline.Context)
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
 
@@ -155,30 +157,30 @@ func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []common.AuthConfi
 	waitGroup.Wait()
 }
 
-func (pipeline *AuthPipeline) evaluateOneAuthConfig(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
-	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func()) {
+func (pipeline *AuthPipeline) evaluateOneAuthConfig(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
+	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func()) {
 		pipeline.evaluateAuthConfig(conf, ctx, respChannel, cancel, nil) // cancels the context if at least one thread succeeds
 	})
 }
 
-func (pipeline *AuthPipeline) evaluateAllAuthConfigs(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
-	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, cancel func()) {
+func (pipeline *AuthPipeline) evaluateAllAuthConfigs(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
+	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func()) {
 		pipeline.evaluateAuthConfig(conf, ctx, respChannel, nil, cancel) // cancels the context if at least one thread fails
 	})
 }
 
-func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []common.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
-	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf common.AuthConfigEvaluator, ctx context.Context, respChannel *chan EvaluationResponse, _ func()) {
+func (pipeline *AuthPipeline) evaluateAnyAuthConfig(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse) {
+	pipeline.evaluateAuthConfigs(authConfigs, respChannel, func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, _ func()) {
 		pipeline.evaluateAuthConfig(conf, ctx, respChannel, nil, nil)
 	})
 }
 
-func groupAuthConfigsByPriority(authConfigs []common.AuthConfigEvaluator) (map[int][]common.AuthConfigEvaluator, []int) {
+func groupAuthConfigsByPriority(authConfigs []auth.AuthConfigEvaluator) (map[int][]auth.AuthConfigEvaluator, []int) {
 	priorities := []int{}
-	authConfigsByPriority := make(map[int][]common.AuthConfigEvaluator)
+	authConfigsByPriority := make(map[int][]auth.AuthConfigEvaluator)
 
 	for _, conf := range authConfigs {
-		if prioritizableConfig, ok := conf.(common.Prioritizable); ok {
+		if prioritizableConfig, ok := conf.(auth.Prioritizable); ok {
 			priority := prioritizableConfig.GetPriority()
 			if _, exists := authConfigsByPriority[priority]; !exists {
 				priorities = append(priorities, priority)
@@ -194,8 +196,8 @@ func groupAuthConfigsByPriority(authConfigs []common.AuthConfigEvaluator) (map[i
 
 func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 	logger := pipeline.Logger.WithName("identity").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.IdentityConfigs)
-	count := len(pipeline.API.IdentityConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.IdentityConfigs)
+	count := len(pipeline.AuthConfig.IdentityConfigs)
 	errors := make(map[string]string)
 
 	for _, priority := range priorities {
@@ -208,7 +210,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.IdentityConfig)
+			conf, _ := resp.Evaluator.(*evaluators.IdentityConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -243,7 +245,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 		}
 	}
 
-	errorsJSON, _ := json.Marshal(errors)
+	errorsJSON, _ := gojson.Marshal(errors)
 	return EvaluationResponse{
 		Error: fmt.Errorf("%s", errorsJSON),
 	}
@@ -251,7 +253,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 
 func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 	logger := pipeline.Logger.WithName("metadata").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.MetadataConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.MetadataConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -263,7 +265,7 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.MetadataConfig)
+			conf, _ := resp.Evaluator.(*evaluators.MetadataConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -281,11 +283,11 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 
 	if logger.Enabled() {
 		var authJSON interface{}
-		json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON)
+		gojson.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON)
 		logger.Info("evaluating for input", "input", authJSON)
 	}
 
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.AuthorizationConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.AuthorizationConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -297,7 +299,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.AuthorizationConfig)
+			conf, _ := resp.Evaluator.(*evaluators.AuthorizationConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -315,7 +317,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 
 func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	logger := pipeline.Logger.WithName("response").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.API.ResponseConfigs)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.ResponseConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -327,7 +329,7 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*config.ResponseConfig)
+			conf, _ := resp.Evaluator.(*evaluators.ResponseConfig)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -340,7 +342,7 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	}
 }
 
-func (pipeline *AuthPipeline) evaluateConditions(conditions []common.JSONPatternMatchingRule) error {
+func (pipeline *AuthPipeline) evaluateConditions(conditions []json.JSONPatternMatchingRule) error {
 	authJSON := pipeline.GetAuthorizationJSON()
 	for _, condition := range conditions {
 		if match, err := condition.EvaluateFor(authJSON); err != nil {
@@ -353,18 +355,18 @@ func (pipeline *AuthPipeline) evaluateConditions(conditions []common.JSONPattern
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
-func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
-	if err := pipeline.evaluateConditions(pipeline.API.Conditions); err != nil {
+func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
+	if err := pipeline.evaluateConditions(pipeline.AuthConfig.Conditions); err != nil {
 		pipeline.Logger.V(1).Info("skipping", "reason", err)
 
-		return common.AuthResult{
+		return auth.AuthResult{
 			Code: rpc.OK,
 		}
 	}
 
 	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
 
-	authResult := make(chan common.AuthResult)
+	authResult := make(chan auth.AuthResult)
 
 	go func() {
 		defer close(authResult)
@@ -374,11 +376,11 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 			if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
 				code := rpc.UNAUTHENTICATED
 				pipeline.reportStatusMetric(code)
-				authResult <- pipeline.customizeDenyWith(common.AuthResult{
+				authResult <- pipeline.customizeDenyWith(auth.AuthResult{
 					Code:    code,
 					Message: resp.GetErrorMessage(),
-					Headers: pipeline.API.GetChallengeHeaders(),
-				}, pipeline.API.Unauthenticated)
+					Headers: pipeline.AuthConfig.GetChallengeHeaders(),
+				}, pipeline.AuthConfig.Unauthenticated)
 				return
 			}
 
@@ -389,10 +391,10 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 			if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
 				code := rpc.PERMISSION_DENIED
 				pipeline.reportStatusMetric(code)
-				authResult <- pipeline.customizeDenyWith(common.AuthResult{
+				authResult <- pipeline.customizeDenyWith(auth.AuthResult{
 					Code:    code,
 					Message: resp.GetErrorMessage(),
-				}, pipeline.API.Unauthorized)
+				}, pipeline.AuthConfig.Unauthorized)
 				return
 			}
 
@@ -400,10 +402,10 @@ func (pipeline *AuthPipeline) Evaluate() common.AuthResult {
 			pipeline.evaluateResponseConfigs()
 
 			// auth result
-			responseHeaders, responseMetadata := config.WrapResponses(pipeline.Response)
+			responseHeaders, responseMetadata := evaluators.WrapResponses(pipeline.Response)
 			code := rpc.OK
 			pipeline.reportStatusMetric(code)
-			authResult <- common.AuthResult{
+			authResult <- auth.AuthResult{
 				Code:     code,
 				Headers:  []map[string]string{responseHeaders},
 				Metadata: responseMetadata,
@@ -421,7 +423,7 @@ func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
 }
 
 func (pipeline *AuthPipeline) metricLabels() []string {
-	labels := pipeline.API.Labels
+	labels := pipeline.AuthConfig.Labels
 	return []string{labels["namespace"], labels["name"]}
 }
 
@@ -434,7 +436,7 @@ func (pipeline *AuthPipeline) GetHttp() *envoy_auth.AttributeContext_HttpRequest
 }
 
 func (pipeline *AuthPipeline) GetAPI() interface{} {
-	return pipeline.API
+	return pipeline.AuthConfig
 }
 
 func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
@@ -480,7 +482,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	}
 	authData["response"] = response
 
-	authJSON, _ := json.Marshal(&authorizationJSON{
+	authJSON, _ := gojson.Marshal(&authorizationJSON{
 		Context:  pipeline.GetRequest().Attributes,
 		AuthData: authData,
 	})
@@ -488,7 +490,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	return string(authJSON)
 }
 
-func (pipeline *AuthPipeline) customizeDenyWith(authResult common.AuthResult, denyWith *config.DenyWithValues) common.AuthResult {
+func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, denyWith *evaluators.DenyWithValues) auth.AuthResult {
 	if denyWith != nil {
 		if denyWith.Code != 0 {
 			authResult.Status = envoy_type.StatusCode(denyWith.Code)
@@ -503,7 +505,7 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult common.AuthResult, de
 		if len(denyWith.Headers) > 0 {
 			headers := make([]map[string]string, 0)
 			for _, header := range denyWith.Headers {
-				value, _ := common.StringifyJSON(header.Value.ResolveFor(authJSON))
+				value, _ := json.StringifyJSON(header.Value.ResolveFor(authJSON))
 				headers = append(headers, map[string]string{header.Name: value})
 			}
 			authResult.Headers = headers

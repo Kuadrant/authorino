@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
-	"github.com/kuadrant/authorino/pkg/common"
-	"github.com/kuadrant/authorino/pkg/common/log"
+	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 )
 
@@ -103,11 +103,11 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
 }
 
-func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) common.WristbandIssuer {
+func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) auth.WristbandIssuer {
 	hosts := o.Cache.FindKeys(realm)
 	if len(hosts) > 0 {
 		for _, config := range o.Cache.Get(hosts[0]).ResponseConfigs {
-			respConfigEv, _ := config.(common.ResponseConfigEvaluator)
+			respConfigEv, _ := config.(auth.ResponseConfigEvaluator)
 			if respConfigEv.GetName() == wristbandConfigName {
 				return respConfigEv.GetWristbandIssuer()
 			}
