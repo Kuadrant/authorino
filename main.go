@@ -219,6 +219,7 @@ func main() {
 	if err = (&controllers.AuthConfigStatusUpdater{
 		Client:        statusUpdateManager.GetClient(),
 		Logger:        controllerLogger.WithName("authconfig").WithName("statusupdater"),
+		Cache:         cache,
 		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
 	}).SetupWithManager(statusUpdateManager); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfigstatusupdate")
