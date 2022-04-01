@@ -142,6 +142,7 @@ function send_anonymous_requests {
 kubectl -n kube-system wait --timeout=300s --for=condition=Available deployments --all
 kubectl proxy --port=8181 2>&1 >/dev/null &
 
+kubectl -n $namespace apply -f https://raw.githubusercontent.com/Kuadrant/authorino-examples/main/ip-location/ip-location-deploy.yaml
 kubectl -n $namespace wait --timeout=300s --for=condition=Available deployments --all
 kubectl -n $namespace port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 
