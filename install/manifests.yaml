@@ -165,127 +165,157 @@ spec:
                             the request.
                           properties:
                             group:
+                              description: StaticOrDynamicValue is either a constant
+                                static string value or a config for fetching a value
+                                from a dynamic source (e.g. a path pattern of authorization
+                                JSON)
                               properties:
                                 value:
+                                  description: Static value
                                   type: string
                                 valueFrom:
+                                  description: Dynamic value
                                   properties:
                                     authJSON:
-                                      description: 'Selector to fill the value from
-                                        the authorization JSON. Any patterns supported
-                                        by https://pkg.go.dev/github.com/tidwall/gjson
-                                        can be used. The value can be just the pattern
-                                        with the path to fetch from the authorization
-                                        JSON (e.g. ''context.request.http.host'')
-                                        or a string template with variable placeholders
-                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                        The following string modifiers are available:
-                                        @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      description: 'Selector to fetch a value from
+                                        the authorization JSON. It can be any path
+                                        pattern to fetch from the authorization JSON
+                                        (e.g. ''context.request.http.host'') or a
+                                        string template with variable placeholders
+                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                        Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                        can be used. The following string modifiers
+                                        are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                         @case:upper|lower, and @base64:encode|decode.'
                                       type: string
                                   type: object
                               type: object
                             name:
+                              description: StaticOrDynamicValue is either a constant
+                                static string value or a config for fetching a value
+                                from a dynamic source (e.g. a path pattern of authorization
+                                JSON)
                               properties:
                                 value:
+                                  description: Static value
                                   type: string
                                 valueFrom:
+                                  description: Dynamic value
                                   properties:
                                     authJSON:
-                                      description: 'Selector to fill the value from
-                                        the authorization JSON. Any patterns supported
-                                        by https://pkg.go.dev/github.com/tidwall/gjson
-                                        can be used. The value can be just the pattern
-                                        with the path to fetch from the authorization
-                                        JSON (e.g. ''context.request.http.host'')
-                                        or a string template with variable placeholders
-                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                        The following string modifiers are available:
-                                        @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      description: 'Selector to fetch a value from
+                                        the authorization JSON. It can be any path
+                                        pattern to fetch from the authorization JSON
+                                        (e.g. ''context.request.http.host'') or a
+                                        string template with variable placeholders
+                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                        Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                        can be used. The following string modifiers
+                                        are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                         @case:upper|lower, and @base64:encode|decode.'
                                       type: string
                                   type: object
                               type: object
                             namespace:
+                              description: StaticOrDynamicValue is either a constant
+                                static string value or a config for fetching a value
+                                from a dynamic source (e.g. a path pattern of authorization
+                                JSON)
                               properties:
                                 value:
+                                  description: Static value
                                   type: string
                                 valueFrom:
+                                  description: Dynamic value
                                   properties:
                                     authJSON:
-                                      description: 'Selector to fill the value from
-                                        the authorization JSON. Any patterns supported
-                                        by https://pkg.go.dev/github.com/tidwall/gjson
-                                        can be used. The value can be just the pattern
-                                        with the path to fetch from the authorization
-                                        JSON (e.g. ''context.request.http.host'')
-                                        or a string template with variable placeholders
-                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                        The following string modifiers are available:
-                                        @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      description: 'Selector to fetch a value from
+                                        the authorization JSON. It can be any path
+                                        pattern to fetch from the authorization JSON
+                                        (e.g. ''context.request.http.host'') or a
+                                        string template with variable placeholders
+                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                        Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                        can be used. The following string modifiers
+                                        are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                         @case:upper|lower, and @base64:encode|decode.'
                                       type: string
                                   type: object
                               type: object
                             resource:
+                              description: StaticOrDynamicValue is either a constant
+                                static string value or a config for fetching a value
+                                from a dynamic source (e.g. a path pattern of authorization
+                                JSON)
                               properties:
                                 value:
+                                  description: Static value
                                   type: string
                                 valueFrom:
+                                  description: Dynamic value
                                   properties:
                                     authJSON:
-                                      description: 'Selector to fill the value from
-                                        the authorization JSON. Any patterns supported
-                                        by https://pkg.go.dev/github.com/tidwall/gjson
-                                        can be used. The value can be just the pattern
-                                        with the path to fetch from the authorization
-                                        JSON (e.g. ''context.request.http.host'')
-                                        or a string template with variable placeholders
-                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                        The following string modifiers are available:
-                                        @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      description: 'Selector to fetch a value from
+                                        the authorization JSON. It can be any path
+                                        pattern to fetch from the authorization JSON
+                                        (e.g. ''context.request.http.host'') or a
+                                        string template with variable placeholders
+                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                        Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                        can be used. The following string modifiers
+                                        are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                         @case:upper|lower, and @base64:encode|decode.'
                                       type: string
                                   type: object
                               type: object
                             subresource:
+                              description: StaticOrDynamicValue is either a constant
+                                static string value or a config for fetching a value
+                                from a dynamic source (e.g. a path pattern of authorization
+                                JSON)
                               properties:
                                 value:
+                                  description: Static value
                                   type: string
                                 valueFrom:
+                                  description: Dynamic value
                                   properties:
                                     authJSON:
-                                      description: 'Selector to fill the value from
-                                        the authorization JSON. Any patterns supported
-                                        by https://pkg.go.dev/github.com/tidwall/gjson
-                                        can be used. The value can be just the pattern
-                                        with the path to fetch from the authorization
-                                        JSON (e.g. ''context.request.http.host'')
-                                        or a string template with variable placeholders
-                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                        The following string modifiers are available:
-                                        @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      description: 'Selector to fetch a value from
+                                        the authorization JSON. It can be any path
+                                        pattern to fetch from the authorization JSON
+                                        (e.g. ''context.request.http.host'') or a
+                                        string template with variable placeholders
+                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                        Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                        can be used. The following string modifiers
+                                        are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                         @case:upper|lower, and @base64:encode|decode.'
                                       type: string
                                   type: object
                               type: object
                             verb:
+                              description: StaticOrDynamicValue is either a constant
+                                static string value or a config for fetching a value
+                                from a dynamic source (e.g. a path pattern of authorization
+                                JSON)
                               properties:
                                 value:
+                                  description: Static value
                                   type: string
                                 valueFrom:
+                                  description: Dynamic value
                                   properties:
                                     authJSON:
-                                      description: 'Selector to fill the value from
-                                        the authorization JSON. Any patterns supported
-                                        by https://pkg.go.dev/github.com/tidwall/gjson
-                                        can be used. The value can be just the pattern
-                                        with the path to fetch from the authorization
-                                        JSON (e.g. ''context.request.http.host'')
-                                        or a string template with variable placeholders
-                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                        The following string modifiers are available:
-                                        @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      description: 'Selector to fetch a value from
+                                        the authorization JSON. It can be any path
+                                        pattern to fetch from the authorization JSON
+                                        (e.g. ''context.request.http.host'') or a
+                                        string template with variable placeholders
+                                        that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                        Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                        can be used. The following string modifiers
+                                        are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                         @case:upper|lower, and @base64:encode|decode.'
                                       type: string
                                   type: object
@@ -297,20 +327,20 @@ spec:
                             any groups"
                           properties:
                             value:
+                              description: Static value
                               type: string
                             valueFrom:
+                              description: Dynamic value
                               properties:
                                 authJSON:
-                                  description: 'Selector to fill the value from the
-                                    authorization JSON. Any patterns supported by
-                                    https://pkg.go.dev/github.com/tidwall/gjson can
-                                    be used. The value can be just the pattern with
-                                    the path to fetch from the authorization JSON
-                                    (e.g. ''context.request.http.host'') or a string
-                                    template with variable placeholders that resolve
-                                    to patterns (e.g. "Hello, {auth.identity.name}!")
-                                    The following string modifiers are available:
-                                    @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                  description: 'Selector to fetch a value from the
+                                    authorization JSON. It can be any path pattern
+                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                    or a string template with variable placeholders
+                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                    can be used. The following string modifiers are
+                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                     @case:upper|lower, and @base64:encode|decode.'
                                   type: string
                               type: object
@@ -493,25 +523,23 @@ spec:
                         items:
                           properties:
                             name:
-                              description: The name of the claim
+                              description: The name of the JSON property
                               type: string
                             value:
-                              description: Static value of the claim
+                              description: Static value of the JSON property
                               x-kubernetes-preserve-unknown-fields: true
                             valueFrom:
-                              description: Dynamic value of the claim
+                              description: Dynamic value of the JSON property
                               properties:
                                 authJSON:
-                                  description: 'Selector to fill the value from the
-                                    authorization JSON. Any patterns supported by
-                                    https://pkg.go.dev/github.com/tidwall/gjson can
-                                    be used. The value can be just the pattern with
-                                    the path to fetch from the authorization JSON
-                                    (e.g. ''context.request.http.host'') or a string
-                                    template with variable placeholders that resolve
-                                    to patterns (e.g. "Hello, {auth.identity.name}!")
-                                    The following string modifiers are available:
-                                    @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                  description: 'Selector to fetch a value from the
+                                    authorization JSON. It can be any path pattern
+                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                    or a string template with variable placeholders
+                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                    can be used. The following string modifiers are
+                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                     @case:upper|lower, and @base64:encode|decode.'
                                   type: string
                               type: object
@@ -539,25 +567,23 @@ spec:
                         items:
                           properties:
                             name:
-                              description: The name of the claim
+                              description: The name of the JSON property
                               type: string
                             value:
-                              description: Static value of the claim
+                              description: Static value of the JSON property
                               x-kubernetes-preserve-unknown-fields: true
                             valueFrom:
-                              description: Dynamic value of the claim
+                              description: Dynamic value of the JSON property
                               properties:
                                 authJSON:
-                                  description: 'Selector to fill the value from the
-                                    authorization JSON. Any patterns supported by
-                                    https://pkg.go.dev/github.com/tidwall/gjson can
-                                    be used. The value can be just the pattern with
-                                    the path to fetch from the authorization JSON
-                                    (e.g. ''context.request.http.host'') or a string
-                                    template with variable placeholders that resolve
-                                    to patterns (e.g. "Hello, {auth.identity.name}!")
-                                    The following string modifiers are available:
-                                    @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                  description: 'Selector to fetch a value from the
+                                    authorization JSON. It can be any path pattern
+                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                    or a string template with variable placeholders
+                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                    can be used. The following string modifiers are
+                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                     @case:upper|lower, and @base64:encode|decode.'
                                   type: string
                               type: object
@@ -684,25 +710,24 @@ spec:
                       items:
                         properties:
                           name:
-                            description: The name of the claim
+                            description: The name of the JSON property
                             type: string
                           value:
-                            description: Static value of the claim
+                            description: Static value of the JSON property
                             x-kubernetes-preserve-unknown-fields: true
                           valueFrom:
-                            description: Dynamic value of the claim
+                            description: Dynamic value of the JSON property
                             properties:
                               authJSON:
-                                description: 'Selector to fill the value from the
-                                  authorization JSON. Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
-                                  can be used. The value can be just the pattern with
-                                  the path to fetch from the authorization JSON (e.g.
-                                  ''context.request.http.host'') or a string template
-                                  with variable placeholders that resolve to patterns
-                                  (e.g. "Hello, {auth.identity.name}!") The following
-                                  string modifiers are available: @extract:{sep:"
-                                  ",pos:0}, @replace{old:"",new:""}, @case:upper|lower,
-                                  and @base64:encode|decode.'
+                                description: 'Selector to fetch a value from the authorization
+                                  JSON. It can be any path pattern to fetch from the
+                                  authorization JSON (e.g. ''context.request.http.host'')
+                                  or a string template with variable placeholders
+                                  that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                  Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                  can be used. The following string modifiers are
+                                  available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                  @case:upper|lower, and @base64:encode|decode.'
                                 type: string
                             type: object
                         required:
@@ -872,25 +897,23 @@ spec:
                           items:
                             properties:
                               name:
-                                description: The name of the claim
+                                description: The name of the JSON property
                                 type: string
                               value:
-                                description: Static value of the claim
+                                description: Static value of the JSON property
                                 x-kubernetes-preserve-unknown-fields: true
                               valueFrom:
-                                description: Dynamic value of the claim
+                                description: Dynamic value of the JSON property
                                 properties:
                                   authJSON:
-                                    description: 'Selector to fill the value from
-                                      the authorization JSON. Any patterns supported
-                                      by https://pkg.go.dev/github.com/tidwall/gjson
-                                      can be used. The value can be just the pattern
-                                      with the path to fetch from the authorization
-                                      JSON (e.g. ''context.request.http.host'') or
-                                      a string template with variable placeholders
-                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                      The following string modifiers are available:
-                                      @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    description: 'Selector to fetch a value from the
+                                      authorization JSON. It can be any path pattern
+                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                      or a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The following string modifiers
+                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                       @case:upper|lower, and @base64:encode|decode.'
                                     type: string
                                 type: object
@@ -947,25 +970,23 @@ spec:
                           items:
                             properties:
                               name:
-                                description: The name of the claim
+                                description: The name of the JSON property
                                 type: string
                               value:
-                                description: Static value of the claim
+                                description: Static value of the JSON property
                                 x-kubernetes-preserve-unknown-fields: true
                               valueFrom:
-                                description: Dynamic value of the claim
+                                description: Dynamic value of the JSON property
                                 properties:
                                   authJSON:
-                                    description: 'Selector to fill the value from
-                                      the authorization JSON. Any patterns supported
-                                      by https://pkg.go.dev/github.com/tidwall/gjson
-                                      can be used. The value can be just the pattern
-                                      with the path to fetch from the authorization
-                                      JSON (e.g. ''context.request.http.host'') or
-                                      a string template with variable placeholders
-                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                      The following string modifiers are available:
-                                      @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    description: 'Selector to fetch a value from the
+                                      authorization JSON. It can be any path pattern
+                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                      or a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The following string modifiers
+                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                       @case:upper|lower, and @base64:encode|decode.'
                                     type: string
                                 type: object
@@ -1156,25 +1177,23 @@ spec:
                           items:
                             properties:
                               name:
-                                description: The name of the claim
+                                description: The name of the JSON property
                                 type: string
                               value:
-                                description: Static value of the claim
+                                description: Static value of the JSON property
                                 x-kubernetes-preserve-unknown-fields: true
                               valueFrom:
-                                description: Dynamic value of the claim
+                                description: Dynamic value of the JSON property
                                 properties:
                                   authJSON:
-                                    description: 'Selector to fill the value from
-                                      the authorization JSON. Any patterns supported
-                                      by https://pkg.go.dev/github.com/tidwall/gjson
-                                      can be used. The value can be just the pattern
-                                      with the path to fetch from the authorization
-                                      JSON (e.g. ''context.request.http.host'') or
-                                      a string template with variable placeholders
-                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                      The following string modifiers are available:
-                                      @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    description: 'Selector to fetch a value from the
+                                      authorization JSON. It can be any path pattern
+                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                      or a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The following string modifiers
+                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                       @case:upper|lower, and @base64:encode|decode.'
                                     type: string
                                 type: object
@@ -1273,25 +1292,23 @@ spec:
                           items:
                             properties:
                               name:
-                                description: The name of the claim
+                                description: The name of the JSON property
                                 type: string
                               value:
-                                description: Static value of the claim
+                                description: Static value of the JSON property
                                 x-kubernetes-preserve-unknown-fields: true
                               valueFrom:
-                                description: Dynamic value of the claim
+                                description: Dynamic value of the JSON property
                                 properties:
                                   authJSON:
-                                    description: 'Selector to fill the value from
-                                      the authorization JSON. Any patterns supported
-                                      by https://pkg.go.dev/github.com/tidwall/gjson
-                                      can be used. The value can be just the pattern
-                                      with the path to fetch from the authorization
-                                      JSON (e.g. ''context.request.http.host'') or
-                                      a string template with variable placeholders
-                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-                                      The following string modifiers are available:
-                                      @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    description: 'Selector to fetch a value from the
+                                      authorization JSON. It can be any path pattern
+                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                      or a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The following string modifiers
+                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
                                       @case:upper|lower, and @base64:encode|decode.'
                                     type: string
                                 type: object
