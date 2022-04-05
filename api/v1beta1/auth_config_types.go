@@ -51,6 +51,34 @@ type SecretKeyReference struct {
 	Key string `json:"key"`
 }
 
+// StaticOrDynamicValue is either a constant static string value or a config for fetching a value from a dynamic source (e.g. a path pattern of authorization JSON)
+type StaticOrDynamicValue struct {
+	// Static value
+	Value string `json:"value,omitempty"`
+	// Dynamic value
+	ValueFrom ValueFrom `json:"valueFrom,omitempty"`
+}
+
+type ValueFrom struct {
+	// Selector to fetch a value from the authorization JSON.
+	// It can be any path pattern to fetch from the authorization JSON (e.g. 'context.request.http.host')
+	// or a string template with variable placeholders that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+	// Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+	// The following string modifiers are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, and @base64:encode|decode.
+	AuthJSON string `json:"authJSON,omitempty"`
+}
+
+type JsonProperty struct {
+	// The name of the JSON property
+	Name string `json:"name"`
+	// Static value of the JSON property
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Value runtime.RawExtension `json:"value,omitempty"`
+	// Dynamic value of the JSON property
+	ValueFrom ValueFrom `json:"valueFrom,omitempty"`
+}
+
 // Specifies the desired state of the AuthConfig resource, i.e. the authencation/authorization scheme to be applied to protect the matching service hosts.
 type AuthConfigSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
@@ -388,18 +416,13 @@ type Authorization_JSONPatternMatching struct {
 	Rules []JSONPattern `json:"rules"`
 }
 
-type Authorization_KubernetesAuthz_Attribute struct {
-	Value     string            `json:"value,omitempty"`
-	ValueFrom ValueFromAuthJSON `json:"valueFrom,omitempty"`
-}
-
 type Authorization_KubernetesAuthz_ResourceAttributes struct {
-	Namespace   Authorization_KubernetesAuthz_Attribute `json:"namespace,omitempty"`
-	Group       Authorization_KubernetesAuthz_Attribute `json:"group,omitempty"`
-	Resource    Authorization_KubernetesAuthz_Attribute `json:"resource,omitempty"`
-	Name        Authorization_KubernetesAuthz_Attribute `json:"name,omitempty"`
-	SubResource Authorization_KubernetesAuthz_Attribute `json:"subresource,omitempty"`
-	Verb        Authorization_KubernetesAuthz_Attribute `json:"verb,omitempty"`
+	Namespace   StaticOrDynamicValue `json:"namespace,omitempty"`
+	Group       StaticOrDynamicValue `json:"group,omitempty"`
+	Resource    StaticOrDynamicValue `json:"resource,omitempty"`
+	Name        StaticOrDynamicValue `json:"name,omitempty"`
+	SubResource StaticOrDynamicValue `json:"subresource,omitempty"`
+	Verb        StaticOrDynamicValue `json:"verb,omitempty"`
 }
 
 // Kubernetes authorization policy based on `SubjectAccessReview`
@@ -407,7 +430,7 @@ type Authorization_KubernetesAuthz_ResourceAttributes struct {
 type Authorization_KubernetesAuthz struct {
 	// User to test for.
 	// If without "Groups", then is it interpreted as "What if User were not a member of any groups"
-	User Authorization_KubernetesAuthz_Attribute `json:"user"`
+	User StaticOrDynamicValue `json:"user"`
 
 	// Groups to test for.
 	Groups []string `json:"groups,omitempty"`
@@ -472,27 +495,6 @@ type SigningKeyRef struct {
 
 	// Algorithm to sign the wristband token using the signing key provided
 	Algorithm SigningKeyAlgorithm `json:"algorithm"`
-}
-
-type ValueFromAuthJSON struct {
-	// Selector to fill the value from the authorization JSON.
-	// Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
-	// The value can be just the pattern with the path to fetch from the authorization JSON (e.g. 'context.request.http.host')
-	// or a string template with variable placeholders that resolve to patterns (e.g. "Hello, {auth.identity.name}!")
-	// The following string modifiers are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower,
-	// and @base64:encode|decode.
-	AuthJSON string `json:"authJSON,omitempty"`
-}
-
-type JsonProperty struct {
-	// The name of the claim
-	Name string `json:"name"`
-	// Static value of the claim
-	// +kubebuilder:validation:Schemaless
-	// +kubebuilder:pruning:PreserveUnknownFields
-	Value runtime.RawExtension `json:"value,omitempty"`
-	// Dynamic value of the claim
-	ValueFrom ValueFromAuthJSON `json:"valueFrom,omitempty"`
 }
 
 type Response_Wristband struct {
