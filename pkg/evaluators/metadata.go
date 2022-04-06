@@ -22,10 +22,12 @@ const (
 	metadataGenericHTTP = "METADATA_GENERIC_HTTP"
 )
 
+var MetadataCacheSize int // in megabytes
+
 // TODO: move to pkg/cache
 func NewCache(key json.JSONValue, ttl int) *Cache {
 	duration := time.Duration(ttl) * time.Second
-	cacheClient := freecache.NewCache(1024 * 1024) // 1 mb
+	cacheClient := freecache.NewCache(MetadataCacheSize * 1024 * 1024)
 	cacheStore := cache_store.NewFreecache(cacheClient, &cache_store.Options{Expiration: duration})
 	c := &Cache{
 		Key:   key,
