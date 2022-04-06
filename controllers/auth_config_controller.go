@@ -538,9 +538,19 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.De
 		headers = append(headers, json.JSONProperty{Name: header.Name, Value: json.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
 	}
 
+	var message = json.JSONProperty{}
+	if &denyWithSpec.Message != nil {
+		message = json.JSONProperty{
+			Value: json.JSONValue{
+				Static:  denyWithSpec.Message.Value,
+				Pattern: denyWithSpec.Message.ValueFrom.AuthJSON,
+			},
+		}
+	}
+
 	return &evaluators.DenyWithValues{
 		Code:    int32(denyWithSpec.Code),
-		Message: denyWithSpec.Message,
+		Message: message,
 		Headers: headers,
 	}
 }
