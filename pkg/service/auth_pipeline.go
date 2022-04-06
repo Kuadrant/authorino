@@ -496,11 +496,11 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 			authResult.Status = envoy_type.StatusCode(denyWith.Code)
 		}
 
-		if denyWith.Message != "" {
-			authResult.Message = denyWith.Message
-		}
-
 		authJSON := pipeline.GetAuthorizationJSON()
+
+		if denyWith.Message != (json.JSONProperty{}) {
+			authResult.Message, _ = json.StringifyJSON(denyWith.Message.Value.ResolveFor(authJSON))
+		}
 
 		if len(denyWith.Headers) > 0 {
 			headers := make([]map[string]string, 0)
