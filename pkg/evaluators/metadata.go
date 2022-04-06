@@ -11,7 +11,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
-	"github.com/allegro/bigcache"
+	"github.com/coocood/freecache"
 	gocache "github.com/eko/gocache/cache"
 	cache_store "github.com/eko/gocache/store"
 )
@@ -25,14 +25,11 @@ const (
 // TODO: move to pkg/cache
 func NewCache(key json.JSONValue, ttl int) *Cache {
 	duration := time.Duration(ttl) * time.Second
-	config := bigcache.DefaultConfig(duration)
-	config.CleanWindow = duration
-	cacheClient, _ := bigcache.NewBigCache(config)
-	cacheStore := cache_store.NewBigcache(cacheClient, nil)
+	cacheClient := freecache.NewCache(1024 * 1024) // 1 mb
+	cacheStore := cache_store.NewFreecache(cacheClient, &cache_store.Options{Expiration: duration})
 	c := &Cache{
-		Key:    key,
-		Store:  gocache.New(cacheStore),
-		client: cacheClient,
+		Key:   key,
+		Store: gocache.New(cacheStore),
 	}
 	return c
 }
@@ -40,18 +37,15 @@ func NewCache(key json.JSONValue, ttl int) *Cache {
 type Cache struct {
 	Key   json.JSONValue
 	Store *gocache.Cache
-
-	client *bigcache.BigCache
 }
 
 func (c *Cache) Get(key interface{}) (interface{}, error) {
-	if cachedObj, _ := c.Store.Get(key); cachedObj != nil {
-		b := cachedObj.([]byte)
-		var obj map[string]interface{} // FIXME: this suits JSON objects but will break with arrays and simple strings
-		if err := gojson.Unmarshal(b, &obj); err != nil {
+	if valueAsBytes, ttl, _ := c.Store.GetWithTTL(key); valueAsBytes != nil && ttl > 0 {
+		var value interface{}
+		if err := gojson.Unmarshal(valueAsBytes.([]byte), &value); err != nil {
 			return nil, err
 		} else {
-			return obj, nil
+			return value, nil
 		}
 	} else {
 		return nil, nil
@@ -59,17 +53,15 @@ func (c *Cache) Get(key interface{}) (interface{}, error) {
 }
 
 func (c *Cache) Set(key, value interface{}) error {
-	valueAsBytes, _ := gojson.Marshal(value)
-	return c.Store.Set(key, valueAsBytes, nil)
+	if valueAsBytes, err := gojson.Marshal(value); err != nil {
+		return err
+	} else {
+		return c.Store.Set(key, valueAsBytes, nil)
+	}
 }
 
 func (c *Cache) Shutdown() (err error) {
-	err = c.Store.Clear()
-	defer func() {
-		_ = recover() // This is ugly as hell, but there is no safe way to check if the channel has been closed already
-	}()
-	err = c.client.Close() // clears the goroutine responsible for regular cleanup/evition
-	return err
+	return c.Store.Clear()
 }
 
 type MetadataConfig struct {

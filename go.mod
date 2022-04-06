@@ -3,7 +3,7 @@ module github.com/kuadrant/authorino
 go 1.16
 
 require (
-	github.com/allegro/bigcache v1.2.1
+	github.com/coocood/freecache v1.1.1
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/eko/gocache v1.2.0
