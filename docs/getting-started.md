@@ -87,10 +87,12 @@ The instructions here are for centralized gateway or centralized authorization s
     clusterWide: true
     listener:
       tls:
+        enabled: true
         certSecretRef:
           name: authorino-server-cert
     oidcServer:
       tls:
+        enabled: true
         certSecretRef:
           name: authorino-oidc-server-cert
   EOF
@@ -152,10 +154,12 @@ The instructions here are for centralized gateway or centralized authorization s
     clusterWide: false
     listener:
       tls:
+        enabled: true
         certSecretRef:
           name: authorino-server-cert
     oidcServer:
       tls:
+        enabled: true
         certSecretRef:
           name: authorino-oidc-server-cert
   EOF
