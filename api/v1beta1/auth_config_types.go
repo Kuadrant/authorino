@@ -523,7 +523,7 @@ type DenyWithSpec struct {
 	Code DenyWith_Code `json:"code,omitempty"`
 
 	// HTTP message to override the default denial message.
-	Message StaticOrDynamicValue `json:"message,omitempty"`
+	Message *StaticOrDynamicValue `json:"message,omitempty"`
 
 	// HTTP response headers to override the default denial headers.
 	Headers []JsonProperty `json:"headers,omitempty"`

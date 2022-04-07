@@ -498,7 +498,7 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 
 		authJSON := pipeline.GetAuthorizationJSON()
 
-		if denyWith.Message != (json.JSONProperty{}) {
+		if denyWith.Message != nil {
 			authResult.Message, _ = json.StringifyJSON(denyWith.Message.Value.ResolveFor(authJSON))
 		}
 
