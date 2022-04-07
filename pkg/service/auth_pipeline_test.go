@@ -323,6 +323,7 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	authCredMock.EXPECT().GetCredentialsFromReq(request.GetAttributes().GetRequest().Http).Return("xxx", nil)
 	authCredMock.EXPECT().GetCredentialsKeySelector().Return("APIKEY")
+	authConfigStaticResponse := "testing"
 
 	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs: []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
@@ -333,6 +334,11 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 					{Name: "X-Static-Header", Value: json.JSONValue{Static: "some-value"}},
 					{Name: "Location", Value: json.JSONValue{Pattern: "https://my-app.io/login?redirect_to=https://{context.request.http.host}{context.request.http.path}"}},
 				},
+				Body: &json.JSONProperty{
+					Value: json.JSONValue{
+						Static: authConfigStaticResponse,
+					},
+				},
 			},
 		},
 	}, &request)
@@ -341,6 +347,8 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	assert.Equal(t, authResult.Code, rpc.UNAUTHENTICATED)
 	assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_Found)
 	assert.Equal(t, authResult.Message, "the API Key provided is invalid")
+	assert.Equal(t, authResult.Body, authConfigStaticResponse)
+
 	assert.Equal(t, len(authResult.Headers), 2)
 	headers, _ := gojson.Marshal(authResult.Headers)
 	assert.Equal(t, string(headers), `[{"X-Static-Header":"some-value"},{"Location":"https://my-app.io/login?redirect_to=https://my-api/operation"}]`)
