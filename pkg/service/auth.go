@@ -225,7 +225,9 @@ func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string
 		headers = make([]map[string]string, 0)
 	}
 
-	headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
+	if authReason != "" {
+		headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
+	}
 
 	return buildResponseHeaders(headers)
 }
