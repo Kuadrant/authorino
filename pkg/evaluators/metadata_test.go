@@ -61,7 +61,7 @@ func TestMetadataCaching(t *testing.T) {
 	assert.NilError(t, err)
 
 	// With caching of metadata
-	cache := NewCache(json.JSONValue{Static: "x"}, 2) // 2 seconds ttl
+	cache := NewMetadataCache(json.JSONValue{Static: "x"}, 2) // 2 seconds ttl
 	metadataConfig.Cache = cache
 	defer metadataConfig.Clean(context.TODO())
 

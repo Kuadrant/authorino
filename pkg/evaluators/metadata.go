@@ -2,18 +2,12 @@ package evaluators
 
 import (
 	"context"
-	gojson "encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
-
-	"github.com/coocood/freecache"
-	gocache "github.com/eko/gocache/cache"
-	cache_store "github.com/eko/gocache/store"
 )
 
 const (
@@ -21,50 +15,6 @@ const (
 	metadataUMA         = "METADATA_UMA"
 	metadataGenericHTTP = "METADATA_GENERIC_HTTP"
 )
-
-var MetadataCacheSize int // in megabytes
-
-// TODO: move to pkg/cache
-func NewCache(key json.JSONValue, ttl int) *Cache {
-	duration := time.Duration(ttl) * time.Second
-	cacheClient := freecache.NewCache(MetadataCacheSize * 1024 * 1024)
-	cacheStore := cache_store.NewFreecache(cacheClient, &cache_store.Options{Expiration: duration})
-	c := &Cache{
-		Key:   key,
-		Store: gocache.New(cacheStore),
-	}
-	return c
-}
-
-type Cache struct {
-	Key   json.JSONValue
-	Store *gocache.Cache
-}
-
-func (c *Cache) Get(key interface{}) (interface{}, error) {
-	if valueAsBytes, ttl, _ := c.Store.GetWithTTL(key); valueAsBytes != nil && ttl > 0 {
-		var value interface{}
-		if err := gojson.Unmarshal(valueAsBytes.([]byte), &value); err != nil {
-			return nil, err
-		} else {
-			return value, nil
-		}
-	} else {
-		return nil, nil
-	}
-}
-
-func (c *Cache) Set(key, value interface{}) error {
-	if valueAsBytes, err := gojson.Marshal(value); err != nil {
-		return err
-	} else {
-		return c.Store.Set(key, valueAsBytes, nil)
-	}
-}
-
-func (c *Cache) Shutdown() (err error) {
-	return c.Store.Clear()
-}
 
 type MetadataConfig struct {
 	Name       string                         `yaml:"name"`
@@ -76,7 +26,7 @@ type MetadataConfig struct {
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
 
-	Cache *Cache
+	Cache MetadataCache
 }
 
 func (config *MetadataConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
@@ -104,7 +54,7 @@ func (config *MetadataConfig) Call(pipeline auth.AuthPipeline, ctx context.Conte
 		var cacheKey interface{}
 
 		if cache != nil {
-			cacheKey = cache.Key.ResolveFor(pipeline.GetAuthorizationJSON())
+			cacheKey = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
 			if cachedObj, err := cache.Get(cacheKey); err != nil {
 				logger.V(1).Error(err, "failed to retrieve data from the cache")
 			} else if cachedObj != nil {
