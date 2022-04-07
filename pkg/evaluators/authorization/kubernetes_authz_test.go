@@ -93,7 +93,7 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 	assert.Equal(t, requestData.NonResourceAttributes.Path, "/hello")
 	assert.Equal(t, requestData.NonResourceAttributes.Verb, "get")
 
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.NilError(t, err)
 }
 
@@ -121,7 +121,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 	assert.Equal(t, requestData.NonResourceAttributes.Path, "/hello")
 	assert.Equal(t, requestData.NonResourceAttributes.Verb, "get")
 
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.ErrorContains(t, err, "Not authorized: some-reason")
 }
 
@@ -140,7 +140,7 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 	)
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.NilError(t, err)
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
@@ -164,7 +164,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	)
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.ErrorContains(t, err, "Not authorized: some-reason")
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)

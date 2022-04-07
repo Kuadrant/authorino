@@ -56,7 +56,7 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | logger | level | message | extra values |
 | -------|-------|---------|--------|
 | `authorino` | `info` | "setting instance base logger" | `min level=info\|debug`, `mode=production\|development` |
-| `authorino` | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `EXT_AUTH_GRPC_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `METADATA_CACHE_SIZE`, `DEEP_METRICS_ENABLED`, `metrics-addr`, `enable-leader-election` |
+| `authorino` | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `EXT_AUTH_GRPC_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `EVALUATOR_CACHE_SIZE`, `DEEP_METRICS_ENABLED`, `metrics-addr`, `enable-leader-election` |
 | `authorino` | `info` | "attempting to acquire leader lease authorino/cb88a58a.authorino.kuadrant.io...\n" | |
 | `authorino` | `info` | "successfully acquired lease authorino/cb88a58a.authorino.kuadrant.io\n" | |
 | `authorino` | `info` | "starting grpc service" | `port`, `tls` |
@@ -129,7 +129,7 @@ The examples below are all with `LOG_LEVEL=debug` and `LOG_MODE=production`.
 
 ```jsonc
 {"level":"info","ts":1634674939.7563884,"logger":"authorino","msg":"setting instance base logger","min level":"debug","mode":"production"}
-{"level":"debug","ts":1634674939.7567484,"logger":"authorino","msg":"setting up with options","WATCH_NAMESPACE":"","AUTH_CONFIG_LABEL_SELECTOR":"","SECRET_LABEL_SELECTOR":"authorino.kuadrant.io/managed-by=authorino","LOG_LEVEL":"debug","LOG_MODE":"production","EXT_AUTH_GRPC_PORT":"50051","TLS_CERT":"/etc/ssl/certs/tls.crt","TLS_CERT_KEY":"/etc/ssl/private/tls.key","OIDC_HTTP_PORT":"8083","OIDC_TLS_CERT":"/etc/ssl/certs/oidc.crt","OIDC_TLS_CERT_KEY":"/etc/ssl/private/oidc.key","METADATA_CACHE_SIZE":"1","DEEP_METRICS_ENABLED": "false","metrics-addr":"127.0.0.1:8080","enable-leader-election":true}
+{"level":"debug","ts":1634674939.7567484,"logger":"authorino","msg":"setting up with options","WATCH_NAMESPACE":"","AUTH_CONFIG_LABEL_SELECTOR":"","SECRET_LABEL_SELECTOR":"authorino.kuadrant.io/managed-by=authorino","LOG_LEVEL":"debug","LOG_MODE":"production","EXT_AUTH_GRPC_PORT":"50051","TLS_CERT":"/etc/ssl/certs/tls.crt","TLS_CERT_KEY":"/etc/ssl/private/tls.key","OIDC_HTTP_PORT":"8083","OIDC_TLS_CERT":"/etc/ssl/certs/oidc.crt","OIDC_TLS_CERT_KEY":"/etc/ssl/private/oidc.key","EVALUATOR_CACHE_SIZE":"1","DEEP_METRICS_ENABLED": "false","metrics-addr":"127.0.0.1:8080","enable-leader-election":true}
 {"level":"info","ts":1634674941.0670755,"logger":"authorino.controller-runtime.metrics","msg":"metrics server is starting to listen","addr":"127.0.0.1:8080"}
 {"level":"info","ts":1634674941.0946925,"logger":"authorino","msg":"starting grpc service","port":"50051","tls":true}
 {"level":"info","ts":1634674941.103486,"logger":"authorino","msg":"starting oidc service","port":"8083","tls":true}

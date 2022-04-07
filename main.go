@@ -63,7 +63,7 @@ const (
 	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
 	envOIDCTLSCertPath                = "OIDC_TLS_CERT"
 	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
-	envMetadataCacheSize              = "METADATA_CACHE_SIZE" // in megabytes
+	envEvaluatorCacheSize             = "EVALUATOR_CACHE_SIZE" // in megabytes
 	envDeepMetricsEnabled             = "DEEP_METRICS_ENABLED"
 	flagMetricsAddr                   = "metrics-addr"
 	flagEnableLeaderElection          = "enable-leader-election"
@@ -79,7 +79,7 @@ const (
 	defaultOIDCHTTPPort                   = "8083"
 	defaultOIDCTLSCertPath                = ""
 	defaultOIDCTLSCertKeyPath             = ""
-	defaultMetadataCacheSize              = "1"
+	defaultEvaluatorCacheSize             = "1"
 	defaultDeepMetricsEnabled             = "false"
 	defaultMetricsAddr                    = ":8080"
 	defaultEnableLeaderElection           = false
@@ -100,7 +100,7 @@ var (
 	oidcHTTPPort                   = fetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
 	oidcTLSCertPath                = fetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
 	oidcTLSCertKeyPath             = fetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
-	metadataCacheSize              = fetchEnv(envMetadataCacheSize, defaultMetadataCacheSize)
+	metadataCacheSize              = fetchEnv(envEvaluatorCacheSize, defaultEvaluatorCacheSize)
 	deepMetricEnabled              = fetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
 
 	scheme  = runtime.NewScheme()
@@ -116,7 +116,7 @@ func init() {
 
 	log.SetLogger(logger, logOpts)
 
-	evaluators.MetadataCacheSize, _ = strconv.Atoi(metadataCacheSize)
+	evaluators.EvaluatorCacheSize, _ = strconv.Atoi(metadataCacheSize)
 	metrics.DeepMetricsEnabled, _ = strconv.ParseBool(deepMetricEnabled)
 }
 
@@ -139,7 +139,7 @@ func main() {
 		envOIDCHTTPPort, oidcHTTPPort,
 		envOIDCTLSCertPath, oidcTLSCertPath,
 		envOIDCTLSCertKeyPath, oidcTLSCertKeyPath,
-		envMetadataCacheSize, metadataCacheSize,
+		envEvaluatorCacheSize, metadataCacheSize,
 		envDeepMetricsEnabled, deepMetricEnabled,
 		flagMetricsAddr, metricsAddr,
 		flagEnableLeaderElection, enableLeaderElection,

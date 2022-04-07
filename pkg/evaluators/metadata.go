@@ -21,12 +21,11 @@ type MetadataConfig struct {
 	Priority   int                            `yaml:"priority"`
 	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
 	Metrics    bool                           `yaml:"metrics"`
+	Cache      EvaluatorCache
 
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
-
-	Cache MetadataCache
 }
 
 func (config *MetadataConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {

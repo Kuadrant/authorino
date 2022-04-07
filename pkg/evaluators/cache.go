@@ -11,33 +11,33 @@ import (
 	cache_store "github.com/eko/gocache/store"
 )
 
-var MetadataCacheSize int // in megabytes
+var EvaluatorCacheSize int // in megabytes
 
-type MetadataCache interface {
+type EvaluatorCache interface {
 	Get(key interface{}) (interface{}, error)
 	Set(key, value interface{}) error
 	ResolveKeyFor(authJSON string) interface{}
 	Shutdown() error
 }
 
-func NewMetadataCache(keyTemplate json.JSONValue, ttl int) MetadataCache {
+func NewEvaluatorCache(keyTemplate json.JSONValue, ttl int) EvaluatorCache {
 	duration := time.Duration(ttl) * time.Second
-	cacheClient := freecache.NewCache(MetadataCacheSize * 1024 * 1024)
+	cacheClient := freecache.NewCache(EvaluatorCacheSize * 1024 * 1024)
 	cacheStore := cache_store.NewFreecache(cacheClient, &cache_store.Options{Expiration: duration})
-	c := &jsonCache{
+	c := &evaluatorCache{
 		keyTemplate: keyTemplate,
 		store:       gocache.New(cacheStore),
 	}
 	return c
 }
 
-// jsonCache caches JSON values (objects, arrays, strings, etc)
-type jsonCache struct {
+// evaluatorCache caches JSON values (objects, arrays, strings, etc)
+type evaluatorCache struct {
 	keyTemplate json.JSONValue
 	store       *gocache.Cache
 }
 
-func (c *jsonCache) Get(key interface{}) (interface{}, error) {
+func (c *evaluatorCache) Get(key interface{}) (interface{}, error) {
 	if valueAsBytes, ttl, _ := c.store.GetWithTTL(key); valueAsBytes != nil && ttl > 0 {
 		var value interface{}
 		if err := gojson.Unmarshal(valueAsBytes.([]byte), &value); err != nil {
@@ -50,7 +50,7 @@ func (c *jsonCache) Get(key interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-func (c *jsonCache) Set(key, value interface{}) error {
+func (c *evaluatorCache) Set(key, value interface{}) error {
 	if valueAsBytes, err := gojson.Marshal(value); err != nil {
 		return err
 	} else {
@@ -58,10 +58,10 @@ func (c *jsonCache) Set(key, value interface{}) error {
 	}
 }
 
-func (c *jsonCache) ResolveKeyFor(authJSON string) interface{} {
+func (c *evaluatorCache) ResolveKeyFor(authJSON string) interface{} {
 	return c.keyTemplate.ResolveFor(authJSON)
 }
 
-func (c *jsonCache) Shutdown() error {
+func (c *evaluatorCache) Shutdown() error {
 	return c.store.Clear()
 }

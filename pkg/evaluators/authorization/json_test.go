@@ -45,7 +45,7 @@ func TestCall(t *testing.T) {
 
 	var (
 		jsonAuth   *JSONPatternMatching
-		authorized bool
+		authorized interface{}
 		err        error
 	)
 
@@ -61,7 +61,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 
 	// eq with different value than expected
@@ -76,7 +76,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.Error(t, err, "Unauthorized")
 
 	// neq with same value than expected
@@ -91,7 +91,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 
 	// neq with different value than expected
@@ -106,7 +106,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.Error(t, err, "Unauthorized")
 
 	// incl with value found
@@ -121,7 +121,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 
 	// incl with value not found
@@ -136,7 +136,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.Error(t, err, "Unauthorized")
 
 	// excl with value not found
@@ -151,7 +151,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 
 	// excl with value found
@@ -166,7 +166,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.Error(t, err, "Unauthorized")
 
 	// regex matches value
@@ -181,7 +181,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 
 	// regex does not match value
@@ -196,7 +196,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.Error(t, err, "Unauthorized")
 
 	// invalid regex
@@ -211,7 +211,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.ErrorContains(t, err, "error parsing regexp")
 
 	// multiple rules
@@ -246,7 +246,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 
 	// multiple rules with at least one unauthorized
@@ -281,7 +281,7 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, !authorized)
+	assert.Check(t, !authorized.(bool))
 	assert.Error(t, err, "Unauthorized")
 
 	// rules empty
@@ -290,6 +290,6 @@ func TestCall(t *testing.T) {
 	}
 
 	authorized, err = jsonAuth.Call(pipelineMock, nil)
-	assert.Check(t, authorized)
+	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 }
