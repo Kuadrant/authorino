@@ -69,6 +69,9 @@ Induce the lookup of an AuthConfig by supplying extended host context, for use c
 - **[Reducing the operational space: sharding, noise and multi-tenancy](./user-guides/sharding.md)**<br/>
 Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
 
+- **[Caching](./user-guides/caching.md)**<br/>
+Cache auth objects resolved at runtime for any configuration bit of an AuthConfig, for easy access in subsequent requests whenever an arbitrary cache key repeats, until the cache entry expires.
+
 - **[Observability](./user-guides/metrics.md)**<br/>
 Prometheus metrics exported by Authorino.
 
