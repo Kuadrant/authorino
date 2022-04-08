@@ -83,6 +83,9 @@ type AuthResult struct {
 	Headers []map[string]string `json:"headers,omitempty"`
 	// Metadata are Envoy dynamic metadata content
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	// Body in the response of the request
+	// auth check result
+	Body string `json:"body,omitempty"`
 }
 
 // Success tells whether the auth check result was successful and therefore access can be granted to the requested

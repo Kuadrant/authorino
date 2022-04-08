@@ -502,6 +502,10 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 			authResult.Message, _ = json.StringifyJSON(denyWith.Message.Value.ResolveFor(authJSON))
 		}
 
+		if denyWith.Body != nil {
+			authResult.Body, _ = json.StringifyJSON(denyWith.Body.Value.ResolveFor(authJSON))
+		}
+
 		if len(denyWith.Headers) > 0 {
 			headers := make([]map[string]string, 0)
 			for _, header := range denyWith.Headers {

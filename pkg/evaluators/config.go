@@ -72,4 +72,5 @@ type DenyWithValues struct {
 	Code    int32
 	Message *json.JSONProperty
 	Headers []json.JSONProperty
+	Body    *json.JSONProperty
 }

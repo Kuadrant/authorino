@@ -133,6 +133,7 @@ func (a *AuthService) deniedResponse(authResult auth.AuthResult) *envoy_auth.Che
 					Code: httpCode,
 				},
 				Headers: buildResponseHeadersWithReason(authResult.Message, authResult.Headers),
+				Body:    authResult.Body,
 			},
 		},
 	}

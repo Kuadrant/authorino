@@ -510,6 +510,29 @@ spec:
                   unauthenticated:
                     description: Denial status customization when the request is unauthenticated.
                     properties:
+                      body:
+                        description: HTTP response body to override the default denial
+                          body.
+                        properties:
+                          value:
+                            description: Static value
+                            type: string
+                          valueFrom:
+                            description: Dynamic value
+                            properties:
+                              authJSON:
+                                description: 'Selector to fetch a value from the authorization
+                                  JSON. It can be any path pattern to fetch from the
+                                  authorization JSON (e.g. ''context.request.http.host'')
+                                  or a string template with variable placeholders
+                                  that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                  Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                  can be used. The following string modifiers are
+                                  available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                  @case:upper|lower, and @base64:encode|decode.'
+                                type: string
+                            type: object
+                        type: object
                       code:
                         description: HTTP status code to override the default denial
                           status code.
@@ -573,6 +596,29 @@ spec:
                   unauthorized:
                     description: Denial status customization when the request is unauthorized.
                     properties:
+                      body:
+                        description: HTTP response body to override the default denial
+                          body.
+                        properties:
+                          value:
+                            description: Static value
+                            type: string
+                          valueFrom:
+                            description: Dynamic value
+                            properties:
+                              authJSON:
+                                description: 'Selector to fetch a value from the authorization
+                                  JSON. It can be any path pattern to fetch from the
+                                  authorization JSON (e.g. ''context.request.http.host'')
+                                  or a string template with variable placeholders
+                                  that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                  Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                  can be used. The following string modifiers are
+                                  available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                  @case:upper|lower, and @base64:encode|decode.'
+                                type: string
+                            type: object
+                        type: object
                       code:
                         description: HTTP status code to override the default denial
                           status code.

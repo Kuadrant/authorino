@@ -527,6 +527,9 @@ type DenyWithSpec struct {
 
 	// HTTP response headers to override the default denial headers.
 	Headers []JsonProperty `json:"headers,omitempty"`
+
+	// HTTP response body to override the default denial body.
+	Body *StaticOrDynamicValue `json:"body,omitempty"`
 }
 
 type DenyWith struct {
