@@ -3,11 +3,8 @@ name: End-to-end Tests
 on:
   workflow_dispatch:
     inputs:
-      gitRef:
-        description: Authorino Git ref to test
-        required: false
       operatorVersion:
-        description: Authorino Operator version. Changes to Authorino manifests (CRD, RBAC) in the tested branch will override the base manifests pulled from the Operator.
+        description: Authorino Operator version
         required: true
         default: latest
 
@@ -33,7 +30,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.gitRef || github.sha }}
+          ref: ${{ github.sha }}
       - name: Run make e2e
         env:
           OPERATOR_VERSION: ${{ github.event.inputs.operatorVersion }}
