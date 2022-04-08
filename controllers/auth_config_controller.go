@@ -213,16 +213,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		}
 
 		if metadata.Cache != nil {
-			key := metadata.Cache.Key
 			ttl := metadata.Cache.TTL
 			if ttl == 0 {
 				ttl = api.MetadataDefaultCacheTTL
 			}
 			translatedMetadata.Cache = evaluators.NewMetadataCache(
-				json.JSONValue{
-					Static:  key.Value,
-					Pattern: key.ValueFrom.AuthJSON,
-				},
+				*getJsonFromStaticDynamic(&metadata.Cache.Key),
 				ttl,
 			)
 		}
