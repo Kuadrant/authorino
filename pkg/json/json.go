@@ -186,7 +186,9 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 			if insidePlaceholder {
 				buffer = append(buffer, b)
 			} else {
-				replaced = append(replaced, b)
+				if escaping {
+					replaced = append(replaced, b)
+				}
 				escaping = !escaping
 			}
 		default:
