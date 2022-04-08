@@ -546,15 +546,13 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.De
 	}
 }
 
-func getJsonFromStaticDynamic(value *api.StaticOrDynamicValue) *json.JSONProperty {
+func getJsonFromStaticDynamic(value *api.StaticOrDynamicValue) *json.JSONValue {
 	if value == nil {
 		return nil
 	}
 
-	return &json.JSONProperty{
-		Value: json.JSONValue{
-			Static:  value.Value,
-			Pattern: value.ValueFrom.AuthJSON,
-		},
+	return &json.JSONValue{
+		Static:  value.Value,
+		Pattern: value.ValueFrom.AuthJSON,
 	}
 }

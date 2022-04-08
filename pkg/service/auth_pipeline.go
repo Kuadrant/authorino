@@ -499,11 +499,11 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 		authJSON := pipeline.GetAuthorizationJSON()
 
 		if denyWith.Message != nil {
-			authResult.Message, _ = json.StringifyJSON(denyWith.Message.Value.ResolveFor(authJSON))
+			authResult.Message, _ = json.StringifyJSON(denyWith.Message.ResolveFor(authJSON))
 		}
 
 		if denyWith.Body != nil {
-			authResult.Body, _ = json.StringifyJSON(denyWith.Body.Value.ResolveFor(authJSON))
+			authResult.Body, _ = json.StringifyJSON(denyWith.Body.ResolveFor(authJSON))
 		}
 
 		if len(denyWith.Headers) > 0 {
