@@ -32,6 +32,7 @@ const (
 	MetadataUma                      = "METADATA_UMA"
 	MetadataGenericHTTP              = "METADATA_GENERIC_HTTP"
 	MetadataUserinfo                 = "METADATA_USERINFO"
+	MetadataDefaultCacheTTL          = 60
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
 	AuthorizationKubernetesAuthz     = "AUTHORIZATION_KUBERNETESAUTHZ"
@@ -247,7 +248,7 @@ type Identity_KubernetesAuth struct {
 type Identity_Anonymous struct{}
 
 // The metadata config.
-// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "userInfo" or "uma".
+// Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "http", userInfo" or "uma".
 type Metadata struct {
 	// The name of the metadata source.
 	// It can be used to refer to the resolved metadata object in other configs.
@@ -262,14 +263,18 @@ type Metadata struct {
 	// +kubebuilder:default:=false
 	Metrics bool `json:"metrics,omitempty"`
 
-	// Conditions for Authorino to enforce this metadata config.
-	// If omitted, the config will be enforced for all requests.
-	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
+	// Conditions for Authorino to apply this metadata config.
+	// If omitted, the config will be applied for all requests.
+	// If present, all conditions must match for the config to be applied; otherwise, the config will be skipped.
 	Conditions []JSONPattern `json:"when,omitempty"`
 
 	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
 	UMA         *Metadata_UMA         `json:"uma,omitempty"`
 	GenericHTTP *Metadata_GenericHTTP `json:"http,omitempty"`
+
+	// Caching options for the external metadata fetched when applying this config.
+	// Omit it to avoid caching metadata from this source.
+	Cache *MetadataCaching `json:"cache,omitempty"`
 }
 
 func (m *Metadata) GetType() string {
@@ -335,6 +340,15 @@ type Metadata_GenericHTTP struct {
 	// Defines where client credentials will be passed in the request to the service.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
 	Credentials Credentials `json:"credentials,omitempty"`
+}
+
+type MetadataCaching struct {
+	// Key used to store the entry in the cache.
+	// Cache entries from different metadata configs are stored and managed separately regardless of the key.
+	Key StaticOrDynamicValue `json:"key"`
+	// Duration (in seconds) of the external data in the cache before pulled again from the source.
+	// +kubebuilder:default:=60
+	TTL int `json:"ttl,omitempty"`
 }
 
 // Authorization policy to be enforced.

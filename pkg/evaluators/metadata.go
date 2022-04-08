@@ -25,6 +25,8 @@ type MetadataConfig struct {
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
 	GenericHTTP *metadata.GenericHttp `yaml:"http,omitempty"`
+
+	Cache MetadataCache
 }
 
 func (config *MetadataConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
@@ -43,11 +45,32 @@ func (config *MetadataConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator 
 // impl:AuthConfigEvaluator
 
 func (config *MetadataConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		logger := log.FromContext(ctx).WithName("metadata")
-		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
-	} else {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator == nil {
 		return nil, fmt.Errorf("invalid metadata config")
+	} else {
+		logger := log.FromContext(ctx).WithName("metadata").WithValues("config", config.Name)
+
+		cache := config.Cache
+		var cacheKey interface{}
+
+		if cache != nil {
+			cacheKey = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
+			if cachedObj, err := cache.Get(cacheKey); err != nil {
+				logger.V(1).Error(err, "failed to retrieve data from the cache")
+			} else if cachedObj != nil {
+				return cachedObj, nil
+			}
+		}
+
+		obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+
+		if err == nil && cacheKey != nil {
+			if err := cache.Set(cacheKey, obj); err != nil {
+				logger.V(1).Info("unable to store data in the cache", "err", err)
+			}
+		}
+
+		return obj, err
 	}
 }
 
@@ -82,6 +105,15 @@ func (config *MetadataConfig) GetPriority() int {
 
 func (config *MetadataConfig) GetConditions() []json.JSONPatternMatchingRule {
 	return config.Conditions
+}
+
+// impl:AuthConfigCleaner
+
+func (config *MetadataConfig) Clean(_ context.Context) error {
+	if config.Cache != nil {
+		return config.Cache.Shutdown()
+	}
+	return nil
 }
 
 // impl:metrics.Object

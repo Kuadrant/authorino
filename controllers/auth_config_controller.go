@@ -212,6 +212,17 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Metrics:    metadata.Metrics,
 		}
 
+		if metadata.Cache != nil {
+			ttl := metadata.Cache.TTL
+			if ttl == 0 {
+				ttl = api.MetadataDefaultCacheTTL
+			}
+			translatedMetadata.Cache = evaluators.NewMetadataCache(
+				*getJsonFromStaticDynamic(&metadata.Cache.Key),
+				ttl,
+			)
+		}
+
 		switch metadata.GetType() {
 		// uma
 		case api.MetadataUma:

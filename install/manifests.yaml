@@ -949,7 +949,7 @@ spec:
                 items:
                   description: 'The metadata config. Apart from "name", one of the
                     following parameters is required and only one of the following
-                    parameters is allowed: "userInfo" or "uma".'
+                    parameters is allowed: "http", userInfo" or "uma".'
                   oneOf:
                   - properties:
                       name: {}
@@ -970,6 +970,43 @@ spec:
                     - name
                     - http
                   properties:
+                    cache:
+                      description: Caching options for the external metadata fetched
+                        when applying this config. Omit it to avoid caching metadata
+                        from this source.
+                      properties:
+                        key:
+                          description: Key used to store the entry in the cache. Cache
+                            entries from different metadata configs are stored and
+                            managed separately regardless of the key.
+                          properties:
+                            value:
+                              description: Static value
+                              type: string
+                            valueFrom:
+                              description: Dynamic value
+                              properties:
+                                authJSON:
+                                  description: 'Selector to fetch a value from the
+                                    authorization JSON. It can be any path pattern
+                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                    or a string template with variable placeholders
+                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                    can be used. The following string modifiers are
+                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    @case:upper|lower, and @base64:encode|decode.'
+                                  type: string
+                              type: object
+                          type: object
+                        ttl:
+                          default: 60
+                          description: Duration (in seconds) of the external data
+                            in the cache before pulled again from the source.
+                          type: integer
+                      required:
+                      - key
+                      type: object
                     http:
                       description: Generic HTTP interface to obtain authorization
                         metadata from a HTTP service.
@@ -1158,10 +1195,10 @@ spec:
                       - identitySource
                       type: object
                     when:
-                      description: Conditions for Authorino to enforce this metadata
-                        config. If omitted, the config will be enforced for all requests.
+                      description: Conditions for Authorino to apply this metadata
+                        config. If omitted, the config will be applied for all requests.
                         If present, all conditions must match for the config to be
-                        enforced; otherwise, the config will be skipped.
+                        applied; otherwise, the config will be skipped.
                       items:
                         oneOf:
                         - properties:
