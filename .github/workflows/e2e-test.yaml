@@ -2,9 +2,10 @@ name: End-to-end Tests
 
 on:
   workflow_dispatch:
-    input:
+    inputs:
       gitRef:
         description: Authorino Git ref to test
+        required: false
       operatorVersion:
         description: Authorino Operator version. Changes to Authorino manifests (CRD, RBAC) in the tested branch will override the base manifests pulled from the Operator.
         required: true
