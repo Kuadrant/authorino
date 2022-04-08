@@ -12,7 +12,7 @@ type JSONPatternMatching struct {
 	Rules []json.JSONPatternMatchingRule
 }
 
-func (jsonAuth *JSONPatternMatching) Call(pipeline auth.AuthPipeline, ctx context.Context) (bool, error) {
+func (jsonAuth *JSONPatternMatching) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, rule := range jsonAuth.Rules {

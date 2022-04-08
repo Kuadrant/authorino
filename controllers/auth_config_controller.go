@@ -148,6 +148,17 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Metrics:            identity.Metrics,
 		}
 
+		if identity.Cache != nil {
+			ttl := identity.Cache.TTL
+			if ttl == 0 {
+				ttl = api.EvaluatorDefaultCacheTTL
+			}
+			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
+				*getJsonFromStaticDynamic(&identity.Cache.Key),
+				ttl,
+			)
+		}
+
 		authCred := auth.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
 
 		switch identity.GetType() {
@@ -215,9 +226,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if metadata.Cache != nil {
 			ttl := metadata.Cache.TTL
 			if ttl == 0 {
-				ttl = api.MetadataDefaultCacheTTL
+				ttl = api.EvaluatorDefaultCacheTTL
 			}
-			translatedMetadata.Cache = evaluators.NewMetadataCache(
+			translatedMetadata.Cache = evaluators.NewEvaluatorCache(
 				*getJsonFromStaticDynamic(&metadata.Cache.Key),
 				ttl,
 			)
@@ -322,6 +333,17 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			Metrics:    authorization.Metrics,
 		}
 
+		if authorization.Cache != nil {
+			ttl := authorization.Cache.TTL
+			if ttl == 0 {
+				ttl = api.EvaluatorDefaultCacheTTL
+			}
+			translatedAuthorization.Cache = evaluators.NewEvaluatorCache(
+				*getJsonFromStaticDynamic(&authorization.Cache.Key),
+				ttl,
+			)
+		}
+
 		switch authorization.GetType() {
 		// opa
 		case api.AuthorizationOPA:
@@ -401,6 +423,17 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			response.WrapperKey,
 			response.Metrics,
 		)
+
+		if response.Cache != nil {
+			ttl := response.Cache.TTL
+			if ttl == 0 {
+				ttl = api.EvaluatorDefaultCacheTTL
+			}
+			translatedResponse.Cache = evaluators.NewEvaluatorCache(
+				*getJsonFromStaticDynamic(&response.Cache.Key),
+				ttl,
+			)
+		}
 
 		switch response.GetType() {
 		// wristband

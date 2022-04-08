@@ -48,6 +48,7 @@ type ResponseConfig struct {
 	Wrapper    string                         `yaml:"wrapper"`
 	WrapperKey string                         `yaml:"wrapperKey"`
 	Metrics    bool                           `yaml:"metrics"`
+	Cache      EvaluatorCache
 
 	Wristband   auth.WristbandIssuer  `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON `yaml:"json,omitempty"`
@@ -67,11 +68,32 @@ func (config *ResponseConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator 
 // impl:AuthConfigEvaluator
 
 func (config *ResponseConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	if evaluator := config.GetAuthConfigEvaluator(); evaluator != nil {
-		logger := log.FromContext(ctx).WithName("response")
-		return evaluator.Call(pipeline, log.IntoContext(ctx, logger))
-	} else {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator == nil {
 		return nil, fmt.Errorf("invalid response config")
+	} else {
+		logger := log.FromContext(ctx).WithName("response")
+
+		cache := config.Cache
+		var cacheKey interface{}
+
+		if cache != nil {
+			cacheKey = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
+			if cachedObj, err := cache.Get(cacheKey); err != nil {
+				logger.V(1).Error(err, "failed to retrieve data from the cache")
+			} else if cachedObj != nil {
+				return cachedObj, nil
+			}
+		}
+
+		obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+
+		if err == nil && cacheKey != nil {
+			if err := cache.Set(cacheKey, obj); err != nil {
+				logger.V(1).Info("unable to store data in the cache", "err", err)
+			}
+		}
+
+		return obj, err
 	}
 }
 

@@ -21,27 +21,55 @@ type AuthorizationConfig struct {
 	Priority   int                            `yaml:"priority"`
 	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
 	Metrics    bool                           `yaml:"metrics"`
+	Cache      EvaluatorCache
 
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
 	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
 }
 
-// impl:AuthConfigEvaluator
-
-func (config *AuthorizationConfig) Call(pipeline auth.AuthPipeline, parentCtx context.Context) (interface{}, error) {
-	logger := log.FromContext(parentCtx).WithName("authorization")
-	ctx := log.IntoContext(parentCtx, logger)
-
+func (config *AuthorizationConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
 	switch config.GetType() {
 	case authorizationOPA:
-		return config.OPA.Call(pipeline, ctx)
+		return config.OPA
 	case authorizationJSON:
-		return config.JSON.Call(pipeline, ctx)
+		return config.JSON
 	case authorizationKubernetes:
-		return config.KubernetesAuthz.Call(pipeline, ctx)
+		return config.KubernetesAuthz
 	default:
-		return false, fmt.Errorf("invalid authorization config")
+		return nil
+	}
+}
+
+// impl:AuthConfigEvaluator
+
+func (config *AuthorizationConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+	if evaluator := config.GetAuthConfigEvaluator(); evaluator == nil {
+		return nil, fmt.Errorf("invalid authorization config")
+	} else {
+		logger := log.FromContext(ctx).WithName("authorization")
+
+		cache := config.Cache
+		var cacheKey interface{}
+
+		if cache != nil {
+			cacheKey = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
+			if cachedObj, err := cache.Get(cacheKey); err != nil {
+				logger.V(1).Error(err, "failed to retrieve data from the cache")
+			} else if cachedObj != nil {
+				return cachedObj, nil
+			}
+		}
+
+		obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+
+		if err == nil && cacheKey != nil {
+			if err := cache.Set(cacheKey, obj); err != nil {
+				logger.V(1).Info("unable to store data in the cache", "err", err)
+			}
+		}
+
+		return obj, err
 	}
 }
 

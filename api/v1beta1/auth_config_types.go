@@ -32,12 +32,12 @@ const (
 	MetadataUma                      = "METADATA_UMA"
 	MetadataGenericHTTP              = "METADATA_GENERIC_HTTP"
 	MetadataUserinfo                 = "METADATA_USERINFO"
-	MetadataDefaultCacheTTL          = 60
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
 	AuthorizationKubernetesAuthz     = "AUTHORIZATION_KUBERNETESAUTHZ"
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
+	EvaluatorDefaultCacheTTL         = 60
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -78,6 +78,15 @@ type JsonProperty struct {
 	Value runtime.RawExtension `json:"value,omitempty"`
 	// Dynamic value of the JSON property
 	ValueFrom ValueFrom `json:"valueFrom,omitempty"`
+}
+
+type EvaluatorCaching struct {
+	// Key used to store the entry in the cache.
+	// Cache entries from different metadata configs are stored and managed separately regardless of the key.
+	Key StaticOrDynamicValue `json:"key"`
+	// Duration (in seconds) of the external data in the cache before pulled again from the source.
+	// +kubebuilder:default:=60
+	TTL int `json:"ttl,omitempty"`
 }
 
 // Specifies the desired state of the AuthConfig resource, i.e. the authencation/authorization scheme to be applied to protect the matching service hosts.
@@ -178,6 +187,10 @@ type Identity struct {
 	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
 	Conditions []JSONPattern `json:"when,omitempty"`
 
+	// Caching options for the identity resolved when applying this config.
+	// Omit it to avoid caching identity objects for this config.
+	Cache *EvaluatorCaching `json:"cache,omitempty"`
+
 	// Defines where client credentials are required to be passed in the request for this identity source/authentication mode.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the credentials value (token, API key, etc).
 	Credentials Credentials `json:"credentials,omitempty"`
@@ -268,13 +281,13 @@ type Metadata struct {
 	// If present, all conditions must match for the config to be applied; otherwise, the config will be skipped.
 	Conditions []JSONPattern `json:"when,omitempty"`
 
+	// Caching options for the external metadata fetched when applying this config.
+	// Omit it to avoid caching metadata from this source.
+	Cache *EvaluatorCaching `json:"cache,omitempty"`
+
 	UserInfo    *Metadata_UserInfo    `json:"userInfo,omitempty"`
 	UMA         *Metadata_UMA         `json:"uma,omitempty"`
 	GenericHTTP *Metadata_GenericHTTP `json:"http,omitempty"`
-
-	// Caching options for the external metadata fetched when applying this config.
-	// Omit it to avoid caching metadata from this source.
-	Cache *MetadataCaching `json:"cache,omitempty"`
 }
 
 func (m *Metadata) GetType() string {
@@ -342,15 +355,6 @@ type Metadata_GenericHTTP struct {
 	Credentials Credentials `json:"credentials,omitempty"`
 }
 
-type MetadataCaching struct {
-	// Key used to store the entry in the cache.
-	// Cache entries from different metadata configs are stored and managed separately regardless of the key.
-	Key StaticOrDynamicValue `json:"key"`
-	// Duration (in seconds) of the external data in the cache before pulled again from the source.
-	// +kubebuilder:default:=60
-	TTL int `json:"ttl,omitempty"`
-}
-
 // Authorization policy to be enforced.
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "opa", "json" or "kubernetes".
 type Authorization struct {
@@ -371,6 +375,10 @@ type Authorization struct {
 	// If omitted, the config will be enforced for all requests.
 	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
 	Conditions []JSONPattern `json:"when,omitempty"`
+
+	// Caching options for the policy evaluation results when enforcing this config.
+	// Omit it to avoid caching policy evaluation results for this config.
+	Cache *EvaluatorCaching `json:"cache,omitempty"`
 
 	OPA             *Authorization_OPA                 `json:"opa,omitempty"`
 	JSON            *Authorization_JSONPatternMatching `json:"json,omitempty"`
@@ -477,6 +485,10 @@ type Response struct {
 	// If omitted, the config will be enforced for all requests.
 	// If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
 	Conditions []JSONPattern `json:"when,omitempty"`
+
+	// Caching options for dynamic responses built when applying this config.
+	// Omit it to avoid caching dynamic responses for this config.
+	Cache *EvaluatorCaching `json:"cache,omitempty"`
 
 	// How Authorino wraps the response.
 	// Use "httpHeader" (default) to wrap the response in an HTTP header; or "envoyDynamicMetadata" to wrap the response as Envoy Dynamic Metadata

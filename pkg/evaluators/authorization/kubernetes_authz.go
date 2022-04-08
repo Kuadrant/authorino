@@ -57,7 +57,7 @@ type KubernetesAuthz struct {
 	authorizer kubernetesSubjectAccessReviewer
 }
 
-func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (bool, error) {
+func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return false, err
 	}
