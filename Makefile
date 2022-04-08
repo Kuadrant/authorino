@@ -129,7 +129,9 @@ deploy: certs
 	TEMP_FILE=/tmp/authorino-deploy-$$(openssl rand -hex 4).yaml ;\
 	cp $(AUTHORINO_CR) $$TEMP_FILE ;\
 	sed -i "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(TLS_ENABLED)/$(TLS_ENABLED)/g" $$TEMP_FILE ;\
+	if [ "$(FF)" != "1" ]; then \
 	$(EDITOR) $$TEMP_FILE ;\
+	fi ;\
 	kubectl -n $(NAMESPACE) apply -f $$TEMP_FILE ;\
 	rm -rf $$TEMP_FILE ;\
 	}
@@ -157,7 +159,7 @@ endif
 
 # Local setup...........................................................................................................
 
-.PHONY: namespace example-apps limitador cluster local-build local-setup local-rollout local-cleanup
+.PHONY: namespace example-apps limitador cluster local-build local-setup local-rollout local-cleanup e2e
 
 KIND_VERSION=v0.11.1
 kind:
@@ -217,3 +219,7 @@ endif
 # Install Limitador to the Kubernetes cluster
 limitador:
 	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/limitador/limitador-deploy.yaml
+
+e2e:
+	$(MAKE) local-setup NAMESPACE=$(NAMESPACE) KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) AUTHORINO_IMAGE=$(AUTHORINO_IMAGE) TLS_ENABLED=$(TLS_ENABLED) OPERATOR_BRANCH=$(OPERATOR_BRANCH) AUTHORINO_MANIFESTS=$(AUTHORINO_MANIFESTS) AUTHORINO_INSTANCE=$(AUTHORINO_INSTANCE) ENVOY_OVERLAY=$(ENVOY_OVERLAY) DEPLOY_KEYCLOAK=1 FF=1
+	NAMESPACE=$(NAMESPACE) ./tests/e2e-test.sh
