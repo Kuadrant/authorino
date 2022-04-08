@@ -180,17 +180,20 @@ func TestReplaceJSONPlaceholders(t *testing.T) {
 	replaced = ReplaceJSONPlaceholders(`Github username: {auth.identity.github\.com|@extract:{"sep":"/","pos":3}|@case:upper}`, jsonData)
 	assert.Equal(t, replaced, "Github username: JOHN")
 
-	replaced = ReplaceJSONPlaceholders(`This is NOT a \{variable placeholder\}`, jsonData)
-	assert.Equal(t, replaced, `This is NOT a \{variable placeholder\}`)
+	replaced = ReplaceJSONPlaceholders(`This is NOT a \{variable placeholder\}, {auth.identity.username}!`, jsonData)
+	assert.Equal(t, replaced, `This is NOT a {variable placeholder}, john!`)
+
+	replaced = ReplaceJSONPlaceholders(`\{"msg":"I can build a JSON with dynamic values","username":"{auth.identity.github\.com|@extract:{"sep":"/","pos":3}|@case:upper}"\}`, jsonData)
+	assert.Equal(t, replaced, `{"msg":"I can build a JSON with dynamic values","username":"JOHN"}`)
 
 	replaced = ReplaceJSONPlaceholders("{auth.identity.username}", jsonData)
 	assert.Equal(t, replaced, "john")
 
-	replaced = ReplaceJSONPlaceholders(`\\{auth.identity.username}`, jsonData)
-	assert.Equal(t, replaced, `\\john`)
+	replaced = ReplaceJSONPlaceholders(`\\{auth.identity.username} \\o/`, jsonData)
+	assert.Equal(t, replaced, `\john \o/`)
 
 	replaced = ReplaceJSONPlaceholders(`\\\{auth.identity.username\}`, jsonData)
-	assert.Equal(t, replaced, `\\\{auth.identity.username\}`)
+	assert.Equal(t, replaced, `\{auth.identity.username}`)
 
 	// invalid placeholder
 	replaced = ReplaceJSONPlaceholders("username: {auth.identity.username", jsonData)
