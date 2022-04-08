@@ -334,10 +334,8 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 					{Name: "X-Static-Header", Value: json.JSONValue{Static: "some-value"}},
 					{Name: "Location", Value: json.JSONValue{Pattern: "https://my-app.io/login?redirect_to=https://{context.request.http.host}{context.request.http.path}"}},
 				},
-				Body: &json.JSONProperty{
-					Value: json.JSONValue{
-						Static: authConfigStaticResponse,
-					},
+				Body: &json.JSONValue{
+					Static: authConfigStaticResponse,
 				},
 			},
 		},
