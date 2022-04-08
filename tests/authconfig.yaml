@@ -194,9 +194,11 @@ spec:
 
   denyWith:
     unauthenticated:
-      message: "Authentication failed"
+      message:
+        value: "Authentication failed"
     unauthorized:
-      message: "Access denied"
+      message:
+        value: "Access denied"
 ---
 apiVersion: v1
 kind: Secret
