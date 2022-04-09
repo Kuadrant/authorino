@@ -65,6 +65,9 @@ spec:
       valueFrom: { authJSON: auth.identity.preferred_username }
     - name: roles
       valueFrom: { authJSON: auth.identity.realm_access.roles }
+    cache:
+      key:
+        valueFrom: { authJSON: context.request.http.headers.authorization }
   - name: anonymous
     anonymous: {}
     priority: 1
@@ -74,26 +77,28 @@ spec:
       value: GET
     - selector: context.request.http.path
       operator: matches
-      value: ^/(geo(/)?)?$
+      value: ^/$
     extendedProperties:
     - name: username
       value: global
 
   metadata:
   - name: geo-info
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/geo(/)?$
     http:
       endpoint: http://ip-location.authorino.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
       method: GET
       headers:
       - name: Accept
         value: application/json
+    cache:
+      key:
+        valueFrom: { authJSON: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\":\",\"}" }
   - name: user-info
     userInfo:
       identitySource: keycloak
+    cache:
+      key:
+        valueFrom: { authJSON: context.request.http.headers.authorization }
   - name: resource-info
     when:
     - patternRef: resource-path
@@ -101,6 +106,9 @@ spec:
       endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
       credentialsRef:
         name: talker-api-uma-credentials
+    cache:
+      key:
+        valueFrom: { authJSON: context.request.http.path }
 
   authorization:
   - name: allowed-methods
@@ -112,7 +120,6 @@ spec:
     opa:
       inlineRego: |
         country = object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
-        allow { is_null(country) }
         allow {
           allowed_countries := ["ES", "FR", "IT"]
           allowed_countries[_] == country
