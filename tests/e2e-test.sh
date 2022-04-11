@@ -215,10 +215,7 @@ send_anonymous_requests $IP_IN "
     GET /admin => 401
     GET /greetings/1 => 401"
 
-send_anonymous_requests $IP_IN "
-    GET /geo => 200"
-
 send_anonymous_requests $IP_OUT "
-    GET /geo => 403"
+    GET / => 403"
 
 teardown "SUCCESS"
