@@ -17,7 +17,7 @@ require (
 	github.com/onsi/gomega v1.17.0
 	github.com/open-policy-agent/opa v0.37.2
 	github.com/prometheus/client_golang v1.12.0
-	github.com/tidwall/gjson v1.6.8
+	github.com/tidwall/gjson v1.14.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20211111083644-e5c967477495
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa
@@ -76,8 +76,8 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tidwall/match v1.0.3 // indirect
-	github.com/tidwall/pretty v1.0.2 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yashtewari/glob-intersection v0.0.0-20180916065949-5c77d914dd0b // indirect
