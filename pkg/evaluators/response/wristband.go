@@ -13,7 +13,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/json"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	jose "gopkg.in/square/go-jose.v2"
 )
 

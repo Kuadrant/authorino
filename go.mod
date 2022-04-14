@@ -5,11 +5,11 @@ go 1.17
 require (
 	github.com/coocood/freecache v1.1.1
 	github.com/coreos/go-oidc v2.2.1+incompatible
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/eko/gocache v1.2.0
 	github.com/envoyproxy/go-control-plane v0.10.1
 	github.com/go-logr/logr v1.2.2
 	github.com/gogo/googleapis v1.3.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/go-multierror v1.1.1
