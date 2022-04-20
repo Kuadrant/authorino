@@ -100,13 +100,6 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 									Value:    "admin",
 								},
 							},
-							{
-								JSONPatternExpression: api.JSONPatternExpression{
-									Selector: "attributes.source.address.Address.SocketAddress.address",
-									Operator: "eq",
-									Value:    "80.133.21.75",
-								},
-							},
 						},
 					},
 				},
