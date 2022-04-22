@@ -176,20 +176,20 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>Revoked access tokens</td>
-      <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/19">#19</a>)</td>
-    </tr>
-    <tr>
-      <td>External metadata</td>
-      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/21">#21</a>)</td>
-    </tr>
-    <tr>
-      <td>Compiled Rego policies</td>
+      <td>Access tokens</td>
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>Repeated requests</td>
-      <td>In analysis (<a href="https://github.com/kuadrant/authorino/issues/20">#20</a>)</td>
+      <td>External metadata</td>
+      <td><i>Ready</i></td>
+    </tr>
+    <tr>
+      <td>Precompiled Rego policies</td>
+      <td><i>Ready</i></td>
+    </tr>
+    <tr>
+      <td>Policy evaluation</td>
+      <td><i>Ready</i></td>
     </tr>
     <tr>
       <td colspan="2">Sharding <small>(lookup performance, multitenancy)</small></td>
