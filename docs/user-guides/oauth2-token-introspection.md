@@ -54,7 +54,7 @@ kubectl create namespace a12n-server
 kubectl -n a12n-server apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/a12n-server/a12n-server-deploy.yaml
 ```
 
-Forward local requests to the instance of Keycloak running in the cluster:
+Forward local requests to the instance of a12n-server running in the cluster:
 
 ```sh
 kubectl -n a12n-server port-forward deployment/a12n-server 8531:8531 &
