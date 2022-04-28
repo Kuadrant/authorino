@@ -266,6 +266,7 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 				tlsConfig := &tls.Config{
 					Certificates: []tls.Certificate{tlsCert},
 					ClientAuth:   tls.NoClientCert,
+					MinVersion:   tls.VersionTLS12,
 				}
 				grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 			}
@@ -307,7 +308,12 @@ func startOIDCServer(authConfigCache cache.Cache) {
 			var err error
 
 			if tlsEnabled {
-				err = http.ServeTLS(lis, nil, oidcTLSCertPath, oidcTLSCertKeyPath)
+				server := &http.Server{
+					TLSConfig: &tls.Config{
+						MinVersion: tls.VersionTLS12,
+					},
+				}
+				err = server.ServeTLS(lis, oidcTLSCertPath, oidcTLSCertKeyPath)
 			} else {
 				err = http.Serve(lis, nil)
 			}
