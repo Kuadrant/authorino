@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"flag"
@@ -211,7 +211,7 @@ func main() {
 	}()
 
 	// status update manager
-	leaderElectionId := md5.Sum([]byte(watchedAuthConfigLabelSelector))
+	leaderElectionId := sha256.Sum256([]byte(watchedAuthConfigLabelSelector))
 	managerOptions.LeaderElection = enableLeaderElection
 	managerOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
 	managerOptions.MetricsBindAddress = "0"

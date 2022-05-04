@@ -1,8 +1,7 @@
 package service
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -34,8 +33,8 @@ type OidcService struct {
 func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	uri := req.URL.String()
 
-	requestId := md5.Sum([]byte(fmt.Sprint(req)))
-	requestLogger := log.WithName("service").WithName("oidc").WithValues("request id", hex.EncodeToString(requestId[:16]), "uri", uri)
+	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+	requestLogger := log.WithName("service").WithName("oidc").WithValues("request id", requestId, "uri", uri)
 
 	var statusCode int
 	var responseBody string
