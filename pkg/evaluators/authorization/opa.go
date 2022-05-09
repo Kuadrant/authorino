@@ -2,7 +2,7 @@ package authorization
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -180,7 +180,7 @@ func generatePolicyUID(policyName string, policyContent string, nonce int) strin
 
 func hash(s string) string {
 	data := []byte(s)
-	return fmt.Sprintf("%x", md5.Sum(data))
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 type responseOpaJson struct {
