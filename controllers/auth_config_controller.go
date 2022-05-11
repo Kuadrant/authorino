@@ -128,7 +128,16 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedIdentityConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
-	for _, identity := range authConfig.Spec.Identity {
+	authConfigIdentityConfigs := authConfig.Spec.Identity
+
+	if len(authConfigIdentityConfigs) == 0 {
+		authConfigIdentityConfigs = append(authConfigIdentityConfigs, &api.Identity{
+			Name:      "anonymous",
+			Anonymous: &api.Identity_Anonymous{},
+		})
+	}
+
+	for _, identity := range authConfigIdentityConfigs {
 		extendedProperties := make([]json.JSONProperty, 0)
 		for _, property := range identity.ExtendedProperties {
 			extendedProperties = append(extendedProperties, json.JSONProperty{
