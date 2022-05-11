@@ -770,6 +770,13 @@ spec:
                     required:
                     - name
                     - anonymous
+                  - properties:
+                      anonymous: {}
+                      credentials: {}
+                      name: {}
+                    required:
+                    - name
+                    - plain
                   properties:
                     anonymous:
                       type: object
@@ -956,6 +963,20 @@ spec:
                           type: integer
                       required:
                       - endpoint
+                      type: object
+                    plain:
+                      properties:
+                        authJSON:
+                          description: 'Selector to fetch a value from the authorization
+                            JSON. It can be any path pattern to fetch from the authorization
+                            JSON (e.g. ''context.request.http.host'') or a string
+                            template with variable placeholders that resolve to patterns
+                            (e.g. "Hello, {auth.identity.name}!"). Any patterns supported
+                            by https://pkg.go.dev/github.com/tidwall/gjson can be
+                            used. The following string modifiers are available: @extract:{sep:"
+                            ",pos:0}, @replace{old:"",new:""}, @case:upper|lower,
+                            and @base64:encode|decode.'
+                          type: string
                       type: object
                     priority:
                       default: 0

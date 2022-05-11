@@ -29,6 +29,7 @@ const (
 	IdentityApiKey                   = "IDENTITY_APIKEY"
 	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
 	IdentityAnonymous                = "IDENTITY_ANONYMOUS"
+	IdentityPlain                    = "IDENTITY_PLAIN"
 	MetadataUma                      = "METADATA_UMA"
 	MetadataGenericHTTP              = "METADATA_GENERIC_HTTP"
 	MetadataUserinfo                 = "METADATA_USERINFO"
@@ -204,6 +205,7 @@ type Identity struct {
 	APIKey         *Identity_APIKey         `json:"apiKey,omitempty"`
 	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
 	Anonymous      *Identity_Anonymous      `json:"anonymous,omitempty"`
+	Plain          *Identity_Plain          `json:"plain,omitempty"`
 }
 
 func (i *Identity) GetType() string {
@@ -217,6 +219,8 @@ func (i *Identity) GetType() string {
 		return IdentityKubernetesAuth
 	} else if i.Anonymous != nil {
 		return IdentityAnonymous
+	} else if i.Plain != nil {
+		return IdentityPlain
 	} else {
 		return TypeUnknown
 	}
@@ -259,6 +263,8 @@ type Identity_KubernetesAuth struct {
 }
 
 type Identity_Anonymous struct{}
+
+type Identity_Plain ValueFrom
 
 // The metadata config.
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "http", userInfo" or "uma".

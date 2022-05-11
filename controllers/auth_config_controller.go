@@ -211,6 +211,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				translatedIdentity.KubernetesAuth = k8sAuthConfig
 			}
 
+		case api.IdentityPlain:
+			translatedIdentity.Plain = &identity_evaluators.Plain{Pattern: identity.Plain.AuthJSON}
+
 		case api.IdentityAnonymous:
 			translatedIdentity.Noop = &identity_evaluators.Noop{AuthCredentials: authCred}
 

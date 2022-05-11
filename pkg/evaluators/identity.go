@@ -21,6 +21,7 @@ const (
 	identityHMAC       = "IDENTITY_HMAC"
 	identityAPIKey     = "IDENTITY_APIKEY"
 	identityKubernetes = "IDENTITY_KUBERNETES"
+	identityPlain      = "IDENTITY_PLAIN"
 	identityNoop       = "IDENTITY_NOOP"
 )
 
@@ -37,6 +38,7 @@ type IdentityConfig struct {
 	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
 	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
 	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
+	Plain          *identity.Plain          `yaml:"plain,omitempty"`
 	Noop           *identity.Noop           `yaml:"noop,omitempty"`
 
 	ExtendedProperties []json.JSONProperty `yaml:"extendedProperties"`
@@ -56,6 +58,8 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator 
 		return config.APIKey
 	case identityKubernetes:
 		return config.KubernetesAuth
+	case identityPlain:
+		return config.Plain
 	case identityNoop:
 		return config.Noop
 	default:
@@ -121,6 +125,8 @@ func (config *IdentityConfig) GetType() string {
 		return identityAPIKey
 	case config.KubernetesAuth != nil:
 		return identityKubernetes
+	case config.Plain != nil:
+		return identityPlain
 	case config.Noop != nil:
 		return identityNoop
 	default:
