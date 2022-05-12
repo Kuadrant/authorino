@@ -82,7 +82,7 @@ The instructions here are for centralized gateway or centralized authorization s
   metadata:
     name: authorino
   spec:
-    image: quay.io/3scale/authorino:latest
+    image: quay.io/kuadrant/authorino:latest
     replicas: 1
     clusterWide: true
     listener:
@@ -110,7 +110,7 @@ The instructions here are for centralized gateway or centralized authorization s
   metadata:
     name: authorino
   spec:
-    image: quay.io/3scale/authorino:latest
+    image: quay.io/kuadrant/authorino:latest
     replicas: 1
     clusterWide: true
     listener:
@@ -149,7 +149,7 @@ The instructions here are for centralized gateway or centralized authorization s
   metadata:
     name: authorino
   spec:
-    image: quay.io/3scale/authorino:latest
+    image: quay.io/kuadrant/authorino:latest
     replicas: 1
     clusterWide: false
     listener:
@@ -177,7 +177,7 @@ The instructions here are for centralized gateway or centralized authorization s
   metadata:
     name: authorino
   spec:
-    image: quay.io/3scale/authorino:latest
+    image: quay.io/kuadrant/authorino:latest
     replicas: 1
     clusterWide: false
     listener:
