@@ -30,7 +30,7 @@ jobs:
         with:
           image: authorino
           tags: ${{ env.IMG_TAGS }}
-          archs: amd64,arm64
+          platforms: linux/amd64,linux/arm64
           containerfiles: |
             ./Dockerfile
       - name: Push Image
