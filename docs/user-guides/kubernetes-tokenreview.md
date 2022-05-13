@@ -166,7 +166,7 @@ metadata:
 spec:
   containers:
   - name: api-consumer
-    image: quay.io/3scale/authorino-examples:api-consumer
+    image: quay.io/kuadrant/authorino-examples:api-consumer
     command: ["./run"]
     args:
       - --endpoint=http://envoy.authorino.svc.cluster.local:8000/hello
