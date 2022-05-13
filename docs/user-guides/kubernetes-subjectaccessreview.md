@@ -221,11 +221,11 @@ EOF
 Run a pod that consumes one of the greeting endpoints of the API from inside the cluster, as service account `api-consumer-1`, bound to the `talker-api-greeter` and `talker-api-speaker` cluster roles in the Kubernetes RBAC:
 
 ```sh
-kubectl -n authorino run greeter --attach --rm --restart=Never -q --image=quay.io/3scale/authorino-examples:api-consumer --overrides='{
+kubectl -n authorino run greeter --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
   "apiVersion": "v1",
   "spec": {
     "containers": [{
-      "name": "api-consumer", "image": "quay.io/3scale/authorino-examples:api-consumer", "command": ["./run"],
+      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
       "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/hi","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
@@ -240,11 +240,11 @@ kubectl -n authorino run greeter --attach --rm --restart=Never -q --image=quay.i
 Run a pod that sends a `POST` request to `/say/blah` from within the cluster, as service account `api-consumer-1`:
 
 ```sh
-kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/3scale/authorino-examples:api-consumer --overrides='{
+kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
   "apiVersion": "v1",
   "spec": {
     "containers": [{
-      "name": "api-consumer", "image": "quay.io/3scale/authorino-examples:api-consumer", "command": ["./run"],
+      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
       "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
@@ -259,11 +259,11 @@ kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.i
 Run a pod that sends a `POST` request to `/say/blah` from within the cluster, as service account `api-consumer-2`, bound only to the `talker-api-greeter` cluster role in the Kubernetes RBAC:
 
 ```sh
-kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/3scale/authorino-examples:api-consumer --overrides='{
+kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
   "apiVersion": "v1",
   "spec": {
     "containers": [{
-      "name": "api-consumer", "image": "quay.io/3scale/authorino-examples:api-consumer", "command": ["./run"],
+      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
       "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
