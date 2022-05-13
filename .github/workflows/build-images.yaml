@@ -25,6 +25,11 @@ jobs:
         id: add-latest-tag
         run: |
           echo "IMG_TAGS=latest ${{ env.IMG_TAGS }}" >> $GITHUB_ENV
+      - name: Add branch tag
+        if: ${{ github.ref_name != env.MAIN_BRANCH_NAME }}
+        id: add-branch-tag
+        run: |
+          echo "IMG_TAGS=${GITHUB_REF_NAME/\//-} ${{ env.IMG_TAGS }}" >> $GITHUB_ENV
       - name: Install qemu dependency
         run: |
           sudo apt-get update
