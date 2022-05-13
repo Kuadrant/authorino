@@ -5,6 +5,7 @@ on:
     branches:
       - 'main'
       - 'master'
+  workflow_dispatch: {}
 
 env:
   IMG_TAGS: ${{ github.sha }}
@@ -24,6 +25,10 @@ jobs:
         id: add-latest-tag
         run: |
           echo "IMG_TAGS=latest ${{ env.IMG_TAGS }}" >> $GITHUB_ENV
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
       - name: Build Image
         id: build-image
         uses: redhat-actions/buildah-build@v2
