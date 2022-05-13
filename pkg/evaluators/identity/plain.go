@@ -18,8 +18,10 @@ type Plain struct {
 
 func (p *Plain) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	pattern := json.JSONValue{Pattern: p.Pattern}
-	object := pattern.ResolveFor(pipeline.GetAuthorizationJSON())
-	return object, nil
+	if object := pattern.ResolveFor(pipeline.GetAuthorizationJSON()); object != nil {
+		return object, nil
+	}
+	return nil, fmt.Errorf("Could not retrieve identity object or null")
 }
 
 // impl: AuthCredentials

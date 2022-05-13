@@ -276,7 +276,7 @@ spec:
       authJSON: context.metadata_context.filter_metadata.envoy\.filters\.http\.jwt_authn|verified_jwt
 ```
 
-_Important!_ If the specififed JSON path does not exist in the Authorization JSON, a `null` JSON object will be set. However, the Auth Pipeline will NOT fail in the identity verification phase – i.e. Authorino will not abort the evaluation of the AuthConfig returning a usual `401 Unauthorized`.
+If the specified JSON path does not exist in the Authorization JSON or the value is `null`, the identity verification will fail and, unless other identity config succeeds, Authorino will halt the Auth Pipeline with the usual `401 Unauthorized`.
 
 ### Anonymous access (`identity.anonymous`)
 

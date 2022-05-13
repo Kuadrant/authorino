@@ -34,9 +34,8 @@ func TestPlainCallWithUresolvableObject(t *testing.T) {
 
 	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
 	id, err := plain.Call(pipelineMock, nil)
-	assert.NilError(t, err)
-	j, _ := json.Marshal(id)
-	assert.Equal(t, string(j), `null`)
+	assert.ErrorContains(t, err, "Could not retrieve identity object")
+	assert.Check(t, id == nil)
 }
 
 func TestPlainCallWithInvalidPatttern(t *testing.T) {
@@ -48,9 +47,8 @@ func TestPlainCallWithInvalidPatttern(t *testing.T) {
 
 	plain := &Plain{Pattern: "not a valid json path"}
 	id, err := plain.Call(pipelineMock, nil)
-	assert.NilError(t, err)
-	j, _ := json.Marshal(id)
-	assert.Equal(t, string(j), `null`)
+	assert.ErrorContains(t, err, "Could not retrieve identity object")
+	assert.Check(t, id == nil)
 }
 
 func TestPlainGetCredentailsKeySelector(t *testing.T) {
