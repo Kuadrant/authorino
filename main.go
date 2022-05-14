@@ -58,6 +58,7 @@ const (
 	envLogLevel                       = "LOG_LEVEL"
 	envLogMode                        = "LOG_MODE"
 	envExtAuthGRPCPort                = "EXT_AUTH_GRPC_PORT"
+	envExtAuthHTTPPort                = "EXT_AUTH_HTTP_PORT"
 	envTLSCertPath                    = "TLS_CERT"
 	envTLSCertKeyPath                 = "TLS_CERT_KEY"
 	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
@@ -74,6 +75,7 @@ const (
 	defaultLogLevel                       = "info"
 	defaultLogMode                        = "production"
 	defaultExtAuthGRPCPort                = "50051"
+	defaultExtAuthHTTPPort                = "5001"
 	defaultTLSCertPath                    = ""
 	defaultTLSCertKeyPath                 = ""
 	defaultOIDCHTTPPort                   = "8083"
@@ -95,6 +97,7 @@ var (
 	logLevel                       = fetchEnv(envLogLevel, defaultLogLevel)
 	logMode                        = fetchEnv(envLogMode, defaultLogMode)
 	extAuthGRPCPort                = fetchEnv(envExtAuthGRPCPort, defaultExtAuthGRPCPort)
+	extAuthHTTPPort                = fetchEnv(envExtAuthHTTPPort, defaultExtAuthHTTPPort)
 	tlsCertPath                    = fetchEnv(envTLSCertPath, defaultTLSCertPath)
 	tlsCertKeyPath                 = fetchEnv(envTLSCertKeyPath, defaultTLSCertKeyPath)
 	oidcHTTPPort                   = fetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
@@ -134,6 +137,7 @@ func main() {
 		envLogLevel, logLevel,
 		envLogMode, logMode,
 		envExtAuthGRPCPort, extAuthGRPCPort,
+		envExtAuthHTTPPort, extAuthHTTPPort,
 		envTLSCertPath, tlsCertPath,
 		envTLSCertKeyPath, tlsCertKeyPath,
 		envOIDCHTTPPort, oidcHTTPPort,
@@ -194,7 +198,8 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 
-	startExtAuthServer(cache)
+	startExtAuthServerGRPC(cache)
+	startExtAuthServerHTTP(cache)
 	startOIDCServer(cache)
 
 	_ = mgr.AddMetricsExtraHandler("/server-metrics", promhttp.Handler())
@@ -239,37 +244,39 @@ func main() {
 	}
 }
 
-func startExtAuthServer(authConfigCache cache.Cache) {
-	startExtAuthServerGRPC(authConfigCache)
-	startExtAuthServerHTTP(authConfigCache)
-}
-
 func startExtAuthServerGRPC(authConfigCache cache.Cache) {
-	if lis, err := net.Listen("tcp", ":"+extAuthGRPCPort); err != nil {
-		logger.Error(err, "failed to obtain port for grpc auth service")
+	lis, err := listen(extAuthGRPCPort)
+
+	if err != nil {
+		logger.Error(err, "failed to obtain port for the grpc auth service")
 		os.Exit(1)
-	} else {
-		grpcServerOpts := []grpc.ServerOption{
-			grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams),
-			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		}
+	}
 
-		tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
-		logger.Info("starting grpc service", "port", extAuthGRPCPort, "tls", tlsEnabled)
+	if lis == nil {
+		logger.Info("disabling grpc auth service")
+		return
+	}
 
-		if tlsEnabled {
-			if tlsCert, err := tls.LoadX509KeyPair(tlsCertPath, tlsCertKeyPath); err != nil {
-				logger.Error(err, "failed to load tls cert")
-				os.Exit(1)
-			} else {
-				tlsConfig := &tls.Config{
-					Certificates: []tls.Certificate{tlsCert},
-					ClientAuth:   tls.NoClientCert,
-					MinVersion:   tls.VersionTLS12,
-				}
-				grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+	grpcServerOpts := []grpc.ServerOption{
+		grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams),
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	}
+
+	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
+	logger.Info("starting grpc auth service", "port", extAuthGRPCPort, "tls", tlsEnabled)
+
+	if tlsEnabled {
+		if tlsCert, err := tls.LoadX509KeyPair(tlsCertPath, tlsCertKeyPath); err != nil {
+			logger.Error(err, "failed to load tls cert for the grpc auth service")
+			os.Exit(1)
+		} else {
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{tlsCert},
+				ClientAuth:   tls.NoClientCert,
+				MinVersion:   tls.VersionTLS12,
 			}
+			grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		}
 
 		grpcServer := grpc.NewServer(grpcServerOpts...)
@@ -281,7 +288,7 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 
 		go func() {
 			if err := grpcServer.Serve(lis); err != nil {
-				logger.Error(err, "failed to start grpc service")
+				logger.Error(err, "failed to start grpc auth service")
 				os.Exit(1)
 			}
 		}()
@@ -289,40 +296,61 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 }
 
 func startExtAuthServerHTTP(authConfigCache cache.Cache) {
-	// TODO
+	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, &service.AuthService{Cache: authConfigCache})
 }
 
 func startOIDCServer(authConfigCache cache.Cache) {
-	if lis, err := net.Listen("tcp", ":"+oidcHTTPPort); err != nil {
-		logger.Error(err, "failed to obtain port for http oidc service")
+	startHTTPService("oidc", oidcHTTPPort, "/", oidcTLSCertPath, oidcTLSCertKeyPath, &service.OidcService{Cache: authConfigCache})
+}
+
+func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, handler http.Handler) {
+	lis, err := listen(port)
+
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("failed to obtain port for the http %s service", name))
 		os.Exit(1)
+	}
+
+	if lis == nil {
+		logger.Info(fmt.Sprintf("disabling http %s service", name))
+		return
+	}
+
+	http.Handle(basePath, handler)
+
+	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
+	logger.Info(fmt.Sprintf("starting http %s service", name), "port", port, "tls", tlsEnabled)
+
+	go func() {
+		var err error
+
+		if tlsEnabled {
+			server := &http.Server{
+				TLSConfig: &tls.Config{
+					MinVersion: tls.VersionTLS12,
+				},
+			}
+			err = server.ServeTLS(lis, tlsCertPath, tlsCertKeyPath)
+		} else {
+			err = http.Serve(lis, nil)
+		}
+
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("failed to start http %s service", name))
+			os.Exit(1)
+		}
+	}()
+}
+
+func listen(port string) (net.Listener, error) {
+	if p, err := strconv.Atoi(port); err != nil || p == 0 {
+		return nil, nil
+	}
+
+	if lis, err := net.Listen("tcp", ":"+port); err != nil {
+		return nil, err
 	} else {
-		http.Handle("/", &service.OidcService{
-			Cache: authConfigCache,
-		})
-
-		tlsEnabled := oidcTLSCertPath != "" && oidcTLSCertKeyPath != ""
-		logger.Info("starting oidc service", "port", oidcHTTPPort, "tls", tlsEnabled)
-
-		go func() {
-			var err error
-
-			if tlsEnabled {
-				server := &http.Server{
-					TLSConfig: &tls.Config{
-						MinVersion: tls.VersionTLS12,
-					},
-				}
-				err = server.ServeTLS(lis, oidcTLSCertPath, oidcTLSCertKeyPath)
-			} else {
-				err = http.Serve(lis, nil)
-			}
-
-			if err != nil {
-				logger.Error(err, "failed to start oidc service")
-				os.Exit(1)
-			}
-		}()
+		return lis, nil
 	}
 }
 

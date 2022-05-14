@@ -1,7 +1,12 @@
 package service
 
 import (
+	"bytes"
+	"fmt"
+	"net/http"
 	"testing"
+
+	gohttptest "net/http/httptest"
 
 	"golang.org/x/net/context"
 	"gotest.tools/assert"
@@ -10,6 +15,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
+	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -128,4 +135,140 @@ func TestBuildDynamicEnvoyMetadata(t *testing.T) {
 	_, err := buildEnvoyDynamicMetadata(data)
 
 	assert.NilError(t, err)
+}
+
+func TestAuthServiceRawHTTPAuthorization_Post(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 200)
+}
+
+func TestAuthServiceRawHTTPAuthorization_Get(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("GET", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 200)
+}
+
+func TestAuthServiceRawHTTPAuthorization_UnsupportedMethod(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("PUT", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 404)
+}
+
+func TestAuthServiceRawHTTPAuthorization_InvalidPath(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("PUT", "http://myapp.io/foo", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 404)
+}
+
+func TestAuthServiceRawHTTPAuthorization_WithQueryString(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check?foo=bar", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 200)
+}
+
+func TestAuthServiceRawHTTPAuthorization_UnsupportedContentType(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"text/plain"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 400)
+}
+
+type notReadable struct{}
+
+func (n *notReadable) Read(_ []byte) (int, error) {
+	return 0, fmt.Errorf("failed")
+}
+
+func TestAuthServiceRawHTTPAuthorization_UnreadableBody(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check", &notReadable{})
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 400)
+}
+
+func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewAuthorized(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{"apiVersion":"admission.k8s.io/v1","kind":"AdmissionReview","request":{"uid":"2868ade4-a649-4812-b969-3662a7963535","operation":"CREATE","name":"my-secret","object":{"apiVersion":"v1","kind":"Secret","metadata":"my-secret","data":{"hex":"N2ZmNDcyMjhkYzRjNzRkYjZjY2FiNjJlNzY2YTVlMzgK"}}}}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 200)
+	assert.Equal(t, response.Body.String(), `{"kind":"AdmissionReview","apiVersion":"admission.k8s.io/v1","response":{"uid":"2868ade4-a649-4812-b969-3662a7963535","allowed":true}}`)
+}
+
+func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewForbidden(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	authCred := auth.NewAuthCredential("", "")
+	identityConfig := &evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}}
+	authorizationPolicy, _ := authorization.NewOPAAuthorization("a-policy", `allow = false`, nil, false, 0, context.TODO())
+	authorizationConfig := &evaluators.AuthorizationConfig{Name: "always-deny", OPA: authorizationPolicy}
+	authConfig := &evaluators.AuthConfig{
+		IdentityConfigs:      []auth.AuthConfigEvaluator{identityConfig},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authorizationConfig},
+	}
+	cacheMock := mock_cache.NewMockCache(mockController)
+	cacheMock.EXPECT().Get("myapp.io").Return(authConfig)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{"apiVersion":"admission.k8s.io/v1","kind":"AdmissionReview","request":{"uid":"2868ade4-a649-4812-b969-3662a7963535","operation":"CREATE","name":"my-secret","object":{"apiVersion":"v1","kind":"Secret","metadata":"my-secret","data":{"hex":"N2ZmNDcyMjhkYzRjNzRkYjZjY2FiNjJlNzY2YTVlMzgK"}}}}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 200)
+	assert.Equal(t, response.Body.String(), `{"kind":"AdmissionReview","apiVersion":"admission.k8s.io/v1","response":{"uid":"2868ade4-a649-4812-b969-3662a7963535","allowed":false,"status":{"metadata":{},"message":"Unauthorized","code":403}}}`)
+	assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
+}
+
+func mockAnonymousAccessAuthConfig() *evaluators.AuthConfig {
+	authCred := auth.NewAuthCredential("", "")
+	identityConfig := &evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}}
+	return &evaluators.AuthConfig{IdentityConfigs: []auth.AuthConfigEvaluator{identityConfig}}
 }

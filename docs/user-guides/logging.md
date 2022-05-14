@@ -59,13 +59,19 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino` | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `EXT_AUTH_GRPC_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `EVALUATOR_CACHE_SIZE`, `DEEP_METRICS_ENABLED`, `metrics-addr`, `enable-leader-election` |
 | `authorino` | `info` | "attempting to acquire leader lease authorino/cb88a58a.authorino.kuadrant.io...\n" | |
 | `authorino` | `info` | "successfully acquired lease authorino/cb88a58a.authorino.kuadrant.io\n" | |
-| `authorino` | `info` | "starting grpc service" | `port`, `tls` |
-| `authorino` | `error` | "failed to obtain port for grpc auth service" | |
-| `authorino` | `error` | "failed to load tls cert" | |
-| `authorino` | `error` | "failed to start grpc service" | |
-| `authorino` | `info` | "starting oidc service" | `port`, `tls` |
-| `authorino` | `error` | "failed to obtain port for http oidc service" | |
-| `authorino` | `error` | "failed to start oidc service" | |
+| `authorino` | `info` | "disabling grpc auth service" | |
+| `authorino` | `info` | "starting grpc auth service" | `port`, `tls` |
+| `authorino` | `error` | "failed to obtain port for the grpc auth service" | |
+| `authorino` | `error` | "failed to load tls cert for the grpc auth" | |
+| `authorino` | `error` | "failed to start grpc auth service" | |
+| `authorino` | `info` | "disabling http auth service" | |
+| `authorino` | `info` | "starting http auth service" | `port`, `tls` |
+| `authorino` | `error` | "failed to obtain port for the http auth service" | |
+| `authorino` | `error` | "failed to start http auth service" | |
+| `authorino` | `info` | "disabling http oidc service" | |
+| `authorino` | `info` | "starting http oidc service" | `port`, `tls` |
+| `authorino` | `error` | "failed to obtain port for the http oidc service" | |
+| `authorino` | `error` | "failed to start http oidc service" | |
 | `authorino` | `info` | "starting manager" | |
 | `authorino` | `error` | "unable to start manager" | |
 | `authorino` | `error` | "unable to create controller" | `controller=authconfig\|secret\|authconfigstatusupdate` |

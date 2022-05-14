@@ -1,7 +1,11 @@
 package service
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -17,9 +21,13 @@ import (
 	"github.com/gogo/googleapis/google/rpc"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+	v1 "k8s.io/api/admission/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
+	HTTPAuthorizationBasePath = "/check"
+
 	X_EXT_AUTH_REASON_HEADER = "X-Ext-Auth-Reason"
 
 	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
@@ -30,6 +38,7 @@ const (
 
 var (
 	statusCodeMapping = map[rpc.Code]envoy_type.StatusCode{
+		rpc.OK:                  envoy_type.StatusCode_OK,
 		rpc.FAILED_PRECONDITION: envoy_type.StatusCode_BadRequest,
 		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
 		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
@@ -46,6 +55,103 @@ func init() {
 // AuthService is the server API for the authorization service.
 type AuthService struct {
 	Cache cache.Cache
+}
+
+// ServeHTTP invokes authorization check for a simple GET/POST HTTP authorization request
+// Content-Type header must be 'application/json'
+// The body can be any JSON object; in case the input is a Kubernetes AdmissionReview resource,
+// the response is compatible with the Dynamic Admission API
+func (o *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+	logger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
+
+	switch req.Method {
+	case "GET", "POST":
+	default:
+		resp.WriteHeader(int(envoy_type.StatusCode_NotFound))
+		return
+	}
+
+	path := strings.TrimSuffix(req.URL.Path, "/")
+
+	if path != HTTPAuthorizationBasePath {
+		resp.WriteHeader(int(envoy_type.StatusCode_NotFound))
+		return
+	}
+
+	if req.Header.Get("Content-Type") != "application/json" {
+		resp.WriteHeader(int(envoy_type.StatusCode_BadRequest))
+		return
+	}
+
+	var payload []byte
+	var err error
+
+	if payload, err = ioutil.ReadAll(req.Body); err != nil {
+		resp.WriteHeader(int(envoy_type.StatusCode_BadRequest))
+		return
+	}
+
+	checkRequest := &envoy_auth.CheckRequest{
+		Attributes: &envoy_auth.AttributeContext{
+			Request: &envoy_auth.AttributeContext_Request{
+				Http: &envoy_auth.AttributeContext_HttpRequest{
+					Id:   requestId,
+					Host: req.Host,
+					Body: string(payload),
+				},
+			},
+		},
+	}
+
+	checkResponse, _ := o.Check(context.Background(), checkRequest)
+	code := rpc.Code(checkResponse.GetStatus().Code)
+
+	var respStatusCode envoy_type.StatusCode
+	var respBody []byte
+
+	if admissionReviewRequest := admissionReviewFromPayload(payload); admissionReviewRequest != nil {
+		// it's an admission review request
+		respStatusCode = envoy_type.StatusCode_OK
+		admissionResponse := &v1.AdmissionResponse{}
+		admissionResponse.Allowed = code == rpc.OK
+		if !admissionResponse.Allowed {
+			admissionResponse.Result = &metav1.Status{
+				Code: int32(statusCodeMapping[code]),
+			}
+			for _, h := range checkResponse.GetDeniedResponse().GetHeaders() {
+				if h.Header.GetKey() == X_EXT_AUTH_REASON_HEADER {
+					admissionResponse.Result.Message = h.Header.GetValue()
+					break
+				}
+			}
+		}
+		admissionReviewResponse := &v1.AdmissionReview{}
+		admissionReviewResponse.SetGroupVersionKind(admissionReviewRequest.GroupVersionKind())
+		admissionReviewResponse.Response = admissionResponse
+		admissionReviewResponse.Response.UID = admissionReviewRequest.Request.UID
+		respBody, err = json.Marshal(admissionReviewResponse)
+		if err != nil {
+			logger.Error(err, "failed to encode http authorization response")
+		}
+		resp.Header().Set("Content-Type", "application/json")
+	} else {
+		// not an admission review request
+		respStatusCode = statusCodeMapping[code]
+		var headers []*envoy_core.HeaderValueOption
+		if code == rpc.OK {
+			headers = checkResponse.GetOkResponse().GetHeaders()
+		} else {
+			headers = checkResponse.GetDeniedResponse().GetHeaders()
+			respBody = []byte(checkResponse.GetDeniedResponse().GetBody())
+		}
+		for _, h := range headers {
+			resp.Header().Set(h.Header.GetKey(), h.Header.GetValue())
+		}
+	}
+
+	resp.WriteHeader(int(respStatusCode))
+	_, _ = resp.Write(respBody)
 }
 
 // Check performs authorization check based on the attributes associated with the incoming request,
@@ -248,4 +354,16 @@ func buildEnvoyDynamicMetadata(data map[string]interface{}) (*structpb.Struct, e
 
 func reportStatusMetric(rpcStatusCode rpc.Code) {
 	metrics.ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)])
+}
+
+func admissionReviewFromPayload(payload []byte) *v1.AdmissionReview {
+	r := v1.AdmissionReview{}
+	err := json.Unmarshal(payload, &r)
+	if err == nil &&
+		r.TypeMeta.Kind == "AdmissionReview" &&
+		r.TypeMeta.APIVersion == "admission.k8s.io/v1" &&
+		r.Request != nil {
+		return &r
+	}
+	return nil
 }
