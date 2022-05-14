@@ -300,7 +300,7 @@ func startExtAuthServerHTTP(authConfigCache cache.Cache) {
 }
 
 func startOIDCServer(authConfigCache cache.Cache) {
-	startHTTPService("oidc", oidcHTTPPort, "/", oidcTLSCertPath, oidcTLSCertKeyPath, &service.OidcService{Cache: authConfigCache})
+	startHTTPService("oidc", oidcHTTPPort, service.OIDCBasePath, oidcTLSCertPath, oidcTLSCertKeyPath, &service.OidcService{Cache: authConfigCache})
 }
 
 func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, handler http.Handler) {

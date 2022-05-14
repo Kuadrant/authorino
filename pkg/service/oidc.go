@@ -13,6 +13,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/metrics"
 )
 
+const OIDCBasePath = "/"
+
 var (
 	oidcServerTotalRequestsMetric  = metrics.NewAuthConfigCounterMetric("oidc_server_requests_total", "Number of get requests received on the OIDC (Festival Wristband) server.", "wristband", "path")
 	oidcServerResponseStatusMetric = metrics.NewCounterMetric("oidc_server_response_status", "Status of HTTP response sent by the OIDC (Festival Wristband) server.", "status")
@@ -31,33 +33,28 @@ type OidcService struct {
 }
 
 func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
-	uri := req.URL.String()
-
+	uri := req.URL
 	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
-	requestLogger := log.WithName("service").WithName("oidc").WithValues("request id", requestId, "uri", uri)
+	requestLogger := log.WithName("service").WithName("oidc").WithValues("request id", requestId, "uri", uri.String())
 
 	var statusCode int
 	var responseBody string
 
-	uriParts := strings.Split(uri, "/")
+	// Valid paths are in the format: <basePath: OIDCBasePath><authconfigNamespace>/<authconfigName>/<wristbandEvaluatorName>/<pathSuffix>
+	path := strings.Split(strings.TrimSuffix(strings.TrimPrefix(uri.Path, OIDCBasePath), "/"), "/")
+	var authconfigNamespace, authconfigName, wristbandEvaluatorName string
+	unpackPath(path, &authconfigNamespace, &authconfigName, &wristbandEvaluatorName)
 
-	if len(uriParts) >= 4 {
-		namespace := uriParts[1]
-		authconfig := uriParts[2]
-		realm := fmt.Sprintf("%s/%s", namespace, authconfig)
-		config := uriParts[3]
-		path := strings.Join(uriParts[4:], "/")
-		if strings.HasSuffix(path, "/") {
-			path = path[:len(path)-1]
-		}
-		path = "/" + path
+	if strings.HasPrefix(uri.Path, OIDCBasePath) && len(path) >= 3 {
+		pathSuffix := "/" + strings.Join(path[3:], "/")
+		realm := fmt.Sprintf("%s/%s", authconfigNamespace, authconfigName)
 
-		requestLogger.Info("request received", "realm", realm, "config", config, "path", path)
+		requestLogger.Info("request received", "realm", realm, "config", wristbandEvaluatorName, "path", pathSuffix)
 
-		if wristband := o.findWristbandIssuer(realm, config); wristband != nil {
+		if wristband := o.findWristbandIssuer(realm, wristbandEvaluatorName); wristband != nil {
 			var err error
 
-			switch path {
+			switch pathSuffix {
 			case "/.well-known/openid-configuration":
 				responseBody, err = wristband.OpenIDConfig()
 			case "/.well-known/openid-connect/certs":
@@ -72,7 +69,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 			if err == nil {
 				statusCode = http.StatusOK
 				writer.Header().Add("Content-Type", "application/json")
-				pathMetric = path
+				pathMetric = pathSuffix
 			} else {
 				if statusCode == 0 {
 					statusCode = http.StatusInternalServerError
@@ -80,7 +77,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 				responseBody = err.Error()
 			}
 
-			metrics.ReportMetric(oidcServerTotalRequestsMetric, namespace, authconfig, config, pathMetric)
+			metrics.ReportMetric(oidcServerTotalRequestsMetric, authconfigNamespace, authconfigName, wristbandEvaluatorName, pathMetric)
 		} else {
 			statusCode = http.StatusNotFound
 			responseBody = "Not found"
@@ -114,5 +111,14 @@ func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName stri
 		return nil
 	} else {
 		return nil
+	}
+}
+
+func unpackPath(sections []string, vars ...*string) {
+	for i, section := range sections {
+		if i > len(vars)-1 {
+			return
+		}
+		*vars[i] = section
 	}
 }
