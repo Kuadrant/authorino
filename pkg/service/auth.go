@@ -48,10 +48,16 @@ var (
 	}
 
 	authServerResponseStatusMetric = metrics.NewCounterMetric("auth_server_response_status", "Response status of authconfigs sent by the auth server.", "status")
+	httpServerHandledTotal         = metrics.NewCounterMetric("http_server_handled_total", "Total number of calls completed on the raw HTTP authorization server, regardless of success or failure.", "status")
+	httpServerDuration             = metrics.NewDurationMetric("http_server_handling_seconds", "Response latency (seconds) of raw HTTP authorization request that had been application-level handled by the server.")
 )
 
 func init() {
-	metrics.Register(authServerResponseStatusMetric)
+	metrics.Register(
+		authServerResponseStatusMetric,
+		httpServerHandledTotal,
+		httpServerDuration,
+	)
 }
 
 // AuthService is the server API for the authorization service.
@@ -72,7 +78,9 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET", "POST":
 	default:
-		resp.WriteHeader(int(envoy_type.StatusCode_NotFound))
+		respStatusCode := envoy_type.StatusCode_NotFound
+		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+		resp.WriteHeader(int(respStatusCode))
 		context.Cancel(ctx)
 		return
 	}
@@ -80,13 +88,17 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	path := strings.TrimSuffix(req.URL.Path, "/")
 
 	if path != HTTPAuthorizationBasePath {
-		resp.WriteHeader(int(envoy_type.StatusCode_NotFound))
+		respStatusCode := envoy_type.StatusCode_NotFound
+		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+		resp.WriteHeader(int(respStatusCode))
 		context.Cancel(ctx)
 		return
 	}
 
 	if req.Header.Get("Content-Type") != "application/json" {
-		resp.WriteHeader(int(envoy_type.StatusCode_BadRequest))
+		respStatusCode := envoy_type.StatusCode_BadRequest
+		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+		resp.WriteHeader(int(respStatusCode))
 		context.Cancel(ctx)
 		return
 	}
@@ -95,83 +107,93 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	var err error
 
 	if err := context.CheckContext(ctx); err != nil {
-		resp.WriteHeader(int(envoy_type.StatusCode_ServiceUnavailable))
+		respStatusCode := envoy_type.StatusCode_ServiceUnavailable
+		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+		resp.WriteHeader(int(respStatusCode))
 		context.Cancel(ctx)
 		return
 	}
 
 	if payload, err = ioutil.ReadAll(req.Body); err != nil {
-		resp.WriteHeader(int(envoy_type.StatusCode_BadRequest))
+		respStatusCode := envoy_type.StatusCode_BadRequest
+		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+		resp.WriteHeader(int(respStatusCode))
 		context.Cancel(ctx)
 		return
 	}
 
-	checkRequest := &envoy_auth.CheckRequest{
-		Attributes: &envoy_auth.AttributeContext{
-			Request: &envoy_auth.AttributeContext_Request{
-				Http: &envoy_auth.AttributeContext_HttpRequest{
-					Id:   requestId,
-					Host: req.Host,
-					Body: string(payload),
+	metrics.ReportTimedMetric(httpServerDuration, func() {
+		checkRequest := &envoy_auth.CheckRequest{
+			Attributes: &envoy_auth.AttributeContext{
+				Request: &envoy_auth.AttributeContext_Request{
+					Http: &envoy_auth.AttributeContext_HttpRequest{
+						Id:   requestId,
+						Host: req.Host,
+						Body: string(payload),
+					},
 				},
 			},
-		},
-	}
+		}
 
-	if err := context.CheckContext(ctx); err != nil {
-		resp.WriteHeader(int(envoy_type.StatusCode_ServiceUnavailable))
-		context.Cancel(ctx)
-		return
-	}
+		if err := context.CheckContext(ctx); err != nil {
+			respStatusCode := envoy_type.StatusCode_ServiceUnavailable
+			metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+			resp.WriteHeader(int(respStatusCode))
+			context.Cancel(ctx)
+			return
+		}
 
-	checkResponse, _ := a.Check(ctx, checkRequest)
-	code := rpc.Code(checkResponse.GetStatus().Code)
+		checkResponse, _ := a.Check(ctx, checkRequest)
+		code := rpc.Code(checkResponse.GetStatus().Code)
 
-	var respStatusCode envoy_type.StatusCode
-	var respBody []byte
+		var respStatusCode envoy_type.StatusCode
+		var respBody []byte
 
-	if admissionReviewRequest := admissionReviewFromPayload(payload); admissionReviewRequest != nil {
-		// it's an admission review request
-		respStatusCode = envoy_type.StatusCode_OK
-		admissionResponse := &v1.AdmissionResponse{}
-		admissionResponse.Allowed = code == rpc.OK
-		if !admissionResponse.Allowed {
-			admissionResponse.Result = &metav1.Status{
-				Code: int32(statusCodeMapping[code]),
-			}
-			for _, h := range checkResponse.GetDeniedResponse().GetHeaders() {
-				if h.Header.GetKey() == X_EXT_AUTH_REASON_HEADER {
-					admissionResponse.Result.Message = h.Header.GetValue()
-					break
+		if admissionReviewRequest := admissionReviewFromPayload(payload); admissionReviewRequest != nil {
+			// it's an admission review request
+			respStatusCode = envoy_type.StatusCode_OK
+			admissionResponse := &v1.AdmissionResponse{}
+			admissionResponse.Allowed = code == rpc.OK
+			if !admissionResponse.Allowed {
+				admissionResponse.Result = &metav1.Status{
+					Code: int32(statusCodeMapping[code]),
+				}
+				for _, h := range checkResponse.GetDeniedResponse().GetHeaders() {
+					if h.Header.GetKey() == X_EXT_AUTH_REASON_HEADER {
+						admissionResponse.Result.Message = h.Header.GetValue()
+						break
+					}
 				}
 			}
-		}
-		admissionReviewResponse := &v1.AdmissionReview{}
-		admissionReviewResponse.SetGroupVersionKind(admissionReviewRequest.GroupVersionKind())
-		admissionReviewResponse.Response = admissionResponse
-		admissionReviewResponse.Response.UID = admissionReviewRequest.Request.UID
-		respBody, err = json.Marshal(admissionReviewResponse)
-		if err != nil {
-			logger.Error(err, "failed to encode http authorization response")
-		}
-		resp.Header().Set("Content-Type", "application/json")
-	} else {
-		// not an admission review request
-		respStatusCode = statusCodeMapping[code]
-		var headers []*envoy_core.HeaderValueOption
-		if code == rpc.OK {
-			headers = checkResponse.GetOkResponse().GetHeaders()
+			admissionReviewResponse := &v1.AdmissionReview{}
+			admissionReviewResponse.SetGroupVersionKind(admissionReviewRequest.GroupVersionKind())
+			admissionReviewResponse.Response = admissionResponse
+			admissionReviewResponse.Response.UID = admissionReviewRequest.Request.UID
+			respBody, err = json.Marshal(admissionReviewResponse)
+			if err != nil {
+				logger.Error(err, "failed to encode http authorization response")
+			}
+			resp.Header().Set("Content-Type", "application/json")
 		} else {
-			headers = checkResponse.GetDeniedResponse().GetHeaders()
-			respBody = []byte(checkResponse.GetDeniedResponse().GetBody())
+			// not an admission review request
+			respStatusCode = statusCodeMapping[code]
+			var headers []*envoy_core.HeaderValueOption
+			if code == rpc.OK {
+				headers = checkResponse.GetOkResponse().GetHeaders()
+			} else {
+				headers = checkResponse.GetDeniedResponse().GetHeaders()
+				respBody = []byte(checkResponse.GetDeniedResponse().GetBody())
+			}
+			for _, h := range headers {
+				resp.Header().Set(h.Header.GetKey(), h.Header.GetValue())
+			}
 		}
-		for _, h := range headers {
-			resp.Header().Set(h.Header.GetKey(), h.Header.GetValue())
-		}
-	}
 
-	resp.WriteHeader(int(respStatusCode))
-	_, _ = resp.Write(respBody)
+		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+		resp.WriteHeader(int(respStatusCode))
+		_, _ = resp.Write(respBody)
+	})
+
 	context.Cancel(ctx)
 }
 

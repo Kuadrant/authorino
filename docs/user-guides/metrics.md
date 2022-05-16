@@ -200,6 +200,18 @@ The [Authorino Operator](https://github.com/kuadrant/authorino-operator) creates
       <td>counter</td>
     </tr>
     <tr>
+      <td>http_server_handled_total</td>
+      <td>Total number of calls completed on the raw HTTP authorization server, regardless of success or failure.</td>
+      <td><code>http_code</code></td>
+      <td>counter</td>
+    </tr>
+    <tr>
+      <td>http_server_handling_seconds</td>
+      <td>Response latency (seconds) of raw HTTP authorization request that had been application-level handled by the server.</td>
+      <td></td>
+      <td>histogram</td>
+    </tr>
+    <tr>
       <td>oidc_server_requests_total</td>
       <td>Number of get requests received on the OIDC (Festival Wristband) server.</td>
       <td><code>namespace</code>, <code>authconfig</code>, <code>wristband</code>, <code>path=oidc-config|jwks</code></td>
