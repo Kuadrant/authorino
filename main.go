@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
@@ -57,6 +58,7 @@ const (
 	envWatchedSecretLabelSelector     = "SECRET_LABEL_SELECTOR"
 	envLogLevel                       = "LOG_LEVEL"
 	envLogMode                        = "LOG_MODE"
+	envTimeout                        = "TIMEOUT"
 	envExtAuthGRPCPort                = "EXT_AUTH_GRPC_PORT"
 	envExtAuthHTTPPort                = "EXT_AUTH_HTTP_PORT"
 	envTLSCertPath                    = "TLS_CERT"
@@ -74,6 +76,7 @@ const (
 	defaultWatchedSecretLabelSelector     = "authorino.kuadrant.io/managed-by=authorino"
 	defaultLogLevel                       = "info"
 	defaultLogMode                        = "production"
+	defaultTimeout                        = "0"
 	defaultExtAuthGRPCPort                = "50051"
 	defaultExtAuthHTTPPort                = "5001"
 	defaultTLSCertPath                    = ""
@@ -96,6 +99,8 @@ var (
 	watchedSecretLabelSelector     = fetchEnv(envWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector)
 	logLevel                       = fetchEnv(envLogLevel, defaultLogLevel)
 	logMode                        = fetchEnv(envLogMode, defaultLogMode)
+	timeout, _                     = strconv.Atoi(fetchEnv(envTimeout, defaultTimeout))
+	timeoutMs                      = time.Duration(timeout) * time.Millisecond
 	extAuthGRPCPort                = fetchEnv(envExtAuthGRPCPort, defaultExtAuthGRPCPort)
 	extAuthHTTPPort                = fetchEnv(envExtAuthHTTPPort, defaultExtAuthHTTPPort)
 	tlsCertPath                    = fetchEnv(envTLSCertPath, defaultTLSCertPath)
@@ -136,6 +141,7 @@ func main() {
 		envWatchedSecretLabelSelector, watchedSecretLabelSelector,
 		envLogLevel, logLevel,
 		envLogMode, logMode,
+		envTimeout, timeout,
 		envExtAuthGRPCPort, extAuthGRPCPort,
 		envExtAuthHTTPPort, extAuthHTTPPort,
 		envTLSCertPath, tlsCertPath,
@@ -281,7 +287,7 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 
 		grpcServer := grpc.NewServer(grpcServerOpts...)
 
-		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache})
+		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache, Timeout: timeoutMs})
 		healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
 		grpc_prometheus.Register(grpcServer)
 		grpc_prometheus.EnableHandlingTimeHistogram()
@@ -296,7 +302,7 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 }
 
 func startExtAuthServerHTTP(authConfigCache cache.Cache) {
-	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, &service.AuthService{Cache: authConfigCache})
+	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, &service.AuthService{Cache: authConfigCache, Timeout: timeoutMs})
 }
 
 func startOIDCServer(authConfigCache cache.Cache) {

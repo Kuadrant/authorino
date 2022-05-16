@@ -7,11 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
-	"golang.org/x/net/context"
+	gocontext "golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
@@ -54,14 +56,16 @@ func init() {
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
-	Cache cache.Cache
+	Cache   cache.Cache
+	Timeout time.Duration
 }
 
 // ServeHTTP invokes authorization check for a simple GET/POST HTTP authorization request
 // Content-Type header must be 'application/json'
 // The body can be any JSON object; in case the input is a Kubernetes AdmissionReview resource,
 // the response is compatible with the Dynamic Admission API
-func (o *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	ctx := context.New(context.WithTimeout(a.Timeout))
 	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
 	logger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
 
@@ -69,6 +73,7 @@ func (o *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	case "GET", "POST":
 	default:
 		resp.WriteHeader(int(envoy_type.StatusCode_NotFound))
+		context.Cancel(ctx)
 		return
 	}
 
@@ -76,19 +81,28 @@ func (o *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	if path != HTTPAuthorizationBasePath {
 		resp.WriteHeader(int(envoy_type.StatusCode_NotFound))
+		context.Cancel(ctx)
 		return
 	}
 
 	if req.Header.Get("Content-Type") != "application/json" {
 		resp.WriteHeader(int(envoy_type.StatusCode_BadRequest))
+		context.Cancel(ctx)
 		return
 	}
 
 	var payload []byte
 	var err error
 
+	if err := context.CheckContext(ctx); err != nil {
+		resp.WriteHeader(int(envoy_type.StatusCode_ServiceUnavailable))
+		context.Cancel(ctx)
+		return
+	}
+
 	if payload, err = ioutil.ReadAll(req.Body); err != nil {
 		resp.WriteHeader(int(envoy_type.StatusCode_BadRequest))
+		context.Cancel(ctx)
 		return
 	}
 
@@ -104,7 +118,13 @@ func (o *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		},
 	}
 
-	checkResponse, _ := o.Check(context.Background(), checkRequest)
+	if err := context.CheckContext(ctx); err != nil {
+		resp.WriteHeader(int(envoy_type.StatusCode_ServiceUnavailable))
+		context.Cancel(ctx)
+		return
+	}
+
+	checkResponse, _ := a.Check(ctx, checkRequest)
 	code := rpc.Code(checkResponse.GetStatus().Code)
 
 	var respStatusCode envoy_type.StatusCode
@@ -152,13 +172,14 @@ func (o *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	resp.WriteHeader(int(respStatusCode))
 	_, _ = resp.Write(respBody)
+	context.Cancel(ctx)
 }
 
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
-func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
+func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", req.Attributes.Request.Http.GetId())
-	ctx := log.IntoContext(parentContext, requestLogger)
+	ctx := log.IntoContext(context.New(context.WithParent(parentContext), context.WithTimeout(a.Timeout)), requestLogger)
 
 	a.logAuthRequest(req, ctx)
 
@@ -186,6 +207,13 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 		return a.deniedResponse(result), nil
 	}
 
+	if err := context.CheckContext(ctx); err != nil {
+		result := auth.AuthResult{Code: rpc.UNAVAILABLE}
+		a.logAuthResult(result, ctx)
+		context.Cancel(ctx)
+		return a.deniedResponse(result), nil
+	}
+
 	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *authConfig)
 	result := pipeline.Evaluate()
 
@@ -198,7 +226,7 @@ func (a *AuthService) Check(parentContext context.Context, req *envoy_auth.Check
 	}
 }
 
-func (a *AuthService) successResponse(authResult auth.AuthResult, ctx context.Context) *envoy_auth.CheckResponse {
+func (a *AuthService) successResponse(authResult auth.AuthResult, ctx gocontext.Context) *envoy_auth.CheckResponse {
 	dynamicMetadata, err := buildEnvoyDynamicMetadata(authResult.Metadata)
 	if err != nil {
 		log.FromContext(ctx).V(1).Error(err, "failed to create dynamic metadata", "object", authResult.Metadata)
@@ -245,7 +273,7 @@ func (a *AuthService) deniedResponse(authResult auth.AuthResult) *envoy_auth.Che
 	}
 }
 
-func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx context.Context) {
+func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx gocontext.Context) {
 	logger := log.FromContext(ctx)
 	reqAttrs := req.Attributes
 	httpAttrs := reqAttrs.Request.Http
@@ -282,7 +310,7 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx context.C
 	}
 }
 
-func (a *AuthService) logAuthResult(result auth.AuthResult, ctx context.Context) {
+func (a *AuthService) logAuthResult(result auth.AuthResult, ctx gocontext.Context) {
 	logger := log.FromContext(ctx)
 	success := result.Success()
 	baseLogData := []interface{}{"authorized", success, "response", result.Code.String()}
