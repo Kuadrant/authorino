@@ -9,6 +9,7 @@ done
 
 namespace=${NAMESPACE:-"authorino"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
+verbose=${VERBOSE}
 
 HOSTNAME="talker-api-authorino.127.0.0.1.nip.io"
 IP_IN="109.69.200.56" # IT
@@ -59,10 +60,12 @@ function send {
   test_count=$((test_count+1))
   actual=$(curl -H "Host: $host" -H "$auth" -H "X-Forwarded-For: $region" -k -L -s -o /dev/null -w '%{http_code}' "${protocol}://localhost:${port}${path}" -X $method)
 
+  local target="$method\t$protocol://$host:$port$path"
+
   if [ $actual -ne $expected ]; then
     echo
     echo "Test failed [#$test_count]:"
-    echo "  $method $path"
+    echo -e "  $target"
     if [ "$auth" != "" ]; then
       echo "  $auth"
     fi
@@ -73,7 +76,11 @@ function send {
 
     teardown "FAIL"
   else
-    printf "."
+    if [ "$verbose" == "1" ]; then
+      echo -e "[#$test_count]\tExpected: $expected\tActual: $actual\t$target"
+    else
+      printf "."
+    fi
   fi
 }
 
