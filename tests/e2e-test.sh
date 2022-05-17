@@ -37,6 +37,10 @@ function teardown {
   echo
   echo $result
 
+  for pid in $keycloak_pid $envoy_pid $kube_proxy_pid; do
+    kill $pid 2>/dev/null
+  done
+
   if [ "$result" == "FAIL" ]; then
     exit 1
   fi
@@ -148,14 +152,17 @@ function send_anonymous_requests {
 
 kubectl -n kube-system wait --timeout=300s --for=condition=Available deployments --all
 kubectl proxy --port=8181 2>&1 >/dev/null &
+kube_proxy_pid=$!
 
 kubectl -n $namespace apply -f https://raw.githubusercontent.com/Kuadrant/authorino-examples/main/ip-location/ip-location-deploy.yaml
 kubectl -n $namespace wait --timeout=300s --for=condition=Available deployments --all
 kubectl -n $namespace port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
+envoy_pid=$!
 
 # waiting for keycloak to be ready is hard
 wait_until "keycloak ready" "Admin console listening" "kubectl -n $namespace logs $(kubectl -n $namespace get pods -l app=keycloak -o name) --tail 1"
 kubectl -n $namespace port-forward deployment/keycloak 8080:8080 2>&1 >/dev/null &
+keycloak_pid=$!
 wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --max-time 2 http://localhost:8080/auth/realms/kuadrant/.well-known/openid-configuration"
 
 # authconfig
