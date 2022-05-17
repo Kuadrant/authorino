@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+for cmd in realpath kubectl curl jq base64; do
+	if ! s="$(type -p "$cmd")" || [[ -z $s ]]; then
+    echo "$cmd command not found."
+    exit 1
+  fi
+done
+
 namespace=${NAMESPACE:-"authorino"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
 
