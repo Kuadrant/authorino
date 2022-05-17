@@ -92,9 +92,7 @@ function send_k8s_sa_requests {
   local sa=$1; shift
   local access_token=""
   while [ "$access_token" == "" ]; do
-    access_token=$(curl -k -s -X "POST" "http://localhost:8181/api/v1/namespaces/$namespace/serviceaccounts/$sa/token" \
-      -H 'Content-Type: application/json; charset=utf-8' \
-      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | jq -r '.status.token')
+    access_token=$(echo '{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | kubectl create --raw /api/v1/namespaces/$namespace/serviceaccounts/$sa/token -f - | jq -r .status.token)
     sleep 1
   done
   local requests="$@"
