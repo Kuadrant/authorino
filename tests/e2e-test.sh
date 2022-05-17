@@ -48,13 +48,16 @@ function teardown {
 
 function send {
   local expected=$1; shift
+  local protocol=$1; shift
+  local host=$1; shift
+  local port=$1; shift
   local method=$1; shift
   local path=$1; shift
   local region=$1; shift
   local auth="$@"
 
   test_count=$((test_count+1))
-  actual=$(curl -H "Host: $HOSTNAME" -H "$auth" -H "X-Forwarded-For: $region" -L -s -o /dev/null -w '%{http_code}' "http://localhost:8000$path" -X $method)
+  actual=$(curl -H "Host: $host" -H "$auth" -H "X-Forwarded-For: $region" -k -L -s -o /dev/null -w '%{http_code}' "${protocol}://localhost:${port}${path}" -X $method)
 
   if [ $actual -ne $expected ]; then
     echo
@@ -75,6 +78,9 @@ function send {
 }
 
 function send_requests {
+  local protocol=$1; shift
+  local host=$1; shift
+  local port=$1; shift
   local region=$1; shift
   local auth=$1; shift
 
@@ -82,7 +88,7 @@ function send_requests {
     req=${line##*( )}
     if [ "$req" != "" ]; then
       IFS=' ' read -ra r <<< "$req"
-      send "${r[3]}" "${r[0]}" "${r[1]}" $region $auth
+      send "${r[3]}" $protocol $host $port "${r[0]}" "${r[1]}" $region $auth
     fi
   done <<< "$@"
 }
@@ -97,7 +103,7 @@ function send_k8s_sa_requests {
   done
   local requests="$@"
 
-  send_requests $region "Authorization: Bearer $access_token" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "Authorization: Bearer $access_token" "$requests"
 }
 
 function send_api_key_requests {
@@ -110,7 +116,7 @@ function send_api_key_requests {
   done
   local requests="$@"
 
-  send_requests $region "X-API-KEY: $api_key" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "X-API-KEY: $api_key" "$requests"
 }
 
 function send_oidc_requests {
@@ -124,7 +130,7 @@ function send_oidc_requests {
   done
   local requests="$@"
 
-  send_requests $region "Authorization: Bearer $access_token" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "Authorization: Bearer $access_token" "$requests"
 }
 
 function send_oauth_opaque_requests {
@@ -138,14 +144,14 @@ function send_oauth_opaque_requests {
   done
   local requests="$@"
 
-  send_requests $region "Authorization: Opaque $access_token" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "Authorization: Opaque $access_token" "$requests"
 }
 
 function send_anonymous_requests {
   local region=$1; shift
   local requests="$@"
 
-  send_requests $region "" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "" "$requests"
 }
 
 kubectl -n kube-system wait --timeout=300s --for=condition=Available deployments --all
