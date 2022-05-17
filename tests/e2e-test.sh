@@ -38,7 +38,7 @@ function teardown {
   echo
   echo $result
 
-  for pid in $keycloak_pid $envoy_pid $kube_proxy_pid; do
+  for pid in $keycloak_pid $envoy_pid $wristband_pid $kube_proxy_pid; do
     kill $pid 2>/dev/null
   done
 
@@ -169,6 +169,8 @@ kubectl -n $namespace apply -f https://raw.githubusercontent.com/Kuadrant/author
 kubectl -n $namespace wait --timeout=300s --for=condition=Available deployments --all
 kubectl -n $namespace port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 envoy_pid=$!
+kubectl -n $namespace port-forward services/authorino-authorino-oidc 8083:8083 2>&1 >/dev/null &
+wristband_pid=$!
 
 # waiting for keycloak to be ready is hard
 wait_until "keycloak ready" "Admin console listening" "kubectl -n $namespace logs $(kubectl -n $namespace get pods -l app=keycloak -o name) --tail 1"
@@ -242,5 +244,13 @@ send_anonymous_requests $IP_IN "
 
 send_anonymous_requests $IP_OUT "
     GET / => 403"
+
+send_requests "https" "authorino-authorino-oidc" "8083" $IP_IN "" "
+    GET /authorino/e2e-test/wristband/.well-known/openid-configuration => 200
+    GET /authorino/e2e-test/wristband/.well-known/openid-connect/certs => 200
+    GET /authorino/e2e-test/invalid/.well-known/openid-configuration => 404
+    GET /authorino/invalid/wristband/.well-known/openid-configuration => 404
+    GET /invalid/e2e-test/wristband/.well-known/openid-configuration => 404
+    GET /invalid => 404"
 
 teardown "SUCCESS"
