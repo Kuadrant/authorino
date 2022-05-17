@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
+for cmd in realpath kubectl curl jq base64; do
+	if ! s="$(type -p "$cmd")" || [[ -z $s ]]; then
+    echo "$cmd command not found."
+    exit 1
+  fi
+done
+
 namespace=${NAMESPACE:-"authorino"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
+verbose=${VERBOSE}
 
 HOSTNAME="talker-api-authorino.127.0.0.1.nip.io"
 IP_IN="109.69.200.56" # IT
@@ -30,6 +38,10 @@ function teardown {
   echo
   echo $result
 
+  for pid in $keycloak_pid $envoy_pid $wristband_pid $kube_proxy_pid; do
+    kill $pid 2>/dev/null
+  done
+
   if [ "$result" == "FAIL" ]; then
     exit 1
   fi
@@ -37,18 +49,23 @@ function teardown {
 
 function send {
   local expected=$1; shift
+  local protocol=$1; shift
+  local host=$1; shift
+  local port=$1; shift
   local method=$1; shift
   local path=$1; shift
   local region=$1; shift
   local auth="$@"
 
   test_count=$((test_count+1))
-  actual=$(curl -H "Host: $HOSTNAME" -H "$auth" -H "X-Forwarded-For: $region" -L -s -o /dev/null -w '%{http_code}' "http://localhost:8000$path" -X $method)
+  actual=$(curl -H "Host: $host" -H "$auth" -H "X-Forwarded-For: $region" -k -L -s -o /dev/null -w '%{http_code}' "${protocol}://localhost:${port}${path}" -X $method)
+
+  local target="$method\t$protocol://$host:$port$path"
 
   if [ $actual -ne $expected ]; then
     echo
     echo "Test failed [#$test_count]:"
-    echo "  $method $path"
+    echo -e "  $target"
     if [ "$auth" != "" ]; then
       echo "  $auth"
     fi
@@ -59,11 +76,18 @@ function send {
 
     teardown "FAIL"
   else
-    printf "."
+    if [ "$verbose" == "1" ]; then
+      echo -e "[#$test_count]\tExpected: $expected\tActual: $actual\t$target"
+    else
+      printf "."
+    fi
   fi
 }
 
 function send_requests {
+  local protocol=$1; shift
+  local host=$1; shift
+  local port=$1; shift
   local region=$1; shift
   local auth=$1; shift
 
@@ -71,7 +95,7 @@ function send_requests {
     req=${line##*( )}
     if [ "$req" != "" ]; then
       IFS=' ' read -ra r <<< "$req"
-      send "${r[3]}" "${r[0]}" "${r[1]}" $region $auth
+      send "${r[3]}" $protocol $host $port "${r[0]}" "${r[1]}" $region $auth
     fi
   done <<< "$@"
 }
@@ -81,14 +105,12 @@ function send_k8s_sa_requests {
   local sa=$1; shift
   local access_token=""
   while [ "$access_token" == "" ]; do
-    access_token=$(curl -k -s -X "POST" "http://localhost:8181/api/v1/namespaces/$namespace/serviceaccounts/$sa/token" \
-      -H 'Content-Type: application/json; charset=utf-8' \
-      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | jq -r '.status.token')
+    access_token=$(echo '{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | kubectl create --raw /api/v1/namespaces/$namespace/serviceaccounts/$sa/token -f - | jq -r .status.token)
     sleep 1
   done
   local requests="$@"
 
-  send_requests $region "Authorization: Bearer $access_token" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "Authorization: Bearer $access_token" "$requests"
 }
 
 function send_api_key_requests {
@@ -101,7 +123,7 @@ function send_api_key_requests {
   done
   local requests="$@"
 
-  send_requests $region "X-API-KEY: $api_key" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "X-API-KEY: $api_key" "$requests"
 }
 
 function send_oidc_requests {
@@ -115,7 +137,7 @@ function send_oidc_requests {
   done
   local requests="$@"
 
-  send_requests $region "Authorization: Bearer $access_token" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "Authorization: Bearer $access_token" "$requests"
 }
 
 function send_oauth_opaque_requests {
@@ -129,26 +151,31 @@ function send_oauth_opaque_requests {
   done
   local requests="$@"
 
-  send_requests $region "Authorization: Opaque $access_token" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "Authorization: Opaque $access_token" "$requests"
 }
 
 function send_anonymous_requests {
   local region=$1; shift
   local requests="$@"
 
-  send_requests $region "" "$requests"
+  send_requests "http" "$HOSTNAME" "8000" $region "" "$requests"
 }
 
 kubectl -n kube-system wait --timeout=300s --for=condition=Available deployments --all
 kubectl proxy --port=8181 2>&1 >/dev/null &
+kube_proxy_pid=$!
 
 kubectl -n $namespace apply -f https://raw.githubusercontent.com/Kuadrant/authorino-examples/main/ip-location/ip-location-deploy.yaml
 kubectl -n $namespace wait --timeout=300s --for=condition=Available deployments --all
 kubectl -n $namespace port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
+envoy_pid=$!
+kubectl -n $namespace port-forward services/authorino-authorino-oidc 8083:8083 2>&1 >/dev/null &
+wristband_pid=$!
 
 # waiting for keycloak to be ready is hard
 wait_until "keycloak ready" "Admin console listening" "kubectl -n $namespace logs $(kubectl -n $namespace get pods -l app=keycloak -o name) --tail 1"
 kubectl -n $namespace port-forward deployment/keycloak 8080:8080 2>&1 >/dev/null &
+keycloak_pid=$!
 wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --max-time 2 http://localhost:8080/auth/realms/kuadrant/.well-known/openid-configuration"
 
 # authconfig
@@ -217,5 +244,13 @@ send_anonymous_requests $IP_IN "
 
 send_anonymous_requests $IP_OUT "
     GET / => 403"
+
+send_requests "https" "authorino-authorino-oidc" "8083" $IP_IN "" "
+    GET /authorino/e2e-test/wristband/.well-known/openid-configuration => 200
+    GET /authorino/e2e-test/wristband/.well-known/openid-connect/certs => 200
+    GET /authorino/e2e-test/invalid/.well-known/openid-configuration => 404
+    GET /authorino/invalid/wristband/.well-known/openid-configuration => 404
+    GET /invalid/e2e-test/wristband/.well-known/openid-configuration => 404
+    GET /invalid => 404"
 
 teardown "SUCCESS"

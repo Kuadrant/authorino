@@ -182,7 +182,7 @@ spec:
         valueFrom: { authJSON: auth.identity.username }
   - name: wristband
     wristband:
-      issuer: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/all-features/wristband
+      issuer: https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/wristband
       tokenDuration: 300
       customClaims:
       - name: username
