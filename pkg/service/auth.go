@@ -78,28 +78,19 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET", "POST":
 	default:
-		respStatusCode := envoy_type.StatusCode_NotFound
-		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-		resp.WriteHeader(int(respStatusCode))
-		context.Cancel(ctx)
+		closeWithStatus(envoy_type.StatusCode_NotFound, resp, ctx, nil)
 		return
 	}
 
 	path := strings.TrimSuffix(req.URL.Path, "/")
 
 	if path != HTTPAuthorizationBasePath {
-		respStatusCode := envoy_type.StatusCode_NotFound
-		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-		resp.WriteHeader(int(respStatusCode))
-		context.Cancel(ctx)
+		closeWithStatus(envoy_type.StatusCode_NotFound, resp, ctx, nil)
 		return
 	}
 
 	if req.Header.Get("Content-Type") != "application/json" {
-		respStatusCode := envoy_type.StatusCode_BadRequest
-		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-		resp.WriteHeader(int(respStatusCode))
-		context.Cancel(ctx)
+		closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
 		return
 	}
 
@@ -107,18 +98,12 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	var err error
 
 	if err := context.CheckContext(ctx); err != nil {
-		respStatusCode := envoy_type.StatusCode_ServiceUnavailable
-		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-		resp.WriteHeader(int(respStatusCode))
-		context.Cancel(ctx)
+		closeWithStatus(envoy_type.StatusCode_ServiceUnavailable, resp, ctx, nil)
 		return
 	}
 
 	if payload, err = ioutil.ReadAll(req.Body); err != nil {
-		respStatusCode := envoy_type.StatusCode_BadRequest
-		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-		resp.WriteHeader(int(respStatusCode))
-		context.Cancel(ctx)
+		closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
 		return
 	}
 
@@ -136,10 +121,7 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		if err := context.CheckContext(ctx); err != nil {
-			respStatusCode := envoy_type.StatusCode_ServiceUnavailable
-			metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-			resp.WriteHeader(int(respStatusCode))
-			context.Cancel(ctx)
+			closeWithStatus(envoy_type.StatusCode_ServiceUnavailable, resp, ctx, nil)
 			return
 		}
 
@@ -189,12 +171,10 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
-		resp.WriteHeader(int(respStatusCode))
-		_, _ = resp.Write(respBody)
+		closeWithStatus(respStatusCode, resp, ctx, func() {
+			_, _ = resp.Write(respBody)
+		})
 	})
-
-	context.Cancel(ctx)
 }
 
 // Check performs authorization check based on the attributes associated with the incoming request,
@@ -416,4 +396,16 @@ func admissionReviewFromPayload(payload []byte) *v1.AdmissionReview {
 		return &r
 	}
 	return nil
+}
+
+// Writes the response status code to the raw HTTP external authorization and cancels the context
+func closeWithStatus(respStatusCode envoy_type.StatusCode, response http.ResponseWriter, ctx gocontext.Context, closingFunc func()) {
+	metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+	if respStatusCode != envoy_type.StatusCode_OK { // avoids 'http: superfluous response.WriteHeader call'
+		response.WriteHeader(int(respStatusCode))
+	}
+	if closingFunc != nil {
+		closingFunc()
+	}
+	context.Cancel(ctx)
 }
