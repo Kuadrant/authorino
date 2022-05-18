@@ -1,0 +1,84 @@
+name: Smoke Tests
+
+on:
+  workflow_run:
+    workflows:
+    - Build and push image
+    types:
+    - completed
+
+jobs:
+  on-success:
+    name: Smoke Tests
+    strategy:
+      matrix:
+        go-version: [1.17.x]
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+        id: go
+      - name: Install jq
+        run: sudo apt-get install jq
+      - name: Install kind
+        run: go install sigs.k8s.io/kind@v0.11.1
+      - name: Create kind cluster
+        run: kind create cluster --name authorino-smoke-tests
+      - name: Install cert-manager
+        run: |
+          kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+          kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
+          kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io/cert-manager-webhook
+          kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
+      - name: Install Authorino Operator
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+          kubectl -n authorino-operator wait --timeout=300s --for=condition=Available deployments --all
+      - name: Create the namespace
+        run: |
+          kubectl create namespace authorino
+      - name: Create Authorino TLS certificates
+        run: |
+          curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/authorino/g" | kubectl -n authorino apply -f -
+      - name: Create Authorino instance
+        run: |
+          kubectl -n authorino apply -f -<<EOF
+          apiVersion: operator.authorino.kuadrant.io/v1beta1
+          kind: Authorino
+          metadata:
+            name: authorino
+          spec:
+            image: quay.io/kuadrant/authorino:latest
+            clusterWide: false
+            listener:
+              tls:
+                certSecretRef:
+                  name: authorino-server-cert
+            oidcServer:
+              tls:
+                certSecretRef:
+                  name: authorino-oidc-server-cert
+            logLevel: debug
+            logMode: production
+          EOF
+      - name: Deploy Talker API
+        run: kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+      - name: Deploy Envoy proxy
+        run: |
+          kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-tls-deploy.yaml
+      - name: Deploy Keycloak
+        run: |
+          kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
+      - name: Run e2e tests
+        env:
+          NAMESPACE: authorino
+          AUTHCONFIG: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/authconfig.yaml
+        run: |
+          curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/e2e-test.sh | bash
