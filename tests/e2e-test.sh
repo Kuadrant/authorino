@@ -169,8 +169,6 @@ kubectl -n $namespace apply -f https://raw.githubusercontent.com/Kuadrant/author
 kubectl -n $namespace wait --timeout=300s --for=condition=Available deployments --all
 kubectl -n $namespace port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 envoy_pid=$!
-kubectl -n $namespace port-forward services/authorino-authorino-oidc 8083:8083 2>&1 >/dev/null &
-wristband_pid=$!
 
 # waiting for keycloak to be ready is hard
 wait_until "keycloak ready" "Admin console listening" "kubectl -n $namespace logs $(kubectl -n $namespace get pods -l app=keycloak -o name) --tail 1"
@@ -181,6 +179,9 @@ wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --m
 # authconfig
 kubectl -n $namespace apply -f $authconfig
 wait_until "authconfig ready" "^true$" "kubectl -n $namespace get authconfigs/e2e-test -o jsonpath={.status.ready}"
+
+kubectl -n $namespace port-forward services/authorino-authorino-oidc 8083:8083 2>&1 >/dev/null &
+wristband_pid=$!
 
 # tests
 echo
