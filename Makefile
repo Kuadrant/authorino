@@ -120,7 +120,7 @@ install-operator:
 
 # Creates a namespace where to deploy Authorino
 namespace:
-	kubectl create namespace $(NAMESPACE)
+	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: certs
