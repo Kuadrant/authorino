@@ -270,7 +270,6 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 	}
 
 	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
-	logger.Info("starting grpc auth service", "port", extAuthGRPCPort, "tls", tlsEnabled)
 
 	if tlsEnabled {
 		if tlsCert, err := tls.LoadX509KeyPair(tlsCertPath, tlsCertKeyPath); err != nil {
@@ -284,21 +283,23 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 			}
 			grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		}
-
-		grpcServer := grpc.NewServer(grpcServerOpts...)
-
-		envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache, Timeout: timeoutMs})
-		healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
-		grpc_prometheus.Register(grpcServer)
-		grpc_prometheus.EnableHandlingTimeHistogram()
-
-		go func() {
-			if err := grpcServer.Serve(lis); err != nil {
-				logger.Error(err, "failed to start grpc auth service")
-				os.Exit(1)
-			}
-		}()
 	}
+
+	grpcServer := grpc.NewServer(grpcServerOpts...)
+
+	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache, Timeout: timeoutMs})
+	healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
+	grpc_prometheus.Register(grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram()
+
+	go func() {
+		logger.Info("starting grpc auth service", "port", extAuthGRPCPort, "tls", tlsEnabled)
+
+		if err := grpcServer.Serve(lis); err != nil {
+			logger.Error(err, "failed to start grpc auth service")
+			os.Exit(1)
+		}
+	}()
 }
 
 func startExtAuthServerHTTP(authConfigCache cache.Cache) {
@@ -325,10 +326,11 @@ func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, 
 	http.Handle(basePath, handler)
 
 	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
-	logger.Info(fmt.Sprintf("starting http %s service", name), "port", port, "tls", tlsEnabled)
 
 	go func() {
 		var err error
+
+		logger.Info(fmt.Sprintf("starting http %s service", name), "port", port, "tls", tlsEnabled)
 
 		if tlsEnabled {
 			server := &http.Server{
