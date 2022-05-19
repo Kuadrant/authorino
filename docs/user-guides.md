@@ -63,6 +63,9 @@ Provide Envoy with dynamic metadata from the external authorization process to b
 - **[Redirecting to a login page](./user-guides/deny-with-redirect-to-login.md)**<br/>
 Customize response status code and headers on failed requests. E.g. redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`; mask resources on access denied behind a `404 Not Found` response instead of `403 Forbidden`.
 
+- **[Mixing Envoy built-in filter for auth and Authorino](./user-guides/envoy-jwt-authn-and-authorino.md)**<br/>
+Have JWT validation handled by Envoy beforehand and the JWT payload injected into the request to Authorino, to be used in custom authorization policies defined in a AuthConfig.
+
 - **[Host override via context extension](./user-guides/host-override.md)**<br/>
 Induce the lookup of an AuthConfig by supplying extended host context, for use cases such as of path prefix-based lookup and wildcard subdomains lookup.
 

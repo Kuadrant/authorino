@@ -91,7 +91,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
   </thead>
   <tbody>
     <tr>
-      <td rowspan="8">Identity verification & authentication</td>
+      <td rowspan="9">Identity verification & authentication</td>
       <td>JOSE/JWT validation <small>(OpenID Connect)</small></td>
       <td><i>Ready</i></td>
     </tr>
@@ -118,6 +118,10 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
     <tr>
       <td>HMAC authentication</td>
       <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/9">#9</a>)</td>
+    </tr>
+    <tr>
+      <td>Plain (resolved beforehand and injected in the payload)</td>
+      <td><i>Ready</i></td>
     </tr>
     <tr>
       <td>Anonymous access</td>

@@ -13,6 +13,7 @@
   - [OpenShift OAuth (user-echo endpoint) (`identity.openshift`)](#openshift-oauth-user-echo-endpoint-identityopenshift)
   - [Mutual Transport Layer Security (mTLS) authentication (`identity.mtls`)](#mutual-transport-layer-security-mtls-authentication-identitymtls)
   - [Hash Message Authentication Code (HMAC) authentication (`identity.hmac`)](#hash-message-authentication-code-hmac-authentication-identityhmac)
+  - [Plain (`identity.plain`)](#plain-identityplain)
   - [Anonymous access (`identity.anonymous`)](#anonymous-access-identityanonymous)
   - [Festival Wristband authentication](#festival-wristband-authentication)
   - [_Extra:_ Auth credentials (`credentials`)](#extra-auth-credentials-credentials)
@@ -254,6 +255,28 @@ Authentication based on client X509 certificates presented on the request to the
 </table>
 
 Authentication based on the validation of a hash code generated from the contextual information of the request to the protected API, concatenated with a secret known by the API consumer.
+
+### Plain (`identity.plain`)
+
+Authorino can read plain identity objects, based on authentication tokens provided and verified beforehand using other means (e.g. Envoy [JWT Authentication filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/jwt_authn_filter#config-http-filters-jwt-authn), Kubernetes API server authentication), and injected into the payload to the external authorization service.
+
+The plain identity object is retrieved from the Authorization JSON based on a [JSON path](#common-feature-json-paths-valuefromauthjson) specified in the `AuthConfig`.
+
+This feature is particularly useful in cases where authentication/identity verification is handled before invoking the authorization service and its resolved value injected in the payload can be trusted. Examples of applications for this feature include:
+- Authentication handled in Envoy leveraging the Envoy JWT Authentication filter (decoded JWT injected as 'metadata_context')
+- Use of Authorino as Kubernetes ValidatingWebhook service (Kubernetes 'userInfo' injected in the body of the `AdmissionReview` request)
+
+Example of `AuthConfig` to retrieve plain identity object from the Authorization JSON.
+
+```yaml
+spec:
+  identity:
+  - name: plain
+    plain:
+      authJSON: context.metadata_context.filter_metadata.envoy\.filters\.http\.jwt_authn|verified_jwt
+```
+
+If the specified JSON path does not exist in the Authorization JSON or the value is `null`, the identity verification will fail and, unless other identity config succeeds, Authorino will halt the Auth Pipeline with the usual `401 Unauthorized`.
 
 ### Anonymous access (`identity.anonymous`)
 

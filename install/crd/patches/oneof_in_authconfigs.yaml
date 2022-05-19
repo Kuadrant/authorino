@@ -28,6 +28,11 @@
         credentials: {}
         anonymous: {}
       required: [name, anonymous]
+    - properties:
+        name: {}
+        credentials: {}
+        anonymous: {}
+      required: [name, plain]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/oneOf
