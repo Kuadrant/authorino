@@ -69,6 +69,9 @@ Have JWT validation handled by Envoy beforehand and the JWT payload injected int
 - **[Host override via context extension](./user-guides/host-override.md)**<br/>
 Induce the lookup of an AuthConfig by supplying extended host context, for use cases such as of path prefix-based lookup and wildcard subdomains lookup.
 
+- **[Using Authorino as ValidatingWebhook service](./user-guides/validating-webhook.md)**<br/>
+Use Authorino as a generic Kubernetes ValidatingWebhook service where the rules to validate a request to the Kubernetes API are written in an AuthConfig.
+
 - **[Reducing the operational space: sharding, noise and multi-tenancy](./user-guides/sharding.md)**<br/>
 Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
 
