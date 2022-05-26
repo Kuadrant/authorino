@@ -38,18 +38,12 @@ kind create cluster --name authorino-trial
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
-## 2. Create a namespace for the Authorino instances
-
-```sh
-kubectl create namespace authorino
-```
-
-## 3. Deploy a couple instances of Authorino
+## 2. Deploy a couple instances of Authorino
 
 Deploy an instance of Authorino dedicated to `AuthConfig`s and API key `Secrets` labeled with `authorino/environment=staging`:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
@@ -70,7 +64,7 @@ EOF
 Deploy an instance of Authorino dedicated to `AuthConfig`s and API key `Secrets` labeled with `authorino/environment=production`, ans NOT labeled `disabled`:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
@@ -90,13 +84,13 @@ EOF
 
 The commands above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
-## 7. Create a namespace for user resources
+## 3. Create a namespace for user resources
 
 ```sh
 kubectl create namespace myapp
 ```
 
-## 8. Create `AuthConfig`s and API key `Secret`s for both instances
+## 4. Create `AuthConfig`s and API key `Secret`s for both instances
 
 ### Create resources for `authorino-staging`
 
@@ -142,7 +136,7 @@ EOF
 Verify in the logs that only the `authorino-staging` instance adds the resources to the cache:
 
 ```sh
-kubectl -n authorino logs $(kubectl -n authorino get pods -l authorino-resource=authorino-staging -o name)
+kubectl logs $(kubectl get pods -l authorino-resource=authorino-staging -o name)
 # {"level":"info","ts":1638382989.8327162,"logger":"authorino.controller-runtime.manager.controller.authconfig","msg":"resource reconciled","authconfig":"myapp/auth-config-1"}
 # {"level":"info","ts":1638382989.837424,"logger":"authorino.controller-runtime.manager.controller.authconfig.statusupdater","msg":"resource status updated","authconfig/status":"myapp/auth-config-1"}
 # {"level":"info","ts":1638383144.9486837,"logger":"authorino.controller-runtime.manager.controller.secret","msg":"resource reconciled","secret":"myapp/api-key-1"}
@@ -192,7 +186,7 @@ EOF
 Verify in the logs that only the `authorino-production` instance adds the resources to the cache:
 
 ```sh
-kubectl -n authorino logs $(kubectl -n authorino get pods -l authorino-resource=authorino-production -o name)
+kubectl logs $(kubectl get pods -l authorino-resource=authorino-production -o name)
 # {"level":"info","ts":1638383423.86086,"logger":"authorino.controller-runtime.manager.controller.authconfig.statusupdater","msg":"resource status updated","authconfig/status":"myapp/auth-config-2"}
 # {"level":"info","ts":1638383423.8608105,"logger":"authorino.controller-runtime.manager.controller.authconfig","msg":"resource reconciled","authconfig":"myapp/auth-config-2"}
 # {"level":"info","ts":1638383460.3515081,"logger":"authorino.controller-runtime.manager.controller.secret","msg":"resource reconciled","secret":"myapp/api-key-2"}
@@ -208,7 +202,7 @@ kubectl -n myapp label authconfig/auth-config-2 disabled=true
 Verify in the logs that only the `authorino-production` instance adds the resources to the cache:
 
 ```sh
-kubectl -n authorino logs $(kubectl -n authorino get pods -l authorino-resource=authorino-production -o name)
+kubectl logs $(kubectl get pods -l authorino-resource=authorino-production -o name)
 # {"level":"info","ts":1638383515.6428752,"logger":"authorino.controller-runtime.manager.controller.authconfig","msg":"resource reconciled","authconfig":"myapp/auth-config-2"}
 ```
 
@@ -220,15 +214,15 @@ If you have started a Kubernetes cluster locally with Kind to try this user guid
 kind delete cluster --name authorino-trial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace myapp
-kubectl -n authorino namespace authorino
-kubectl -n authorino namespace authorino-operator
+kubectl delete authorino/authorino-staging
+kubectl delete authorino/authorino-production
+kubectl delete namespace myapp
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run:
+To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
 
 ```sh
 kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml

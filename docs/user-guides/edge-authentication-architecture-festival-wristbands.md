@@ -148,6 +148,7 @@ spec:
     apiKey:
       labelSelectors:
         authorino.kuadrant.io/managed-by: authorino
+      allNamespaces: true
     credentials:
       in: authorization_header
       keySelector: APIKEY
@@ -349,13 +350,13 @@ If you have started a Kubernetes cluster locally with Kind to try this user guid
 kind delete cluster --name authorino-trial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace edge
-kubectl -n authorino namespace internal
-kubectl -n authorino namespace authorino-operator
-kubectl -n authorino namespace keycloak
+kubectl delete namespace edge
+kubectl delete namespace internal
+kubectl delete namespace authorino
+kubectl delete namespace keycloak
 ```
 
 To uninstall the Authorino and Authorino Operator manifests, run:

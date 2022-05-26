@@ -51,24 +51,18 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
-## 2. Create the namespace
-
-```sh
-kubectl create namespace authorino
-```
-
-## 3. Deploy the Talker API
+## 2. Deploy the Talker API
 
 The **Talker API** is just an echo API, included in the Authorino examples. We will use it in this guide as the service to be protected with Authorino.
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 ```
 
-## 4. Deploy Authorino
+## 3. Deploy Authorino
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
@@ -85,23 +79,23 @@ EOF
 
 The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
-## 5. Setup Envoy
+## 4. Setup Envoy
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
 
 For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 ```
 
 The bundle also creates an `Ingress` with host name `talker-api-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:
 
 ```sh
-kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 &
 ```
 
-## 6. Create the `AuthConfig`
+## 5. Create the `AuthConfig`
 
 The `email-verified-only` authorization policy ensures that users consuming the API from a given network (IP range 192.168.1/24) must have their emails verified.
 
@@ -110,7 +104,7 @@ The `email_verified` claim is a property of the identity added to the JWT by the
 The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.org/doc/html/rfc7239) HTTP header to read the client's IP address.
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
@@ -138,7 +132,7 @@ EOF
 
 Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#json-pattern-matching-authorization-rules-authorizationjson) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context..
 
-## 7. Obtain an access token and consume the API
+## 6. Obtain an access token and consume the API
 
 ### Obtain an access token and consume the API as Jane (email verified)
 
@@ -149,7 +143,7 @@ The `AuthConfig` deployed in the previous step is suitable for validating access
 Obtain an access token from within the cluster for the user Jane, whose e-mail has been verified:
 
 ```sh
-ACCESS_TOKEN=$(kubectl -n authorino run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' | jq -r .access_token)
+ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' | jq -r .access_token)
 ```
 
 If otherwise your Keycloak server is reachable from outside the cluster, feel free to obtain the token directly. Make sure the host name set in the OIDC issuer endpoint in the `AuthConfig` matches the one used to obtain the token and is as well reachable from within the cluster.
@@ -177,7 +171,7 @@ curl -H "Authorization: Bearer $ACCESS_TOKEN" \
 Obtain an access token with the Keycloak server for Peter:
 
 ```sh
-ACCESS_TOKEN=$(kubectl -n authorino run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=peter' -d 'password=p' | jq -r .access_token)
+ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=peter' -d 'password=p' | jq -r .access_token)
 ```
 
 As Peter, consume the API outside the area where the policy applies:
@@ -207,14 +201,17 @@ If you have started a Kubernetes cluster locally with Kind to try this user guid
 kind delete cluster --name authorino-trial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace authorino
-kubectl -n authorino namespace authorino-operator
+kubectl delete authconfig/talker-api-protection
+kubectl delete authorino/authorino
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+kubectl delete namespace keycloak
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run:
+To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
 
 ```sh
 kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml

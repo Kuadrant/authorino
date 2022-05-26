@@ -118,11 +118,11 @@ kind delete cluster --name authorino-trial
 Otherwise, delete the namespaces created in step 1 and 5:
 
 ```sh
-kubectl -n authorino namespace hello-world
-kubectl -n authorino namespace authorino-operator
+kubectl delete namespace hello-world
+kubectl delete namespace authorino-operator
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run:
+To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
 
 ```sh
 kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml

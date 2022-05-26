@@ -578,7 +578,7 @@ spec:
   response:
     - name: my-wristband
       wristband:
-        issuer: https://authorino-oidc.authorino.svc:8083/my-namespace/my-api-protection/my-wristband
+        issuer: https://authorino-oidc.default.svc:8083/my-namespace/my-api-protection/my-wristband
         customClaims:
           - name: aud
             value: internal
@@ -599,9 +599,9 @@ The signing key names listed in `signingKeyRefs` must match the names of Kuberne
 
 For each protected API configured for the Festival Wristband issuing, Authorino exposes the following OpenID Connect Discovery well-known endpoints (available for requests within the cluster):
 - **OpenID Connect configuration:**<br/>
-  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/{response-config-name}/.well-known/openid-configuration
+  https://authorino-oidc.default.svc:8083/{namespace}/{api-protection-name}/{response-config-name}/.well-known/openid-configuration
 - **JSON Web Key Set (JWKS) well-known endpoint:**<br/>
-  https://authorino-oidc.authorino.svc:8083/{namespace}/{api-protection-name}/{response-config-name}/.well-known/openid-connect/certs
+  https://authorino-oidc.default.svc:8083/{namespace}/{api-protection-name}/{response-config-name}/.well-known/openid-connect/certs
 
 ### _Extra:_ Response wrappers ([`wrapper`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Response_Wrapper) and [`wrapperKey`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Response_Wrapper))
 
