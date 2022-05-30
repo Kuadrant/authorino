@@ -28,7 +28,7 @@ Provide Envoy with dynamic metadata about the external authorization process to 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 ## 1. Install the Authorino Operator
@@ -189,7 +189,7 @@ curl -H 'Authorization: APIKEY 7BNaTmYGItSzXiwQLNHu82+x52p1XHgY' http://talker-a
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
 Otherwise, delete the resources created in each step:

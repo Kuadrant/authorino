@@ -9,7 +9,7 @@
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 ## 1. Create the namespace
@@ -112,7 +112,7 @@ Check out other [user guides](./../user-guides.md) for several AuthN/AuthZ use-c
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
 Otherwise, delete the namespaces created in step 1 and 5:

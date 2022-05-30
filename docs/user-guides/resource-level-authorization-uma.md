@@ -28,7 +28,7 @@ Fetch resource metadata relevant for your authorization policies from Keycloak a
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 Deploy a Keycloak server preloaded with all the realm settings required for this guide:
@@ -274,7 +274,7 @@ curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-author
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
 Otherwise, delete the resources created in each step:

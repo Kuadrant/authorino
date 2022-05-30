@@ -27,7 +27,7 @@ This user guide is an example of how to use Authorino as an adapter to Keycloak 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 Deploy a Keycloak server preloaded with all the realm settings required for this guide:
@@ -200,7 +200,7 @@ curl -H "Authorization: Bearer <RPT>" http://talker-api-authorino.127.0.0.1.nip.
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
 Otherwise, delete the resources created in each step:

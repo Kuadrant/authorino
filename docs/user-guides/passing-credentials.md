@@ -27,7 +27,7 @@ Customize where credentials are supplied in the request by each trusted source o
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 ## 1. Install the Authorino Operator
@@ -226,7 +226,7 @@ curl http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
 Otherwise, delete the resources created in each step:

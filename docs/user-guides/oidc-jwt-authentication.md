@@ -28,7 +28,7 @@ Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; le
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 Deploy a Keycloak server preloaded with all the realm settings required for this guide:
@@ -147,7 +147,7 @@ curl http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
 Otherwise, delete the resources created in each step:
