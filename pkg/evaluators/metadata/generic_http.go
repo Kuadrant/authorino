@@ -18,6 +18,7 @@ import (
 type GenericHttp struct {
 	Endpoint     string
 	Method       string
+	Body         *json.JSONValue
 	Parameters   []json.JSONProperty
 	Headers      []json.JSONProperty
 	ContentType  string
@@ -70,9 +71,9 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 			"headers", req.Header,
 		}
 		if requestBody != nil {
-			var b []byte
-			_, _ = requestBody.Read(b)
-			logData = append(logData, "body", string(b))
+			if b, ok := requestBody.(*bytes.Buffer); ok {
+				logData = append(logData, "body", b.String())
+			}
 		}
 		logger.Info("sending request", logData...)
 	}
@@ -94,6 +95,14 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 }
 
 func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
+	if h.Body != nil {
+		if body, err := json.StringifyJSON(h.Body.ResolveFor(authData)); err != nil {
+			return nil, fmt.Errorf("failed to encode http request")
+		} else {
+			return bytes.NewBufferString(body), nil
+		}
+	}
+
 	data := make(map[string]interface{})
 	for _, param := range h.Parameters {
 		data[param.Name] = param.Value.ResolveFor(authData)

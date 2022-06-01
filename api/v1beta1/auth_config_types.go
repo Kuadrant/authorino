@@ -339,18 +339,26 @@ type Metadata_GenericHTTP struct {
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
 	// When the request method is POST, the authorization JSON is passed in the body of the request.
-	Method GenericHTTP_Method `json:"method,omitempty"`
+	// +kubebuilder:default:=GET
+	Method *GenericHTTP_Method `json:"method,omitempty"`
+
+	// Raw body of the HTTP request.
+	// Supersedes 'bodyParameters'; use either one or the other.
+	// Use it with method=POST; for GET requests, set parameters as query string in the 'endpoint' (placeholders can be used).
+	Body *StaticOrDynamicValue `json:"body,omitempty"`
 
 	// Custom parameters to encode in the body of the HTTP request.
-	// Use it with method=POST; for GET requests, specify parameters using placeholders in the endpoint.
+	// Superseded by 'body'; use either one or the other.
+	// Use it with method=POST; for GET requests, set parameters as query string in the 'endpoint' (placeholders can be used).
 	Parameters []JsonProperty `json:"bodyParameters,omitempty"`
+
+	// Content-Type of the request body. Shapes how 'bodyParameters' are encoded.
+	// Use it with method=POST; for GET requests, Content-Type is automatically set to 'text/plain'.
+	// +kubebuilder:default:=application/x-www-form-urlencoded
+	ContentType Metadata_GenericHTTP_ContentType `json:"contentType,omitempty"`
 
 	// Custom headers in the HTTP request.
 	Headers []JsonProperty `json:"headers,omitempty"`
-
-	// Content-Type of the request body.
-	// +kubebuilder:default:=application/x-www-form-urlencoded
-	ContentType Metadata_GenericHTTP_ContentType `json:"contentType,omitempty"`
 
 	// Reference to a Secret key whose value will be passed by Authorino in the request.
 	// The HTTP service can use the shared secret to authenticate the origin of the request.

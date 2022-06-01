@@ -95,6 +95,84 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 	assert.Equal(t, objJSON["foo"], "bar")
 }
 
+func TestGenericHttpCallWithStaticBody(t *testing.T) {
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+		},
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + extHttpServiceHost + "/metadata"
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	requestBody := bytes.NewBuffer([]byte(`{"foo":"bar"}`))
+	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
+	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
+
+	metadata := &GenericHttp{
+		Endpoint:        endpoint,
+		Method:          "POST",
+		Body:            &json.JSONValue{Static: `{"foo":"bar"}`},
+		ContentType:     "application/json",
+		SharedSecret:    "secret",
+		AuthCredentials: sharedCredsMock,
+	}
+
+	obj, err := metadata.Call(pipelineMock, ctx)
+
+	assert.NilError(t, err)
+
+	objJSON := obj.(map[string]interface{})
+	assert.Equal(t, objJSON["foo"], "bar")
+}
+
+func TestGenericHttpCallWithDynamicBody(t *testing.T) {
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
+		},
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + extHttpServiceHost + "/metadata"
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	requestBody := bytes.NewBuffer([]byte(`{"foo":"bar","user":{"name":"mock"}}`))
+	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
+	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
+
+	metadata := &GenericHttp{
+		Endpoint:        endpoint,
+		Method:          "POST",
+		Body:            &json.JSONValue{Pattern: `\{"foo":"bar","user":\{"name":"{auth.identity.user}"\}\}`},
+		ContentType:     "application/json",
+		SharedSecret:    "secret",
+		AuthCredentials: sharedCredsMock,
+	}
+
+	obj, err := metadata.Call(pipelineMock, ctx)
+
+	assert.NilError(t, err)
+
+	objJSON := obj.(map[string]interface{})
+	assert.Equal(t, objJSON["foo"], "bar")
+}
+
 func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
 		"/metadata?p=some-origin": func() httptest.HttpServerMockResponse {

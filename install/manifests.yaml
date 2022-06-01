@@ -1106,10 +1106,37 @@ spec:
                       description: Generic HTTP interface to obtain authorization
                         metadata from a HTTP service.
                       properties:
+                        body:
+                          description: Raw body of the HTTP request. Supersedes 'bodyParameters';
+                            use either one or the other. Use it with method=POST;
+                            for GET requests, set parameters as query string in the
+                            'endpoint' (placeholders can be used).
+                          properties:
+                            value:
+                              description: Static value
+                              type: string
+                            valueFrom:
+                              description: Dynamic value
+                              properties:
+                                authJSON:
+                                  description: 'Selector to fetch a value from the
+                                    authorization JSON. It can be any path pattern
+                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                    or a string template with variable placeholders
+                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                    can be used. The following string modifiers are
+                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    @case:upper|lower, and @base64:encode|decode.'
+                                  type: string
+                              type: object
+                          type: object
                         bodyParameters:
                           description: Custom parameters to encode in the body of
-                            the HTTP request. Use it with method=POST; for GET requests,
-                            specify parameters using placeholders in the endpoint.
+                            the HTTP request. Superseded by 'body'; use either one
+                            or the other. Use it with method=POST; for GET requests,
+                            set parameters as query string in the 'endpoint' (placeholders
+                            can be used).
                           items:
                             properties:
                               name:
@@ -1139,7 +1166,10 @@ spec:
                           type: array
                         contentType:
                           default: application/x-www-form-urlencoded
-                          description: Content-Type of the request body.
+                          description: Content-Type of the request body. Shapes how
+                            'bodyParameters' are encoded. Use it with method=POST;
+                            for GET requests, Content-Type is automatically set to
+                            'text/plain'.
                           enum:
                           - application/x-www-form-urlencoded
                           - application/json
@@ -1211,6 +1241,7 @@ spec:
                             type: object
                           type: array
                         method:
+                          default: GET
                           description: 'HTTP verb used in the request to the service.
                             Accepted values: GET (default), POST. When the request
                             method is POST, the authorization JSON is passed in the

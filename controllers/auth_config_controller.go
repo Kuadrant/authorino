@@ -295,6 +295,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[sharedSecretRef.Key])
 			}
 
+			var body *json.JSONValue
+			if b := genericHttp.Body; b != nil {
+				body = &json.JSONValue{Static: b.Value, Pattern: b.ValueFrom.AuthJSON}
+			}
+
 			params := make([]json.JSONProperty, 0, len(genericHttp.Parameters))
 			for _, param := range genericHttp.Parameters {
 				params = append(params, json.JSONProperty{
@@ -317,9 +322,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				})
 			}
 
+			method := "GET"
+			if m := genericHttp.Method; m != nil {
+				method = string(*m)
+			}
+
 			translatedMetadata.GenericHTTP = &metadata_evaluators.GenericHttp{
 				Endpoint:        genericHttp.Endpoint,
-				Method:          string(genericHttp.Method),
+				Method:          method,
+				Body:            body,
 				Parameters:      params,
 				Headers:         headers,
 				ContentType:     string(genericHttp.ContentType),
