@@ -52,6 +52,10 @@ KIND = $(PROJECT_DIR)/bin/kind
 kind: ## Installs kind in $PROJECT_DIR/bin
 	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.11.1)
 
+MOCKGEN = $(PROJECT_DIR)/bin/mockgen
+mockgen: ## Installs mockgen in $PROJECT_DIR/bin
+	$(call go-get-tool,$(MOCKGEN),github.com/golang/mock/mockgen@v1.6.0)
+
 # go-get-tool will 'go install' any package $2 and install it to $1.
 define go-get-tool
 @[ -f $(1) ] || { \
