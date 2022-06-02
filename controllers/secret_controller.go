@@ -3,9 +3,11 @@ package controllers
 import (
 	"context"
 
-	api "github.com/kuadrant/authorino/api/v1beta1"
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	"github.com/kuadrant/authorino/pkg/auth"
+	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -17,20 +19,21 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // Supporting mocking out functions for testing
 var newController = controller_builder.NewControllerManagedBy
 
+type authConfigSet map[*evaluators.AuthConfig]struct{}
+
 // SecretReconciler reconciles k8s Secret objects
 type SecretReconciler struct {
 	client.Client
-	Logger               logr.Logger
-	Scheme               *runtime.Scheme
-	LabelSelector        labels.Selector
-	AuthConfigReconciler reconcile.Reconciler
-	Namespace            string
+	Logger        logr.Logger
+	Scheme        *runtime.Scheme
+	Cache         cache.Cache
+	LabelSelector labels.Selector
+	Namespace     string
 }
 
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;
@@ -38,55 +41,37 @@ type SecretReconciler struct {
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("secret", req.NamespacedName)
 
-	var reconcile func(api.AuthConfig)
+	var reconcile func(*evaluators.AuthConfig)
+	var c chan error
 
 	secret := v1.Secret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
-		// could not get the resource but not because of a 404 Not found (some error must have happened)
+		// could not get the resource but not because of a 404 Not found, some error must have happened
 		return ctrl.Result{}, err
 	} else if errors.IsNotFound(err) || !Watched(&secret.ObjectMeta, r.LabelSelector) {
-		// could not find the resouce: 404 Not found (resouce must have been deleted)
-		// or the resource misses required labels (i.e. not to be watched by this controller)
-		// try to find a secret with same name by digging into the cache of authconfigs
-		reconcile = func(authConfig api.AuthConfig) {
-			for _, host := range authConfig.Spec.Hosts {
-				authConfigReconciler, _ := r.AuthConfigReconciler.(*AuthConfigReconciler)
-				for _, id := range authConfigReconciler.Cache.Get(host).IdentityConfigs {
-					i, _ := id.(auth.APIKeySecretFinder)
-					if s := i.FindSecretByName(req.NamespacedName); s != nil {
-						r.reconcileAuthConfig(ctx, authConfig)
-						return
-					}
-				}
-			}
+		// could not find the resource (404 Not found, resource must have been deleted)
+		// or the resource is no longer to be watched (labels no longer match)
+		// => delete the API key from all AuthConfigs
+		reconcile = func(authConfig *evaluators.AuthConfig) {
+			c <- r.deleteAPIKey(ctx, authConfig, req.NamespacedName)
 		}
 	} else {
-		// resource found and it is to be watched by this controller
-		// straightforward – if the API key labels match, reconcile the auth config
-		reconcile = func(authConfig api.AuthConfig) {
-			for _, id := range authConfig.Spec.Identity {
-				if id.GetType() == api.IdentityApiKey {
-					validNamespace := true
-					if !id.APIKey.AllNamespaces {
-						validNamespace = secret.Namespace == authConfig.Namespace
-					}
-					selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: id.APIKey.LabelSelectors})
-					if validNamespace && (selector == nil || selector.Matches(labels.Set(secret.Labels))) {
-						r.reconcileAuthConfig(ctx, authConfig)
-						return
-					}
-				}
-			}
+		// resource found => if the API key labels match, update all AuthConfigs
+		reconcile = func(authConfig *evaluators.AuthConfig) {
+			c <- r.updateAPIKey(ctx, authConfig, secret)
 		}
 	}
 
-	if err := r.reconcileAuthConfigsUsingAPIKey(ctx, reconcile); err != nil {
-		logger.Info("could not reconcile authconfigs using api key authentication")
-		return ctrl.Result{}, err
-	} else {
-		logger.Info("resource reconciled")
-		return ctrl.Result{}, nil
+	for authConfig := range r.getAuthConfigsUsingAPIKey(ctx) {
+		c = make(chan error)
+		go reconcile(authConfig)
+		if err := <-c; err != nil {
+			return ctrl.Result{}, err
+		}
 	}
+
+	logger.Info("resource reconciled")
+	return ctrl.Result{}, nil
 }
 
 func (r *SecretReconciler) ClusterWide() bool {
@@ -99,50 +84,59 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// reconcileAuthConfigsUsingAPIKey invokes the reconcile(authConfig) func asynchronously, for each authConfig using API key identity
-func (r *SecretReconciler) reconcileAuthConfigsUsingAPIKey(ctx context.Context, reconcile func(api.AuthConfig)) error {
-	if authConfigs, err := r.listAuthConfigsUsingAPIKey(ctx); err != nil {
-		return err
-	} else {
-		for _, authConfig := range authConfigs {
-			s := authConfig
-			go func() {
-				reconcile(s)
-			}()
-		}
-		return nil
-	}
-}
-
-func (r *SecretReconciler) listAuthConfigsUsingAPIKey(ctx context.Context) ([]api.AuthConfig, error) {
-	var existingAuthConfigs = &api.AuthConfigList{}
-	var selectedAuthConfigs []api.AuthConfig
-
-	opts := &client.ListOptions{}
-	if !r.ClusterWide() {
-		opts.Namespace = r.Namespace
-	}
-
-	if err := r.List(ctx, existingAuthConfigs, opts); err != nil {
-		return nil, err
-	} else {
-		for _, authConfig := range existingAuthConfigs.Items {
-			for _, id := range authConfig.Spec.Identity {
-				if id.GetType() == api.IdentityApiKey {
-					selectedAuthConfigs = append(selectedAuthConfigs, authConfig)
-					break
-				}
+func (r *SecretReconciler) getAuthConfigsUsingAPIKey(ctx context.Context) authConfigSet {
+	authConfigs := make(authConfigSet)
+	var s struct{}
+	for _, authConfig := range r.Cache.List() {
+		for _, identityEvaluator := range authConfig.IdentityConfigs {
+			if _, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
+				authConfigs[authConfig] = s
+				break
 			}
 		}
-		return selectedAuthConfigs, nil
 	}
+	return authConfigs
 }
 
-func (r *SecretReconciler) reconcileAuthConfig(ctx context.Context, authConfig api.AuthConfig) {
-	_, _ = r.AuthConfigReconciler.Reconcile(ctx, ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Namespace: authConfig.Namespace,
-			Name:      authConfig.Name,
-		},
-	})
+func (r *SecretReconciler) deleteAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, deleted types.NamespacedName) error {
+	for _, identityEvaluator := range authConfig.IdentityConfigs {
+		if ev, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
+			log.FromContext(ctx).V(1).Info("deleting api key from cache", "authconfig", authConfigName(authConfig))
+			ev.DeleteAPIKeySecret(ctx, deleted)
+		}
+	}
+	return r.updateCache(ctx, authConfig)
+}
+
+func (r *SecretReconciler) updateAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, secret v1.Secret) error {
+	for _, identityEvaluator := range authConfig.IdentityConfigs {
+		if ev, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
+			selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: ev.GetAPIKeyLabelSelectors()})
+			if selector == nil || selector.Matches(labels.Set(secret.Labels)) {
+				log.FromContext(ctx).V(1).Info("adding api key to cache", "authconfig", authConfigName(authConfig))
+				ev.RefreshAPIKeySecret(ctx, secret)
+			} else {
+				log.FromContext(ctx).V(1).Info("deleting api key from cache", "authconfig", authConfigName(authConfig))
+				ev.DeleteAPIKeySecret(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name})
+			}
+		}
+	}
+	return r.updateCache(ctx, authConfig)
+}
+
+func (r *SecretReconciler) updateCache(ctx context.Context, authConfig *evaluators.AuthConfig) error {
+	cacheId := authConfigName(authConfig)
+	logger := log.FromContext(ctx).WithValues("authconfig", cacheId)
+	for _, host := range r.Cache.FindKeys(cacheId) {
+		if err := r.Cache.Set(cacheId, host, *authConfig, true); err != nil {
+			logger.Error(err, "failed to update the cache")
+			return err
+		}
+	}
+	logger.V(1).Info("cache updated")
+	return nil
+}
+
+func authConfigName(authConfig *evaluators.AuthConfig) string {
+	return types.NamespacedName{Namespace: authConfig.Labels["namespace"], Name: authConfig.Labels["name"]}.String()
 }

@@ -11,6 +11,7 @@ type Cache interface {
 	Set(id string, key string, config evaluators.AuthConfig, override bool) error
 	Get(key string) *evaluators.AuthConfig
 	Delete(id string)
+	List() []*evaluators.AuthConfig
 
 	FindId(key string) (id string, found bool)
 	FindKeys(id string) []string
@@ -89,4 +90,12 @@ func (c *AuthConfigsCache) FindKeys(id string) []string {
 	defer c.mu.Unlock()
 
 	return c.keys[id]
+}
+
+func (c *AuthConfigsCache) List() []*evaluators.AuthConfig {
+	var authConfigs []*evaluators.AuthConfig
+	for _, e := range c.entries {
+		authConfigs = append(authConfigs, &e.AuthConfig)
+	}
+	return authConfigs
 }

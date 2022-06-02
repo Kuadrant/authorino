@@ -191,12 +191,12 @@ func main() {
 
 	// sets up secret reconciler
 	if err = (&controllers.SecretReconciler{
-		Client:               mgr.GetClient(),
-		Logger:               controllerLogger.WithName("secret"),
-		Scheme:               mgr.GetScheme(),
-		LabelSelector:        controllers.ToLabelSelector(watchedSecretLabelSelector),
-		AuthConfigReconciler: authConfigReconciler,
-		Namespace:            watchNamespace,
+		Client:        mgr.GetClient(),
+		Logger:        controllerLogger.WithName("secret"),
+		Scheme:        mgr.GetScheme(),
+		Cache:         cache,
+		LabelSelector: controllers.ToLabelSelector(watchedSecretLabelSelector),
+		Namespace:     watchNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "secret")
 		os.Exit(1)
