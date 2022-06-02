@@ -98,7 +98,6 @@ func newSecretReconcilerTest(mockCtrl *gomock.Controller, secretLabels map[strin
 	}
 	cacheMock := mock_cache.NewMockCache(mockCtrl)
 	cacheMock.EXPECT().List().Return([]*evaluators.AuthConfig{cachedAuthConfig}).MaxTimes(1)
-	cacheMock.EXPECT().FindKeys("authorino/api-protection").Return([]string{}).MaxTimes(1)
 
 	secretReconciler := &SecretReconciler{
 		Client:        fakeK8sClient,

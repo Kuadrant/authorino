@@ -42,7 +42,6 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	logger := r.Logger.WithValues("secret", req.NamespacedName)
 
 	var reconcile func(*evaluators.AuthConfig)
-	var c chan error
 
 	secret := v1.Secret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
@@ -53,21 +52,17 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// or the resource is no longer to be watched (labels no longer match)
 		// => delete the API key from all AuthConfigs
 		reconcile = func(authConfig *evaluators.AuthConfig) {
-			c <- r.deleteAPIKey(ctx, authConfig, req.NamespacedName)
+			r.deleteAPIKey(ctx, authConfig, req.NamespacedName)
 		}
 	} else {
 		// resource found => if the API key labels match, update all AuthConfigs
 		reconcile = func(authConfig *evaluators.AuthConfig) {
-			c <- r.updateAPIKey(ctx, authConfig, secret)
+			r.updateAPIKey(ctx, authConfig, secret)
 		}
 	}
 
 	for authConfig := range r.getAuthConfigsUsingAPIKey(ctx) {
-		c = make(chan error)
-		go reconcile(authConfig)
-		if err := <-c; err != nil {
-			return ctrl.Result{}, err
-		}
+		reconcile(authConfig)
 	}
 
 	logger.Info("resource reconciled")
@@ -98,17 +93,16 @@ func (r *SecretReconciler) getAuthConfigsUsingAPIKey(ctx context.Context) authCo
 	return authConfigs
 }
 
-func (r *SecretReconciler) deleteAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, deleted types.NamespacedName) error {
+func (r *SecretReconciler) deleteAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, deleted types.NamespacedName) {
 	for _, identityEvaluator := range authConfig.IdentityConfigs {
 		if ev, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
 			log.FromContext(ctx).V(1).Info("deleting api key from cache", "authconfig", authConfigName(authConfig))
 			ev.DeleteAPIKeySecret(ctx, deleted)
 		}
 	}
-	return r.updateCache(ctx, authConfig)
 }
 
-func (r *SecretReconciler) updateAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, secret v1.Secret) error {
+func (r *SecretReconciler) updateAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, secret v1.Secret) {
 	for _, identityEvaluator := range authConfig.IdentityConfigs {
 		if ev, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
 			selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: ev.GetAPIKeyLabelSelectors()})
@@ -121,20 +115,6 @@ func (r *SecretReconciler) updateAPIKey(ctx context.Context, authConfig *evaluat
 			}
 		}
 	}
-	return r.updateCache(ctx, authConfig)
-}
-
-func (r *SecretReconciler) updateCache(ctx context.Context, authConfig *evaluators.AuthConfig) error {
-	cacheId := authConfigName(authConfig)
-	logger := log.FromContext(ctx).WithValues("authconfig", cacheId)
-	for _, host := range r.Cache.FindKeys(cacheId) {
-		if err := r.Cache.Set(cacheId, host, *authConfig, true); err != nil {
-			logger.Error(err, "failed to update the cache")
-			return err
-		}
-	}
-	logger.V(1).Info("cache updated")
-	return nil
 }
 
 func authConfigName(authConfig *evaluators.AuthConfig) string {
