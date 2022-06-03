@@ -48,13 +48,13 @@ ENVTEST = $(PROJECT_DIR)/bin/setup-envtest
 envtest: ## Installs setup-envtest in $PROJECT_DIR/bin
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
-KIND = $(PROJECT_DIR)/bin/kind
-kind: ## Installs kind in $PROJECT_DIR/bin
-	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.11.1)
-
 MOCKGEN = $(PROJECT_DIR)/bin/mockgen
 mockgen: ## Installs mockgen in $PROJECT_DIR/bin
 	$(call go-get-tool,$(MOCKGEN),github.com/golang/mock/mockgen@v1.6.0)
+
+KIND = $(PROJECT_DIR)/bin/kind
+kind: ## Installs kind in $PROJECT_DIR/bin
+	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.11.1)
 
 # go-get-tool will 'go install' any package $2 and install it to $1.
 define go-get-tool

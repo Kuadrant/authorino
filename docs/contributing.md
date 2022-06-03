@@ -19,20 +19,19 @@
 ## Technology stack for developers
 
 Minimum requirements to contribute to Authorino are:
-- [Golang v1.16+](https://golang.org)
+- [Golang v1.17+](https://golang.org)
 - [Docker](https://docker.com)
 
-Authorino's code was bundle using the [Operator SDK](https://sdk.operatorframework.io/) (v1.9.0).
+Authorino's code was originally bundled using the [Operator SDK](https://sdk.operatorframework.io/) (v1.9.0).
 
-The following tools will be installed as part of the development workflow:
+The following tools can be installed as part of the development workflow:
 
-- _Installed with `go get` to a temp directory:_
+- _Installed with `go install` to the `$PROJECT_DIR/bin` directory:_
   - [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html): for building custom types and manifests
   - [Kustomize](https://kustomize.io/): for assembling flavoured manifests and installing/deploying
-
-- _Installed with `go install` to your `GOBIN` directory:_
-  - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
   - [setup-envtest](https://v0-19-x.sdk.operatorframework.io/docs/golang/references/env-test-setup): for running the tests – extra tools installed to `./testbin`
+  - [mockgen](https://github.com/golang/mock/mockgen): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
+  - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
 
 - _Other recommended tools (for specific examples and debugging):_
   - [jq](https://stedolan.github.io/jq/)
@@ -43,6 +42,7 @@ The following tools will be installed as part of the development workflow:
 ![Development workflow](http://www.plantuml.com/plantuml/png/LKz1QiGm3Bpx5MBlfJye2uNU2alR3nXNn26s5IJvaD_NKbBm7gBCQ0RD-2uQMNijGRQrxP5ZXKgDKcQg2CeTGs1C6jjI46xl6TC6cX5MaOvoWoWdd5qVnDjhAjJGhOmxkT40pCRFk24Sr1bI7glhteLdum-AkgO3F0byGA4KIpbEdOzP_bwNTWLGhQkU0JAsi-lH9NlJnvVh--0X-BFWvSrh1nj6_ijTVrjv9nj6hC3u37gC3ID-yuxjjzVo1m00)
 
 ### Check the issues
+
 Start by checking the list of [issues](https://github.com/kuadrant/authorino/issues) in GitHub.
 
 In case you want to contribute with an idea for enhancement, a bug fix, or question, please make sure to [describe the issue](https://github.com/kuadrant/authorino/issues/new) so we can start a conversation together and help you find the best way to get your contribution merged.
@@ -58,6 +58,12 @@ git clone git@github.com:kuadrant/authorino.git && cd authorino
 Download the Golang dependencies:
 ```sh
 make vendor
+```
+
+For additional automation provided, check:
+
+```sh
+make help
 ```
 
 ### Make your changes
@@ -103,6 +109,15 @@ Once the deployment is ready, you can forward the requests on port 8000 to the E
 ```sh
 kubectl -n authorino port-forward deployment/envoy 8000:8000 &
 ```
+
+<details>
+  <summary>Pro tips</summary>
+
+  1. Switch to TLS disabled by default when deploying locally by supplying `TLS_ENABLED=0` to your `make local-setup` and `make deploy` commands. E.g. `make local-setup TLS_ENABLED=0`.
+  2. Skip being prompted to edit the `Authorino` CR and default to an Authorino deployment with TLS enabled, debug/development log level/mode, and standard name 'authorino', by supplying `FF=1` to your `make local-setup` and `make deploy` commands. E.g. `make local-setup FF=1`
+  3. Supply `DEPLOY_IDPS=1` to `make local-setup` and `make user-apps` to deploy Keycloak and Dex to the cluster. `DEPLOY_KEYCLOAK` and `DEPLOY_DEX` are also available. Read more about additional tools for specific use cases in the section below.
+  4. Saving the ID of the process (PID) of the port-forward command spawned in the background can be useful to later kill and restart the process. E.g. `kubectl port-forward deployment/envoy 8000:8000 &;PID=$!`; then `kill $PID`.
+</details>
 
 #### Additional tools (for specific use-cases)
 
