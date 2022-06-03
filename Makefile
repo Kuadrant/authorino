@@ -97,7 +97,7 @@ build: generate ## Builds the manager binary
 	go build -o bin/authorino main.go
 
 test: generate manifests envtest ## Runs the tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(SETUP_ENVTEST) use -p path 1.21.2))' go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2))' go test ./... -coverprofile cover.out
 
 cover: ## Shows test coverage
 	go tool cover -html=cover.out
