@@ -89,6 +89,20 @@ func (mr *MockCacheMockRecorder) Get(key interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockCache)(nil).Get), key)
 }
 
+// List mocks base method.
+func (m *MockCache) List() []*evaluators.AuthConfig {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List")
+	ret0, _ := ret[0].([]*evaluators.AuthConfig)
+	return ret0
+}
+
+// List indicates an expected call of List.
+func (mr *MockCacheMockRecorder) List() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockCache)(nil).List))
+}
+
 // Set mocks base method.
 func (m *MockCache) Set(id, key string, config evaluators.AuthConfig, override bool) error {
 	m.ctrl.T.Helper()

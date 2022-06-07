@@ -413,41 +413,65 @@ func (mr *MockIdentityConfigEvaluatorMockRecorder) ResolveExtendedProperties(arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveExtendedProperties", reflect.TypeOf((*MockIdentityConfigEvaluator)(nil).ResolveExtendedProperties), arg0)
 }
 
-// MockAPIKeySecretFinder is a mock of APIKeySecretFinder interface.
-type MockAPIKeySecretFinder struct {
+// MockAPIKeyIdentityConfigEvaluator is a mock of APIKeyIdentityConfigEvaluator interface.
+type MockAPIKeyIdentityConfigEvaluator struct {
 	ctrl     *gomock.Controller
-	recorder *MockAPIKeySecretFinderMockRecorder
+	recorder *MockAPIKeyIdentityConfigEvaluatorMockRecorder
 }
 
-// MockAPIKeySecretFinderMockRecorder is the mock recorder for MockAPIKeySecretFinder.
-type MockAPIKeySecretFinderMockRecorder struct {
-	mock *MockAPIKeySecretFinder
+// MockAPIKeyIdentityConfigEvaluatorMockRecorder is the mock recorder for MockAPIKeyIdentityConfigEvaluator.
+type MockAPIKeyIdentityConfigEvaluatorMockRecorder struct {
+	mock *MockAPIKeyIdentityConfigEvaluator
 }
 
-// NewMockAPIKeySecretFinder creates a new mock instance.
-func NewMockAPIKeySecretFinder(ctrl *gomock.Controller) *MockAPIKeySecretFinder {
-	mock := &MockAPIKeySecretFinder{ctrl: ctrl}
-	mock.recorder = &MockAPIKeySecretFinderMockRecorder{mock}
+// NewMockAPIKeyIdentityConfigEvaluator creates a new mock instance.
+func NewMockAPIKeyIdentityConfigEvaluator(ctrl *gomock.Controller) *MockAPIKeyIdentityConfigEvaluator {
+	mock := &MockAPIKeyIdentityConfigEvaluator{ctrl: ctrl}
+	mock.recorder = &MockAPIKeyIdentityConfigEvaluatorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAPIKeySecretFinder) EXPECT() *MockAPIKeySecretFinderMockRecorder {
+func (m *MockAPIKeyIdentityConfigEvaluator) EXPECT() *MockAPIKeyIdentityConfigEvaluatorMockRecorder {
 	return m.recorder
 }
 
-// FindSecretByName mocks base method.
-func (m *MockAPIKeySecretFinder) FindSecretByName(arg0 types.NamespacedName) *v1.Secret {
+// DeleteAPIKeySecret mocks base method.
+func (m *MockAPIKeyIdentityConfigEvaluator) DeleteAPIKeySecret(arg0 context.Context, arg1 types.NamespacedName) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindSecretByName", arg0)
-	ret0, _ := ret[0].(*v1.Secret)
+	m.ctrl.Call(m, "DeleteAPIKeySecret", arg0, arg1)
+}
+
+// DeleteAPIKeySecret indicates an expected call of DeleteAPIKeySecret.
+func (mr *MockAPIKeyIdentityConfigEvaluatorMockRecorder) DeleteAPIKeySecret(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIKeySecret", reflect.TypeOf((*MockAPIKeyIdentityConfigEvaluator)(nil).DeleteAPIKeySecret), arg0, arg1)
+}
+
+// GetAPIKeyLabelSelectors mocks base method.
+func (m *MockAPIKeyIdentityConfigEvaluator) GetAPIKeyLabelSelectors() map[string]string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAPIKeyLabelSelectors")
+	ret0, _ := ret[0].(map[string]string)
 	return ret0
 }
 
-// FindSecretByName indicates an expected call of FindSecretByName.
-func (mr *MockAPIKeySecretFinderMockRecorder) FindSecretByName(arg0 interface{}) *gomock.Call {
+// GetAPIKeyLabelSelectors indicates an expected call of GetAPIKeyLabelSelectors.
+func (mr *MockAPIKeyIdentityConfigEvaluatorMockRecorder) GetAPIKeyLabelSelectors() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindSecretByName", reflect.TypeOf((*MockAPIKeySecretFinder)(nil).FindSecretByName), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAPIKeyLabelSelectors", reflect.TypeOf((*MockAPIKeyIdentityConfigEvaluator)(nil).GetAPIKeyLabelSelectors))
+}
+
+// RefreshAPIKeySecret mocks base method.
+func (m *MockAPIKeyIdentityConfigEvaluator) RefreshAPIKeySecret(arg0 context.Context, arg1 v1.Secret) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RefreshAPIKeySecret", arg0, arg1)
+}
+
+// RefreshAPIKeySecret indicates an expected call of RefreshAPIKeySecret.
+func (mr *MockAPIKeyIdentityConfigEvaluatorMockRecorder) RefreshAPIKeySecret(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshAPIKeySecret", reflect.TypeOf((*MockAPIKeyIdentityConfigEvaluator)(nil).RefreshAPIKeySecret), arg0, arg1)
 }
 
 // MockWristbandIssuer is a mock of WristbandIssuer interface.

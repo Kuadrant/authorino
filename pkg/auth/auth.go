@@ -53,8 +53,10 @@ type IdentityConfigEvaluator interface {
 	ResolveExtendedProperties(AuthPipeline) (interface{}, error)
 }
 
-type APIKeySecretFinder interface {
-	FindSecretByName(types.NamespacedName) *v1.Secret
+type APIKeyIdentityConfigEvaluator interface {
+	RefreshAPIKeySecret(context.Context, v1.Secret)
+	DeleteAPIKeySecret(context.Context, types.NamespacedName)
+	GetAPIKeyLabelSelectors() map[string]string
 }
 
 type WristbandIssuer interface {

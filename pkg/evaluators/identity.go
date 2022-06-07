@@ -202,15 +202,27 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 	return extendedIdentityObject, nil
 }
 
-// impl:APIKeySecretFinder
+// impl:APIKeyIdentityConfigEvaluator
 
-func (config *IdentityConfig) FindSecretByName(lookup types.NamespacedName) *v1.Secret {
-	apiKey := config.APIKey
-	if apiKey != nil {
-		return apiKey.FindSecretByName(lookup)
-	} else {
+func (config *IdentityConfig) RefreshAPIKeySecret(ctx context.Context, new v1.Secret) {
+	if config.APIKey == nil {
+		return
+	}
+	config.APIKey.RefreshAPIKeySecret(ctx, new)
+}
+
+func (config *IdentityConfig) DeleteAPIKeySecret(ctx context.Context, deleted types.NamespacedName) {
+	if config.APIKey == nil {
+		return
+	}
+	config.APIKey.DeleteAPIKeySecret(ctx, deleted)
+}
+
+func (config *IdentityConfig) GetAPIKeyLabelSelectors() map[string]string {
+	if config.APIKey == nil {
 		return nil
 	}
+	return config.APIKey.LabelSelectors
 }
 
 // impl:metrics.Object

@@ -50,12 +50,12 @@ func TestNewApiKeyIdentityAllNamespaces(t *testing.T) {
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors["planet"], "coruscant")
 	assert.Equal(t, apiKey.Namespace, "")
-	assert.Equal(t, len(apiKey.authorizedCredentials), 2)
-	_, exists := apiKey.authorizedCredentials["ObiWanKenobiLightSaber"]
+	assert.Equal(t, len(apiKey.secrets), 2)
+	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
 	assert.Check(t, exists)
-	_, exists = apiKey.authorizedCredentials["MasterYodaLightSaber"]
+	_, exists = apiKey.secrets["MasterYodaLightSaber"]
 	assert.Check(t, exists)
-	_, exists = apiKey.authorizedCredentials["AnakinSkywalkerLightSaber"]
+	_, exists = apiKey.secrets["AnakinSkywalkerLightSaber"]
 	assert.Check(t, !exists)
 }
 
@@ -68,12 +68,12 @@ func TestNewApiKeyIdentitySingleNamespace(t *testing.T) {
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors["planet"], "coruscant")
 	assert.Equal(t, apiKey.Namespace, "ns1")
-	assert.Equal(t, len(apiKey.authorizedCredentials), 1)
-	_, exists := apiKey.authorizedCredentials["ObiWanKenobiLightSaber"]
+	assert.Equal(t, len(apiKey.secrets), 1)
+	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
 	assert.Check(t, exists)
-	_, exists = apiKey.authorizedCredentials["MasterYodaLightSaber"]
+	_, exists = apiKey.secrets["MasterYodaLightSaber"]
 	assert.Check(t, !exists)
-	_, exists = apiKey.authorizedCredentials["AnakinSkywalkerLightSaber"]
+	_, exists = apiKey.secrets["AnakinSkywalkerLightSaber"]
 	assert.Check(t, !exists)
 }
 
@@ -121,18 +121,18 @@ func TestCallInvalidApiKeyFail(t *testing.T) {
 	assert.Error(t, err, "the API Key provided is invalid")
 }
 
-func TestGetCredentialsFromClusterSuccess(t *testing.T) {
+func TestLoadSecretsSuccess(t *testing.T) {
 	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "coruscant"}, "", nil, k8sClient, nil)
 
-	err := apiKey.GetCredentialsFromCluster(context.TODO())
+	err := apiKey.loadSecrets(context.TODO())
 	assert.NilError(t, err)
-	assert.Equal(t, len(apiKey.authorizedCredentials), 2)
+	assert.Equal(t, len(apiKey.secrets), 2)
 
-	secret1, exists := apiKey.authorizedCredentials["ObiWanKenobiLightSaber"]
+	secret1, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
 	assert.Check(t, exists)
 	assert.Equal(t, apiKeySecret1.String(), secret1.String())
 
-	secret2, exists := apiKey.authorizedCredentials["MasterYodaLightSaber"]
+	secret2, exists := apiKey.secrets["MasterYodaLightSaber"]
 	assert.Check(t, exists)
 	assert.Equal(t, apiKeySecret2.String(), secret2.String())
 }
@@ -147,9 +147,9 @@ func (k *flawedAPIkeyK8sClient) List(_ context.Context, list client.ObjectList, 
 	return fmt.Errorf("something terribly wrong happened")
 }
 
-func TestGetCredentialsFromClusterFail(t *testing.T) {
+func TestLoadSecretsFail(t *testing.T) {
 	apiKey := NewApiKeyIdentity("X-API-KEY", map[string]string{"planet": "coruscant"}, "", nil, &flawedAPIkeyK8sClient{}, context.TODO())
 
-	err := apiKey.GetCredentialsFromCluster(context.TODO())
+	err := apiKey.loadSecrets(context.TODO())
 	assert.Error(t, err, "something terribly wrong happened")
 }

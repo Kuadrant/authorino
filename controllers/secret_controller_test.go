@@ -6,9 +6,12 @@ import (
 
 	"gotest.tools/assert"
 
-	api "github.com/kuadrant/authorino/api/v1beta1"
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	mock_controller_builder "github.com/kuadrant/authorino/controllers/builder/mocks"
+	"github.com/kuadrant/authorino/pkg/auth"
+	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
+	"github.com/kuadrant/authorino/pkg/evaluators"
+	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/golang/mock/gomock"
@@ -17,24 +20,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-type fakeReconciler struct {
-	Reconciled bool
-	Finished   chan bool
-}
-
-func (r *fakeReconciler) Reconcile(_ context.Context, req ctrl.Request) (ctrl.Result, error) {
-	defer close(r.Finished)
-	r.Finished <- true
-	r.Reconciled = true
-	return ctrl.Result{}, nil
-}
 
 type isPredicate struct {
 }
@@ -48,14 +38,36 @@ func (c *isPredicate) String() string {
 	return "contains 1 predicate"
 }
 
-type secretReconcilerTest struct {
-	secret               v1.Secret
-	authConfig           api.AuthConfig
-	authConfigReconciler *fakeReconciler
-	secretReconciler     *SecretReconciler
+type fakeAPIKeyIdentityConfig struct {
+	evaluator          *identity_evaluators.APIKey
+	deleted, refreshed bool
 }
 
-func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTest {
+func (i *fakeAPIKeyIdentityConfig) Call(_ auth.AuthPipeline, _ context.Context) (interface{}, error) {
+	return nil, nil
+}
+
+func (i *fakeAPIKeyIdentityConfig) RefreshAPIKeySecret(ctx context.Context, new v1.Secret) {
+	i.evaluator.RefreshAPIKeySecret(ctx, new)
+	i.refreshed = true
+}
+
+func (i *fakeAPIKeyIdentityConfig) DeleteAPIKeySecret(ctx context.Context, deleted types.NamespacedName) {
+	i.evaluator.DeleteAPIKeySecret(ctx, deleted)
+	i.deleted = true
+}
+
+func (i *fakeAPIKeyIdentityConfig) GetAPIKeyLabelSelectors() map[string]string {
+	return i.evaluator.GetAPIKeyLabelSelectors()
+}
+
+type secretReconcilerTest struct {
+	SecretReconciler *SecretReconciler
+	Secret           v1.Secret
+	AuthConfig       *evaluators.AuthConfig
+}
+
+func newSecretReconcilerTest(mockCtrl *gomock.Controller, secretLabels map[string]string) secretReconcilerTest {
 	secret := v1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -71,81 +83,52 @@ func newSecretReconcilerTest(secretLabels map[string]string) secretReconcilerTes
 		},
 	}
 
-	authConfig := api.AuthConfig{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "AuthConfig",
-			APIVersion: "authorino.kuadrant.io/v1beta1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "auth-config-1",
-			Namespace: "authorino",
-		},
-		Spec: api.AuthConfigSpec{
-			Hosts: []string{"echo-api"},
-			Identity: []*api.Identity{
-				{
-					Name: "friends",
-					APIKey: &api.Identity_APIKey{
-						LabelSelectors: map[string]string{
-							"authorino.kuadrant.io/managed-by": "authorino",
-							"target":                           "echo-api",
-						},
-					},
-				},
-			},
-			Metadata:      []*api.Metadata{},
-			Authorization: []*api.Authorization{},
-		},
-		Status: api.AuthConfigStatus{
-			Ready: false,
-		},
-	}
-
 	scheme := runtime.NewScheme()
-	_ = api.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
-	// Create a fake client with an auth config and a secret.
-	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&authConfig, &secret).Build()
 
-	authConfigReconciler := &fakeReconciler{
-		Finished: make(chan bool),
+	// Create a fake k8s client with an existing secret.
+	fakeK8sClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&secret).Build()
+
+	apiKeyLabelSelectors := map[string]string{"target": "echo-api"}
+	cachedAuthConfig := &evaluators.AuthConfig{
+		Labels: map[string]string{"namespace": "authorino", "name": "api-protection"},
+		IdentityConfigs: []auth.AuthConfigEvaluator{&fakeAPIKeyIdentityConfig{
+			evaluator: identity_evaluators.NewApiKeyIdentity("api-key", apiKeyLabelSelectors, "", auth.NewAuthCredential("", ""), fakeK8sClient, context.TODO()),
+		}},
 	}
+	cacheMock := mock_cache.NewMockCache(mockCtrl)
+	cacheMock.EXPECT().List().Return([]*evaluators.AuthConfig{cachedAuthConfig}).MaxTimes(1)
 
 	secretReconciler := &SecretReconciler{
-		Client:               client,
-		Logger:               log.WithName("test").WithName("secretreconciler"),
-		Scheme:               nil,
-		LabelSelector:        ToLabelSelector("authorino.kuadrant.io/managed-by=authorino"),
-		AuthConfigReconciler: authConfigReconciler,
+		Client:        fakeK8sClient,
+		Logger:        log.WithName("test").WithName("secretreconciler"),
+		Scheme:        nil,
+		Cache:         cacheMock,
+		LabelSelector: ToLabelSelector("authorino.kuadrant.io/managed-by=authorino"),
 	}
 
-	t := secretReconcilerTest{
-		secret,
-		authConfig,
-		authConfigReconciler,
+	return secretReconcilerTest{
 		secretReconciler,
+		secret,
+		cachedAuthConfig,
 	}
-
-	return t
 }
 
 func (t *secretReconcilerTest) reconcile() (reconcile.Result, error) {
-	return t.secretReconciler.Reconcile(context.Background(), controllerruntime.Request{
+	return t.SecretReconciler.Reconcile(context.Background(), controllerruntime.Request{
 		NamespacedName: types.NamespacedName{
-			Namespace: t.secret.Namespace,
-			Name:      t.secret.Name,
+			Namespace: t.Secret.Namespace,
+			Name:      t.Secret.Name,
 		},
 	})
 }
 
 func TestSetupSecretReconcilerWithManager(t *testing.T) {
-	reconcilerTest := newSecretReconcilerTest(map[string]string{
-		"authorino.kuadrant.io/managed-by": "authorino",
-	})
-	secretReconciler := reconcilerTest.secretReconciler
-
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
+
+	reconcilerTest := newSecretReconcilerTest(mockCtrl, map[string]string{})
+	secretReconciler := reconcilerTest.SecretReconciler
 
 	builder := mock_controller_builder.NewMockControllerBuilder(mockCtrl)
 
@@ -160,41 +143,56 @@ func TestSetupSecretReconcilerWithManager(t *testing.T) {
 }
 
 func TestMissingWatchedSecretLabels(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
 	// secret missing the authorino "managed-by" label
-	reconcilerTest := newSecretReconcilerTest(map[string]string{
+	reconcilerTest := newSecretReconcilerTest(mockCtrl, map[string]string{
+		"target": "echo-api",
+	})
+
+	_, err := reconcilerTest.reconcile()
+
+	apiKeyIdentityConfig, _ := reconcilerTest.AuthConfig.IdentityConfigs[0].(*fakeAPIKeyIdentityConfig)
+
+	assert.Check(t, apiKeyIdentityConfig.deleted)
+	assert.Check(t, !apiKeyIdentityConfig.refreshed)
+	assert.NilError(t, err)
+}
+
+func TestUnmatchingSecretLabels(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	// secret with the authorino "managed-by" label but not the same labels as specified in the auth config
+	reconcilerTest := newSecretReconcilerTest(mockCtrl, map[string]string{
 		"authorino.kuadrant.io/managed-by": "authorino",
 	})
 
 	_, err := reconcilerTest.reconcile()
 
-	assert.Check(t, !reconcilerTest.authConfigReconciler.Reconciled)
+	apiKeyIdentityConfig, _ := reconcilerTest.AuthConfig.IdentityConfigs[0].(*fakeAPIKeyIdentityConfig)
+
+	assert.Check(t, apiKeyIdentityConfig.deleted)
+	assert.Check(t, !apiKeyIdentityConfig.refreshed)
 	assert.NilError(t, err)
 }
 
 func TestMatchingSecretLabels(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
 	// secret with the authorino "managed-by" label and the same labels as specified in the auth config
-	reconcilerTest := newSecretReconcilerTest(map[string]string{
+	reconcilerTest := newSecretReconcilerTest(mockCtrl, map[string]string{
 		"authorino.kuadrant.io/managed-by": "authorino",
 		"target":                           "echo-api",
 	})
 
 	_, err := reconcilerTest.reconcile()
 
-	finished := <-reconcilerTest.authConfigReconciler.Finished
+	apiKeyIdentityConfig, _ := reconcilerTest.AuthConfig.IdentityConfigs[0].(*fakeAPIKeyIdentityConfig)
 
-	assert.Check(t, finished)
-	assert.Check(t, reconcilerTest.authConfigReconciler.Reconciled)
-	assert.NilError(t, err)
-}
-
-func TestUnmatchingSecretLabels(t *testing.T) {
-	// secret with the authorino "managed-by" label but not the same labels as specified in the auth config
-	reconcilerTest := newSecretReconcilerTest(map[string]string{
-		"authorino.kuadrant.io/managed-by": "authorino",
-	})
-
-	_, err := reconcilerTest.reconcile()
-
-	assert.Check(t, !reconcilerTest.authConfigReconciler.Reconciled)
+	assert.Check(t, !apiKeyIdentityConfig.deleted)
+	assert.Check(t, apiKeyIdentityConfig.refreshed)
 	assert.NilError(t, err)
 }
