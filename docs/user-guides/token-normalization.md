@@ -132,11 +132,11 @@ spec:
       value: ["admin"]
   authorization:
   - name: only-admins-can-delete
+    when:
+    - selector: context.request.http.method
+      operator: eq
+      value: DELETE
     json:
-      when:
-      - selector: context.request.http.method
-        operator: eq
-        value: DELETE
       rules:
       - selector: auth.identity.roles
         operator: incl
@@ -192,7 +192,7 @@ Obtain an access token with the Keycloak server for John:
 ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' | jq -r .access_token)
 ```
 
-Consume the API as Jane:
+Consume the API as John:
 
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
