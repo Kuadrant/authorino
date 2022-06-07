@@ -38,7 +38,7 @@ function teardown {
   echo
   echo $result
 
-  for pid in $keycloak_pid $envoy_pid $wristband_pid $kube_proxy_pid; do
+  for pid in $keycloak_pid $envoy_pid $wristband_pid; do
     kill $pid 2>/dev/null
   done
 
@@ -157,8 +157,6 @@ function send_anonymous_requests {
 }
 
 kubectl -n kube-system wait --timeout=300s --for=condition=Available deployments --all
-kubectl proxy --port=8181 2>&1 >/dev/null &
-kube_proxy_pid=$!
 
 kubectl -n $namespace apply -f https://raw.githubusercontent.com/Kuadrant/authorino-examples/main/ip-location/ip-location-deploy.yaml
 kubectl -n $namespace wait --timeout=300s --for=condition=Available deployments --all
