@@ -115,12 +115,7 @@ function send_k8s_sa_requests {
 
 function send_api_key_requests {
   local region=$1; shift
-  local api_key_name=$1; shift
-  local api_key=""
-  while [ "$api_key" == "" ]; do
-    api_key=$(kubectl -n $namespace get secret/$api_key_name -o jsonpath="{.data.api_key}" | base64 -d)
-    sleep 1
-  done
+  local api_key=$1; shift
   local requests="$@"
 
   send_requests "http" "$HOSTNAME" "8000" $region "X-API-KEY: $api_key" "$requests"
@@ -201,19 +196,27 @@ send_k8s_sa_requests $IP_IN "app-2-sa" "
     GET /admin => 403
     GET /greetings/1 => 403"
 
-send_api_key_requests $IP_IN "bob-api-key" "
+send_api_key_requests $IP_IN "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" "
     GET / => 200
     POST / => 200
     DELETE / => 403
     GET /admin => 200
     GET /greetings/1 => 403"
 
-send_api_key_requests $IP_IN "alice-api-key" "
+send_api_key_requests $IP_IN "pR2zLorYFIYOE4LLiQAWMPIRei1YgRBy" "
     GET / => 200
     POST / => 200
     DELETE / => 403
     GET /admin => 403
     GET /greetings/1 => 403"
+
+kubectl -n $namespace delete secret/alice-api-key 2>/dev/null >/dev/null && sleep 1
+
+send_api_key_requests $IP_IN "pR2zLorYFIYOE4LLiQAWMPIRei1YgRBy" "
+    POST / => 401"
+
+send_api_key_requests $IP_IN "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" "
+    POST / => 200"
 
 send_oidc_requests $IP_IN "john" "p" "
     GET / => 200
