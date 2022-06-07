@@ -29,7 +29,7 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 ## 1. Install the Authorino Operator
@@ -38,30 +38,23 @@ kind create cluster --name authorino-trial
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
-## 2. Create the namespace
-
-```sh
-kubectl create namespace authorino
-```
-
-## 3. Deploy the Talker API
+## 2. Deploy the Talker API
 
 The **Talker API** is just an echo API, included in the Authorino examples. We will use it in this guide as the service to be protected with Authorino.
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 ```
 
-## 4. Deploy Authorino
+## 3. Deploy Authorino
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
   name: authorino
 spec:
-  clusterWide: true
   listener:
     tls:
       enabled: false
@@ -73,28 +66,28 @@ EOF
 
 The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
-## 5. Setup Envoy
+## 4. Setup Envoy
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
 
 For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 ```
 
 The bundle also creates an `Ingress` with host name `talker-api-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:
 
 ```sh
-kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 &
 ```
 
-## 6. Create the `AuthConfig`
+## 5. Create the `AuthConfig`
 
 The `AuthConfig` below sets all Kubernetes service accounts as trusted users of the API, and relies on the Kubernetes RBAC to enforce authorization using Kubernetes SubjectAccessReview API for non-resource endpoints:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
@@ -102,7 +95,7 @@ metadata:
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  - envoy.authorino.svc.cluster.local
+  - envoy.default.svc.cluster.local
   identity:
   - name: service-accounts
     kubernetes:
@@ -117,7 +110,7 @@ EOF
 
 Check out the [spec](./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes) for the Authorino Kubernetes SubjectAccessReview authorization feature, for resource attributes permission checks where SubjectAccessReviews issued by Authorino are modeled in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb).
 
-## 7. Create roles associated with endpoints of the API
+## 6. Create roles associated with endpoints of the API
 
 Because the `k8s-rbac` policy defined in the `AuthConfig` in the previous step is for non-resource access review requests, the corresponding roles and role bindings have to be defined at cluster scope.
 
@@ -152,12 +145,12 @@ EOF
 ```
 
 
-## 8. Create the `ServiceAccount`s and permissions to consume the API
+## 7. Create the `ServiceAccount`s and permissions to consume the API
 
 Create service accounts `api-consumer-1` and `api-consumer-2`:
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -166,7 +159,7 @@ EOF
 ```
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -189,10 +182,10 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: api-consumer-1
-  namespace: authorino
+  namespace: default
 - kind: ServiceAccount
   name: api-consumer-2
-  namespace: authorino
+  namespace: default
 EOF
 ```
 
@@ -211,22 +204,22 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: api-consumer-1
-  namespace: authorino
+  namespace: default
 EOF
 ```
 
 
-## 9. Consume the API
+## 8. Consume the API
 
 Run a pod that consumes one of the greeting endpoints of the API from inside the cluster, as service account `api-consumer-1`, bound to the `talker-api-greeter` and `talker-api-speaker` cluster roles in the Kubernetes RBAC:
 
 ```sh
-kubectl -n authorino run greeter --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
+kubectl run greeter --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
   "apiVersion": "v1",
   "spec": {
     "containers": [{
       "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
-      "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/hi","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
+      "args":["--endpoint=http://envoy.default.svc.cluster.local:8000/hi","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
     "serviceAccountName": "api-consumer-1",
@@ -240,12 +233,12 @@ kubectl -n authorino run greeter --attach --rm --restart=Never -q --image=quay.i
 Run a pod that sends a `POST` request to `/say/blah` from within the cluster, as service account `api-consumer-1`:
 
 ```sh
-kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
+kubectl run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
   "apiVersion": "v1",
   "spec": {
     "containers": [{
       "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
-      "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
+      "args":["--endpoint=http://envoy.default.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
     "serviceAccountName": "api-consumer-1",
@@ -259,12 +252,12 @@ kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.i
 Run a pod that sends a `POST` request to `/say/blah` from within the cluster, as service account `api-consumer-2`, bound only to the `talker-api-greeter` cluster role in the Kubernetes RBAC:
 
 ```sh
-kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
+kubectl run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/authorino-examples:api-consumer --overrides='{
   "apiVersion": "v1",
   "spec": {
     "containers": [{
       "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
-      "args":["--endpoint=http://envoy.authorino.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
+      "args":["--endpoint=http://envoy.default.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
     "serviceAccountName": "api-consumer-2",
@@ -280,18 +273,10 @@ kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.i
 
   <br/>
 
-  To obtain access tokens to consume the API as service accounts from outside the cluster, start by proxying requests to the Kubernetes API:
+  Obtain a short-lived access token for service account `api-consumer-2`, bound to the `talker-api-greeter` cluster role in the Kubernetes RBAC, using the Kubernetes TokenRequest API:
 
   ```sh
-  kubectl proxy --port=8181 # holds the shell
-  ```
-
-  Then, obtain a short-lived access token for service account `api-consumer-2`, bound to the `talker-api-greeter` cluster role in the Kubernetes RBAC, using the Kubernetes TokenRequest API:
-
-  ```sh
-  ACCESS_TOKEN=$(curl -k -X "POST" "http://localhost:8181/api/v1/namespaces/authorino/serviceaccounts/api-consumer-2/token" \
-      -H 'Content-Type: application/json; charset=utf-8' \
-      -d $'{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | jq -r '.status.token')
+  export ACCESS_TOKEN=$(echo '{ "apiVersion": "authentication.k8s.io/v1", "kind": "TokenRequest", "spec": { "expirationSeconds": 600 } }' | kubectl create --raw /api/v1/namespaces/default/serviceaccounts/api-consumer-2/token -f - | jq -r .status.token)
   ```
 
   Consume the API as `api-consumer-2` from outside the cluster:
@@ -312,17 +297,25 @@ kubectl -n authorino run speaker --attach --rm --restart=Never -q --image=quay.i
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace authorino
-kubectl -n authorino namespace authorino-operator
+kubectl delete serviceaccount/api-consumer-1
+kubectl delete serviceaccount/api-consumer-2
+kubectl delete clusterrolebinding/talker-api-greeter-rolebinding
+kubectl delete clusterrolebinding/talker-api-speaker-rolebinding
+kubectl delete clusterrole/talker-api-greeter
+kubectl delete clusterrole/talker-api-speaker
+kubectl delete authconfig/talker-api-protection
+kubectl delete authorino/authorino
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run:
+To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
 
 ```sh
 kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml

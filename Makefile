@@ -15,7 +15,7 @@ export PATH := $(PROJECT_DIR)/bin:$(PATH)
 AUTHORINO_MANIFESTS ?= $(PROJECT_DIR)/install/manifests.yaml
 
 # The Kubernetes namespace where to deploy the Authorino instance
-NAMESPACE ?= authorino
+NAMESPACE ?= default
 
 # Authorino instance name
 AUTHORINO_INSTANCE ?= authorino

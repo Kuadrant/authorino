@@ -22,7 +22,7 @@ Bypass identity verification or fall back to anonymous access when credentials f
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 ## 1. Install the Authorino Operator
@@ -31,24 +31,18 @@ kind create cluster --name authorino-trial
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
-## 2. Create the namespace
-
-```sh
-kubectl create namespace authorino
-```
-
-## 3. Deploy the Talker API
+## 2. Deploy the Talker API
 
 The **Talker API** is just an echo API, included in the Authorino examples. We will use it in this guide as the service to be protected with Authorino.
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 ```
 
-## 4. Deploy Authorino
+## 3. Deploy Authorino
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
@@ -65,26 +59,26 @@ EOF
 
 The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
-## 5. Setup Envoy
+## 4. Setup Envoy
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
 
 For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 ```
 
 The bundle also creates an `Ingress` with host name `talker-api-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:
 
 ```sh
-kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 &
 ```
 
-## 6. Create the `AuthConfig`
+## 5. Create the `AuthConfig`
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
@@ -104,7 +98,7 @@ For more sophisticated use cases of anonymous access with Authorino, consider co
 
 Check out the docs for the [Anonymous access](./../features.md#anonymous-access-identityanonymous) feature for an example of an `AuthConfig` that falls back to anonymous access when a priority OIDC/JWT-based authentication fails, and enforces a read-only policy in such cases.
 
-## 7. Consume the API
+## 6. Consume the API
 
 ```sh
 curl http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
@@ -116,17 +110,19 @@ curl http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace authorino
-kubectl -n authorino namespace authorino-operator
+kubectl delete authconfig/talker-api-protection
+kubectl delete authorino/authorino
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run:
+To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
 
 ```sh
 kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml

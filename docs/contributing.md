@@ -92,9 +92,8 @@ The following command will:
 - Build an image of Authorino based on the current branch
 - Push the freshly built image to the cluster's registry
 - Install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster
-- Create a namespace for you tests
 - Generate TLS certificates for the Authorino service
-- Deploy an instance of Authorino to the namespace
+- Deploy an instance of Authorino
 - Deploy the example application [**Talker API**](https://github.com/kuadrant/authorino-examples#talker-api), a simple HTTP API that echoes back whatever it gets in the request
 - Setup Envoy for proxying to the Talker API and using Authorino for external authorization
 
@@ -104,19 +103,22 @@ make local-setup
 
 You will be prompted to edit the `Authorino` custom resource.
 
+The main workload composed of Authorino instance and user apps (Envoy, Talker API) will be deployed to the `default` Kubernetes namespace.
+
 Once the deployment is ready, you can forward the requests on port 8000 to the Envoy service
 
 ```sh
-kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 &
 ```
 
 <details>
   <summary>Pro tips</summary>
 
-  1. Switch to TLS disabled by default when deploying locally by supplying `TLS_ENABLED=0` to your `make local-setup` and `make deploy` commands. E.g. `make local-setup TLS_ENABLED=0`.
-  2. Skip being prompted to edit the `Authorino` CR and default to an Authorino deployment with TLS enabled, debug/development log level/mode, and standard name 'authorino', by supplying `FF=1` to your `make local-setup` and `make deploy` commands. E.g. `make local-setup FF=1`
-  3. Supply `DEPLOY_IDPS=1` to `make local-setup` and `make user-apps` to deploy Keycloak and Dex to the cluster. `DEPLOY_KEYCLOAK` and `DEPLOY_DEX` are also available. Read more about additional tools for specific use cases in the section below.
-  4. Saving the ID of the process (PID) of the port-forward command spawned in the background can be useful to later kill and restart the process. E.g. `kubectl port-forward deployment/envoy 8000:8000 &;PID=$!`; then `kill $PID`.
+  1. Change the default workload namespace by supplying the `NAMESPACE` argument to your `make local-setup` and other deployment, apps and local cluster related targets. If the namespace does not exist, it will be created.
+  2. Switch to TLS disabled by default when deploying locally by supplying `TLS_ENABLED=0` to your `make local-setup` and `make deploy` commands. E.g. `make local-setup TLS_ENABLED=0`.
+  3. Skip being prompted to edit the `Authorino` CR and default to an Authorino deployment with TLS enabled, debug/development log level/mode, and standard name 'authorino', by supplying `FF=1` to your `make local-setup` and `make deploy` commands. E.g. `make local-setup FF=1`
+  4. Supply `DEPLOY_IDPS=1` to `make local-setup` and `make user-apps` to deploy Keycloak and Dex to the cluster. `DEPLOY_KEYCLOAK` and `DEPLOY_DEX` are also available. Read more about additional tools for specific use cases in the section below.
+  5. Saving the ID of the process (PID) of the port-forward command spawned in the background can be useful to later kill and restart the process. E.g. `kubectl port-forward deployment/envoy 8000:8000 &;PID=$!`; then `kill $PID`.
 </details>
 
 #### Additional tools (for specific use-cases)
@@ -127,7 +129,7 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
   To deploy [Limitador](https://github.com/kuadrant/limitador) – pre-configured in Envoy for rate-limiting the Talker API to 5 hits per minute per `user_id` when available in the cluster workload –, run:
 
   ```sh
-  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/limitador/limitador-deploy.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/limitador/limitador-deploy.yaml
   ```
 </details>
 
@@ -157,13 +159,13 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
   To deploy, run:
 
   ```sh
-  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
   ```
 
   Forward local requests to the instance of Keycloak running in the cluster:
 
   ```sh
-  kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
+  kubectl port-forward deployment/keycloak 8080:8080 &
   ```
 </details>
 
@@ -179,13 +181,13 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
   To deploy, run:
 
   ```sh
-  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/dex/dex-deploy.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/dex/dex-deploy.yaml
   ```
 
   Forward local requests to the instance of Dex running in the cluster:
 
   ```sh
-  kubectl -n authorino port-forward deployment/dex 5556:5556 &
+  kubectl port-forward deployment/dex 5556:5556 &
   ```
 </details>
 
@@ -201,13 +203,13 @@ kubectl -n authorino port-forward deployment/envoy 8000:8000 &
   To deploy, run:
 
   ```sh
-  kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/a12n-server/a12n-server-deploy.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/a12n-server/a12n-server-deploy.yaml
   ```
 
   Forward local requests to the instance of a12n-server running in the cluster:
 
   ```sh
-  kubectl -n authorino port-forward deployment/a12n-server 8531:8531 &
+  kubectl port-forward deployment/a12n-server 8531:8531 &
   ```
 </details>
 

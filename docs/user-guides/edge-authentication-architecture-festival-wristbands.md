@@ -40,7 +40,7 @@ As a minimum, EAA allows to simplify authentication between applications and mic
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 Deploy a Keycloak server preloaded with all the realm settings required for this guide:
@@ -148,6 +148,7 @@ spec:
     apiKey:
       labelSelectors:
         authorino.kuadrant.io/managed-by: authorino
+      allNamespaces: true
     credentials:
       in: authorization_header
       keySelector: APIKEY
@@ -346,16 +347,16 @@ curl -H "Authorization: Bearer $WRISTBAND_TOKEN" http://talker-api-authorino.127
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace edge
-kubectl -n authorino namespace internal
-kubectl -n authorino namespace authorino-operator
-kubectl -n authorino namespace keycloak
+kubectl delete namespace edge
+kubectl delete namespace internal
+kubectl delete namespace authorino
+kubectl delete namespace keycloak
 ```
 
 To uninstall the Authorino and Authorino Operator manifests, run:

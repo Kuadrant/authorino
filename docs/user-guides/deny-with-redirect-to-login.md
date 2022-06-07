@@ -28,7 +28,7 @@ Customize response status code and headers on failed requests to redirect users 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
-kind create cluster --name authorino-trial
+kind create cluster --name authorino-tutorial
 ```
 
 ## 1. Install the Authorino Operator
@@ -37,24 +37,18 @@ kind create cluster --name authorino-trial
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
-## 2. Create the namespace
-
-```sh
-kubectl create namespace authorino
-```
-
-## 3. Deploy the Matrix Quotes web application
+## 2. Deploy the Matrix Quotes web application
 
 The **Matrix Quotes** is a static web application that contains quotes from the film _The Matrix_.
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/matrix-quotes/matrix-quotes-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/matrix-quotes/matrix-quotes-deploy.yaml
 ```
 
-## 4. Deploy Authorino
+## 3. Deploy Authorino
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: operator.authorino.kuadrant.io/v1beta1
 kind: Authorino
 metadata:
@@ -71,26 +65,26 @@ EOF
 
 The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
-## 5. Setup Envoy
+## 4. Setup Envoy
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Matrix Quotes webapp behind the reverse-proxy and external authorization with the Authorino instance.
 
 For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/matrix-quotes/envoy-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/matrix-quotes/envoy-deploy.yaml
 ```
 
 The bundle also creates an `Ingress` with host name `matrix-quotes-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:
 
 ```sh
-kubectl -n authorino port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 &
 ```
 
-## 6. Create the `AuthConfig`
+## 5. Create the `AuthConfig`
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
@@ -125,10 +119,10 @@ EOF
 
 Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
 
-## 7. Create an API key
+## 6. Create an API key
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -142,7 +136,7 @@ type: Opaque
 EOF
 ```
 
-## 8. Consume the application
+## 7. Consume the application
 
 On a web browser, navigate to http://matrix-quotes-authorino.127.0.0.1.nip.io:8000.
 
@@ -161,14 +155,14 @@ curl -u john:p http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/neo.html
 # HTTP/1.1 200 OK
 ```
 
-## 9. (Optional) Modify the `AuthConfig` to authenticate with OIDC
+## 8. (Optional) Modify the `AuthConfig` to authenticate with OIDC
 
 ### Setup a Keycloak server
 
 Deploy a Keycloak server preloaded with a realm named `kuadrant`:
 
 ```sh
-kubectl -n authorino apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
 ```
 
 Resolve local Keycloak domain so it can be accessed from the local host and inside the cluster with the name: (This will be needed to redirect to Keycloak's login page and at the same time validate issued tokens.)
@@ -180,7 +174,7 @@ echo '127.0.0.1 keycloak' >> /etc/hosts
 Forward local requests to the instance of Keycloak running in the cluster:
 
 ```sh
-kubectl -n authorino port-forward deployment/keycloak 8080:8080 &
+kubectl port-forward deployment/keycloak 8080:8080 &
 ```
 
 Create a client:
@@ -195,13 +189,13 @@ curl -H "Authorization: Bearer $(curl http://keycloak:8080/auth/realms/master/pr
 ### Reconfigure the Matrix Quotes app to use Keycloak's login page
 
 ```sh
-kubectl -n authorino set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/auth/realms/kuadrant CLIENT_ID=matrix-quotes
+kubectl set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/auth/realms/kuadrant CLIENT_ID=matrix-quotes
 ```
 
 ### Apply the changes to the `AuthConfig`
 
 ```sh
-kubectl -n authorino apply -f -<<EOF
+kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
@@ -243,17 +237,21 @@ Click again on the cards and check that now you are able to access the inner pag
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
 
 ```sh
-kind delete cluster --name authorino-trial
+kind delete cluster --name authorino-tutorial
 ```
 
-Otherwise, delete the namespaces created in step 1 and 2:
+Otherwise, delete the resources created in each step:
 
 ```sh
-kubectl -n authorino namespace authorino
-kubectl -n authorino namespace authorino-operator
+kubectl delete secret/user-credential-1
+kubectl delete authconfig/matrix-quotes-protection
+kubectl delete authorino/authorino
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/matrix-quotes/matrix-quotes-deploy.yaml
+kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
 ```
 
-To uninstall the Authorino and Authorino Operator manifests, run:
+To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
 
 ```sh
 kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
