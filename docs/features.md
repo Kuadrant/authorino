@@ -36,6 +36,7 @@
   - [_Extra:_ Custom denial status (`denyWith`)](#extra-custom-denial-status-denywith)
 - [Common feature: Priorities](#common-feature-priorities)
 - [Common feature: Conditions (`when`)](#common-feature-conditions-when)
+- [Common feature: Caching (`cache`)](#common-feature-caching-cache)
 
 ## Overview
 
@@ -869,3 +870,49 @@ spec:
       value: APIKEY .+
     apiKey: {...}
 ```
+
+## Common feature: Caching (`cache`)
+
+Objects resolved at runtime in an [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time) can be cached "in-memory", and avoided being evaluated again at a subsequent request, until it expires. A lookup cache key and a TTL can be set individually for any evaluator config in an AuthConfig.
+
+Each cache config induces a completely independent cache table (or "cache namespace"). Consequently, different evaluator configs can use the same cache key and there will be no colision between entries from different evaluators.
+
+E.g.:
+
+```yaml
+spec:
+  hosts:
+  - my-api.io
+
+  identity: [...]
+
+  metadata:
+  - name: external-metadata
+    http:
+      endpoint: http://my-external-source?search={context.request.http.path}
+    cache:
+      key:
+        valueFrom: { authJSON: context.request.http.path }
+      ttl: 300
+
+  authorization:
+  - name: complex-policy
+    opa:
+      externalRegistry:
+        endpoint: http://my-policy-registry
+    cache:
+      key:
+        valueFrom:
+          authJSON: "{auth.identity.group}-{context.request.http.method}-{context.request.http.path}"
+      ttl: 60
+```
+
+The example above sets caching for the 'external-metadata' metadata config and for the 'complex-policy' authorization policy. In the case of 'external-metadata', the cache key is the path of the original HTTP request being authorized by Authorino (fetched dynamically from the [Authorization JSON](./architecture.md#the-authorization-json)); i.e., after obtaining a metadata object from the external source for a given contextual HTTP path one first time, whenever that same HTTP path repeats in a subsequent request, Authorino will use the cached object instead of sending a request again to the external source of metadata. After 5 minutes (300 seconds), the cache entry will expire and Authorino will fetch again from the source if requested.
+
+As for the 'complex-policy' authorization policy, the cache is a string composed the 'group' the identity belongs to, the methodd of the HTTP request and the path of the HTTP request. Whenever these repeat, Authorino will use the result of the policy that was evaluated and cached priorly. Cache entries in this namespace expire after 60 seconds.
+
+**Notes on evaluator caching**
+
+_Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `EVALUATOR_CACHE_SIZE` environment variable or `spec.evaluatorCacheSize` field of the `Authorino` CR).
+
+_Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
