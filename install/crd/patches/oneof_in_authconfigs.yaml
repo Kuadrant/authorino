@@ -21,6 +21,11 @@
     - properties:
         name: {}
         credentials: {}
+        apiKey: {}
+      required: [name, mtls]
+    - properties:
+        name: {}
+        credentials: {}
         kubernetes: {}
       required: [name, kubernetes]
     - properties:
