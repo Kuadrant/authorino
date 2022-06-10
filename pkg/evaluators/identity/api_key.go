@@ -79,13 +79,13 @@ func (apiKey *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (inter
 	return nil, err
 }
 
-// impl:APIKeyIdentityConfigEvaluator
+// impl:K8sSecretBasedIdentityConfigEvaluator
 
-func (apiKey *APIKey) GetAPIKeyLabelSelectors() map[string]string {
+func (apiKey *APIKey) GetK8sSecretLabelSelectors() map[string]string {
 	return apiKey.LabelSelectors
 }
 
-func (apiKey *APIKey) RefreshAPIKeySecret(ctx context.Context, new v1.Secret) {
+func (apiKey *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new v1.Secret) {
 	if !apiKey.withinScope(new.GetNamespace()) {
 		return
 	}
@@ -117,7 +117,7 @@ func (apiKey *APIKey) RefreshAPIKeySecret(ctx context.Context, new v1.Secret) {
 	logger.V(1).Info("api key added", "authconfig", newAIKeyName)
 }
 
-func (apiKey *APIKey) DeleteAPIKeySecret(ctx context.Context, deleted types.NamespacedName) {
+func (apiKey *APIKey) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted types.NamespacedName) {
 	if !apiKey.withinScope(deleted.Namespace) {
 		return
 	}
