@@ -205,24 +205,48 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
 func (config *IdentityConfig) AddK8sSecretBasedIdentity(ctx context.Context, new v1.Secret) {
-	if config.APIKey == nil {
+	var ev auth.K8sSecretBasedIdentityConfigEvaluator
+
+	switch config.GetType() {
+	case identityMTLS:
+		ev = config.MTLS
+	case identityAPIKey:
+		ev = config.APIKey
+	default:
 		return
 	}
-	config.APIKey.AddK8sSecretBasedIdentity(ctx, new)
+
+	ev.AddK8sSecretBasedIdentity(ctx, new)
 }
 
 func (config *IdentityConfig) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted types.NamespacedName) {
-	if config.APIKey == nil {
+	var ev auth.K8sSecretBasedIdentityConfigEvaluator
+
+	switch config.GetType() {
+	case identityMTLS:
+		ev = config.MTLS
+	case identityAPIKey:
+		ev = config.APIKey
+	default:
 		return
 	}
-	config.APIKey.RevokeK8sSecretBasedIdentity(ctx, deleted)
+
+	ev.RevokeK8sSecretBasedIdentity(ctx, deleted)
 }
 
 func (config *IdentityConfig) GetK8sSecretLabelSelectors() map[string]string {
-	if config.APIKey == nil {
+	var ev auth.K8sSecretBasedIdentityConfigEvaluator
+
+	switch config.GetType() {
+	case identityMTLS:
+		ev = config.MTLS
+	case identityAPIKey:
+		ev = config.APIKey
+	default:
 		return nil
 	}
-	return config.APIKey.LabelSelectors
+
+	return ev.GetK8sSecretLabelSelectors()
 }
 
 // impl:metrics.Object
