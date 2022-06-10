@@ -8,9 +8,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/log"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8s "k8s.io/api/core/v1"
+	k8s_types "k8s.io/apimachinery/pkg/types"
+	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -26,18 +26,18 @@ type APIKey struct {
 	LabelSelectors map[string]string `yaml:"labelSelectors"`
 	Namespace      string            `yaml:"namespace"`
 
-	secrets   map[string]v1.Secret
+	secrets   map[string]k8s.Secret
 	mutex     sync.Mutex
-	k8sClient client.Reader
+	k8sClient k8s_client.Reader
 }
 
-// NewApiKeyIdentity creates a new instance of APIKey
-func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace string, authCred auth.AuthCredentials, k8sClient client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
 	apiKey := &APIKey{
 		AuthCredentials: authCred,
 		Name:            name,
 		LabelSelectors:  labelSelectors,
 		Namespace:       namespace,
+		secrets:         make(map[string]k8s.Secret),
 		k8sClient:       k8sClient,
 	}
 	if err := apiKey.loadSecrets(context.TODO()); err != nil {
@@ -46,30 +46,33 @@ func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace 
 	return apiKey
 }
 
-// loadSecrets will get the k8s secrets and update the APIKey instance
-func (apiKey *APIKey) loadSecrets(ctx context.Context) error {
-	opts := []client.ListOption{client.MatchingLabels(apiKey.LabelSelectors)}
-	if namespace := apiKey.Namespace; namespace != "" {
-		opts = append(opts, client.InNamespace(namespace))
+// loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted API keys
+func (a *APIKey) loadSecrets(ctx context.Context) error {
+	opts := []k8s_client.ListOption{k8s_client.MatchingLabels(a.LabelSelectors)}
+	if namespace := a.Namespace; namespace != "" {
+		opts = append(opts, k8s_client.InNamespace(namespace))
 	}
-	var secretList = &v1.SecretList{}
-	if err := apiKey.k8sClient.List(ctx, secretList, opts...); err != nil {
+	var secretList = &k8s.SecretList{}
+	if err := a.k8sClient.List(ctx, secretList, opts...); err != nil {
 		return err
 	}
-	var secrets = make(map[string]v1.Secret)
+
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
 	for _, secret := range secretList.Items {
-		secrets[string(secret.Data[apiKeySelector])] = secret
+		a.appendK8sSecretBasedIdentity(secret)
 	}
-	apiKey.secrets = secrets
+
 	return nil
 }
 
 // Call will evaluate the credentials within the request against the authorized ones
-func (apiKey *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{}, error) {
-	if reqKey, err := apiKey.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
+func (a *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{}, error) {
+	if reqKey, err := a.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
 		return nil, err
 	} else {
-		for key, secret := range apiKey.secrets {
+		for key, secret := range a.secrets {
 			if key == reqKey {
 				return secret, nil
 			}
@@ -81,59 +84,68 @@ func (apiKey *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (inter
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
-func (apiKey *APIKey) GetK8sSecretLabelSelectors() map[string]string {
-	return apiKey.LabelSelectors
+func (a *APIKey) GetK8sSecretLabelSelectors() map[string]string {
+	return a.LabelSelectors
 }
 
-func (apiKey *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new v1.Secret) {
-	if !apiKey.withinScope(new.GetNamespace()) {
+func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
+	if !a.withinScope(new.GetNamespace()) {
 		return
 	}
 
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
 	logger := log.FromContext(ctx).WithName("apikey")
 
-	apiKey.mutex.Lock()
-	defer apiKey.mutex.Unlock()
-
-	newAPIKeyValue := string(new.Data[apiKeySelector])
-	newAIKeyName := fmt.Sprintf("%s/%s", new.GetNamespace(), new.GetName())
-
 	// updating existing
-	for _, current := range apiKey.secrets {
+	newAPIKeyValue := string(new.Data[apiKeySelector])
+	for oldAPIKeyValue, current := range a.secrets {
 		if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
-			oldAPIKeyValue := string(current.Data[apiKeySelector])
 			if oldAPIKeyValue != newAPIKeyValue {
-				apiKey.secrets[newAPIKeyValue] = new
-				delete(apiKey.secrets, oldAPIKeyValue)
-				logger.V(1).Info("api key updated", "authconfig", newAIKeyName)
+				a.appendK8sSecretBasedIdentity(new)
+				delete(a.secrets, oldAPIKeyValue)
+				logger.V(1).Info("api key updated")
 			} else {
-				logger.V(1).Info("api key unchanged", "authconfig", newAIKeyName)
+				logger.V(1).Info("api key unchanged")
 			}
 			return
 		}
 	}
 
-	apiKey.secrets[newAPIKeyValue] = new
-	logger.V(1).Info("api key added", "authconfig", newAIKeyName)
+	if a.appendK8sSecretBasedIdentity(new) {
+		logger.V(1).Info("api key added")
+	}
 }
 
-func (apiKey *APIKey) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted types.NamespacedName) {
-	if !apiKey.withinScope(deleted.Namespace) {
+func (a *APIKey) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted k8s_types.NamespacedName) {
+	if !a.withinScope(deleted.Namespace) {
 		return
 	}
 
-	apiKey.mutex.Lock()
-	defer apiKey.mutex.Unlock()
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
-	for key, secret := range apiKey.secrets {
+	for key, secret := range a.secrets {
 		if secret.GetNamespace() == deleted.Namespace && secret.GetName() == deleted.Name {
-			delete(apiKey.secrets, key)
-			log.FromContext(ctx).WithName("apikey").V(1).Info("api key deleted", "authconfig", fmt.Sprintf("%s/%s", deleted.Namespace, deleted.Name))
+			delete(a.secrets, key)
+			log.FromContext(ctx).WithName("apikey").V(1).Info("api key deleted")
 			return
 		}
 	}
 }
 
-func (apiKey *APIKey) withinScope(namespace string) bool {
-	return apiKey.Namespace == "" || apiKey.Namespace == namespace
+func (a *APIKey) withinScope(namespace string) bool {
+	return a.Namespace == "" || a.Namespace == namespace
+}
+
+// Appends the K8s Secret to the cache of API keys
+// Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
+func (a *APIKey) appendK8sSecretBasedIdentity(secret k8s.Secret) bool {
+	value, isAPIKeySecret := secret.Data[apiKeySelector]
+	if isAPIKeySecret && len(value) > 0 {
+		a.secrets[string(value)] = secret
+		return true
+	}
+	return false
 }
