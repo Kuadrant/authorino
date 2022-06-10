@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 
 	k8s "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8s_types "k8s.io/apimachinery/pkg/types"
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -24,7 +24,7 @@ type MTLS struct {
 	LabelSelectors map[string]string
 	Namespace      string
 
-	rootCerts *x509.CertPool
+	rootCerts map[string]*x509.Certificate
 	mutex     sync.Mutex
 	k8sClient k8s_client.Reader
 }
@@ -35,7 +35,7 @@ func NewMTLSIdentity(name string, labelSelectors map[string]string, namespace st
 		Name:            name,
 		LabelSelectors:  labelSelectors,
 		Namespace:       namespace,
-		rootCerts:       x509.NewCertPool(),
+		rootCerts:       make(map[string]*x509.Certificate),
 		k8sClient:       k8sClient,
 	}
 	if err := mtls.loadSecrets(context.TODO()); err != nil {
@@ -59,7 +59,10 @@ func (m *MTLS) loadSecrets(ctx context.Context) error {
 	defer m.mutex.Unlock()
 
 	for _, secret := range secretList.Items {
-		m.appendK8sSecretBasedIdentity(secret)
+		secretName := k8s_types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
+		if cert := decodeCertificate(secret); cert != nil {
+			m.rootCerts[secretName.String()] = cert
+		}
 	}
 
 	return nil
@@ -84,7 +87,12 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 		return nil, err
 	}
 
-	if _, err := cert.Verify(x509.VerifyOptions{Roots: m.rootCerts}); err != nil {
+	certs := x509.NewCertPool()
+	for _, cert := range m.rootCerts {
+		certs.AddCert(cert)
+	}
+
+	if _, err := cert.Verify(x509.VerifyOptions{Roots: certs}); err != nil {
 		return nil, err
 	}
 
@@ -97,23 +105,55 @@ func (m *MTLS) GetK8sSecretLabelSelectors() map[string]string {
 	return m.LabelSelectors
 }
 
-// AddK8sSecretBasedIdentity refreshes the cache of trusted root CA certs by reloading the k8s secrets from the cluster
 func (m *MTLS) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
-	m.refreshK8sSecretBasedIdentity(ctx, k8s_types.NamespacedName{Namespace: new.Namespace, Name: new.Name})
+	if !m.withinScope(new.GetNamespace()) {
+		return
+	}
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	secretName := k8s_types.NamespacedName{Namespace: new.Namespace, Name: new.Name}.String()
+	newCert := decodeCertificate(new)
+	logger := log.FromContext(ctx).WithName("mtls")
+
+	// updating existing
+	if currentCert, found := m.rootCerts[secretName]; found {
+		logger := log.FromContext(ctx).WithName("mtls")
+		if sha256.Sum224(currentCert.Raw) != sha256.Sum224(newCert.Raw) {
+			m.rootCerts[secretName] = newCert
+			logger.V(1).Info("trusted root ca updated")
+		} else {
+			logger.V(1).Info("trusted root ca unchanged")
+		}
+		return
+	}
+
+	m.rootCerts[secretName] = newCert
+	logger.V(1).Info("trusted root ca added")
 }
 
-// RevokeK8sSecretBasedIdentity refreshes the cache of trusted root CA certs by reloading the k8s secrets from the cluster
 func (m *MTLS) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted k8s_types.NamespacedName) {
-	m.refreshK8sSecretBasedIdentity(ctx, deleted)
+	if !m.withinScope(deleted.Namespace) {
+		return
+	}
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	secretName := deleted.String()
+
+	if _, found := m.rootCerts[secretName]; found {
+		delete(m.rootCerts, secretName)
+		log.FromContext(ctx).WithName("mtls").V(1).Info("trusted root ca deleted")
+	}
 }
 
 func (m *MTLS) withinScope(namespace string) bool {
 	return m.Namespace == "" || m.Namespace == namespace
 }
 
-// Appends the K8s Secret to the cache of trusted root CAs
-// Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
-func (m *MTLS) appendK8sSecretBasedIdentity(secret v1.Secret) bool {
+func decodeCertificate(secret k8s.Secret) (cert *x509.Certificate) {
 	var encodedCert []byte
 
 	if v, hasTLSCert := secret.Data[k8s.TLSCertKey]; hasTLSCert {
@@ -121,29 +161,24 @@ func (m *MTLS) appendK8sSecretBasedIdentity(secret v1.Secret) bool {
 	} else if v, hasCACert := secret.Data[k8s.ServiceAccountRootCAKey]; hasCACert {
 		encodedCert = v
 	} else {
-		return false
+		return nil
 	}
 
-	return m.rootCerts.AppendCertsFromPEM(encodedCert)
-}
-
-func (m *MTLS) refreshK8sSecretBasedIdentity(ctx context.Context, secret k8s_types.NamespacedName) {
-	if !m.withinScope(secret.Namespace) {
-		return
+	for len(encodedCert) > 0 {
+		var block *pem.Block
+		block, encodedCert = pem.Decode(encodedCert)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			continue
+		}
+		var err error
+		cert, err = x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			continue
+		}
 	}
 
-	logger := log.FromContext(ctx).WithName("mtls").WithValues("secret", secret.String())
-
-	current := m.rootCerts
-	m.rootCerts = x509.NewCertPool()
-	if err := m.loadSecrets(ctx); err != nil {
-		logger.Error(err, "failed to refresh trusted root ca certs")
-		// rollback
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-		m.rootCerts = current
-		return
-	}
-
-	logger.V(1).Info("trusted root ca cert refreshed")
+	return cert
 }
