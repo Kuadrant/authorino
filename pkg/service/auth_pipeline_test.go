@@ -359,7 +359,7 @@ func TestEvaluatePriorities(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig1 := &evaluators.IdentityConfig{Priority: 0, MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig1 := &evaluators.IdentityConfig{Priority: 0, Noop: &identity.Noop{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	idConfig2 := &failConfig{priority: 1}                                        // should never be called; otherwise, it would throw an error as it's not a config.IdentityConfig
 
 	authzConfig1 := &failConfig{priority: 0}
@@ -409,7 +409,7 @@ func TestAuthPipelineWithMatchingConditionsInTheAuthConfig(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig := &evaluators.IdentityConfig{Noop: &identity.Noop{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{}
 
 	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
@@ -436,7 +436,7 @@ func TestAuthPipelineWithUnmatchingConditionsInTheEvaluator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig := &evaluators.IdentityConfig{Noop: &identity.Noop{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{
 		conditions: []json.JSONPatternMatchingRule{
 			{
@@ -464,7 +464,7 @@ func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	idConfig := &evaluators.IdentityConfig{MTLS: &identity.MTLS{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
+	idConfig := &evaluators.IdentityConfig{Noop: &identity.Noop{}} // since it's going to be called and succeed, it has to be an actual config.IdentityConfig because AuthPipeline depends on it
 	authzConfig := &successConfig{
 		conditions: []json.JSONPatternMatchingRule{
 			{
