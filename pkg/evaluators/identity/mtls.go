@@ -60,7 +60,7 @@ func (m *MTLS) loadSecrets(ctx context.Context) error {
 
 	for _, secret := range secretList.Items {
 		secretName := k8s_types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
-		if cert := decodeCertificate(secret); cert != nil {
+		if cert := certificateFromSecret(secret); cert != nil {
 			m.rootCerts[secretName.String()] = cert
 		}
 	}
@@ -69,9 +69,6 @@ func (m *MTLS) loadSecrets(ctx context.Context) error {
 }
 
 func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	var cert *x509.Certificate
-	var err error
-
 	urlEncodedCert := pipeline.GetRequest().Attributes.Source.GetCertificate()
 	if urlEncodedCert == "" {
 		return nil, fmt.Errorf("client certificate is missing")
@@ -80,11 +77,9 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 	if err != nil {
 		return nil, fmt.Errorf("invalid client certificate")
 	}
-
-	block, _ := pem.Decode([]byte(pemEncodedCert))
-
-	if cert, err = x509.ParseCertificate(block.Bytes); err != nil {
-		return nil, err
+	cert := decodeCertificate([]byte(pemEncodedCert))
+	if cert == nil {
+		return nil, fmt.Errorf("invalid client certificate")
 	}
 
 	certs := x509.NewCertPool()
@@ -114,8 +109,13 @@ func (m *MTLS) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
 	defer m.mutex.Unlock()
 
 	secretName := k8s_types.NamespacedName{Namespace: new.Namespace, Name: new.Name}.String()
-	newCert := decodeCertificate(new)
+	newCert := certificateFromSecret(new)
 	logger := log.FromContext(ctx).WithName("mtls")
+
+	if newCert == nil {
+		logger.V(1).Info("invalid root ca cert")
+		return
+	}
 
 	// updating existing
 	if currentCert, found := m.rootCerts[secretName]; found {
@@ -153,9 +153,8 @@ func (m *MTLS) withinScope(namespace string) bool {
 	return m.Namespace == "" || m.Namespace == namespace
 }
 
-func decodeCertificate(secret k8s.Secret) (cert *x509.Certificate) {
+func certificateFromSecret(secret k8s.Secret) (cert *x509.Certificate) {
 	var encodedCert []byte
-
 	if v, hasTLSCert := secret.Data[k8s.TLSCertKey]; hasTLSCert {
 		encodedCert = v
 	} else if v, hasCACert := secret.Data[k8s.ServiceAccountRootCAKey]; hasCACert {
@@ -163,7 +162,10 @@ func decodeCertificate(secret k8s.Secret) (cert *x509.Certificate) {
 	} else {
 		return nil
 	}
+	return decodeCertificate(encodedCert)
+}
 
+func decodeCertificate(encodedCert []byte) (cert *x509.Certificate) {
 	for len(encodedCert) > 0 {
 		var block *pem.Block
 		block, encodedCert = pem.Decode(encodedCert)
@@ -179,6 +181,5 @@ func decodeCertificate(secret k8s.Secret) (cert *x509.Certificate) {
 			continue
 		}
 	}
-
 	return cert
 }
