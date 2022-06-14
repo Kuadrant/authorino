@@ -53,10 +53,10 @@ type IdentityConfigEvaluator interface {
 	ResolveExtendedProperties(AuthPipeline) (interface{}, error)
 }
 
-type APIKeyIdentityConfigEvaluator interface {
-	RefreshAPIKeySecret(context.Context, v1.Secret)
-	DeleteAPIKeySecret(context.Context, types.NamespacedName)
-	GetAPIKeyLabelSelectors() map[string]string
+type K8sSecretBasedIdentityConfigEvaluator interface {
+	GetK8sSecretLabelSelectors() map[string]string
+	AddK8sSecretBasedIdentity(context.Context, v1.Secret)
+	RevokeK8sSecretBasedIdentity(context.Context, types.NamespacedName)
 }
 
 type WristbandIssuer interface {
