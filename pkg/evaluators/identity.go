@@ -202,51 +202,27 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 	return extendedIdentityObject, nil
 }
 
-// impl:K8sSecretBasedIdentityConfigEvaluator
+// impl:APIKeyIdentityConfigEvaluator
 
-func (config *IdentityConfig) AddK8sSecretBasedIdentity(ctx context.Context, new v1.Secret) {
-	var ev auth.K8sSecretBasedIdentityConfigEvaluator
-
-	switch config.GetType() {
-	case identityMTLS:
-		ev = config.MTLS
-	case identityAPIKey:
-		ev = config.APIKey
-	default:
+func (config *IdentityConfig) RefreshAPIKeySecret(ctx context.Context, new v1.Secret) {
+	if config.APIKey == nil {
 		return
 	}
-
-	ev.AddK8sSecretBasedIdentity(ctx, new)
+	config.APIKey.RefreshAPIKeySecret(ctx, new)
 }
 
-func (config *IdentityConfig) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted types.NamespacedName) {
-	var ev auth.K8sSecretBasedIdentityConfigEvaluator
-
-	switch config.GetType() {
-	case identityMTLS:
-		ev = config.MTLS
-	case identityAPIKey:
-		ev = config.APIKey
-	default:
+func (config *IdentityConfig) DeleteAPIKeySecret(ctx context.Context, deleted types.NamespacedName) {
+	if config.APIKey == nil {
 		return
 	}
-
-	ev.RevokeK8sSecretBasedIdentity(ctx, deleted)
+	config.APIKey.DeleteAPIKeySecret(ctx, deleted)
 }
 
-func (config *IdentityConfig) GetK8sSecretLabelSelectors() map[string]string {
-	var ev auth.K8sSecretBasedIdentityConfigEvaluator
-
-	switch config.GetType() {
-	case identityMTLS:
-		ev = config.MTLS
-	case identityAPIKey:
-		ev = config.APIKey
-	default:
+func (config *IdentityConfig) GetAPIKeyLabelSelectors() map[string]string {
+	if config.APIKey == nil {
 		return nil
 	}
-
-	return ev.GetK8sSecretLabelSelectors()
+	return config.APIKey.LabelSelectors
 }
 
 // impl:metrics.Object

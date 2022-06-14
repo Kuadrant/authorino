@@ -41,6 +41,8 @@ type SecretReconciler struct {
 func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("secret", req.NamespacedName)
 
+	var reconcile func(*evaluators.AuthConfig)
+
 	secret := v1.Secret{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
 		// could not get the resource but not because of a 404 Not found, some error must have happened
@@ -48,15 +50,19 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	} else if errors.IsNotFound(err) || !Watched(&secret.ObjectMeta, r.LabelSelector) {
 		// could not find the resource (404 Not found, resource must have been deleted)
 		// or the resource is no longer to be watched (labels no longer match)
-		// => delete the K8s Secret-based identity from all AuthConfigs
-		r.eachAuthConfigsWithK8sSecretBasedIdentity(ctx, func(authConfig *evaluators.AuthConfig) {
-			r.revokeK8sSecretBasedIdentity(ctx, authConfig, req.NamespacedName)
-		})
+		// => delete the API key from all AuthConfigs
+		reconcile = func(authConfig *evaluators.AuthConfig) {
+			r.deleteAPIKey(ctx, authConfig, req.NamespacedName)
+		}
 	} else {
-		// resource found => if the K8s Secret labels match, update all AuthConfigs
-		r.eachAuthConfigsWithK8sSecretBasedIdentity(ctx, func(authConfig *evaluators.AuthConfig) {
-			r.refreshK8sSecretBasedIdentity(ctx, authConfig, secret)
-		})
+		// resource found => if the API key labels match, update all AuthConfigs
+		reconcile = func(authConfig *evaluators.AuthConfig) {
+			r.updateAPIKey(ctx, authConfig, secret)
+		}
+	}
+
+	for authConfig := range r.getAuthConfigsUsingAPIKey(ctx) {
+		reconcile(authConfig)
 	}
 
 	logger.Info("resource reconciled")
@@ -73,18 +79,12 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *SecretReconciler) eachAuthConfigsWithK8sSecretBasedIdentity(ctx context.Context, f func(*evaluators.AuthConfig)) {
-	for authConfig := range r.getAuthConfigsWithK8sSecretBasedIdentity(ctx) {
-		f(authConfig)
-	}
-}
-
-func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity(ctx context.Context) authConfigSet {
+func (r *SecretReconciler) getAuthConfigsUsingAPIKey(ctx context.Context) authConfigSet {
 	authConfigs := make(authConfigSet)
 	var s struct{}
 	for _, authConfig := range r.Cache.List() {
 		for _, identityEvaluator := range authConfig.IdentityConfigs {
-			if _, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
+			if _, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
 				authConfigs[authConfig] = s
 				break
 			}
@@ -93,32 +93,25 @@ func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity(ctx context.
 	return authConfigs
 }
 
-func (r *SecretReconciler) revokeK8sSecretBasedIdentity(ctx context.Context, authConfig *evaluators.AuthConfig, deleted types.NamespacedName) {
+func (r *SecretReconciler) deleteAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, deleted types.NamespacedName) {
 	for _, identityEvaluator := range authConfig.IdentityConfigs {
-		if ev, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
-			log.FromContext(ctx).V(1).Info("deleting k8s secret from cache", "authconfig", authConfigName(authConfig))
-			ev.RevokeK8sSecretBasedIdentity(ctx, deleted)
+		if ev, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
+			log.FromContext(ctx).V(1).Info("deleting api key from cache", "authconfig", authConfigName(authConfig))
+			ev.DeleteAPIKeySecret(ctx, deleted)
 		}
 	}
 }
 
-func (r *SecretReconciler) refreshK8sSecretBasedIdentity(ctx context.Context, authConfig *evaluators.AuthConfig, secret v1.Secret) {
-	baseLogger := log.FromContext(ctx).WithValues("authconfig", authConfigName(authConfig)).V(1)
+func (r *SecretReconciler) updateAPIKey(ctx context.Context, authConfig *evaluators.AuthConfig, secret v1.Secret) {
 	for _, identityEvaluator := range authConfig.IdentityConfigs {
-		logger := baseLogger
-		if logger.Enabled() {
-			if ev, ok := identityEvaluator.(auth.NamedEvaluator); ok {
-				logger = baseLogger.WithValues("config", ev.GetName())
-			}
-		}
-		if ev, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
-			selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: ev.GetK8sSecretLabelSelectors()})
+		if ev, ok := identityEvaluator.(auth.APIKeyIdentityConfigEvaluator); ok {
+			selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: ev.GetAPIKeyLabelSelectors()})
 			if selector == nil || selector.Matches(labels.Set(secret.Labels)) {
-				logger.Info("adding k8s secret to cache")
-				ev.AddK8sSecretBasedIdentity(ctx, secret)
+				log.FromContext(ctx).V(1).Info("adding api key to cache", "authconfig", authConfigName(authConfig))
+				ev.RefreshAPIKeySecret(ctx, secret)
 			} else {
-				logger.Info("deleting k8s secret from cache")
-				ev.RevokeK8sSecretBasedIdentity(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name})
+				log.FromContext(ctx).V(1).Info("deleting api key from cache", "authconfig", authConfigName(authConfig))
+				ev.DeleteAPIKeySecret(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name})
 			}
 		}
 	}

@@ -10,7 +10,6 @@ done
 namespace=${NAMESPACE:-"authorino"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
 verbose=${VERBOSE}
-timeout=${TIMEOUT:-"600"}
 
 HOSTNAME="talker-api-authorino.127.0.0.1.nip.io"
 IP_IN="109.69.200.56" # IT
@@ -21,7 +20,6 @@ test_count=0
 function wait_until {
   local what=$1; shift
   local condition=$1; shift
-  local start_time=$SECONDS
   printf "waiting ${what}"
   while : ; do
     if [[ "$($1)" =~ $condition ]]; then
@@ -29,10 +27,6 @@ function wait_until {
     fi
     printf "."
     sleep 3
-    if [ $(($SECONDS - $start_time)) -gt $timeout ]; then
-      printf " (timeout)"
-      teardown "FAIL"
-    fi
   done
   echo " condition met"
 }

@@ -113,7 +113,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
     </tr>
     <tr>
       <td>mTLS authentication</td>
-      <td><i>Ready</i></td>
+      <td>Planned (<a href="https://github.com/kuadrant/authorino/issues/8">#8</a>)</td>
     </tr>
     <tr>
       <td>HMAC authentication</td>

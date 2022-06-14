@@ -336,7 +336,6 @@ func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, 
 			server := &http.Server{
 				TLSConfig: &tls.Config{
 					MinVersion: tls.VersionTLS12,
-					ClientAuth: tls.RequestClientCert,
 				},
 			}
 			err = server.ServeTLS(lis, tlsCertPath, tlsCertKeyPath)

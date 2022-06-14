@@ -47,18 +47,18 @@ func (i *fakeAPIKeyIdentityConfig) Call(_ auth.AuthPipeline, _ context.Context) 
 	return nil, nil
 }
 
-func (i *fakeAPIKeyIdentityConfig) AddK8sSecretBasedIdentity(ctx context.Context, new v1.Secret) {
-	i.evaluator.AddK8sSecretBasedIdentity(ctx, new)
+func (i *fakeAPIKeyIdentityConfig) RefreshAPIKeySecret(ctx context.Context, new v1.Secret) {
+	i.evaluator.RefreshAPIKeySecret(ctx, new)
 	i.refreshed = true
 }
 
-func (i *fakeAPIKeyIdentityConfig) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted types.NamespacedName) {
-	i.evaluator.RevokeK8sSecretBasedIdentity(ctx, deleted)
+func (i *fakeAPIKeyIdentityConfig) DeleteAPIKeySecret(ctx context.Context, deleted types.NamespacedName) {
+	i.evaluator.DeleteAPIKeySecret(ctx, deleted)
 	i.deleted = true
 }
 
-func (i *fakeAPIKeyIdentityConfig) GetK8sSecretLabelSelectors() map[string]string {
-	return i.evaluator.GetK8sSecretLabelSelectors()
+func (i *fakeAPIKeyIdentityConfig) GetAPIKeyLabelSelectors() map[string]string {
+	return i.evaluator.GetAPIKeyLabelSelectors()
 }
 
 type secretReconcilerTest struct {
