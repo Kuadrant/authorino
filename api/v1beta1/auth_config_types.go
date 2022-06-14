@@ -27,7 +27,6 @@ const (
 	IdentityOAuth2                   = "IDENTITY_OAUTH2"
 	IdentityOidc                     = "IDENTITY_OIDC"
 	IdentityApiKey                   = "IDENTITY_APIKEY"
-	IdentityMTLS                     = "IDENTITY_MTLS"
 	IdentityKubernetesAuth           = "IDENTITY_KUBERNETESAUTH"
 	IdentityAnonymous                = "IDENTITY_ANONYMOUS"
 	IdentityPlain                    = "IDENTITY_PLAIN"
@@ -204,7 +203,6 @@ type Identity struct {
 	OAuth2         *Identity_OAuth2Config   `json:"oauth2,omitempty"`
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`
 	APIKey         *Identity_APIKey         `json:"apiKey,omitempty"`
-	MTLS           *Identity_MTLS           `json:"mtls,omitempty"`
 	KubernetesAuth *Identity_KubernetesAuth `json:"kubernetes,omitempty"`
 	Anonymous      *Identity_Anonymous      `json:"anonymous,omitempty"`
 	Plain          *Identity_Plain          `json:"plain,omitempty"`
@@ -217,8 +215,6 @@ func (i *Identity) GetType() string {
 		return IdentityOidc
 	} else if i.APIKey != nil {
 		return IdentityApiKey
-	} else if i.MTLS != nil {
-		return IdentityMTLS
 	} else if i.KubernetesAuth != nil {
 		return IdentityKubernetesAuth
 	} else if i.Anonymous != nil {
@@ -255,16 +251,6 @@ type Identity_APIKey struct {
 	LabelSelectors map[string]string `json:"labelSelectors"`
 
 	// Whether Authorino should look for API key secrets in all namespaces or only in the same namespace of the AuthConfig.
-	// Enabling this option in namespaced Authorino instances has no effect.
-	// +kubebuilder:default:=false
-	AllNamespaces bool `json:"allNamespaces,omitempty"`
-}
-
-type Identity_MTLS struct {
-	// The map of label selectors used by Authorino to match secrets from the cluster storing trusted CA certificates to validate clients trying to authenticate to this service
-	LabelSelectors map[string]string `json:"labelSelectors"`
-
-	// Whether Authorino should look for TLS secrets in all namespaces or only in the same namespace of the AuthConfig.
 	// Enabling this option in namespaced Authorino instances has no effect.
 	// +kubebuilder:default:=false
 	AllNamespaces bool `json:"allNamespaces,omitempty"`

@@ -239,39 +239,13 @@ Online token introspection of OpenShift-valid access tokens based on OpenShift's
 
 ### Mutual Transport Layer Security (mTLS) authentication (`identity.mtls`)
 
-Authorino can verify x509 certificates presented by clients for authentication on the request to the protected APIs, at application level.
+<table>
+  <tr>
+    <td><small>Not implemented - Planned (<a href="https://github.com/kuadrant/authorino/issues/8">#8</a>)</small></td>
+  </tr>
+</table>
 
-Trusted root Certificate Authorities (CA) are stored in Kubernetes Secrets labeled according to selectors specified in the AuthConfig, watched and cached by Authorino. Make sure to create proper `kubernetes.io/tls`-typed Kubernetes Secrets, containing the public certificates of the CA stored in either a `tls.crt` or `ca.crt` entry inside the secret.
-
-Truested root CA secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.identity.mtls.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
-
-The identitiy object resolved out of a client x509 certificate is equal to the subject field of the certificate, and it serializes as JSON within the Authorization JSON usually as follows:
-
-```jsonc
-{
-	"auth": {
-		"identity": {
-			"CommonName": "aisha",
-			"Country": ["PK"],
-			"ExtraNames": null,
-			"Locality": ["Islamabad"],
-			"Names": [
-				{ "Type": [2, 5, 4, 3], "Value": "aisha" },
-				{ "Type": [2, 5, 4, 6], "Value": "PK" },
-				{ "Type": [2, 5, 4, 7], "Value": "Islamabad" },
-				{ "Type": [2, 5, 4,10], "Value": "ACME Inc." },
-				{ "Type": [2, 5, 4,11], "Value": "Engineering" }
-			],
-			"Organization": ["ACME Inc."],
-			"OrganizationalUnit": ["Engineering"],
-			"PostalCode": null,
-			"Province": null,
-			"SerialNumber": "",
-			"StreetAddress": null
-		}
-  }
-}
-```
+Authentication based on client X509 certificates presented on the request to the protected APIs.
 
 ### Hash Message Authentication Code (HMAC) authentication (`identity.hmac`)
 
