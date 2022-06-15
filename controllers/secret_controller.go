@@ -49,12 +49,12 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// could not find the resource (404 Not found, resource must have been deleted)
 		// or the resource is no longer to be watched (labels no longer match)
 		// => delete the K8s Secret-based identity from all AuthConfigs
-		r.eachAuthConfigsWithK8sSecretBasedIdentity(ctx, func(authConfig *evaluators.AuthConfig) {
+		r.eachAuthConfigsWithK8sSecretBasedIdentity(func(authConfig *evaluators.AuthConfig) {
 			r.revokeK8sSecretBasedIdentity(ctx, authConfig, req.NamespacedName)
 		})
 	} else {
 		// resource found => if the K8s Secret labels match, update all AuthConfigs
-		r.eachAuthConfigsWithK8sSecretBasedIdentity(ctx, func(authConfig *evaluators.AuthConfig) {
+		r.eachAuthConfigsWithK8sSecretBasedIdentity(func(authConfig *evaluators.AuthConfig) {
 			r.refreshK8sSecretBasedIdentity(ctx, authConfig, secret)
 		})
 	}
@@ -73,13 +73,13 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *SecretReconciler) eachAuthConfigsWithK8sSecretBasedIdentity(ctx context.Context, f func(*evaluators.AuthConfig)) {
-	for authConfig := range r.getAuthConfigsWithK8sSecretBasedIdentity(ctx) {
+func (r *SecretReconciler) eachAuthConfigsWithK8sSecretBasedIdentity(f func(*evaluators.AuthConfig)) {
+	for authConfig := range r.getAuthConfigsWithK8sSecretBasedIdentity() {
 		f(authConfig)
 	}
 }
 
-func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity(ctx context.Context) authConfigSet {
+func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity() authConfigSet {
 	authConfigs := make(authConfigSet)
 	var s struct{}
 	for _, authConfig := range r.Cache.List() {
