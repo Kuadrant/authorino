@@ -1,6 +1,6 @@
-# User guide: Authentication with API keys
+# User guide: Authentication with X.509 certificates and Mutual Transport Layer Security (mTLS)
 
-Verify client x509 certificates against trusted root CAs stored in Kubernetes `Secret`s.
+Verify client X.509 certificates against trusted root CAs stored in Kubernetes `Secret`s to authenticate access to APIs protected with Authorino.
 
 <details>
   <summary>
