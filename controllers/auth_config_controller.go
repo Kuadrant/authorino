@@ -203,6 +203,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, namespace, authCred, r.Client, ctxWithLogger)
 
+		// MTLS
+		case api.IdentityMTLS:
+			namespace := authConfig.Namespace
+			if identity.MTLS.AllNamespaces && r.ClusterWide() {
+				namespace = ""
+			}
+			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identity.Name, identity.MTLS.LabelSelectors, namespace, r.Client, ctxWithLogger)
+
 		// kubernetes auth
 		case api.IdentityKubernetesAuth:
 			if k8sAuthConfig, err := identity_evaluators.NewKubernetesAuthIdentity(authCred, identity.KubernetesAuth.Audiences); err != nil {

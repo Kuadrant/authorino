@@ -3,9 +3,11 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -118,6 +120,20 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 					},
 				},
 			},
+		}
+
+		if tls := req.TLS; tls != nil && len(tls.PeerCertificates) > 0 {
+			pemEncodedCert := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: tls.PeerCertificates[0].Raw,
+			})
+			if pemEncodedCert != nil {
+				checkRequest.Attributes.Source = &envoy_auth.AttributeContext_Peer{
+					Certificate: url.QueryEscape(string(pemEncodedCert)),
+				}
+			} else {
+				logger.V(1).Info("invalid peer certificate")
+			}
 		}
 
 		if err := context.CheckContext(ctx); err != nil {

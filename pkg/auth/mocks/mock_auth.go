@@ -413,65 +413,65 @@ func (mr *MockIdentityConfigEvaluatorMockRecorder) ResolveExtendedProperties(arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveExtendedProperties", reflect.TypeOf((*MockIdentityConfigEvaluator)(nil).ResolveExtendedProperties), arg0)
 }
 
-// MockAPIKeyIdentityConfigEvaluator is a mock of APIKeyIdentityConfigEvaluator interface.
-type MockAPIKeyIdentityConfigEvaluator struct {
+// MockK8sSecretBasedIdentityConfigEvaluator is a mock of K8sSecretBasedIdentityConfigEvaluator interface.
+type MockK8sSecretBasedIdentityConfigEvaluator struct {
 	ctrl     *gomock.Controller
-	recorder *MockAPIKeyIdentityConfigEvaluatorMockRecorder
+	recorder *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder
 }
 
-// MockAPIKeyIdentityConfigEvaluatorMockRecorder is the mock recorder for MockAPIKeyIdentityConfigEvaluator.
-type MockAPIKeyIdentityConfigEvaluatorMockRecorder struct {
-	mock *MockAPIKeyIdentityConfigEvaluator
+// MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder is the mock recorder for MockK8sSecretBasedIdentityConfigEvaluator.
+type MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder struct {
+	mock *MockK8sSecretBasedIdentityConfigEvaluator
 }
 
-// NewMockAPIKeyIdentityConfigEvaluator creates a new mock instance.
-func NewMockAPIKeyIdentityConfigEvaluator(ctrl *gomock.Controller) *MockAPIKeyIdentityConfigEvaluator {
-	mock := &MockAPIKeyIdentityConfigEvaluator{ctrl: ctrl}
-	mock.recorder = &MockAPIKeyIdentityConfigEvaluatorMockRecorder{mock}
+// NewMockK8sSecretBasedIdentityConfigEvaluator creates a new mock instance.
+func NewMockK8sSecretBasedIdentityConfigEvaluator(ctrl *gomock.Controller) *MockK8sSecretBasedIdentityConfigEvaluator {
+	mock := &MockK8sSecretBasedIdentityConfigEvaluator{ctrl: ctrl}
+	mock.recorder = &MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAPIKeyIdentityConfigEvaluator) EXPECT() *MockAPIKeyIdentityConfigEvaluatorMockRecorder {
+func (m *MockK8sSecretBasedIdentityConfigEvaluator) EXPECT() *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder {
 	return m.recorder
 }
 
-// DeleteAPIKeySecret mocks base method.
-func (m *MockAPIKeyIdentityConfigEvaluator) DeleteAPIKeySecret(arg0 context.Context, arg1 types.NamespacedName) {
+// AddK8sSecretBasedIdentity mocks base method.
+func (m *MockK8sSecretBasedIdentityConfigEvaluator) AddK8sSecretBasedIdentity(arg0 context.Context, arg1 v1.Secret) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteAPIKeySecret", arg0, arg1)
+	m.ctrl.Call(m, "AddK8sSecretBasedIdentity", arg0, arg1)
 }
 
-// DeleteAPIKeySecret indicates an expected call of DeleteAPIKeySecret.
-func (mr *MockAPIKeyIdentityConfigEvaluatorMockRecorder) DeleteAPIKeySecret(arg0, arg1 interface{}) *gomock.Call {
+// AddK8sSecretBasedIdentity indicates an expected call of AddK8sSecretBasedIdentity.
+func (mr *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder) AddK8sSecretBasedIdentity(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIKeySecret", reflect.TypeOf((*MockAPIKeyIdentityConfigEvaluator)(nil).DeleteAPIKeySecret), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddK8sSecretBasedIdentity", reflect.TypeOf((*MockK8sSecretBasedIdentityConfigEvaluator)(nil).AddK8sSecretBasedIdentity), arg0, arg1)
 }
 
-// GetAPIKeyLabelSelectors mocks base method.
-func (m *MockAPIKeyIdentityConfigEvaluator) GetAPIKeyLabelSelectors() map[string]string {
+// GetK8sSecretLabelSelectors mocks base method.
+func (m *MockK8sSecretBasedIdentityConfigEvaluator) GetK8sSecretLabelSelectors() map[string]string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAPIKeyLabelSelectors")
+	ret := m.ctrl.Call(m, "GetK8sSecretLabelSelectors")
 	ret0, _ := ret[0].(map[string]string)
 	return ret0
 }
 
-// GetAPIKeyLabelSelectors indicates an expected call of GetAPIKeyLabelSelectors.
-func (mr *MockAPIKeyIdentityConfigEvaluatorMockRecorder) GetAPIKeyLabelSelectors() *gomock.Call {
+// GetK8sSecretLabelSelectors indicates an expected call of GetK8sSecretLabelSelectors.
+func (mr *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder) GetK8sSecretLabelSelectors() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAPIKeyLabelSelectors", reflect.TypeOf((*MockAPIKeyIdentityConfigEvaluator)(nil).GetAPIKeyLabelSelectors))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetK8sSecretLabelSelectors", reflect.TypeOf((*MockK8sSecretBasedIdentityConfigEvaluator)(nil).GetK8sSecretLabelSelectors))
 }
 
-// RefreshAPIKeySecret mocks base method.
-func (m *MockAPIKeyIdentityConfigEvaluator) RefreshAPIKeySecret(arg0 context.Context, arg1 v1.Secret) {
+// RevokeK8sSecretBasedIdentity mocks base method.
+func (m *MockK8sSecretBasedIdentityConfigEvaluator) RevokeK8sSecretBasedIdentity(arg0 context.Context, arg1 types.NamespacedName) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RefreshAPIKeySecret", arg0, arg1)
+	m.ctrl.Call(m, "RevokeK8sSecretBasedIdentity", arg0, arg1)
 }
 
-// RefreshAPIKeySecret indicates an expected call of RefreshAPIKeySecret.
-func (mr *MockAPIKeyIdentityConfigEvaluatorMockRecorder) RefreshAPIKeySecret(arg0, arg1 interface{}) *gomock.Call {
+// RevokeK8sSecretBasedIdentity indicates an expected call of RevokeK8sSecretBasedIdentity.
+func (mr *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder) RevokeK8sSecretBasedIdentity(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshAPIKeySecret", reflect.TypeOf((*MockAPIKeyIdentityConfigEvaluator)(nil).RefreshAPIKeySecret), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeK8sSecretBasedIdentity", reflect.TypeOf((*MockK8sSecretBasedIdentityConfigEvaluator)(nil).RevokeK8sSecretBasedIdentity), arg0, arg1)
 }
 
 // MockWristbandIssuer is a mock of WristbandIssuer interface.

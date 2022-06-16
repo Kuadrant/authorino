@@ -9,6 +9,9 @@ Validate Kubernetes Service Account tokens to authenticate requests to your prot
 - **[Authentication with API keys](./user-guides/api-key-authentication.md)**<br/>
 Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with your protected hosts.
 
+- **[Authentication with Mutual Transport Layer Security (mTLS)](./user-guides/mtls-authentication.md)**<br/>
+Verify client x509 certificates against trusted root CAs.
+
 - **[OpenID Connect Discovery and authentication with JWTs](./user-guides/oidc-jwt-authentication.md)**<br/>
 Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; leverage OpenID Connect Discovery to automatically fetch JSON Web Key Sets (JWKS).
 
