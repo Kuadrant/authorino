@@ -11,6 +11,7 @@
 - [Host lookup](#host-lookup)
   - [Avoiding host name collision](#avoiding-host-name-collision)
 - [The Authorization JSON](#the-authorization-json)
+- [Raw HTTP Authorization interface](#raw-http-authorization-interface)
 - [Caching](#caching)
   - [OpenID Connect and User-Managed Access configs](#openid-connect-and-user-managed-access-configs)
   - [JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)](#json-web-keys-jwks-and-json-web-ket-sets-jwks)
@@ -260,6 +261,15 @@ After phase (iii), Authorino appends to the authorization JSON the results of th
 [Festival Wristbands](#festival-wristbands) and [Dynamic JSON](#dynamic-json-response) responses can include dynamic values (custom claims/properties) fetched from the authorization JSON. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). Check out [Dynamic response features](./features.md#dynamic-response-features-response) for details.
 
 For information about reading and fetching data from the Authorization JSON (syntax, functions, etc), check out [JSON paths](./features.md#common-feature-json-paths-valuefromauthjson).
+
+## Raw HTTP Authorization interface
+
+Besides providing the gRPC authorization interface – that implements the Envoy gRPC authorization server –, Authorino also provides another interface for **raw HTTP authorization**. This second interface responds to `GET` and `POST` HTTP requests sent to `:5001/check`, and is suitable for other forms of integration, such as:
+- using Authorino as Kubernetes ValidatingWebhook service ([example](./user-guides/validating-webhook.md));
+- other HTTP proxies and API gateways;
+- old versions of Envoy incompatible with the latest version of gRPC external authorization protocol (Authorino is based on v3.19.1 of Envoy external authorization API)
+
+In the raw HTTP interface, the host used to [lookup](#host-lookup) for an `AuthConfig` must be supplied in the `Host` HTTP header of the request. Other attributes of the HTTP request are also passed in the context to evaluate the `AuthConfig`, including the body of the request.
 
 ## Caching
 

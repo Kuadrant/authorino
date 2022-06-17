@@ -5,7 +5,7 @@ This page covers requirements and instructions to deploy Authorino on a Kubernet
 If you prefer learning with an example, check out our [Hello World](./user-guides/hello-world.md).
 
 - [Requirements](#requirements)
-- [Install with the operator](#install-with-the-operator)
+- [Installation](#installation)
 - [Protect a service](#protect-a-service)
 - [Clean-up](#clean-up)
 - [Next steps](#next-steps)
@@ -34,7 +34,7 @@ These are the plarform requirements to use Authorino:
 
 ### Feature-specific requirements
 
-Check out the [Features](./features.md) specification for fature-specific requirements. A few examples are:
+A few examples are:
 
 - For **OpenID Connect**, make sure you have access to an identity provider (IdP) and an authority that can issue ID tokens (JWTs). Check out [Keycloak](https://www.keycloak.org) which can solve both and connect to external identity sources and user federation like LDAP.
 
@@ -42,17 +42,25 @@ Check out the [Features](./features.md) specification for fature-specific requir
 
 - For **User-Managed Access (UMA)** resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more tipically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
 
-## Install with the operator
+Check out the [Feature specification](./features.md) page for more feature-specific requirements.
 
-### 1. Clone and install the Authorino Operator
+## Installation
+
+### Step: Install the Authorino Operator
+
+The simplest way to install the Authorino Operator is by applying the manifest bundle:
 
 ```sh
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
 ```
 
-### 2. Deploy an Authorino instance
+The above will install the latest build of the Authorino Operator and latest version of the manifests (CRDs and RBAC), which by default points as well to the latest build of Authorino, both based on the `main` branches of each component. To install a stable released version of the Operator and therefore also defaults to its latest compatible stable release of Authorino, replace `main` with another tag of a proper release of the Operator, e.g. 'v0.2.0'.
 
-Choose either [cluster-wide or namespaced deployment mode](./architecture.md#cluster-wide-vs-namespaced-instances) and whether you want TLS termination enabled for the Authorino endpoints (gRPC and OIDC Discovery), and follow the corresponding instructions below.
+Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://github.com/kuadrant/authorino-operator#installing-via-olm).
+
+### Step: Request an Authorino instance
+
+Choose either [cluster-wide or namespaced deployment mode](./architecture.md#cluster-wide-vs-namespaced-instances) and whether you want TLS termination enabled for the Authorino endpoints (gRPC authorization, raw HTTP authorization, and OIDC Festival Wristband Discovery listeners), and follow the corresponding instructions below.
 
 The instructions here are for centralized gateway or centralized authorization service architecture. Check out the [Topologies](./architecture.md#topologies) section of the docs for alternatively running Authorino in a sidecar container.
 
@@ -82,7 +90,6 @@ The instructions here are for centralized gateway or centralized authorization s
   metadata:
     name: authorino
   spec:
-    image: quay.io/kuadrant/authorino:latest
     replicas: 1
     clusterWide: true
     listener:
@@ -192,11 +199,23 @@ The instructions here are for centralized gateway or centralized authorization s
 
 ## Protect a service
 
-The most common integration to protect resources with Authorino is by putting the _upstream_ service that serves the resources (i.e. the _resource server_ to be protected) behind a reverse-proxy enabled with an authorization filter. To do that, start by having you **upstream service deployed and running** in the Kubernetes server. Then, setup [Envoy](https://www.envoyproxy.io) and create an Authorino `AuthConfig` for your service.
+The most typical integration to protect services with Authorino is by putting the service (_upstream_) behind a reverse-proxy or API gateway, enabled with an authorization filter that ensures all requests to the service are first checked with the authorization server (Authorino).
 
-### 1. Setup Envoy
+To do that, make sure you have your **upstream service deployed and running**, usually in the same Kubernetes server where you installed Authorino. Then, setup an [Envoy](https://www.envoyproxy.io) proxy and create an Authorino `AuthConfig` for your service.
 
-To configure Envoy for proxying requests intended to the upstream service, authorizing with Authorino, setup an Envoy configuration that enables Envoy's [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) filter. Store the configuration in a `ConfigMap`.
+Authorino exposes 2 interfaces to serve the authorization requests:
+- a gRPC interface that implements Envoy's [External Authorization protocol](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz);
+- a raw HTTP authorization interface, suitable for using Authorino with Kubernetes ValidatingWebhook, for Envoy external authorization via HTTP, and other integrations (e.g. other proxies).
+
+To use Authorino as a simple satellite (sidecar) Policy Decision Point (PDP), applications can integrate directly via any of these interfaces. By integrating via a proxy or API gateway, the combination makes Authorino to perform as an external Policy Enforcement Point (PEP) completely decoupled from the application.
+
+### Life cycle
+
+![API protection life cycle](http://www.plantuml.com/plantuml/png/jPBVIyD03CVV-rU4FZbasFru76DZA8YWWlfMa6kRjiUkkP7BYVElzzg2QujlOllI95_o_IJDpebYyOs98dVKT5Ai6YYmLDx8AtxAtkYA6YI174cG1ogsdeg3PKA6HH95ZBaegWn2lCcsYyrDjarf_tmFse6d4ri90YnIwjzvU59Q9WayFSIWHff9h-MeLuQrfj3cbZxi-NhlfRQioQPqrMZdD5KGnstsOAdKLHpFBcxhP0sFLk2kHUzCoSfx6QAfvQgtVC7SivOpkBp61g6q358Z19IKdAZ02ff0qSGpm7Y73ANIne5OKA6893fNWYEW1RoHwcVumfx9qr0z9Ll_cSnWfGKwFgFoeuCJShSwIoEqLTWJPxeea0PSBUW_G7Kuexc3h82Bu-pNex77A1eS3iotWr_wyzMcfrkTn44o7d0OX6Bdj4CgV6E-0G00)
+
+### Step: Setup Envoy
+
+To configure Envoy for proxying requests targeting the upstream service and authorizing with Authorino, setup an Envoy configuration that enables Envoy's [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) HTTP filter. Store the configuration in a `ConfigMap`.
 
 These are the important bits in the Envoy configuration to activate Authorino:
 
@@ -218,16 +237,16 @@ static_resources:
               failure_mode_allow: false # ensures only authenticated and authorized traffic goes through
               grpc_service:
                 envoy_grpc:
-                  cluster_name: external_auth
+                  cluster_name: authorino
                 timeout: 1s
   clusters:
-  - name: external_auth
+  - name: authorino
     connect_timeout: 0.25s
     type: strict_dns
     lb_policy: round_robin
     http2_protocol_options: {}
     load_assignment:
-      cluster_name: external_auth
+      cluster_name: authorino
       endpoints:
       - lb_endpoints:
         - endpoint:
@@ -245,7 +264,7 @@ static_resources:
               filename: /etc/ssl/certs/authorino-ca-cert.crt
 ```
 
-For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://github.com/kuadrant/limitador), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/kuadrant/authorino-examples/blob/main/envoy/overlays/tls/configmap.yaml).
+For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://github.com/kuadrant/limitador), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
 
 After creating the `ConfigMap` with the Envoy configuration, create an Envoy `Deployment` and `Service`. E.g.:
 
@@ -317,13 +336,13 @@ spec:
 EOF
 ```
 
-### 2. Apply an `AuthConfig`
+### Step: Apply an `AuthConfig`
 
 Check out the [docs](./README.md) for a full description of Authorino's [`AuthConfig`](./architecture.md#the-authorino-authconfig-custom-resource-definition-crd) Custom Resource Definition (CRD) and its [features](./features.md).
 
 For examples based on specific use-cases, check out the [User guides](./user-guides.md).
 
-For a OpenID Connect/JWT verification authentication and one JWT claim authorization check, a typical `AuthConfig` custom resource looks like the following:
+For authentication based on OpenID Connect (OIDC) JSON Web Tokens (JWT), plus one simple JWT claim authorization check, a typical `AuthConfig` custom resource looks like the following:
 
 ```yaml
 kubectl -n myapp apply -f -<<EOF
@@ -353,7 +372,7 @@ After applying the `AuthConfig`, consumers of the protected service should be ab
 
 ## Clean-up
 
-### 1. Remove protection
+### Remove protection
 
 Delete the `AuthConfig`:
 
@@ -367,7 +386,7 @@ Decommission the Authorino instance:
 kubectl -n myapp delete authorino/authorino
 ```
 
-### 2. Uninstall
+### Uninstall
 
 To completely remove Authorino CRDs, run from the Authorino Operator directory:
 
