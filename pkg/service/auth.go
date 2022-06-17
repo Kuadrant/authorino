@@ -91,11 +91,6 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.Header.Get("Content-Type") != "application/json" {
-		closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
-		return
-	}
-
 	var payload []byte
 	var err error
 
@@ -110,13 +105,25 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	metrics.ReportTimedMetric(httpServerDuration, func() {
+		headers := make(map[string]string)
+		for key, values := range req.Header {
+			headers[strings.ToLower(key)] = strings.Join(values, " ")
+		}
+
 		checkRequest := &envoy_auth.CheckRequest{
 			Attributes: &envoy_auth.AttributeContext{
 				Request: &envoy_auth.AttributeContext_Request{
 					Http: &envoy_auth.AttributeContext_HttpRequest{
-						Id:   requestId,
-						Host: req.Host,
-						Body: string(payload),
+						Id:       requestId,
+						Method:   req.Method,
+						Headers:  headers,
+						Path:     path,
+						Host:     req.Host,
+						Scheme:   req.URL.Scheme,
+						Query:    req.URL.Query().Encode(),
+						Fragment: req.URL.Fragment,
+						Protocol: req.Proto,
+						Body:     string(payload),
 					},
 				},
 			},
