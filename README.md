@@ -1,8 +1,10 @@
 # Authorino
 **Kubernetes-native authorization service for tailor-made Zero Trust API security.**<br/>
 
-A lightweight Envoy proxy external authorization server fully manageable via Kubernetes Custom Resources.<br/>
-JWT validation, API key auth, pattern-matching authz, OPA, K8s SA tokens, K8s RBAC, external metadata fetching, and [more](#list-of-features).
+A lightweight Envoy external authorization server fully manageable via Kubernetes Custom Resources.<br/>
+JWT authentication, API key, mTLS, pattern-matching authz, OPA, K8s SA tokens, K8s RBAC, external metadata fetching, and [more](#list-of-features), with minimum to no coding at all, no rebuilding of your applications.
+
+Authorino is not about inventing anything new. It's about making the best things about auth out there easy and simple to use. Authorino is multi-tenant, it's cloud-native and it's open source.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
@@ -36,14 +38,14 @@ The [User guides](./docs/user-guides.md) section of the docs gathers several Aut
 - [Authentication with JWTs and OpenID Connect Discovery](./docs/user-guides/oidc-jwt-authentication.md)
 - [Authentication with API keys](./docs/user-guides/api-key-authentication.md)
 - [Authentication with Kubernetes SA tokens (TokenReview API)](./docs/user-guides/kubernetes-tokenreview.md)
+- [Authentication with X.509 certificates and mTLS](./docs/user-guides/mtls-authentication.md)
 - [Authorization with JSON pattern-matching rules (e.g. JWT claims, request attributes, etc)](./docs/user-guides/json-pattern-matching-authorization.md)
 - [Authorization with Open Policy Agent (OPA) Rego policies](./docs/user-guides/opa-authorization.md)
 - [Authorization using the Kubernetes RBAC (rules stated in K8s `Role` and `RoleBinding` resources)](./docs/user-guides/kubernetes-subjectaccessreview.md)
 - [Authorization using auth metadata fetched from external sources](./docs/user-guides/external-metadata.md)
 - [OIDC authentication and RBAC with Keycloak JWTs](./docs/user-guides/oidc-rbac.md)
-- [Multiple trusted sources of identity and authentication methods - Token normalization](./docs/user-guides/token-normalization.md)
-- [Micro-services and Edge Authentication Architecture (EAA)](./docs/user-guides/edge-authentication-architecture-festival-wristbands.md)
 - [Injecting auth data into the request (HTTP headers, Wristband tokens, rate-limit metadata, etc)](./docs/user-guides/injecting-data.md)
+- [Authorino for the Kubernetes control plane (aka Authorino as ValidatingWebhook service)](./docs/user-guides/validating-webhook.md)
 
 ## How it works
 
@@ -209,14 +211,27 @@ For a detailed description of the features above, refer to the [Features](./docs
 <details>
   <summary><strong>Do I need to deploy Envoy?</strong></summary>
 
-  Authorino is built from the ground up to work well with Envoy. It is strongly recommended that you leverage Envoy along side Authorino. That said, it would be possible to use Authorino without Envoy.
+  Authorino is built from the ground up to work well with Envoy. It is strongly recommended that you leverage Envoy along side Authorino. That said, it is possible to use Authorino without Envoy.
 
   Authorino implements Envoy's [external authorization](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz) gRPC protocol and therefore will accept any client request that complies.
 
-  The only strictly required attribute of [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) is `Request.Http.Host`, otherwise the `AuthConfig` lookup will not work. (See [Host lookup](./docs/architecture.md#host-lookup) for more information.) Other attributes such as method, path, headers, etc might as well be required, depending on each `AuthConfig`.
+  Authorino also provides a second interface for [raw HTTP authorization](./docs/architecture.md#raw-http-authorization-interface), suitable for using with Kubernetes ValidatingWebhook and other integrations (e.g. other proxies).
+
+  The only attribute of the authorization request that is strictly required is the host name. (See [Host lookup](./docs/architecture.md#host-lookup) for more information.) The other attributes, such as method, path, headers, etc, might as well be required, depending on each `AuthConfig`. In the case of the gRPC [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) method, the host is supplied in `Attributes.Request.Http.Host` and alternatively in `Attributes.ContextExtensions["host"]`. For raw HTTP authorization requests, the host must be supplied in `Host` HTTP header.
 
   Check out [Kuadrant](https://github.com/kuadrant/kuadrant-controller) for easy-to-use Envoy and Authorino deployment & configuration for API management use-cases, using Kubernetes Custom Resources.
 </details>
+
+<details>
+  <summary><strong>Is Authorino an Identity Provider (IdP)?</strong></summary>
+
+  No, Authorino is not an Identity Provider (IdP). Neither it is an auth server of any kind, such as an OAuth2 server, an OpenID Connect (OIDC) server, a Single Sign On (SSO) server.
+
+  Authorino is not an identity broker either. It can verify access tokens from multiple trusted sources of identity and protocols, but it will not negotiate authentication flows for non-authenticated access requests. Some tricks nonetheless can be done, for example, to [redirect unauthenticated users to a login page](./docs/user-guides/deny-with-redirect-to-login.md).
+
+  For an excellent auth server that checks all the boxes above, check out [Keycloak](https://www.keycloak.org).
+</details>
+
 
 <details>
   <summary><strong>How does Authorino compare to Keycloak?</strong></summary>
@@ -239,7 +254,17 @@ For a detailed description of the features above, refer to the [Features](./docs
 </details>
 
 <details>
-  <summary><strong>Can't I just use Envoy JWT Authentication?</strong></summary>
+  <summary><strong>Where does Authorino store users and roles?</strong></summary>
+
+  Authorino does not store users, roles, role bindings, access control lists, or any raw authorization data. Authorino handles policies, where even these policies can be stored elsewhere (as opposed to stated inline inside of an Authorino `AuthConfig` CR).
+
+  Authorino evaluates policies for stateless authorization requests. Any additional context is either resolved from the provided payload or static definitions inside the policies. That includes extrating user information from a JWT or client TLS certificate, requesting user metadata from opaque authentication tokens (e.g. API keys) to the trusted sources actually storing that content, obtaining synchronous HTTP metadata from services, etc.
+
+  In the case of authentication with API keys, as well as its derivative to model HTTP Basic Auth, user data are stored in Kubernetes `Secret`s. The secret's keys, annotations and labels are usually the structures used to organize the data that later a policy evaluated in Authorino may require. Strictly, those are not Authorino data structures.
+</details>
+
+<details>
+  <summary><strong>Can't I just use Envoy JWT Authentication and RBAC filters?</strong></summary>
 
   Envoy's [JWT Authentication](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/jwt_authn/v3/config.proto.html) works pretty much similar to Authorino's [JOSE/JWT verification and validation for OpenID Connect](#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc). In both cases, the JSON Web Key Sets (JWKS) to verify the JWTs are auto-loaded and cached to be used in request-time. Moreover, you can configure for details such as where to extract the JWT from the HTTP request (header, param or cookie) and do some cool tricks regarding how dynamic metadata based on JWT claims can be injected to consecutive filters in the chain.
 
@@ -247,7 +272,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   Authorino also allows to combine JWT authentication with other types of authentication to support different sources of identity and groups of users such as API keys, Kubernetes tokens, OAuth opaque tokens , etc.
 
-  In summary, Envoy's JWT Authentication is an excellent solution for simple use-cases where JWTs from one single issuer is the only authentication method you are planning to support, and limited to no authorization is required. On the other hand, if you need to integrate more identity sources, different types of authentication, authorization policies, etc, you might to consider Authorino.
+  In summary, Envoy's JWT Authentication and Envoy RBAC filter are excellent solutions for simple use-cases where JWTs from one single issuer is the only authentication method you are planning to support and limited to no authorization rules suffice. On the other hand, if you need to integrate more identity sources, different types of authentication, authorization policies, etc, you might to consider Authorino.
 </details>
 
 <details>
