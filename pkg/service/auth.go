@@ -119,10 +119,16 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			Attributes: &envoy_auth.AttributeContext{
 				Request: &envoy_auth.AttributeContext_Request{
 					Http: &envoy_auth.AttributeContext_HttpRequest{
-						Id:      requestId,
-						Host:    req.Host,
-						Headers: headers,
-						Body:    string(payload),
+						Id:       requestId,
+						Method:   req.Method,
+						Headers:  headers,
+						Path:     path,
+						Host:     req.Host,
+						Scheme:   req.URL.Scheme,
+						Query:    req.URL.Query().Encode(),
+						Fragment: req.URL.Fragment,
+						Protocol: req.Proto,
+						Body:     string(payload),
 					},
 				},
 			},
