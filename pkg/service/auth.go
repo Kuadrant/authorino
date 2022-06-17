@@ -110,13 +110,19 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	metrics.ReportTimedMetric(httpServerDuration, func() {
+		headers := make(map[string]string)
+		for key, values := range req.Header {
+			headers[strings.ToLower(key)] = strings.Join(values, " ")
+		}
+
 		checkRequest := &envoy_auth.CheckRequest{
 			Attributes: &envoy_auth.AttributeContext{
 				Request: &envoy_auth.AttributeContext_Request{
 					Http: &envoy_auth.AttributeContext_HttpRequest{
-						Id:   requestId,
-						Host: req.Host,
-						Body: string(payload),
+						Id:      requestId,
+						Host:    req.Host,
+						Headers: headers,
+						Body:    string(payload),
 					},
 				},
 			},

@@ -17,6 +17,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
+	"github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -228,6 +230,30 @@ func TestAuthServiceRawHTTPAuthorization_UnreadableBody(t *testing.T) {
 	response := gohttptest.NewRecorder()
 	authService.ServeHTTP(response, request)
 	assert.Equal(t, response.Code, 400)
+}
+
+func TestAuthServiceRawHTTPAuthorization_WithHeaders(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	authConfig := mockAnonymousAccessAuthConfig()
+	authConfig.ResponseConfigs = []auth.AuthConfigEvaluator{&evaluators.ResponseConfig{
+		Name:       "x-auth-data",
+		Wrapper:    "httpHeader",
+		WrapperKey: "x-auth-data",
+		DynamicJSON: &response.DynamicJSON{
+			Properties: []json.JSONProperty{{Name: "headers", Value: json.JSONValue{Pattern: "context.request.http.headers"}}},
+		},
+	}}
+	cacheMock := mock_cache.NewMockCache(mockController)
+	cacheMock.EXPECT().Get("myapp.io").Return(authConfig)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
+	request.Header = map[string][]string{"Content-Type": {"application/json"}, "Authorization": {"Bearer secret"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 200)
+	assert.Equal(t, response.Header().Get("X-Auth-Data"), `{"headers":{"authorization":"Bearer secret","content-type":"application/json"}}`)
 }
 
 func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewAuthorized(t *testing.T) {
