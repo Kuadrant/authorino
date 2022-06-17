@@ -91,11 +91,6 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.Header.Get("Content-Type") != "application/json" {
-		closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
-		return
-	}
-
 	var payload []byte
 	var err error
 

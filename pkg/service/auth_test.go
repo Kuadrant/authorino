@@ -202,18 +202,6 @@ func TestAuthServiceRawHTTPAuthorization_WithQueryString(t *testing.T) {
 	assert.Equal(t, response.Code, 200)
 }
 
-func TestAuthServiceRawHTTPAuthorization_UnsupportedContentType(t *testing.T) {
-	mockController := gomock.NewController(t)
-	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	authService := &AuthService{Cache: cacheMock}
-	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
-	request.Header = map[string][]string{"Content-Type": {"text/plain"}}
-	response := gohttptest.NewRecorder()
-	authService.ServeHTTP(response, request)
-	assert.Equal(t, response.Code, 400)
-}
-
 type notReadable struct{}
 
 func (n *notReadable) Read(_ []byte) (int, error) {
