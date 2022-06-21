@@ -38,7 +38,7 @@ help:
 
 CONTROLLER_GEN = $(PROJECT_DIR)/bin/controller-gen
 controller-gen: ## Installs controller-gen in $PROJECT_DIR/bin
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.0)
 
 KUSTOMIZE = $(PROJECT_DIR)/bin/kustomize
 kustomize: ## Installs kustomize in $PROJECT_DIR/bin
@@ -88,7 +88,7 @@ generate: vendor controller-gen ## Generates types deepcopy code
 	$(MAKE) fmt vet
 
 manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/install
-	controller-gen crd:trivialVersions=true,crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
+	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
 
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
 	go run ./main.go
