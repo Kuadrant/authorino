@@ -17,27 +17,34 @@ type Cache interface {
 	FindKeys(id string) []string
 }
 
+func NewCache() Cache {
+	return newAuthConfigMap()
+}
+
 type cacheEntry struct {
 	Id         string
 	AuthConfig evaluators.AuthConfig
 }
 
-type AuthConfigsCache struct {
-	// TODO: move to RWMutex?
-	mu      sync.Mutex
-	entries map[string]cacheEntry
-	keys    map[string][]string
-}
+// Cache of AuthConfigs structured as a map.
+// Map-based cache structures are straightforward.
+// There is no support for wildcards in the keys of map-based cache structures.
 
-func NewCache() Cache {
-	return &AuthConfigsCache{
+func newAuthConfigMap() *authConfigMap {
+	return &authConfigMap{
 		mu:      sync.Mutex{},
 		entries: make(map[string]cacheEntry),
 		keys:    make(map[string][]string),
 	}
 }
 
-func (c *AuthConfigsCache) Get(key string) *evaluators.AuthConfig {
+type authConfigMap struct {
+	mu      sync.Mutex
+	entries map[string]cacheEntry
+	keys    map[string][]string
+}
+
+func (c *authConfigMap) Get(key string) *evaluators.AuthConfig {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -48,7 +55,7 @@ func (c *AuthConfigsCache) Get(key string) *evaluators.AuthConfig {
 	}
 }
 
-func (c *AuthConfigsCache) Set(id string, key string, config evaluators.AuthConfig, override bool) error {
+func (c *authConfigMap) Set(id string, key string, config evaluators.AuthConfig, override bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -58,14 +65,14 @@ func (c *AuthConfigsCache) Set(id string, key string, config evaluators.AuthConf
 			AuthConfig: config,
 		}
 	} else {
-		return fmt.Errorf("service already exists in cache: %s", key)
+		return fmt.Errorf("authconfig already exists in the cache: %s", key)
 	}
 	c.keys[id] = append(c.keys[id], key)
 
 	return nil
 }
 
-func (c *AuthConfigsCache) Delete(id string) {
+func (c *authConfigMap) Delete(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -74,7 +81,7 @@ func (c *AuthConfigsCache) Delete(id string) {
 	}
 }
 
-func (c *AuthConfigsCache) FindId(key string) (id string, found bool) {
+func (c *authConfigMap) FindId(key string) (id string, found bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -85,14 +92,14 @@ func (c *AuthConfigsCache) FindId(key string) (id string, found bool) {
 	}
 }
 
-func (c *AuthConfigsCache) FindKeys(id string) []string {
+func (c *authConfigMap) FindKeys(id string) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	return c.keys[id]
 }
 
-func (c *AuthConfigsCache) List() []*evaluators.AuthConfig {
+func (c *authConfigMap) List() []*evaluators.AuthConfig {
 	var authConfigs []*evaluators.AuthConfig
 	for _, e := range c.entries {
 		authConfigs = append(authConfigs, &e.AuthConfig)
