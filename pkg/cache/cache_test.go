@@ -11,36 +11,22 @@ import (
 	"gotest.tools/assert"
 )
 
-type BogusIdentity struct{}
-
-func (f *BogusIdentity) Call(_ auth.AuthPipeline, _ context.Context) (interface{}, error) {
-	return true, nil
-}
-
-func TestCache(t *testing.T) {
-	c := NewCache()
-
-	apiFindIdIdentityConfig := &BogusIdentity{}
-	identities := make([]auth.AuthConfigEvaluator, 1)
-	identities[0] = apiFindIdIdentityConfig
-	exampleConfig := evaluators.AuthConfig{
-		IdentityConfigs:      identities,
-		MetadataConfigs:      nil,
-		AuthorizationConfigs: nil,
-	}
+func TestAuthConfigMap(t *testing.T) {
+	c := newAuthConfigMap()
+	authConfig := buildTestAuthConfig()
 
 	// Set a key
-	if err := c.Set("id", "testing.host", exampleConfig, false); err != nil {
+	if err := c.Set("id", "testing.host", authConfig, false); err != nil {
 		t.Error(err)
 	}
 
 	// Set a second key with same id
-	if err := c.Set("id", "testing.host.2", exampleConfig, false); err != nil {
+	if err := c.Set("id", "testing.host.2", authConfig, false); err != nil {
 		t.Error(err)
 	}
 
 	// Set a third key with different id
-	if err := c.Set("id2", "testing.host.3", exampleConfig, false); err != nil {
+	if err := c.Set("id2", "testing.host.3", authConfig, false); err != nil {
 		t.Error(err)
 	}
 
@@ -75,15 +61,15 @@ func TestCache(t *testing.T) {
 	assert.Equal(t, id, "")
 
 	// Set a same host again without override
-	err := c.Set("id", "testing.host.2", exampleConfig, false)
+	err := c.Set("id", "testing.host.2", authConfig, false)
 	assert.Check(t, err != nil)
 
 	// Get a single key and check that it is what we expect
 	config := c.Get("testing.host")
-	assert.DeepEqual(t, *config, exampleConfig)
+	assert.DeepEqual(t, *config, authConfig)
 
 	config = c.Get("testing.host.2")
-	assert.DeepEqual(t, *config, exampleConfig)
+	assert.DeepEqual(t, *config, authConfig)
 
 	config = c.Get("testing.host.4")
 	assert.Check(t, config == nil)
@@ -98,10 +84,149 @@ func TestCache(t *testing.T) {
 	assert.Check(t, config == nil)
 
 	config = c.Get("testing.host.3")
-	assert.DeepEqual(t, *config, exampleConfig)
+	assert.DeepEqual(t, *config, authConfig)
 
 	c.Delete("id2")
 
 	config = c.Get("testing.host.3")
 	assert.Check(t, config == nil)
+}
+
+// TestAuthConfigTree tests operations to build and modify the following cache tree:
+//                    ┌───┐
+//          ┌─────────┤ . ├──────────┐
+//          │         └───┘          │
+//          │                        │
+//          │                        │
+//       ┌──┴─┐                   ┌──┴──┐
+//   ┌───┤ io ├───┐           ┌───┤ com ├───┐
+//   │   └────┘   │           │   └─────┘   │
+//   │            │           │             │
+//   │            │           │             │
+//   │            │           │             │
+// ┌─┴─┐       ┌──┴──┐    ┌───┴──┐      ┌───┴──┐
+// │ * │       │ nip │    │ pets │    ┌─┤ acme ├─┐
+// └───┘       └──┬──┘    └───┬──┘    │ └──────┘ │
+//   ▲            │           │       │          │
+//   │            │           │       │          │
+//   │            │           │       │          │
+//   │      ┌─────┴──────┐  ┌─┴─┐  ┌──┴──┐     ┌─┴─┐
+// auth-1   │ talker-api │  │ * │  │ api │     │ * │
+//          └────────────┘  └───┘  └─────┘     └───┘
+//                ▲           ▲       ▲          ▲
+//                │           │       │          │
+//                │           │       │          │
+//                └───auth-2──┘     auth-3     auth-4
+func TestAuthConfigTree(t *testing.T) {
+	c := newAuthConfigTree()
+
+	authConfig1 := buildTestAuthConfig()
+	authConfig2 := buildTestAuthConfig()
+	authConfig3 := buildTestAuthConfig()
+	authConfig4 := buildTestAuthConfig()
+
+	// Build the cache
+	if err := c.Set("auth-1", "*.io", authConfig1, false); err != nil {
+		t.Error(err)
+	}
+
+	if err := c.Set("auth-2", "*.pets.com", authConfig2, false); err != nil {
+		t.Error(err)
+	}
+
+	if err := c.Set("auth-2", "talker-api.nip.io", authConfig2, false); err != nil {
+		t.Error(err)
+	}
+
+	if err := c.Set("auth-3", "api.acme.com", authConfig3, false); err != nil {
+		t.Error(err)
+	}
+
+	if err := c.Set("auth-4", "*.acme.com", authConfig4, false); err != nil {
+		t.Error(err)
+	}
+
+	// Get keys associated with an id
+	keys := c.FindKeys("auth-1")
+	sort.Strings(keys)
+	assert.DeepEqual(t, keys, []string{"*.io"})
+
+	keys = c.FindKeys("auth-2")
+	sort.Strings(keys)
+	assert.DeepEqual(t, keys, []string{"*.pets.com", "talker-api.nip.io"})
+
+	keys = c.FindKeys("auth-x")
+	sort.Strings(keys)
+	assert.Check(t, keys == nil)
+
+	// Get id associated with a host
+	id, found := c.FindId("*.pets.com")
+	assert.Check(t, found)
+	assert.Equal(t, id, "auth-2")
+
+	id, found = c.FindId("talker-api.nip.io")
+	assert.Check(t, found)
+	assert.Equal(t, id, "auth-2")
+
+	id, found = c.FindId("*.acme.com")
+	assert.Check(t, found)
+	assert.Equal(t, id, "auth-4")
+
+	id, found = c.FindId("undefined.com")
+	assert.Check(t, !found)
+	assert.Equal(t, id, "")
+
+	// Set a same host again without override
+	err := c.Set("auth-5", "talker-api.nip.io", buildTestAuthConfig(), false)
+	assert.Check(t, err != nil)
+
+	// Get a single key and check that it is what we expect
+	config := c.Get("dogs.pets.com")
+	assert.DeepEqual(t, *config, authConfig2)
+
+	config = c.Get("api.acme.com")
+	assert.DeepEqual(t, *config, authConfig3)
+
+	config = c.Get("www.acme.com")
+	assert.DeepEqual(t, *config, authConfig4)
+
+	config = c.Get("talker-api.nip.io")
+	assert.DeepEqual(t, *config, authConfig2)
+
+	config = c.Get("foo.nip.io")
+	assert.DeepEqual(t, *config, authConfig1)
+
+	config = c.Get("foo.org")
+	assert.Check(t, config == nil)
+
+	// Delete the id, so all associated entries should be deleted
+	c.Delete("auth-2")
+
+	config = c.Get("dogs.pets.com")
+	assert.Check(t, config == nil)
+
+	config = c.Get("talker-api.nip.io")
+	assert.DeepEqual(t, *config, authConfig1) // because `*.io -> auth-1` is still in the tree
+
+	config = c.Get("api.acme.com")
+	assert.DeepEqual(t, *config, authConfig3)
+
+	c.Delete("auth-3")
+
+	config = c.Get("api.acme.com")
+	assert.DeepEqual(t, *config, authConfig4) // because `*.acme.com -> auth-4` is still in the tree
+}
+
+type bogusIdentity struct{}
+
+func (f *bogusIdentity) Call(_ auth.AuthPipeline, _ context.Context) (interface{}, error) {
+	return true, nil
+}
+
+func buildTestAuthConfig() evaluators.AuthConfig {
+	return evaluators.AuthConfig{
+		IdentityConfigs:      []auth.AuthConfigEvaluator{&bogusIdentity{}},
+		MetadataConfigs:      nil,
+		AuthorizationConfigs: nil,
+	}
 }
