@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/helpers"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
@@ -38,6 +40,10 @@ const (
 	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"
 
 	X_LOOKUP_KEY_NAME = "host"
+
+	envMaxHttpRequestBytes     = "MAX_REQUEST_BYTES"
+	defaultMaxHttpRequestBytes = "8192" // 8KB
+
 )
 
 var (
@@ -52,6 +58,7 @@ var (
 	authServerResponseStatusMetric = metrics.NewCounterMetric("auth_server_response_status", "Response status of authconfigs sent by the auth server.", "status")
 	httpServerHandledTotal         = metrics.NewCounterMetric("http_server_handled_total", "Total number of calls completed on the raw HTTP authorization server, regardless of success or failure.", "status")
 	httpServerDuration             = metrics.NewDurationMetric("http_server_handling_seconds", "Response latency (seconds) of raw HTTP authorization request that had been application-level handled by the server.")
+	MaxHttpRequestBytes, _         = strconv.ParseInt(helpers.FetchEnv(envMaxHttpRequestBytes, defaultMaxHttpRequestBytes), 10, 64)
 )
 
 func init() {
@@ -99,8 +106,13 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if payload, err = ioutil.ReadAll(req.Body); err != nil {
-		closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
+	if payload, err = ioutil.ReadAll(http.MaxBytesReader(resp, req.Body, MaxHttpRequestBytes)); err != nil {
+		switch fmt.Sprint(err) {
+		case "http: request body too large":
+			closeWithStatus(envoy_type.StatusCode_PayloadTooLarge, resp, ctx, nil)
+		default:
+			closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
+		}
 		return
 	}
 

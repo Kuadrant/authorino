@@ -220,6 +220,18 @@ func TestAuthServiceRawHTTPAuthorization_UnreadableBody(t *testing.T) {
 	assert.Equal(t, response.Code, 400)
 }
 
+func TestAuthServiceRawHTTPAuthorization_PayloadSizeTooLarge(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+	authService := &AuthService{Cache: cacheMock}
+	request, _ := http.NewRequest("GET", "http://myapp.io/check", bytes.NewReader(make([]byte, 8193))) // Default limit 8192 bytes
+	request.Header = map[string][]string{"Content-Type": {"application/json"}}
+	response := gohttptest.NewRecorder()
+	authService.ServeHTTP(response, request)
+	assert.Equal(t, response.Code, 413)
+}
+
 func TestAuthServiceRawHTTPAuthorization_WithHeaders(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
