@@ -41,7 +41,7 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to update its status
-		if err := u.updateAuthConfigStatus(ctx, req.String(), &authConfig, true); err != nil {
+		if err := u.updateAuthConfigStatus(ctx, req.String(), &authConfig); err != nil {
 			logger.Info(err.Error())
 			return ctrl.Result{Requeue: true}, nil
 		} else {
@@ -51,12 +51,14 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 }
 
-func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, cacheId string, authConfig *api.AuthConfig, ready bool) error {
-	if len(u.Cache.FindKeys(cacheId)) == 0 {
+func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, cacheId string, authConfig *api.AuthConfig) error {
+	if len(u.Cache.FindKeys(cacheId)) != len(authConfig.Spec.Hosts) {
+		authConfig.Status.Ready = false
+		_ = u.Status().Update(ctx, authConfig)
 		return fmt.Errorf("resource not ready")
 	}
 
-	authConfig.Status.Ready = ready
+	authConfig.Status.Ready = true
 	authConfig.Status.NumIdentitySources = int64(len(authConfig.Spec.Identity))
 	authConfig.Status.NumMetadataSources = int64(len(authConfig.Spec.Metadata))
 	authConfig.Status.NumAuthorizationPolicies = int64(len(authConfig.Spec.Authorization))
