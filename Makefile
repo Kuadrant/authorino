@@ -1,6 +1,9 @@
 # Use bash as shell
 SHELL = /bin/bash
 
+# Use vi as default editor
+EDITOR ?= vi
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
