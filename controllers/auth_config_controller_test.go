@@ -105,9 +105,6 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 				},
 			},
 		},
-		Status: api.AuthConfigStatus{
-			Ready: false,
-		},
 	}
 }
 

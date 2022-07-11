@@ -17,7 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	k8score "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -40,6 +40,13 @@ const (
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
 	EvaluatorDefaultCacheTTL         = 60
+
+	// Status conditions
+	StatusConditionReady ConditionType = "Ready"
+
+	// Status reasons
+	StatusReasonReconciled    string = "Reconciled"
+	StatusReasonHostNotLinked string = "HostNotLinked"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -238,7 +245,7 @@ type Identity_OAuth2Config struct {
 	TokenTypeHint string `json:"tokenTypeHint,omitempty"`
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the OAuth2 server.
-	Credentials *v1.LocalObjectReference `json:"credentialsRef"`
+	Credentials *k8score.LocalObjectReference `json:"credentialsRef"`
 }
 
 type Identity_OidcConfig struct {
@@ -334,7 +341,7 @@ type Metadata_UMA struct {
 	Endpoint string `json:"endpoint"`
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the resource registration API of the UMA server.
-	Credentials *v1.LocalObjectReference `json:"credentialsRef"`
+	Credentials *k8score.LocalObjectReference `json:"credentialsRef"`
 }
 
 // +kubebuilder:validation:Enum:=GET;POST
@@ -594,25 +601,79 @@ type DenyWith struct {
 	Unauthorized *DenyWithSpec `json:"unauthorized,omitempty"`
 }
 
+type ConditionType string
+
+type Condition struct {
+	// Type of condition
+	Type ConditionType `json:"type"`
+
+	// Status of the condition, one of True, False, Unknown.
+	Status k8score.ConditionStatus `json:"status"`
+
+	// Last time the condition transit from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+
+	// (brief) reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+
+	// Human readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+
+	// Last time the condition was updated
+	// +optional
+	LastUpdatedTime *metav1.Time `json:"lastUpdatedTime,omitempty"`
+}
+
+type Summary struct {
+	// Lists the hosts from spec.hosts linked to the resource in the cache
+	HostsReady []string `json:"hostsReady"`
+
+	// Number of hosts from spec.hosts linked to the resource in the cache, compared to the total number of hosts in spec.hosts
+	NumHostsReady string `json:"numHostsReady"`
+
+	// Number of trusted sources of identity for authentication in the AuthConfig
+	NumIdentitySources int64 `json:"numIdentitySources"`
+
+	// Number of sources of external metadata in the AuthConfig
+	NumMetadataSources int64 `json:"numMetadataSources"`
+
+	// Number of authorization policies in the AuthConfig
+	NumAuthorizationPolicies int64 `json:"numAuthorizationPolicies"`
+
+	// Number of custom authorization response items in the AuthConfig
+	NumResponseItems int64 `json:"numResponseItems"`
+
+	// Indicator of whether the AuthConfig issues Festival Wristband tokens on successful evaluation of the AuthConfig (access granted)
+	FestivalWristbandEnabled bool `json:"festivalWristbandEnabled"`
+}
+
 // AuthConfigStatus defines the observed state of AuthConfig
 type AuthConfigStatus struct {
-	Ready                    bool  `json:"ready"`
-	NumIdentitySources       int64 `json:"numIdentitySources"`
-	NumMetadataSources       int64 `json:"numMetadataSources"`
-	NumAuthorizationPolicies int64 `json:"numAuthorizationPolicies"`
-	NumResponseItems         int64 `json:"numResponseItems"`
-	FestivalWristbandEnabled bool  `json:"festivalWristbandEnabled"`
+	Conditions []Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+	Summary    Summary     `json:"summary,omitempty"`
+}
+
+func (s *AuthConfigStatus) Ready() bool {
+	for _, condition := range s.Conditions {
+		if condition.Type == StatusConditionReady {
+			return condition.Status == k8score.ConditionTrue
+		}
+	}
+	return false
 }
 
 // AuthConfig is the schema for Authorino's AuthConfig API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Ready",type=boolean,JSONPath=`.status.ready`,description="Ready?"
-// +kubebuilder:printcolumn:name="Id sources",type=integer,JSONPath=`.status.numIdentitySources`,description="Number of trusted identity sources",priority=2
-// +kubebuilder:printcolumn:name="Metadata sources",type=integer,JSONPath=`.status.numMetadataSources`,description="Number of external metadata sources",priority=2
-// +kubebuilder:printcolumn:name="Authz policies",type=integer,JSONPath=`.status.numAuthorizationPolicies`,description="Number of authorization policies",priority=2
-// +kubebuilder:printcolumn:name="Response items",type=integer,JSONPath=`.status.numResponseItems`,description="Number of items added to the client response",priority=2
-// +kubebuilder:printcolumn:name="Wristband",type=boolean,JSONPath=`.status.festivalWristbandEnabled`,description="Whether issuing Festival Wristbands",priority=2
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.summary.numHostsReady`,description="Number of hosts ready"
+// +kubebuilder:printcolumn:name="Authentication",type=integer,JSONPath=`.status.summary.numIdentitySources`,description="Number of trusted identity sources",priority=2
+// +kubebuilder:printcolumn:name="Metadata",type=integer,JSONPath=`.status.summary.numMetadataSources`,description="Number of external metadata sources",priority=2
+// +kubebuilder:printcolumn:name="Authorization",type=integer,JSONPath=`.status.summary.numAuthorizationPolicies`,description="Number of authorization policies",priority=2
+// +kubebuilder:printcolumn:name="Response",type=integer,JSONPath=`.status.summary.numResponseItems`,description="Number of items added to the authorization response",priority=2
+// +kubebuilder:printcolumn:name="Wristband",type=boolean,JSONPath=`.status.summary.festivalWristbandEnabled`,description="Whether issuing Festival Wristbands",priority=2
 type AuthConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
