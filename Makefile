@@ -199,14 +199,15 @@ endif
 deploy: certs sed ## Deploys an instance of Authorino into the Kubernetes cluster configured in ~/.kube/config
 	@{ \
 	set -e ;\
-	TEMP_FILE=/tmp/authorino-deploy-$$(openssl rand -hex 4).yaml ;\
+	TEMP_DIR=$$(mktemp -d) ;\
+	TEMP_FILE=$$TEMP_DIR/authorino-deploy-$$(openssl rand -hex 4).yaml ;\
 	cp $(AUTHORINO_CR) $$TEMP_FILE ;\
 	$(SED) -i "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(TLS_ENABLED)/$(TLS_ENABLED)/g" $$TEMP_FILE ;\
 	if [ "$(FF)" != "1" ]; then \
 	$(EDITOR) $$TEMP_FILE ;\
 	fi ;\
 	kubectl -n $(NAMESPACE) apply -f $$TEMP_FILE ;\
-	rm -rf $$TEMP_FILE ;\
+	rm -rf $$TEMP_DIR ;\
 	}
 
 ##@ Local cluster
