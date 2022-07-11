@@ -33,9 +33,10 @@ The following tools can be installed as part of the development workflow:
   - [mockgen](https://github.com/golang/mock/mockgen): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
   - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
 
-- _Other recommended tools (for specific examples and debugging):_
+- _Other recommended tools to have installed:_
   - [jq](https://stedolan.github.io/jq/)
   - [yq](http://mikefarah.github.io/yq/)
+  - [gnu-sed](https://www.gnu.org/software/sed/)
 
 ## Workflow
 
