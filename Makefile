@@ -56,6 +56,17 @@ KIND = $(PROJECT_DIR)/bin/kind
 kind: ## Installs kind in $PROJECT_DIR/bin
 	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.11.1)
 
+ifeq ($(shell uname),Darwin)
+SED=$(shell which gsed)
+else
+SED=$(shell which sed)
+endif
+sed: ## Checks if GNU sed is installed
+ifeq ($(SED),)
+	@echo "Cannot find GNU sed installed."
+	exit 1
+endif
+
 # go-get-tool will 'go install' any package $2 and install it to $1.
 define go-get-tool
 @[ -f $(1) ] || { \
@@ -174,10 +185,10 @@ uninstall: manifests ## Uninstalls the current manifests (CRD, RBAC) from the Ku
 namespace: ## Creates a namespace where to deploy Authorino
 	kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 
-certs: ## Requests TLS certificates for the Authorino instance if TLS is enabled, cert-manager.io is installed, and the secret is not already present
+certs: sed ## Requests TLS certificates for the Authorino instance if TLS is enabled, cert-manager.io is installed, and the secret is not already present
 ifeq (true,$(TLS_ENABLED))
 ifeq (,$(shell kubectl -n $(NAMESPACE) get secret/authorino-oidc-server-cert 2>/dev/null))
-	sed "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(NAMESPACE)/$(NAMESPACE)/g" deploy/certs.yaml | kubectl -n $(NAMESPACE) apply -f -
+	$(SED) "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(NAMESPACE)/$(NAMESPACE)/g" deploy/certs.yaml | kubectl -n $(NAMESPACE) apply -f -
 else
 	echo "tls cert secret found."
 endif
@@ -185,12 +196,12 @@ else
 	echo "tls disabled."
 endif
 
-deploy: certs ## Deploys an instance of Authorino into the Kubernetes cluster configured in ~/.kube/config
+deploy: certs sed ## Deploys an instance of Authorino into the Kubernetes cluster configured in ~/.kube/config
 	@{ \
 	set -e ;\
 	TEMP_FILE=/tmp/authorino-deploy-$$(openssl rand -hex 4).yaml ;\
 	cp $(AUTHORINO_CR) $$TEMP_FILE ;\
-	sed -i "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(TLS_ENABLED)/$(TLS_ENABLED)/g" $$TEMP_FILE ;\
+	$(SED) -i "s/\$$(AUTHORINO_INSTANCE)/$(AUTHORINO_INSTANCE)/g;s/\$$(TLS_ENABLED)/$(TLS_ENABLED)/g" $$TEMP_FILE ;\
 	if [ "$(FF)" != "1" ]; then \
 	$(EDITOR) $$TEMP_FILE ;\
 	fi ;\
