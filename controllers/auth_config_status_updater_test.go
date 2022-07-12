@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
+	k8score "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -157,9 +158,15 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	authConfigCheck := api.AuthConfig{}
 	_ = client.Get(context.TODO(), resourceName, &authConfigCheck)
 	status := authConfigCheck.Status
-	assert.Check(t, !status.Ready())
-	assert.Equal(t, status.Conditions[0].Reason, api.StatusReasonHostNotLinked)
-	assert.Equal(t, status.Conditions[0].Message, "One or more hosts not linked to the resource")
+	assert.Equal(t, len(status.Conditions), 2)
+	assert.Equal(t, status.Conditions[0].Type, api.StatusConditionAvailable)
+	assert.Equal(t, status.Conditions[0].Status, k8score.ConditionTrue)
+	assert.Equal(t, status.Conditions[0].Reason, api.StatusReasonHostsLinked)
+	assert.Equal(t, status.Conditions[0].Message, "")
+	assert.Equal(t, status.Conditions[1].Type, api.StatusConditionReady)
+	assert.Equal(t, status.Conditions[1].Status, k8score.ConditionFalse)
+	assert.Equal(t, status.Conditions[1].Reason, api.StatusReasonHostsNotLinked)
+	assert.Equal(t, status.Conditions[1].Message, "One or more hosts not linked to the resource")
 	assert.Equal(t, len(status.Summary.HostsReady), 1)
 	assert.Equal(t, status.Summary.HostsReady[0], "my-api.com")
 }

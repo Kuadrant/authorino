@@ -57,22 +57,22 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, cacheId string, authConfig *api.AuthConfig) (err error) {
 	logger := log.FromContext(ctx)
 
-	condition := statusReady()
 	linked, loose := u.partitionHostsByStatus(cacheId, authConfig)
-	if len(loose) > 0 {
-		condition = statusNotReady(api.StatusReasonHostNotLinked, "One or more hosts not linked to the resource")
-	}
 
-	var conditionsChanged, summaryChanged bool
+	// available
+	changed := updateStatusAvailable(authConfig, len(linked) > 0)
 
-	authConfig.Status.Conditions, conditionsChanged = updateStatusConditions(authConfig.Status.Conditions, condition)
-	authConfig.Status.Summary, summaryChanged = updateStatusSummary(authConfig, linked)
+	// ready
+	changed = updateStatusReady(authConfig, len(loose) == 0) || changed
+
+	// summary
+	changed = updateStatusSummary(authConfig, linked) || changed
 
 	if !authConfig.Status.Ready() {
 		err = fmt.Errorf("resource not ready")
 	}
 
-	if !conditionsChanged && !summaryChanged {
+	if !changed {
 		logger.V(1).Info("resource status did not change")
 		return // to save an update request
 	}
@@ -114,23 +114,6 @@ func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(u)
 }
 
-func statusReady() api.Condition {
-	return api.Condition{
-		Type:   api.StatusConditionReady,
-		Status: k8score.ConditionTrue,
-		Reason: api.StatusReasonReconciled,
-	}
-}
-
-func statusNotReady(reason, message string) api.Condition {
-	return api.Condition{
-		Type:    api.StatusConditionReady,
-		Status:  k8score.ConditionFalse,
-		Reason:  reason,
-		Message: message,
-	}
-}
-
 func updateStatusConditions(currentConditions []api.Condition, newCondition api.Condition) ([]api.Condition, bool) {
 	newCondition.LastTransitionTime = metav1.Now()
 
@@ -158,7 +141,48 @@ func updateStatusConditions(currentConditions []api.Condition, newCondition api.
 	return append(currentConditions, newCondition), true
 }
 
-func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (api.Summary, bool) {
+func updateStatusAvailable(authConfig *api.AuthConfig, available bool) (changed bool) {
+	status := k8score.ConditionFalse
+	reason := api.StatusReasonHostsNotLinked
+	message := "No hosts linked to the resource"
+
+	if available {
+		status = k8score.ConditionTrue
+		reason = api.StatusReasonHostsLinked
+		message = ""
+	}
+
+	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.Condition{
+		Type:    api.StatusConditionAvailable,
+		Status:  status,
+		Reason:  reason,
+		Message: message,
+	})
+
+	return
+}
+
+func updateStatusReady(authConfig *api.AuthConfig, ready bool) (changed bool) {
+	status := k8score.ConditionFalse
+	reason := api.StatusReasonHostsNotLinked
+	message := "One or more hosts not linked to the resource"
+
+	if ready {
+		status = k8score.ConditionTrue
+		reason = api.StatusReasonReconciled
+		message = ""
+	}
+	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.Condition{
+		Type:    api.StatusConditionReady,
+		Status:  status,
+		Reason:  reason,
+		Message: message,
+	})
+
+	return
+}
+
+func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (changed bool) {
 	current := authConfig.Status.Summary
 
 	new := api.Summary{
@@ -175,7 +199,7 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (a
 	sort.Strings(currentLinkedHosts)
 	sort.Strings(newLinkedHosts)
 
-	changed := new.NumHostsReady != current.NumHostsReady ||
+	changed = new.NumHostsReady != current.NumHostsReady ||
 		strings.Join(currentLinkedHosts, ",") != strings.Join(newLinkedHosts, ",") ||
 		new.NumIdentitySources != current.NumIdentitySources ||
 		new.NumMetadataSources != current.NumMetadataSources ||
@@ -183,7 +207,11 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (a
 		new.NumResponseItems != current.NumResponseItems ||
 		new.FestivalWristbandEnabled != current.FestivalWristbandEnabled
 
-	return new, changed
+	if changed {
+		authConfig.Status.Summary = new
+	}
+
+	return
 }
 
 func issuingWristbands(authConfig *api.AuthConfig) bool {

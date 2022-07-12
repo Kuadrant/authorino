@@ -42,11 +42,13 @@ const (
 	EvaluatorDefaultCacheTTL         = 60
 
 	// Status conditions
-	StatusConditionReady ConditionType = "Ready"
+	StatusConditionAvailable ConditionType = "Available"
+	StatusConditionReady     ConditionType = "Ready"
 
 	// Status reasons
-	StatusReasonReconciled    string = "Reconciled"
-	StatusReasonHostNotLinked string = "HostNotLinked"
+	StatusReasonReconciled     string = "Reconciled"
+	StatusReasonHostsLinked    string = "HostsLinked"
+	StatusReasonHostsNotLinked string = "HostsNotLinked"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
