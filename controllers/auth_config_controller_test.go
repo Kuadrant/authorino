@@ -190,6 +190,7 @@ func TestHostColllision(t *testing.T) {
 	cacheMock := mock_cache.NewMockCache(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Spec.Hosts = append(authConfig.Spec.Hosts, "other.io")
 	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
@@ -197,6 +198,8 @@ func TestHostColllision(t *testing.T) {
 
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
 	cacheMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
+	cacheMock.EXPECT().FindId("other.io").Return("", false)
+	cacheMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
 
