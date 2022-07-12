@@ -630,6 +630,9 @@ type Condition struct {
 }
 
 type Summary struct {
+	// Whether all hosts from spec.hosts have been linked to the resource in the cache
+	Ready bool `json:"ready"`
+
 	// Lists the hosts from spec.hosts linked to the resource in the cache
 	HostsReady []string `json:"hostsReady"`
 
@@ -670,7 +673,8 @@ func (s *AuthConfigStatus) Ready() bool {
 // AuthConfig is the schema for Authorino's AuthConfig API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.summary.numHostsReady`,description="Number of hosts ready"
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.summary.ready`,description="Ready for all hosts"
+// +kubebuilder:printcolumn:name="Hosts",type=string,JSONPath=`.status.summary.numHostsReady`,description="Number of hosts ready"
 // +kubebuilder:printcolumn:name="Authentication",type=integer,JSONPath=`.status.summary.numIdentitySources`,description="Number of trusted identity sources",priority=2
 // +kubebuilder:printcolumn:name="Metadata",type=integer,JSONPath=`.status.summary.numMetadataSources`,description="Number of external metadata sources",priority=2
 // +kubebuilder:printcolumn:name="Authorization",type=integer,JSONPath=`.status.summary.numAuthorizationPolicies`,description="Number of authorization policies",priority=2

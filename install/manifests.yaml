@@ -15,9 +15,13 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: Ready for all hosts
+      jsonPath: .status.summary.ready
+      name: Ready
+      type: string
     - description: Number of hosts ready
       jsonPath: .status.summary.numHostsReady
-      name: Ready
+      name: Hosts
       type: string
     - description: Number of trusted identity sources
       jsonPath: .status.summary.numIdentitySources
@@ -1793,6 +1797,10 @@ spec:
                       the AuthConfig
                     format: int64
                     type: integer
+                  ready:
+                    description: Whether all hosts from spec.hosts have been linked
+                      to the resource in the cache
+                    type: boolean
                 required:
                 - festivalWristbandEnabled
                 - hostsReady
@@ -1801,6 +1809,7 @@ spec:
                 - numIdentitySources
                 - numMetadataSources
                 - numResponseItems
+                - ready
                 type: object
             type: object
         type: object

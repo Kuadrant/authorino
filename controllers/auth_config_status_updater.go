@@ -186,6 +186,7 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 	current := authConfig.Status.Summary
 
 	new := api.Summary{
+		Ready:                    authConfig.Status.Ready(),
 		HostsReady:               newLinkedHosts,
 		NumHostsReady:            fmt.Sprintf("%d/%d", len(newLinkedHosts), len(authConfig.Spec.Hosts)),
 		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
