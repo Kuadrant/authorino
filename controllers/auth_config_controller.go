@@ -62,6 +62,8 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 	cacheId := req.String()
 
+	var added bool
+
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
 		// could not get the resource but not because of a 404 Not found (some error must have happened)
@@ -96,17 +98,21 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if cachedKey, found := r.Cache.FindId(host); found {
 				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
 					logger.Info("host already taken in another namespace", "host", host)
-					return ctrl.Result{}, nil
+					continue
 				}
 			}
 
 			if err := r.Cache.Set(cacheId, host, evaluatorConfig, true); err != nil {
 				return ctrl.Result{}, err
 			}
+
+			added = true
 		}
 	}
 
-	logger.Info("resource reconciled")
+	if added {
+		logger.Info("resource reconciled")
+	}
 
 	return ctrl.Result{}, nil
 }
