@@ -37,6 +37,11 @@ const (
 	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
 	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"
 
+	HTTP_MESSAGE_400 = "bad request"
+	HTTP_MESSAGE_404 = "not found"
+	HTTP_MESSAGE_413 = "request body too large"
+	HTTP_MESSAGE_503 = "service unavailable"
+
 	X_LOOKUP_KEY_NAME = "host"
 )
 
@@ -80,11 +85,17 @@ func NewAuthService(cache cache.Cache, timeout time.Duration, maxHttpRequestBody
 func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	ctx := context.New(context.WithTimeout(a.Timeout))
 	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
-	logger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
+	logger := log.
+		WithName("service").
+		WithName("auth").
+		WithName("http").
+		WithValues("request id", requestId).
+		V(1)
 
 	switch req.Method {
 	case "GET", "POST":
 	default:
+		logger.Info(HTTP_MESSAGE_404)
 		closeWithStatus(envoy_type.StatusCode_NotFound, resp, ctx, nil)
 		return
 	}
@@ -92,6 +103,7 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	path := strings.TrimSuffix(req.URL.Path, "/")
 
 	if path != HTTPAuthorizationBasePath {
+		logger.Info(HTTP_MESSAGE_404)
 		closeWithStatus(envoy_type.StatusCode_NotFound, resp, ctx, nil)
 		return
 	}
@@ -105,10 +117,12 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if payload, err = ioutil.ReadAll(http.MaxBytesReader(resp, req.Body, a.MaxHttpRequestBodySize)); err != nil {
-		switch fmt.Sprint(err) {
+		switch err.Error() {
 		case "http: request body too large":
+			logger.Info(HTTP_MESSAGE_413)
 			closeWithStatus(envoy_type.StatusCode_PayloadTooLarge, resp, ctx, nil)
 		default:
+			logger.Info(HTTP_MESSAGE_400)
 			closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
 		}
 		return
@@ -154,6 +168,7 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		if err := context.CheckContext(ctx); err != nil {
+			logger.Info(HTTP_MESSAGE_503)
 			closeWithStatus(envoy_type.StatusCode_ServiceUnavailable, resp, ctx, nil)
 			return
 		}
