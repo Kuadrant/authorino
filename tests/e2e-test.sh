@@ -177,7 +177,7 @@ wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --m
 
 # authconfig
 kubectl -n $namespace apply -f $authconfig
-wait_until "authconfig ready" "^true$" "kubectl -n $namespace get authconfigs/e2e-test -o jsonpath={.status.ready}"
+wait_until "authconfig ready" "^True$" "kubectl -n $namespace get authconfigs/e2e-test -o jsonpath={.status.conditions[?(@.type==\"Ready\")].status}"
 
 kubectl -n $namespace port-forward services/authorino-authorino-oidc 8083:8083 2>&1 >/dev/null &
 wristband_pid=$!

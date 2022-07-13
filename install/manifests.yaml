@@ -15,32 +15,36 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Ready?
-      jsonPath: .status.ready
+    - description: Ready for all hosts
+      jsonPath: .status.summary.ready
       name: Ready
-      type: boolean
+      type: string
+    - description: Number of hosts ready
+      jsonPath: .status.summary.numHostsReady
+      name: Hosts
+      type: string
     - description: Number of trusted identity sources
-      jsonPath: .status.numIdentitySources
-      name: Id sources
+      jsonPath: .status.summary.numIdentitySources
+      name: Authentication
       priority: 2
       type: integer
     - description: Number of external metadata sources
-      jsonPath: .status.numMetadataSources
-      name: Metadata sources
+      jsonPath: .status.summary.numMetadataSources
+      name: Metadata
       priority: 2
       type: integer
     - description: Number of authorization policies
-      jsonPath: .status.numAuthorizationPolicies
-      name: Authz policies
+      jsonPath: .status.summary.numAuthorizationPolicies
+      name: Authorization
       priority: 2
       type: integer
-    - description: Number of items added to the client response
-      jsonPath: .status.numResponseItems
-      name: Response items
+    - description: Number of items added to the authorization response
+      jsonPath: .status.summary.numResponseItems
+      name: Response
       priority: 2
       type: integer
     - description: Whether issuing Festival Wristbands
-      jsonPath: .status.festivalWristbandEnabled
+      jsonPath: .status.summary.festivalWristbandEnabled
       name: Wristband
       priority: 2
       type: boolean
@@ -1728,29 +1732,85 @@ spec:
           status:
             description: AuthConfigStatus defines the observed state of AuthConfig
             properties:
-              festivalWristbandEnabled:
-                type: boolean
-              numAuthorizationPolicies:
-                format: int64
-                type: integer
-              numIdentitySources:
-                format: int64
-                type: integer
-              numMetadataSources:
-                format: int64
-                type: integer
-              numResponseItems:
-                format: int64
-                type: integer
-              ready:
-                type: boolean
-            required:
-            - festivalWristbandEnabled
-            - numAuthorizationPolicies
-            - numIdentitySources
-            - numMetadataSources
-            - numResponseItems
-            - ready
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transit from one status
+                        to another.
+                      format: date-time
+                      type: string
+                    lastUpdatedTime:
+                      description: Last time the condition was updated
+                      format: date-time
+                      type: string
+                    message:
+                      description: Human readable message indicating details about
+                        last transition.
+                      type: string
+                    reason:
+                      description: (brief) reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              summary:
+                properties:
+                  festivalWristbandEnabled:
+                    description: Indicator of whether the AuthConfig issues Festival
+                      Wristband tokens on successful evaluation of the AuthConfig
+                      (access granted)
+                    type: boolean
+                  hostsReady:
+                    description: Lists the hosts from spec.hosts linked to the resource
+                      in the cache
+                    items:
+                      type: string
+                    type: array
+                  numAuthorizationPolicies:
+                    description: Number of authorization policies in the AuthConfig
+                    format: int64
+                    type: integer
+                  numHostsReady:
+                    description: Number of hosts from spec.hosts linked to the resource
+                      in the cache, compared to the total number of hosts in spec.hosts
+                    type: string
+                  numIdentitySources:
+                    description: Number of trusted sources of identity for authentication
+                      in the AuthConfig
+                    format: int64
+                    type: integer
+                  numMetadataSources:
+                    description: Number of sources of external metadata in the AuthConfig
+                    format: int64
+                    type: integer
+                  numResponseItems:
+                    description: Number of custom authorization response items in
+                      the AuthConfig
+                    format: int64
+                    type: integer
+                  ready:
+                    description: Whether all hosts from spec.hosts have been linked
+                      to the resource in the cache
+                    type: boolean
+                required:
+                - festivalWristbandEnabled
+                - hostsReady
+                - numAuthorizationPolicies
+                - numHostsReady
+                - numIdentitySources
+                - numMetadataSources
+                - numResponseItems
+                - ready
+                type: object
             type: object
         type: object
     served: true
