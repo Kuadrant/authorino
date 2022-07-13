@@ -64,8 +64,13 @@ func init() {
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
-	Cache   cache.Cache
-	Timeout time.Duration
+	Cache                  cache.Cache
+	Timeout                time.Duration
+	MaxHttpRequestBodySize int64
+}
+
+func NewAuthService(cache cache.Cache, timeout time.Duration, maxHttpRequestBodySize int64) *AuthService {
+	return &AuthService{Cache: cache, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize}
 }
 
 // ServeHTTP invokes authorization check for a simple GET/POST HTTP authorization request
@@ -99,8 +104,13 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if payload, err = ioutil.ReadAll(req.Body); err != nil {
-		closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
+	if payload, err = ioutil.ReadAll(http.MaxBytesReader(resp, req.Body, a.MaxHttpRequestBodySize)); err != nil {
+		switch fmt.Sprint(err) {
+		case "http: request body too large":
+			closeWithStatus(envoy_type.StatusCode_PayloadTooLarge, resp, ctx, nil)
+		default:
+			closeWithStatus(envoy_type.StatusCode_BadRequest, resp, ctx, nil)
+		}
 		return
 	}
 

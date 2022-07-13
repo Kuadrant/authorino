@@ -68,8 +68,10 @@ const (
 	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
 	envEvaluatorCacheSize             = "EVALUATOR_CACHE_SIZE" // in megabytes
 	envDeepMetricsEnabled             = "DEEP_METRICS_ENABLED"
-	flagMetricsAddr                   = "metrics-addr"
-	flagEnableLeaderElection          = "enable-leader-election"
+	envMaxHttpRequestBodySize         = "MAX_HTTP_REQUEST_BODY_SIZE" // in bytes
+
+	flagMetricsAddr          = "metrics-addr"
+	flagEnableLeaderElection = "enable-leader-election"
 
 	defaultWatchNamespace                 = ""
 	defaultWatchedAuthConfigLabelSelector = ""
@@ -88,6 +90,7 @@ const (
 	defaultDeepMetricsEnabled             = "false"
 	defaultMetricsAddr                    = ":8080"
 	defaultEnableLeaderElection           = false
+	defaultMaxHttpRequestBodySize         = "8192" // 8KB
 
 	gRPCMaxConcurrentStreams = 10000
 	leaderElectionIDSuffix   = "authorino.kuadrant.io"
@@ -110,6 +113,7 @@ var (
 	oidcTLSCertKeyPath             = fetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
 	metadataCacheSize              = fetchEnv(envEvaluatorCacheSize, defaultEvaluatorCacheSize)
 	deepMetricEnabled              = fetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
+	maxHttpRequestBodySize, _      = strconv.ParseInt(fetchEnv(envMaxHttpRequestBodySize, defaultMaxHttpRequestBodySize), 10, 64)
 
 	scheme  = runtime.NewScheme()
 	logOpts = log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
@@ -303,7 +307,7 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 }
 
 func startExtAuthServerHTTP(authConfigCache cache.Cache) {
-	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, &service.AuthService{Cache: authConfigCache, Timeout: timeoutMs})
+	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, service.NewAuthService(authConfigCache, timeoutMs, maxHttpRequestBodySize))
 }
 
 func startOIDCServer(authConfigCache cache.Cache) {
