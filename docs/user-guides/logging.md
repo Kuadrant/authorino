@@ -53,82 +53,86 @@ Most log messages associated with an auth request include a `request id` extra v
 
 Some typical log messages output by the Authorino service are listed in the table below:
 
-| logger | level | message | extra values |
-| -------|-------|---------|--------|
-| `authorino` | `info` | "setting instance base logger" | `min level=info\|debug`, `mode=production\|development` |
-| `authorino` | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `TIMEOUT`, `EXT_AUTH_GRPC_PORT`, `EXT_AUTH_HTTP_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `EVALUATOR_CACHE_SIZE`, `DEEP_METRICS_ENABLED`, `metrics-addr`, `enable-leader-election` |
-| `authorino` | `info` | "attempting to acquire leader lease authorino/cb88a58a.authorino.kuadrant.io...\n" | |
-| `authorino` | `info` | "successfully acquired lease authorino/cb88a58a.authorino.kuadrant.io\n" | |
-| `authorino` | `info` | "disabling grpc auth service" | |
-| `authorino` | `info` | "starting grpc auth service" | `port`, `tls` |
-| `authorino` | `error` | "failed to obtain port for the grpc auth service" | |
-| `authorino` | `error` | "failed to load tls cert for the grpc auth" | |
-| `authorino` | `error` | "failed to start grpc auth service" | |
-| `authorino` | `info` | "disabling http auth service" | |
-| `authorino` | `info` | "starting http auth service" | `port`, `tls` |
-| `authorino` | `error` | "failed to obtain port for the http auth service" | |
-| `authorino` | `error` | "failed to start http auth service" | |
-| `authorino` | `info` | "disabling http oidc service" | |
-| `authorino` | `info` | "starting http oidc service" | `port`, `tls` |
-| `authorino` | `error` | "failed to obtain port for the http oidc service" | |
-| `authorino` | `error` | "failed to start http oidc service" | |
-| `authorino` | `info` | "starting manager" | |
-| `authorino` | `error` | "unable to start manager" | |
-| `authorino` | `error` | "unable to create controller" | `controller=authconfig\|secret\|authconfigstatusupdate` |
-| `authorino` | `error` | "problem running manager" | |
-| `authorino` | `info` | "starting status update manager" | |
-| `authorino` | `error` | "unable to start status update manager" | |
-| `authorino` | `error` | "problem running status update manager" | |
-| `authorino.controller-runtime.metrics` | `info` | "metrics server is starting to listen" | `addr` |
-| `authorino.controller-runtime.manager` | `info` | "starting metrics server" | `path`
-| `authorino.controller-runtime.manager.events` | `debug` | "Normal" | `object={kind=ConfigMap, apiVersion=v1}`, `reauthorino.ason=LeaderElection`, `message="authorino-controller-manager-* became leader"`
-| `authorino.controller-runtime.manager.events` | `debug` | "Normal" | `object={kind=Lease, apiVersion=coordination.k8s.io/v1}`, `reauthorino.ason=LeaderElection`, `message="authorino-controller-manager-* became leader"`
-| `authorino.controller-runtime.manager.controller.authconfig` | `info` | "resource reconciled" | `authconfig` |
-| `authorino.controller-runtime.manager.controller.authconfig` | `info` | "host already taken in another namespace" | `authconfig`, `host` |
+| logger                                                                     | level | message | extra values |
+|----------------------------------------------------------------------------|-------|---------|--------|
+| `authorino`                                                                | `info` | "setting instance base logger" | `min level=info\|debug`, `mode=production\|development` |
+| `authorino`                                                                | `debug` | "setting up with options" | `WATCH_NAMESPACE`, `AUTH_CONFIG_LABEL_SELECTOR`, `SECRET_LABEL_SELECTOR`, `LOG_LEVEL`, `LOG_MODE`, `TIMEOUT`, `EXT_AUTH_GRPC_PORT`, `EXT_AUTH_HTTP_PORT`, `TLS_CERT`, `TLS_CERT_KEY`, `OIDC_HTTP_PORT`, `OIDC_TLS_CERT`, `OIDC_TLS_CERT_KEY`, `EVALUATOR_CACHE_SIZE`, `DEEP_METRICS_ENABLED`, `metrics-addr`, `enable-leader-election` |
+| `authorino`                                                                | `info` | "attempting to acquire leader lease authorino/cb88a58a.authorino.kuadrant.io...\n" | |
+| `authorino`                                                                | `info` | "successfully acquired lease authorino/cb88a58a.authorino.kuadrant.io\n" | |
+| `authorino`                                                                | `info` | "disabling grpc auth service" | |
+| `authorino`                                                                | `info` | "starting grpc auth service" | `port`, `tls` |
+| `authorino`                                                                | `error` | "failed to obtain port for the grpc auth service" | |
+| `authorino`                                                                | `error` | "failed to load tls cert for the grpc auth" | |
+| `authorino`                                                                | `error` | "failed to start grpc auth service" | |
+| `authorino`                                                                | `info` | "disabling http auth service" | |
+| `authorino`                                                                | `info` | "starting http auth service" | `port`, `tls` |
+| `authorino`                                                                | `error` | "failed to obtain port for the http auth service" | |
+| `authorino`                                                                | `error` | "failed to start http auth service" | |
+| `authorino`                                                                | `info` | "disabling http oidc service" | |
+| `authorino`                                                                | `info` | "starting http oidc service" | `port`, `tls` |
+| `authorino`                                                                | `error` | "failed to obtain port for the http oidc service" | |
+| `authorino`                                                                | `error` | "failed to start http oidc service" | |
+| `authorino`                                                                | `info` | "starting manager" | |
+| `authorino`                                                                | `error` | "unable to start manager" | |
+| `authorino`                                                                | `error` | "unable to create controller" | `controller=authconfig\|secret\|authconfigstatusupdate` |
+| `authorino`                                                                | `error` | "problem running manager" | |
+| `authorino`                                                                | `info` | "starting status update manager" | |
+| `authorino`                                                                | `error` | "unable to start status update manager" | |
+| `authorino`                                                                | `error` | "problem running status update manager" | |
+| `authorino.controller-runtime.metrics`                                     | `info` | "metrics server is starting to listen" | `addr` |
+| `authorino.controller-runtime.manager`                                     | `info` | "starting metrics server" | `path`
+| `authorino.controller-runtime.manager.events`                              | `debug` | "Normal" | `object={kind=ConfigMap, apiVersion=v1}`, `reauthorino.ason=LeaderElection`, `message="authorino-controller-manager-* became leader"`
+| `authorino.controller-runtime.manager.events`                              | `debug` | "Normal" | `object={kind=Lease, apiVersion=coordination.k8s.io/v1}`, `reauthorino.ason=LeaderElection`, `message="authorino-controller-manager-* became leader"`
+| `authorino.controller-runtime.manager.controller.authconfig`               | `info` | "resource reconciled" | `authconfig` |
+| `authorino.controller-runtime.manager.controller.authconfig`               | `info` | "host already taken in another namespace" | `authconfig`, `host` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `debug` | "resource status did not change" | `authconfig` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `debug` | "resource status changed" | `authconfig`, `authconfig/status` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `error` | "failed to update the resource" | `authconfig` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `info` | "resource status updated" | `authconfig` |
-| `authorino.controller-runtime.manager.controller.secret` | `info` | "resource reconciled" | |
-| `authorino.controller-runtime.manager.controller.secret` | `info` | "could not reconcile authconfigs using api key autauthorino.hentication" | |
-| `authorino.service.oidc` | `info` | "request received" | `request id`, `url`, `realm`, `config`, `path` |
-| `authorino.service.oidc` | `info` | "response sent" | `request id` |
-| `authorino.service.oidc` | `error` | "failed to serve oidc request" | |
-| `authorino.service.auth` | `info` | "incoming authorization request" | `request id`, `object` |
-| `authorino.service.auth` | `debug` | "incoming authorization request" | `request id`, `object` |
-| `authorino.service.auth` | `info` | "outgoing authorization response" | `request id`, `authorized`, `response`, `object` |
-| `authorino.service.auth` | `debug` | "outgoing authorization response" | `request id`, `authorized`, `response`, `object` |
-| `authorino.service.auth` | `error` | "failed to create dynamic metadata" | `request id`, `object` |
-| `authorino.service.auth.authpipeline` | `debug` | "skipping config" | `request id`, `config`, `reason` |
-| `authorino.service.auth.authpipeline.identity` | `debug` | "identity validated" | `request id`, `config`, `object` |
-| `authorino.service.auth.authpipeline.identity` | `debug` | "cannot validate identity" | `request id`, `config`, `reason` |
-| `authorino.service.auth.authpipeline.identity` | `error` | "failed to extend identity object" | `request id`, `config`, `object` |
-| `authorino.service.auth.authpipeline.identity.oidc` | `error` | "failed to discovery openid connect configuration" | `endpoint` |
-| `authorino.service.auth.authpipeline.identity.oidc` | `debug` | "auto-refresh of openid connect configuration disabled" | `endpoint`, `reason` |
-| `authorino.service.auth.authpipeline.identity.oidc` | `debug` | "openid connect configuration updated" | `endpoint` |
-| `authorino.service.auth.authpipeline.identity.oauth2` | `debug` | "sending token introspection request" | `request id`, `url`, `data` |
-| `authorino.service.auth.authpipeline.identity.kubernetesauth` | `debug` | "calling kubernetes token review api" | `request id`, `tokenreview` |
-| `authorino.service.auth.authpipeline.identity.apikey` | `error` | "Something went wrong fetching the authorized credentials" | |
-| `authorino.service.auth.authpipeline.metadata` | `debug` | "fetched auth metadata" | `request id`, `config`, `object` |
-| `authorino.service.auth.authpipeline.metadata` | `debug` | "cannot fetch metadata" | `request id`, `config`, `reason` |
-| `authorino.service.auth.authpipeline.metadata.http` | `debug` | "sending request" | `request id`, `method`, `url`, `headers` |
-| `authorino.service.auth.authpipeline.metadata.userinfo` | `debug` | "fetching user info" | `request id`, `endpoint` |
-| `authorino.service.auth.authpipeline.metadata.uma` | `debug` | "requesting pat" | `request id`, `url`, `data`, `headers` |
-| `authorino.service.auth.authpipeline.metadata.uma` | `debug` | "querying resources by uri" | `request id`, `url` |
-| `authorino.service.auth.authpipeline.metadata.uma` | `debug` | "getting resource data" | `request id`, `url` |
-| `authorino.service.auth.authpipeline.authorization` | `debug` | "evaluating for input" | `request id`, `input` |
-| `authorino.service.auth.authpipeline.authorization` | `debug` | "access granted" | `request id`, `config`, `object` |
-| `authorino.service.auth.authpipeline.authorization` | `debug` | "access denied" | `request id`, `config`, `reason` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "invalid response from policy evaluation" | `policy` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to precompile policy" | `policy` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to download policy from external registry" | `policy`, `endpoint` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `error` | "failed to refresh policy from external registry" | `policy`, `endpoint` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `debug` | "external policy unchanged" | `policy`, `endpoint` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `debug` | "auto-refresh  of external policy disabled" | `policy`, `endpoint`, `reason` |
-| `authorino.service.auth.authpipeline.authorization.opa` | `info` | "policy updated from external registry" | `policy`, `endpoint` |
-| `authorino.service.auth.authpipeline.authorization.kubernetesauthz` | `debug` | "calling kubernetes subject access review api" | `request id`, `subjectaccessreview` |
-| `authorino.service.auth.authpipeline.response` | `debug` | "dynamic response built" | `request id`, `config`, `object` |
-| `authorino.service.auth.authpipeline.response` | `debug` | "cannot build dynamic response" | `request id`, `config`, `reason` |
+| `authorino.controller-runtime.manager.controller.secret`                   | `info` | "resource reconciled" | |
+| `authorino.controller-runtime.manager.controller.secret`                   | `info` | "could not reconcile authconfigs using api key autauthorino.hentication" | |
+| `authorino.service.oidc`                                                   | `info` | "request received" | `request id`, `url`, `realm`, `config`, `path` |
+| `authorino.service.oidc`                                                   | `info` | "response sent" | `request id` |
+| `authorino.service.oidc`                                                   | `error` | "failed to serve oidc request" | |
+| `authorino.service.auth`                                                   | `info` | "incoming authorization request" | `request id`, `object` |
+| `authorino.service.auth`                                                   | `debug` | "incoming authorization request" | `request id`, `object` |
+| `authorino.service.auth`                                                   | `info` | "outgoing authorization response" | `request id`, `authorized`, `response`, `object` |
+| `authorino.service.auth`                                                   | `debug` | "outgoing authorization response" | `request id`, `authorized`, `response`, `object` |
+| `authorino.service.auth`                                                   | `error` | "failed to create dynamic metadata" | `request id`, `object` |
+| `authorino.service.auth.authpipeline`                                      | `debug` | "skipping config" | `request id`, `config`, `reason` |
+| `authorino.service.auth.authpipeline.identity`                             | `debug` | "identity validated" | `request id`, `config`, `object` |
+| `authorino.service.auth.authpipeline.identity`                             | `debug` | "cannot validate identity" | `request id`, `config`, `reason` |
+| `authorino.service.auth.authpipeline.identity`                             | `error` | "failed to extend identity object" | `request id`, `config`, `object` |
+| `authorino.service.auth.authpipeline.identity.oidc`                        | `error` | "failed to discovery openid connect configuration" | `endpoint` |
+| `authorino.service.auth.authpipeline.identity.oidc`                        | `debug` | "auto-refresh of openid connect configuration disabled" | `endpoint`, `reason` |
+| `authorino.service.auth.authpipeline.identity.oidc`                        | `debug` | "openid connect configuration updated" | `endpoint` |
+| `authorino.service.auth.authpipeline.identity.oauth2`                      | `debug` | "sending token introspection request" | `request id`, `url`, `data` |
+| `authorino.service.auth.authpipeline.identity.kubernetesauth`              | `debug` | "calling kubernetes token review api" | `request id`, `tokenreview` |
+| `authorino.service.auth.authpipeline.identity.apikey`                      | `error` | "Something went wrong fetching the authorized credentials" | |
+| `authorino.service.auth.authpipeline.metadata`                             | `debug` | "fetched auth metadata" | `request id`, `config`, `object` |
+| `authorino.service.auth.authpipeline.metadata`                             | `debug` | "cannot fetch metadata" | `request id`, `config`, `reason` |
+| `authorino.service.auth.authpipeline.metadata.http`                        | `debug` | "sending request" | `request id`, `method`, `url`, `headers` |
+| `authorino.service.auth.authpipeline.metadata.userinfo`                    | `debug` | "fetching user info" | `request id`, `endpoint` |
+| `authorino.service.auth.authpipeline.metadata.uma`                         | `debug` | "requesting pat" | `request id`, `url`, `data`, `headers` |
+| `authorino.service.auth.authpipeline.metadata.uma`                         | `debug` | "querying resources by uri" | `request id`, `url` |
+| `authorino.service.auth.authpipeline.metadata.uma`                         | `debug` | "getting resource data" | `request id`, `url` |
+| `authorino.service.auth.authpipeline.authorization`                        | `debug` | "evaluating for input" | `request id`, `input` |
+| `authorino.service.auth.authpipeline.authorization`                        | `debug` | "access granted" | `request id`, `config`, `object` |
+| `authorino.service.auth.authpipeline.authorization`                        | `debug` | "access denied" | `request id`, `config`, `reason` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `error` | "invalid response from policy evaluation" | `policy` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `error` | "failed to precompile policy" | `policy` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `error` | "failed to download policy from external registry" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `error` | "failed to refresh policy from external registry" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `debug` | "external policy unchanged" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `debug` | "auto-refresh  of external policy disabled" | `policy`, `endpoint`, `reason` |
+| `authorino.service.auth.authpipeline.authorization.opa`                    | `info` | "policy updated from external registry" | `policy`, `endpoint` |
+| `authorino.service.auth.authpipeline.authorization.kubernetesauthz`        | `debug` | "calling kubernetes subject access review api" | `request id`, `subjectaccessreview` |
+| `authorino.service.auth.authpipeline.response`                             | `debug` | "dynamic response built" | `request id`, `config`, `object` |
+| `authorino.service.auth.authpipeline.response`                             | `debug` | "cannot build dynamic response" | `request id`, `config`, `reason` |
+| `authorino.service.auth.http`                                              | `debug` | "bad request" | `request id` |
+| `authorino.service.auth.http`                                              | `debug` | "not found" | `request id` |
+| `authorino.service.auth.http`                                              | `debug` | "request body too large" | `request id` |
+| `authorino.service.auth.http`                                              | `debug` | "service unavailable" | `request id` |
 
 ### Examples
 
