@@ -2,9 +2,15 @@ package cache
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/evaluators"
+)
+
+const (
+	keyLabelsSeparator string = "."
+	rootKeyLabel       string = "" // must differ `keyLabelsSeparator`
 )
 
 type Cache interface {
@@ -17,85 +23,192 @@ type Cache interface {
 	FindKeys(id string) []string
 }
 
+func NewCache() Cache {
+	return newAuthConfigTree()
+}
+
 type cacheEntry struct {
 	Id         string
 	AuthConfig evaluators.AuthConfig
 }
 
-type AuthConfigsCache struct {
-	// TODO: move to RWMutex?
-	mu      sync.Mutex
-	entries map[string]cacheEntry
-	keys    map[string][]string
-}
+// Cache of AuthConfigs structured as a radix tree.
+// Each dot ('.') in the key induces a new level in the tree.
+// Tree-based cache structures support wildcards ('*') in the keys.
+// Wildcards match any value after the longest common path between the searched key and the levels of the tree.
 
-func NewCache() Cache {
-	return &AuthConfigsCache{
-		mu:      sync.Mutex{},
-		entries: make(map[string]cacheEntry),
-		keys:    make(map[string][]string),
+func newAuthConfigTree() *authConfigTree {
+	return &authConfigTree{
+		mu:   sync.Mutex{},
+		root: newTreeNode(rootKeyLabel, nil),
+		keys: make(map[string][]string),
 	}
 }
 
-func (c *AuthConfigsCache) Get(key string) *evaluators.AuthConfig {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+type authConfigTree struct {
+	mu   sync.Mutex
+	root *treeNode
+	keys map[string][]string
+}
 
-	if entry, ok := c.entries[key]; ok {
+func (c *authConfigTree) Get(key string) *evaluators.AuthConfig {
+	if entry := c.root.get(revertKey(key)); entry != nil {
 		return &entry.AuthConfig
-	} else {
-		return nil
 	}
-}
-
-func (c *AuthConfigsCache) Set(id string, key string, config evaluators.AuthConfig, override bool) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, ok := c.entries[key]; !ok || override {
-		c.entries[key] = cacheEntry{
-			Id:         id,
-			AuthConfig: config,
-		}
-	} else {
-		return fmt.Errorf("service already exists in cache: %s", key)
-	}
-	c.keys[id] = append(c.keys[id], key)
 
 	return nil
 }
 
-func (c *AuthConfigsCache) Delete(id string) {
+func (c *authConfigTree) Set(id, key string, config evaluators.AuthConfig, override bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, configName := range c.keys[id] {
-		delete(c.entries, configName)
+	entry := &cacheEntry{
+		Id:         id,
+		AuthConfig: config,
+	}
+	err := c.root.set(revertKey(key), entry, override)
+	if err == nil {
+		c.keys[id] = append(c.keys[id], key)
+	}
+	return err
+}
+
+func (c *authConfigTree) Delete(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if keys, ok := c.keys[id]; ok {
+		for _, key := range keys {
+			if node, _ := c.root.longestCommonLabel(revertKey(key)); node != nil && node.entry != nil && node.entry.Id == id {
+				node.entry = nil
+			}
+		}
 	}
 }
 
-func (c *AuthConfigsCache) FindId(key string) (id string, found bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *authConfigTree) List() []*evaluators.AuthConfig {
+	var configs []*evaluators.AuthConfig
+	for _, entry := range c.root.list() {
+		configs = append(configs, &entry.AuthConfig)
+	}
+	return configs
+}
 
-	if entry, ok := c.entries[key]; ok {
+func (c *authConfigTree) FindId(key string) (id string, found bool) {
+	if entry := c.root.get(revertKey(key)); entry != nil {
 		return entry.Id, true
-	} else {
-		return "", false
 	}
+	return "", false
 }
 
-func (c *AuthConfigsCache) FindKeys(id string) []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+func (c *authConfigTree) FindKeys(id string) []string {
 	return c.keys[id]
 }
 
-func (c *AuthConfigsCache) List() []*evaluators.AuthConfig {
-	var authConfigs []*evaluators.AuthConfig
-	for _, e := range c.entries {
-		authConfigs = append(authConfigs, &e.AuthConfig)
+func newTreeNode(label string, parent *treeNode) *treeNode {
+	return &treeNode{
+		label:    label,
+		parent:   parent,
+		children: make(map[string]*treeNode),
 	}
-	return authConfigs
+}
+
+type treeNode struct {
+	label    string
+	entry    *cacheEntry
+	parent   *treeNode
+	children map[string]*treeNode
+}
+
+func (n *treeNode) get(key string) *cacheEntry {
+	node, tail := n.longestCommonLabel(key)
+
+	// longest common node matches the key perfectly
+	if tail == "" && node.entry != nil {
+		return node.entry
+	}
+
+	// lookup upwards until the root for a wildcard ('*')
+	curr := node
+	for {
+		if child, ok := curr.children["*"]; ok && child.entry != nil {
+			return child.entry
+		}
+		if curr.parent == nil {
+			break
+		}
+		curr = curr.parent
+	}
+
+	return nil
+}
+
+func (n *treeNode) set(key string, entry *cacheEntry, override bool) error {
+	target, tail := n.longestCommonLabel(key)
+
+	if tail == "" {
+		if !override {
+			return fmt.Errorf("authconfig already exists in the cache: %s", key)
+		}
+
+		target.entry = entry
+		return nil
+	}
+
+	labels := strings.Split(tail, keyLabelsSeparator)
+	tld := labels[0]
+	node := newTreeNode(tld, target)
+	curr := node
+	if len(labels) > 1 {
+		for _, label := range labels[1:] {
+			curr.children[label] = newTreeNode(label, curr)
+			curr = curr.children[label]
+		}
+	}
+	curr.entry = entry
+
+	target.children[tld] = node
+
+	return nil
+}
+
+func (n *treeNode) longestCommonLabel(key string) (node *treeNode, tail string) {
+	labels := strings.Split(key, keyLabelsSeparator)
+
+	if n.label != labels[0] {
+		// We can panic here because:
+		// 1) the recursion only calls while there's a common path between labels of the key and nodes of tree;
+		// 2) all keys and the tree both root to `rootKeyLabel`.
+		panic("cannot traverse cache tree")
+	}
+
+	if len(labels) > 1 {
+		tail = strings.Join(labels[1:], keyLabelsSeparator)
+		if child, ok := n.children[labels[1]]; ok {
+			return child.longestCommonLabel(tail)
+		}
+	}
+
+	return n, tail
+}
+
+func (n *treeNode) list() []*cacheEntry {
+	var entries []*cacheEntry
+	if n.entry != nil {
+		entries = append(entries, n.entry)
+	}
+	for _, child := range n.children {
+		entries = append(entries, child.list()...)
+	}
+	return entries
+}
+
+func revertKey(key string) string {
+	labels := strings.Split(key, keyLabelsSeparator)
+	labels = append(labels, rootKeyLabel)
+	for i, j := 0, len(labels)-1; i < j; i, j = i+1, j-1 {
+		labels[i], labels[j] = labels[j], labels[i]
+	}
+	return strings.Join(labels, keyLabelsSeparator)
 }

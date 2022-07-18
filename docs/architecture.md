@@ -181,17 +181,37 @@ Each phase is sequential to the other, from (i) to (iv), while the evaluators wi
 
 ## Host lookup
 
-Authorino reads the request host from `Attributes.Http.Host` of Envoy's [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) type, and uses it as key to lookup in the [cache](#resource-reconciliation-and-status-update) of `AuthConfig`s.
+Authorino reads the request host from `Attributes.Http.Host` of Envoy's [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) type, and uses it as key to lookup in the [cache](#resource-reconciliation-and-status-update) of `AuthConfig`s, matched against `spec.hosts`.
 
-Alternatively, `host` can be supplied in `Attributes.ContextExtensions`, which takes precedence before the actual host attribute of the HTTP request. This is useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup**.
+Alternatively to `Attributes.Http.Host`, a `host` entry can be supplied in the `Attributes.ContextExtensions` map of the external authorino request. This will take precedence before the host attribute of the HTTP request.
 
-If more than one host name is specified in the `AuthConfig`, all of them can be used as the key, i.e. all of them can be requested in the authorization request and will be mapped to the same config.
+The `host` context extension is useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup** with lookup strongly dictated by the external authorization client (e.g. Envoy), which often knows about routing and the expected `AuthConfig` to enforce beyond what Authorino can infer strictly based on the host name.
 
-The host can include the port number (i.e. `hostname:port`) or it can be just the name of the host. Authorino will first try finding a config in the cache that is associated to `hostname:port` as supplied in the authorization request; if the cache misses an entry for `hostname:port`, Authorino will then remove the `:port` suffix and lookup again using just `hostname` as key. This allows to change port numbers for a same host, as long as the name of the host is the same, without having to list multiple combinations of `hostname:port` to the `AuthConfig` spec.
+Wildcards can also be used in the host names specified in the `AuthConfig`, resolved by Authorino. E.g. if `*.pets.com` is in `spec.hosts`, Authorino will match the concrete host names `dogs.pets.com`, `cats.pets.com`, etc. In case, of multiple possible matches, Authorino will try the longest match first (in terms of host name labels) and fall back to closest wildcard upwards in the domain tree (if any).
+
+When more than one host name is specified in the `AuthConfig`, all of them can be used as key, i.e. all of them can be requested in the authorization request and will be mapped to the same config.
+
+**Example.** Host lookup with wildcards.
+
+![Domain tree](http://www.plantuml.com/plantuml/png/RP71ReCm38RlVWhKuoGcjN2U-YPLb6MTDS0e9E-_v8zgNC4fyVU5nFo-Ryd5bEU9Ol39BSyfT9VFI-UsBeeaijZB355MYzUGDl2wiU93wQE-OfNpSu2jcpUnil97AOxtmU0-wrWWMOuVi1oUNtY5Agl5oKr_8VQl7bg9BiXpzEWlfrylomy_-oiELN0zqpVLjpCzg1xEzAXw92g1TtrU-pQI6YXA3AB6iLSQTaEOo2lAXX2uPcWOiPX7M8ndePAKxlTSW90Y4O80-DB8yVUDsJGjrev1XqPr_82ZXJXw3yjtdgT_)
+
+The domain tree above induces the following relation:
+- `foo.nip.io` → `authconfig-1` (matches `*.io`)
+- `talker-api.nip.io` → `authconfig-2` (matches `talker-api.nip.io`)
+- `dogs.pets.com` → `authconfig-2` (matches `*.pets.com`)
+- `api.acme.com` → `authconfig-3` (matches `api.acme.com`)
+- `www.acme.com` → `authconfig-4` (matches `*.acme.com`)
+- `foo.org` → `404 Not found`
+
+<br/>
+
+The host can include the port number (i.e. `hostname:port`) or it can be just the name of the host name. Authorino will first try finding a config in the cache that is associated to `hostname:port` as supplied in the authorization request; if the cache misses an entry for `hostname:port`, Authorino will then remove the `:port` suffix and repeate the lookup using just `hostname` as key. This provides implicit support for multiple port numbers for a same host without having to list all combinations in the `AuthConfig`.
 
 ### Avoiding host name collision
 
-Authorino tries to prevent host name collision across namespaces by rejecting `AuthConfig`s that include at least one host name already by another `AuthConfig` in a different namespace. This is intentionally designed to avoid that, in [cluster-wide deployments](#cluster-wide-vs-namespaced-instances) of Authorino, users of one namespace can surpersed configs of another.
+Authorino tries to prevent host name collision across namespaces by rejecting `AuthConfig`s that include at least one host name already taken by another `AuthConfig` in a different namespace. This is intentionally designed to avoid that, in [cluster-wide deployments](#cluster-wide-vs-namespaced-instances) of Authorino, users of one namespace can surpersed `AuthConfig` of each other.
+
+With wildcards, a host that matches a higher level wildcard already added to the cache will be considered already taken. That
 
 ## The Authorization JSON
 
