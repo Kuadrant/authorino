@@ -46,6 +46,18 @@ func (mr *MockCacheMockRecorder) Delete(id interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockCache)(nil).Delete), id)
 }
 
+// DeleteKey mocks base method.
+func (m *MockCache) DeleteKey(id, key string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteKey", id, key)
+}
+
+// DeleteKey indicates an expected call of DeleteKey.
+func (mr *MockCacheMockRecorder) DeleteKey(id, key interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteKey", reflect.TypeOf((*MockCache)(nil).DeleteKey), id, key)
+}
+
 // FindId mocks base method.
 func (m *MockCache) FindId(key string) (string, bool) {
 	m.ctrl.T.Helper()

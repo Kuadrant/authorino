@@ -17,6 +17,7 @@ type Cache interface {
 	Set(id string, key string, config evaluators.AuthConfig, override bool) error
 	Get(key string) *evaluators.AuthConfig
 	Delete(id string)
+	DeleteKey(id, key string)
 	List() []*evaluators.AuthConfig
 
 	FindId(key string) (id string, found bool)
@@ -80,11 +81,16 @@ func (c *authConfigTree) Delete(id string) {
 
 	if keys, ok := c.keys[id]; ok {
 		for _, key := range keys {
-			if node, _ := c.root.longestCommonLabel(revertKey(key)); node != nil && node.entry != nil && node.entry.Id == id {
-				node.entry = nil
-			}
+			c.deleteKey(id, key)
 		}
 	}
+}
+
+func (c *authConfigTree) DeleteKey(id, key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.deleteKey(id, key)
 }
 
 func (c *authConfigTree) List() []*evaluators.AuthConfig {
@@ -104,6 +110,12 @@ func (c *authConfigTree) FindId(key string) (id string, found bool) {
 
 func (c *authConfigTree) FindKeys(id string) []string {
 	return c.keys[id]
+}
+
+func (c *authConfigTree) deleteKey(id, key string) {
+	if node, _ := c.root.longestCommonLabel(revertKey(key)); node != nil && node.entry != nil && node.entry.Id == id {
+		node.entry = nil
+	}
 }
 
 func newTreeNode(label string, parent *treeNode) *treeNode {

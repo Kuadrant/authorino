@@ -225,8 +225,7 @@ func TestHostColllision(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
-	cacheMock.EXPECT().Delete(authConfigName.String())
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 	cacheMock.EXPECT().FindId("other.io").Return("", false)
 	cacheMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
@@ -248,8 +247,7 @@ func TestMissingWatchedAuthConfigLabels(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
-	cacheMock.EXPECT().Delete(authConfigName.String())
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
 
@@ -271,8 +269,7 @@ func TestMatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
-	cacheMock.EXPECT().Delete(authConfigName.String())
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
 
@@ -294,7 +291,7 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().Delete(authConfigName.String())
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
