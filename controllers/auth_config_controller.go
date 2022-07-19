@@ -93,6 +93,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
+		// delete related authconfigs from cache.
+		r.Cache.Delete(cacheId)
+
 		for host, evaluatorConfig := range evaluatorConfigByHost {
 			// Check for host collision with another namespace
 			if cachedKey, found := r.Cache.FindId(host); found {
