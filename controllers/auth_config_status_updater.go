@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"unicode"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-logr/logr"
 	k8score "k8s.io/api/core/v1"
@@ -65,7 +65,7 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, re
 		message = report.Message
 		linkedHosts = report.LinkedHosts
 	}
-	looseHosts := subtract(authConfig.Spec.Hosts, linkedHosts)
+	looseHosts := utils.SubtractSlice(authConfig.Spec.Hosts, linkedHosts)
 
 	// available
 	changed := updateStatusAvailable(authConfig, len(linkedHosts) > 0)
@@ -147,7 +147,7 @@ func updateStatusAvailable(authConfig *api.AuthConfig, available bool) (changed 
 		Type:    api.StatusConditionAvailable,
 		Status:  status,
 		Reason:  reason,
-		Message: capitalize(message),
+		Message: utils.CapitalizeString(message),
 	})
 
 	return
@@ -168,7 +168,7 @@ func updateStatusReady(authConfig *api.AuthConfig, ready bool, reason, message s
 		Type:    api.StatusConditionReady,
 		Status:  status,
 		Reason:  reason,
-		Message: capitalize(message),
+		Message: utils.CapitalizeString(message),
 	})
 
 	return
@@ -219,28 +219,4 @@ func issuingWristbands(authConfig *api.AuthConfig) bool {
 		}
 	}
 	return false
-}
-
-func capitalize(message string) string {
-	if len(message) == 0 {
-		return ""
-	}
-	r := []rune(message)
-	return string(append([]rune{unicode.ToUpper(r[0])}, r[1:]...))
-}
-
-func subtract(slice1, slice2 []string) []string {
-	type obj struct{}
-	m := make(map[string]obj)
-	for _, s := range slice2 {
-		m[s] = obj{}
-	}
-	diff := []string{}
-	for _, v := range slice1 {
-		if _, remove := m[v]; remove {
-			continue
-		}
-		diff = append(diff, v)
-	}
-	return diff
 }
