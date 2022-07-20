@@ -139,6 +139,7 @@ func newTestAuthConfigReconciler(client client.WithWatch, c cache.Cache) *AuthCo
 		Logger: log.WithName("test").WithName("authconfigreconciler"),
 		Scheme: nil,
 		Cache:  c,
+		Errors: NewReconciliationErrorsMap(),
 	}
 }
 

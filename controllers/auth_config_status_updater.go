@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
@@ -25,6 +26,7 @@ type AuthConfigStatusUpdater struct {
 	client.Client
 	Logger        logr.Logger
 	Cache         cache.Cache
+	Errors        *ReconciliationErrorsMap
 	LabelSelector labels.Selector
 }
 
@@ -63,7 +65,14 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, ca
 	changed := updateStatusAvailable(authConfig, len(linked) > 0)
 
 	// ready
-	changed = updateStatusReady(authConfig, len(loose) == 0) || changed
+	ready := len(loose) == 0
+	var reason, message string
+	if reconcilitionError, errorsFound := u.Errors.Get(cacheId); errorsFound {
+		ready = false
+		reason = reconcilitionError.Reason
+		message = reconcilitionError.Message
+	}
+	changed = updateStatusReady(authConfig, ready, reason, message) || changed
 
 	// summary
 	changed = updateStatusSummary(authConfig, linked) || changed
@@ -156,27 +165,28 @@ func updateStatusAvailable(authConfig *api.AuthConfig, available bool) (changed 
 		Type:    api.StatusConditionAvailable,
 		Status:  status,
 		Reason:  reason,
-		Message: message,
+		Message: capitalize(message),
 	})
 
 	return
 }
 
-func updateStatusReady(authConfig *api.AuthConfig, ready bool) (changed bool) {
+func updateStatusReady(authConfig *api.AuthConfig, ready bool, reason, message string) (changed bool) {
 	status := k8score.ConditionFalse
-	reason := api.StatusReasonHostsNotLinked
-	message := "One or more hosts not linked to the resource"
 
 	if ready {
 		status = k8score.ConditionTrue
 		reason = api.StatusReasonReconciled
 		message = ""
+	} else if reason == "" {
+		reason = api.StatusReasonUnknown
 	}
+
 	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.Condition{
 		Type:    api.StatusConditionReady,
 		Status:  status,
 		Reason:  reason,
-		Message: message,
+		Message: capitalize(message),
 	})
 
 	return
@@ -200,7 +210,8 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 	sort.Strings(currentLinkedHosts)
 	sort.Strings(newLinkedHosts)
 
-	changed = new.NumHostsReady != current.NumHostsReady ||
+	changed = new.Ready != current.Ready ||
+		new.NumHostsReady != current.NumHostsReady ||
 		strings.Join(currentLinkedHosts, ",") != strings.Join(newLinkedHosts, ",") ||
 		new.NumIdentitySources != current.NumIdentitySources ||
 		new.NumMetadataSources != current.NumMetadataSources ||
@@ -222,4 +233,12 @@ func issuingWristbands(authConfig *api.AuthConfig) bool {
 		}
 	}
 	return false
+}
+
+func capitalize(message string) string {
+	if len(message) == 0 {
+		return ""
+	}
+	r := []rune(message)
+	return string(append([]rune{unicode.ToUpper(r[0])}, r[1:]...))
 }

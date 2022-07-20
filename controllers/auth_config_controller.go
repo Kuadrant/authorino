@@ -52,6 +52,7 @@ type AuthConfigReconciler struct {
 	Logger        logr.Logger
 	Scheme        *runtime.Scheme
 	Cache         cache.Cache
+	Errors        *ReconciliationErrorsMap
 	LabelSelector labels.Selector
 	Namespace     string
 }
@@ -62,7 +63,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 	cacheId := req.String()
 
-	var added bool
+	var addedToCache, containErrors bool
 
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
@@ -90,6 +91,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
+			r.Errors.Set(cacheId, api.StatusReasonInvalidResource, err.Error())
 			return ctrl.Result{}, err
 		}
 
@@ -106,21 +108,28 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// Check for host collision with another namespace
 			if cachedKey, found := r.Cache.FindId(host); found {
 				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
+					containErrors = true
 					logger.Info("host already taken in another namespace", "host", host)
+					r.Errors.Set(cacheId, api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource")
 					continue
 				}
 			}
 
 			if err := r.Cache.Set(cacheId, host, evaluatorConfig, true); err != nil {
+				r.Errors.Set(cacheId, api.StatusReasonCachingError, err.Error())
 				return ctrl.Result{}, err
 			}
 
-			added = true
+			addedToCache = true
 		}
 	}
 
-	if added {
+	if addedToCache {
 		logger.Info("resource reconciled")
+	}
+
+	if !containErrors {
+		r.Errors.Clear(cacheId)
 	}
 
 	return ctrl.Result{}, nil

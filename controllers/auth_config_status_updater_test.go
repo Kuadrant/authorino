@@ -148,6 +148,7 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := mockStatusUpdaterReconciler(client, cache)
+	reconciler.Errors.Set(resourceName.String(), api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource")
 
 	cache.EXPECT().FindKeys("authorino/auth-config-1").Return([]string{"my-api.com"})
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
@@ -205,6 +206,7 @@ func mockStatusUpdaterReconciler(client client.WithWatch, c cache.Cache) *AuthCo
 		Client:        client,
 		Logger:        log.WithName("test").WithName("authconfigstatusupdater"),
 		Cache:         c,
+		Errors:        NewReconciliationErrorsMap(),
 		LabelSelector: ToLabelSelector("authorino.kuadrant.io/managed-by=authorino"),
 	}
 }
