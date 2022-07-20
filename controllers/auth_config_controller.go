@@ -60,13 +60,13 @@ type AuthConfigReconciler struct {
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
-	cacheId := req.String()
-
-	var linkedHosts []string
+	resourceId := req.String()
+	logger := r.Logger.WithValues("authconfig", resourceId)
 	reportReconciled := true
 
-	r.StatusReport.Set(cacheId, api.StatusReasonReconciling, "", linkedHosts)
+	var linkedHosts []string
+
+	r.StatusReport.Set(resourceId, api.StatusReasonReconciling, "", linkedHosts)
 
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
@@ -77,36 +77,36 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
-		if err := r.cleanConfigs(cacheId, ctx); err != nil {
+		if err := r.cleanConfigs(resourceId, ctx); err != nil {
 			logger.Error(err, failedToCleanConfig)
 		}
 
 		// delete related authconfigs from cache.
-		r.Cache.Delete(cacheId)
-		r.StatusReport.Clear(cacheId)
+		r.Cache.Delete(resourceId)
+		r.StatusReport.Clear(resourceId)
 		reportReconciled = false
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the cache
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
-		if err := r.cleanConfigs(cacheId, ctx); err != nil {
+		if err := r.cleanConfigs(resourceId, ctx); err != nil {
 			logger.Error(err, failedToCleanConfig)
 		}
 
 		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
-			r.StatusReport.Set(cacheId, api.StatusReasonInvalidResource, err.Error(), linkedHosts)
+			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), linkedHosts)
 			return ctrl.Result{}, err
 		}
 
 		// delete unused hosts from cache
-		for _, host := range r.Cache.FindKeys(cacheId) {
+		for _, host := range r.Cache.FindKeys(resourceId) {
 			if _, found := evaluatorConfigByHost[host]; found {
 				continue
 			}
 
-			r.Cache.DeleteKey(cacheId, host)
+			r.Cache.DeleteKey(resourceId, host)
 		}
 
 		for host, evaluatorConfig := range evaluatorConfigByHost {
@@ -114,14 +114,14 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if cachedKey, found := r.Cache.FindId(host); found {
 				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
 					logger.Info("host already taken in another namespace", "host", host)
-					r.StatusReport.Set(cacheId, api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource", linkedHosts)
+					r.StatusReport.Set(resourceId, api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource", linkedHosts)
 					reportReconciled = false
 					continue
 				}
 			}
 
-			if err := r.Cache.Set(cacheId, host, evaluatorConfig, true); err != nil {
-				r.StatusReport.Set(cacheId, api.StatusReasonCachingError, err.Error(), linkedHosts)
+			if err := r.Cache.Set(resourceId, host, evaluatorConfig, true); err != nil {
+				r.StatusReport.Set(resourceId, api.StatusReasonCachingError, err.Error(), linkedHosts)
 				return ctrl.Result{}, err
 			}
 
@@ -134,14 +134,14 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if reportReconciled {
-		r.StatusReport.Set(cacheId, api.StatusReasonReconciled, "", linkedHosts)
+		r.StatusReport.Set(resourceId, api.StatusReasonReconciled, "", linkedHosts)
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *AuthConfigReconciler) cleanConfigs(cacheId string, ctx context.Context) error {
-	if hosts := r.Cache.FindKeys(cacheId); len(hosts) > 0 {
+func (r *AuthConfigReconciler) cleanConfigs(resourceId string, ctx context.Context) error {
+	if hosts := r.Cache.FindKeys(resourceId); len(hosts) > 0 {
 		// no need to clean for all the hosts as the config should be the same
 		if authConfig := r.Cache.Get(hosts[0]); authConfig != nil {
 			return authConfig.Clean(ctx)
