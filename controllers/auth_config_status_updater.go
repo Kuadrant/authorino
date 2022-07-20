@@ -8,7 +8,6 @@ import (
 	"unicode"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
-	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -25,8 +24,7 @@ import (
 type AuthConfigStatusUpdater struct {
 	client.Client
 	Logger        logr.Logger
-	Cache         cache.Cache
-	Errors        *ReconciliationErrorsMap
+	StatusReport  *StatusReportMap
 	LabelSelector labels.Selector
 }
 
@@ -56,26 +54,28 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 }
 
-func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, cacheId string, authConfig *api.AuthConfig) (err error) {
+func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, resourceId string, authConfig *api.AuthConfig) (err error) {
 	logger := log.FromContext(ctx)
 
-	linked, loose := u.partitionHostsByStatus(cacheId, authConfig)
+	var reason, message string
+	linkedHosts := []string{}
+	report, reportAvailable := u.StatusReport.Get(resourceId)
+	if reportAvailable {
+		reason = report.Reason
+		message = report.Message
+		linkedHosts = report.LinkedHosts
+	}
+	looseHosts := subtract(authConfig.Spec.Hosts, linkedHosts)
 
 	// available
-	changed := updateStatusAvailable(authConfig, len(linked) > 0)
+	changed := updateStatusAvailable(authConfig, len(linkedHosts) > 0)
 
 	// ready
-	ready := len(loose) == 0
-	var reason, message string
-	if reconcilitionError, errorsFound := u.Errors.Get(cacheId); errorsFound {
-		ready = false
-		reason = reconcilitionError.Reason
-		message = reconcilitionError.Message
-	}
+	ready := len(looseHosts) == 0 && reason == api.StatusReasonReconciled
 	changed = updateStatusReady(authConfig, ready, reason, message) || changed
 
 	// summary
-	changed = updateStatusSummary(authConfig, linked) || changed
+	changed = updateStatusSummary(authConfig, linkedHosts) || changed
 
 	if !authConfig.Status.Ready() {
 		err = fmt.Errorf("resource not ready")
@@ -97,24 +97,6 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, ca
 	logger.Info("resource status updated")
 
 	return
-}
-
-func (u *AuthConfigStatusUpdater) partitionHostsByStatus(cacheId string, authConfig *api.AuthConfig) ([]string, []string) {
-	type obj struct{}
-	hosts := make(map[string]obj)
-	for _, host := range u.Cache.FindKeys(cacheId) {
-		hosts[host] = obj{}
-	}
-	linked := []string{}
-	loose := []string{}
-	for _, host := range authConfig.Spec.Hosts {
-		if _, ok := hosts[host]; ok {
-			linked = append(linked, host)
-		} else {
-			loose = append(loose, host)
-		}
-	}
-	return linked, loose
 }
 
 func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
@@ -195,6 +177,10 @@ func updateStatusReady(authConfig *api.AuthConfig, ready bool, reason, message s
 func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (changed bool) {
 	current := authConfig.Status.Summary
 
+	if len(newLinkedHosts) == 0 {
+		newLinkedHosts = []string{}
+	}
+
 	new := api.Summary{
 		Ready:                    authConfig.Status.Ready(),
 		HostsReady:               newLinkedHosts,
@@ -241,4 +227,20 @@ func capitalize(message string) string {
 	}
 	r := []rune(message)
 	return string(append([]rune{unicode.ToUpper(r[0])}, r[1:]...))
+}
+
+func subtract(slice1, slice2 []string) []string {
+	type obj struct{}
+	m := make(map[string]obj)
+	for _, s := range slice2 {
+		m[s] = obj{}
+	}
+	diff := []string{}
+	for _, v := range slice1 {
+		if _, remove := m[v]; remove {
+			continue
+		}
+		diff = append(diff, v)
+	}
+	return diff
 }

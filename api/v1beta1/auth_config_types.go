@@ -46,6 +46,7 @@ const (
 	StatusConditionReady     ConditionType = "Ready"
 
 	// Status reasons
+	StatusReasonReconciling     string = "Reconciling"
 	StatusReasonReconciled      string = "Reconciled"
 	StatusReasonInvalidResource string = "Invalid"
 	StatusReasonHostsLinked     string = "HostsLinked"

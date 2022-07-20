@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
-	"github.com/kuadrant/authorino/pkg/cache"
-	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/golang/mock/gomock"
@@ -24,13 +22,12 @@ func TestAuthConfigStatusUpdater_Reconcile(t *testing.T) {
 	mockctrl := gomock.NewController(t)
 	defer mockctrl.Finish()
 
-	cache := mock_cache.NewMockCache(mockctrl)
 	authConfig := mockStatusUpdateAuthConfig()
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
-	reconciler := mockStatusUpdaterReconciler(client, cache)
+	reconciler := mockStatusUpdaterReconciler(client)
+	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonReconciled, "", []string{"echo-api"})
 
-	cache.EXPECT().FindKeys("authorino/auth-config-1").Return([]string{"echo-api"})
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
@@ -45,11 +42,10 @@ func TestAuthConfigStatusUpdater_MissingWatchedAuthConfigLabels(t *testing.T) {
 	mockctrl := gomock.NewController(t)
 	defer mockctrl.Finish()
 
-	cache := mock_cache.NewMockCache(mockctrl)
 	authConfig := mockStatusUpdateAuthConfigWithLabels(map[string]string{})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
-	reconciler := mockStatusUpdaterReconciler(client, cache)
+	reconciler := mockStatusUpdaterReconciler(client)
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
@@ -65,13 +61,12 @@ func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
 	mockctrl := gomock.NewController(t)
 	defer mockctrl.Finish()
 
-	cache := mock_cache.NewMockCache(mockctrl)
 	authConfig := mockStatusUpdateAuthConfigWithLabels(map[string]string{"authorino.kuadrant.io/managed-by": "authorino", "other-label": "other value"})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
-	reconciler := mockStatusUpdaterReconciler(client, cache)
+	reconciler := mockStatusUpdaterReconciler(client)
+	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonReconciled, "", []string{"echo-api"})
 
-	cache.EXPECT().FindKeys("authorino/auth-config-1").Return([]string{"echo-api"})
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
@@ -86,11 +81,10 @@ func TestAuthConfigStatusUpdater_UnmatchingAuthConfigLabels(t *testing.T) {
 	mockctrl := gomock.NewController(t)
 	defer mockctrl.Finish()
 
-	cache := mock_cache.NewMockCache(mockctrl)
 	authConfig := newTestAuthConfig(map[string]string{"authorino.kuadrant.io/managed-by": "other"})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
-	reconciler := mockStatusUpdaterReconciler(client, cache)
+	reconciler := mockStatusUpdaterReconciler(client)
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
@@ -106,17 +100,14 @@ func TestAuthConfigStatusUpdater_NotReady(t *testing.T) {
 	mockctrl := gomock.NewController(t)
 	defer mockctrl.Finish()
 
-	cache := mock_cache.NewMockCache(mockctrl)
 	authConfig := mockStatusUpdateAuthConfig()
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
-	reconciler := mockStatusUpdaterReconciler(client, cache)
+	reconciler := mockStatusUpdaterReconciler(client)
 
 	var result reconcile.Result
 	var err error
 	var authConfigCheck api.AuthConfig
-
-	cache.EXPECT().FindKeys("authorino/auth-config-1").Return([]string{}).Times(2)
 
 	// try to reconcile once
 	result, err = reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
@@ -143,14 +134,12 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	mockctrl := gomock.NewController(t)
 	defer mockctrl.Finish()
 
-	cache := mock_cache.NewMockCache(mockctrl)
 	authConfig := mockStatusUpdateAuthConfigWithHosts([]string{"my-api.com", "my-api.local"})
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
-	reconciler := mockStatusUpdaterReconciler(client, cache)
-	reconciler.Errors.Set(resourceName.String(), api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource")
+	reconciler := mockStatusUpdaterReconciler(client)
+	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource", []string{"my-api.com"})
 
-	cache.EXPECT().FindKeys("authorino/auth-config-1").Return([]string{"my-api.com"})
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
 	assert.Check(t, result.Requeue)
@@ -201,12 +190,11 @@ func mockStatusUpdateAuthConfigWithLabelsAndHosts(labels map[string]string, host
 	}
 }
 
-func mockStatusUpdaterReconciler(client client.WithWatch, c cache.Cache) *AuthConfigStatusUpdater {
+func mockStatusUpdaterReconciler(client client.WithWatch) *AuthConfigStatusUpdater {
 	return &AuthConfigStatusUpdater{
 		Client:        client,
 		Logger:        log.WithName("test").WithName("authconfigstatusupdater"),
-		Cache:         c,
-		Errors:        NewReconciliationErrorsMap(),
+		StatusReport:  NewStatusReportMap(),
 		LabelSelector: ToLabelSelector("authorino.kuadrant.io/managed-by=authorino"),
 	}
 }

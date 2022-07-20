@@ -52,7 +52,7 @@ type AuthConfigReconciler struct {
 	Logger        logr.Logger
 	Scheme        *runtime.Scheme
 	Cache         cache.Cache
-	Errors        *ReconciliationErrorsMap
+	StatusReport  *StatusReportMap
 	LabelSelector labels.Selector
 	Namespace     string
 }
@@ -63,7 +63,10 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", req.NamespacedName)
 	cacheId := req.String()
 
-	var addedToCache, containErrors bool
+	var linkedHosts []string
+	reportReconciled := true
+
+	r.StatusReport.Set(cacheId, api.StatusReasonReconciling, "", linkedHosts)
 
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
@@ -80,6 +83,8 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// delete related authconfigs from cache.
 		r.Cache.Delete(cacheId)
+		r.StatusReport.Clear(cacheId)
+		reportReconciled = false
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the cache
@@ -91,7 +96,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
-			r.Errors.Set(cacheId, api.StatusReasonInvalidResource, err.Error())
+			r.StatusReport.Set(cacheId, api.StatusReasonInvalidResource, err.Error(), linkedHosts)
 			return ctrl.Result{}, err
 		}
 
@@ -108,28 +113,28 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// Check for host collision with another namespace
 			if cachedKey, found := r.Cache.FindId(host); found {
 				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
-					containErrors = true
 					logger.Info("host already taken in another namespace", "host", host)
-					r.Errors.Set(cacheId, api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource")
+					r.StatusReport.Set(cacheId, api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource", linkedHosts)
+					reportReconciled = false
 					continue
 				}
 			}
 
 			if err := r.Cache.Set(cacheId, host, evaluatorConfig, true); err != nil {
-				r.Errors.Set(cacheId, api.StatusReasonCachingError, err.Error())
+				r.StatusReport.Set(cacheId, api.StatusReasonCachingError, err.Error(), linkedHosts)
 				return ctrl.Result{}, err
 			}
 
-			addedToCache = true
+			linkedHosts = append(linkedHosts, host)
 		}
 	}
 
-	if addedToCache {
+	if len(linkedHosts) > 0 {
 		logger.Info("resource reconciled")
 	}
 
-	if !containErrors {
-		r.Errors.Clear(cacheId)
+	if reportReconciled {
+		r.StatusReport.Set(cacheId, api.StatusReasonReconciled, "", linkedHosts)
 	}
 
 	return ctrl.Result{}, nil
