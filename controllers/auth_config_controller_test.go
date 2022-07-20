@@ -8,6 +8,7 @@ import (
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/cache"
 	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -177,6 +178,37 @@ func TestAuthConfigNotFound(t *testing.T) {
 	assert.DeepEqual(t, result, ctrl.Result{}) // Result should be empty
 }
 
+func TestRemoveHostFromAuthConfig(t *testing.T) {
+	authConfigCache := cache.NewCache()
+	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Spec.Hosts = append(authConfig.Spec.Hosts, "other.io")
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, authConfigCache)
+
+	_, _ = reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	var config *evaluators.AuthConfig
+
+	config = authConfigCache.Get("echo-api")
+	assert.Check(t, config != nil)
+
+	config = authConfigCache.Get("other.io")
+	assert.Check(t, config != nil)
+
+	authConfig.Spec.Hosts = []string{"echo-api"} // remove other.io
+	_ = client.Update(context.Background(), &authConfig)
+
+	_, _ = reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	config = authConfigCache.Get("echo-api")
+	assert.Check(t, config != nil)
+
+	config = authConfigCache.Get("other.io")
+	assert.Check(t, config == nil)
+}
+
 func TestTranslateAuthConfig(t *testing.T) {
 	// TODO
 }
@@ -193,7 +225,7 @@ func TestHostColllision(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 	cacheMock.EXPECT().FindId("other.io").Return("", false)
 	cacheMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
@@ -215,7 +247,7 @@ func TestMissingWatchedAuthConfigLabels(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
 
@@ -237,7 +269,7 @@ func TestMatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
 
@@ -259,7 +291,7 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
-	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{})
+	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().Delete(authConfigName.String())
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
