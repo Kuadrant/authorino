@@ -138,7 +138,7 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 	client := newTestK8sClient(&authConfig)
 	reconciler := mockStatusUpdaterReconciler(client)
-	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource", []string{"my-api.com"})
+	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonHostsNotLinked, "one or more hosts are not linked to the resource", []string{"my-api.com"})
 
 	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
 
@@ -156,7 +156,7 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	assert.Equal(t, status.Conditions[1].Type, api.StatusConditionReady)
 	assert.Equal(t, status.Conditions[1].Status, k8score.ConditionFalse)
 	assert.Equal(t, status.Conditions[1].Reason, api.StatusReasonHostsNotLinked)
-	assert.Equal(t, status.Conditions[1].Message, "One or more hosts not linked to the resource")
+	assert.Equal(t, status.Conditions[1].Message, "One or more hosts are not linked to the resource")
 	assert.Equal(t, len(status.Summary.HostsReady), 1)
 	assert.Equal(t, status.Summary.HostsReady[0], "my-api.com")
 }

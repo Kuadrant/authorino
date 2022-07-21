@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -226,6 +227,7 @@ func TestHostColllision(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
+	cacheMock.EXPECT().Empty().Return(false)
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 	cacheMock.EXPECT().FindId("other.io").Return("", false)
@@ -248,6 +250,7 @@ func TestMissingWatchedAuthConfigLabels(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 
+	cacheMock.EXPECT().Empty().Return(false)
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
@@ -270,6 +273,7 @@ func TestMatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
+	cacheMock.EXPECT().Empty().Return(false)
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().FindId("echo-api").Return("", false)
 	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true)
@@ -292,6 +296,7 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 	reconciler := newTestAuthConfigReconciler(client, cacheMock)
 	reconciler.LabelSelector = ToLabelSelector("authorino.kuadrant.io/managed-by=authorino")
 
+	cacheMock.EXPECT().Empty().Return(false)
 	cacheMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	cacheMock.EXPECT().Delete(authConfigName.String())
 
@@ -310,6 +315,38 @@ func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	})
 	assert.NilError(t, err)
 	assert.Equal(t, len(c["app.com"].IdentityConfigs), 1)
+}
+
+func TestEmptyCache(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	cacheMock := mock_cache.NewMockCache(mockController)
+
+	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Status.Summary = api.Summary{
+		Ready:                    true,
+		HostsReady:               authConfig.Spec.Hosts,
+		NumHostsReady:            fmt.Sprintf("%d/%d", len(authConfig.Spec.Hosts), len(authConfig.Spec.Hosts)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
+		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
+		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		FestivalWristbandEnabled: false,
+	}
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	resourceId := authConfigName.String()
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, cacheMock)
+
+	cacheMock.EXPECT().Empty().Return(true)
+	cacheMock.EXPECT().FindKeys(resourceId).Return([]string{}).AnyTimes()
+	cacheMock.EXPECT().FindId("echo-api").Times(2).Return("", false).Return(resourceId, true)
+	cacheMock.EXPECT().Set("authorino/auth-config-1", "echo-api", gomock.Any(), true).Times(2)
+
+	_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	assert.NilError(t, err)
 }
 
 func BenchmarkReconcileAuthConfig(b *testing.B) {

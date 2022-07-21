@@ -19,7 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
+	"sync"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -55,16 +57,22 @@ type AuthConfigReconciler struct {
 	StatusReport  *StatusReportMap
 	LabelSelector labels.Selector
 	Namespace     string
+
+	cacheRebuild sync.Mutex
 }
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if err := r.bootstrapCacheIndex(ctx); err != nil {
+		r.Logger.Error(err, "failed to bootstrap cache index")
+	}
+
 	resourceId := req.String()
 	logger := r.Logger.WithValues("authconfig", resourceId)
 	reportReconciled := true
 
-	var linkedHosts []string
+	var linkedHosts, looseHosts []string
 
 	r.StatusReport.Set(resourceId, api.StatusReasonReconciling, "", linkedHosts)
 
@@ -109,23 +117,16 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			r.Cache.DeleteKey(resourceId, host)
 		}
 
-		for host, evaluatorConfig := range evaluatorConfigByHost {
-			// Check for host collision with another namespace
-			if cachedKey, found := r.Cache.FindId(host); found {
-				if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != req.Namespace {
-					logger.Info("host already taken in another namespace", "host", host)
-					r.StatusReport.Set(resourceId, api.StatusReasonHostsNotLinked, "one or more hosts not linked to the resource", linkedHosts)
-					reportReconciled = false
-					continue
-				}
-			}
+		linkedHosts, looseHosts, err = r.addToCache(log.IntoContext(ctx, logger), req.Namespace, resourceId, evaluatorConfigByHost)
 
-			if err := r.Cache.Set(resourceId, host, evaluatorConfig, true); err != nil {
-				r.StatusReport.Set(resourceId, api.StatusReasonCachingError, err.Error(), linkedHosts)
-				return ctrl.Result{}, err
-			}
+		if len(looseHosts) > 0 {
+			r.StatusReport.Set(resourceId, api.StatusReasonHostsNotLinked, "one or more hosts are not linked to the resource", linkedHosts)
+			reportReconciled = false
+		}
 
-			linkedHosts = append(linkedHosts, host)
+		if err != nil {
+			r.StatusReport.Set(resourceId, api.StatusReasonCachingError, err.Error(), linkedHosts)
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -587,6 +588,84 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		evaluatorConfigByHost[host] = evaluatorConfig
 	}
 	return evaluatorConfigByHost, nil
+}
+
+func (r *AuthConfigReconciler) addToCache(ctx context.Context, resourceNamespace, resourceId string, evaluatorConfigByHost map[string]evaluators.AuthConfig) (linkedHosts, looseHosts []string, err error) {
+	logger := log.FromContext(ctx)
+	linkedHosts = []string{}
+	looseHosts = []string{}
+
+	for host, evaluatorConfig := range evaluatorConfigByHost {
+		// check for host collision with another namespace
+		if cachedKey, found := r.Cache.FindId(host); found {
+			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != resourceNamespace {
+				looseHosts = append(looseHosts, host)
+				logger.Info("host already taken in another namespace", "host", host)
+				continue
+			}
+		}
+
+		// add to cache
+		if err = r.Cache.Set(resourceId, host, evaluatorConfig, true); err != nil {
+			return
+		}
+
+		linkedHosts = append(linkedHosts, host)
+	}
+
+	return
+}
+
+func (r *AuthConfigReconciler) bootstrapCacheIndex(ctx context.Context) error {
+	r.cacheRebuild.Lock()
+	defer r.cacheRebuild.Unlock()
+
+	if !r.Cache.Empty() {
+		return nil
+	}
+
+	logger := r.Logger.WithName("bootstrap")
+	logger.Info("building cache index")
+
+	authConfigList := api.AuthConfigList{}
+	if err := r.List(ctx, &authConfigList); err != nil {
+		return err
+	}
+
+	sort.Sort(authConfigList.Items)
+
+	ctx = log.IntoContext(ctx, logger)
+	denyAll := evaluators.AuthConfig{
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{evaluators.NewDenyAllAuthorization(ctx, "deny-all", "")},
+		DenyWith:             evaluators.DenyWith{Unauthorized: &evaluators.DenyWithValues{Code: 503, Message: &json.JSONValue{Static: "Busy"}}},
+	}
+
+	for _, authConfig := range authConfigList.Items {
+		if len(authConfig.Status.Summary.HostsReady) == 0 { // unfortunately we cannot use arbitrary field selectors for custom resources yet - https://github.com/kubernetes/kubernetes/issues/51046
+			continue
+		}
+
+		evaluatorConfigByHost := make(map[string]evaluators.AuthConfig)
+		for _, host := range authConfig.Spec.Hosts {
+			evaluatorConfigByHost[host] = denyAll
+		}
+
+		authConfigName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
+		logger.V(1).Info("building cache index", "authconfig", authConfigName)
+
+		_, _, err := r.addToCache(
+			log.IntoContext(ctx, logger.WithValues("authconfig", authConfigName)),
+			authConfig.Namespace,
+			authConfigName.String(),
+			evaluatorConfigByHost,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *AuthConfigReconciler) ClusterWide() bool {
