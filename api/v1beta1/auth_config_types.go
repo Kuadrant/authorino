@@ -46,9 +46,13 @@ const (
 	StatusConditionReady     ConditionType = "Ready"
 
 	// Status reasons
-	StatusReasonReconciled     string = "Reconciled"
-	StatusReasonHostsLinked    string = "HostsLinked"
-	StatusReasonHostsNotLinked string = "HostsNotLinked"
+	StatusReasonReconciling     string = "Reconciling"
+	StatusReasonReconciled      string = "Reconciled"
+	StatusReasonInvalidResource string = "Invalid"
+	StatusReasonHostsLinked     string = "HostsLinked"
+	StatusReasonHostsNotLinked  string = "HostsNotLinked"
+	StatusReasonCachingError    string = "CachingError"
+	StatusReasonUnknown         string = "Unknown"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!

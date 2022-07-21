@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
-	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-logr/logr"
 	k8score "k8s.io/api/core/v1"
@@ -24,7 +24,7 @@ import (
 type AuthConfigStatusUpdater struct {
 	client.Client
 	Logger        logr.Logger
-	Cache         cache.Cache
+	StatusReport  *StatusReportMap
 	LabelSelector labels.Selector
 }
 
@@ -54,19 +54,28 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 }
 
-func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, cacheId string, authConfig *api.AuthConfig) (err error) {
+func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, resourceId string, authConfig *api.AuthConfig) (err error) {
 	logger := log.FromContext(ctx)
 
-	linked, loose := u.partitionHostsByStatus(cacheId, authConfig)
+	var reason, message string
+	linkedHosts := []string{}
+	report, reportAvailable := u.StatusReport.Get(resourceId)
+	if reportAvailable {
+		reason = report.Reason
+		message = report.Message
+		linkedHosts = report.LinkedHosts
+	}
+	looseHosts := utils.SubtractSlice(authConfig.Spec.Hosts, linkedHosts)
 
 	// available
-	changed := updateStatusAvailable(authConfig, len(linked) > 0)
+	changed := updateStatusAvailable(authConfig, len(linkedHosts) > 0)
 
 	// ready
-	changed = updateStatusReady(authConfig, len(loose) == 0) || changed
+	ready := len(looseHosts) == 0 && reason == api.StatusReasonReconciled
+	changed = updateStatusReady(authConfig, ready, reason, message) || changed
 
 	// summary
-	changed = updateStatusSummary(authConfig, linked) || changed
+	changed = updateStatusSummary(authConfig, linkedHosts) || changed
 
 	if !authConfig.Status.Ready() {
 		err = fmt.Errorf("resource not ready")
@@ -88,24 +97,6 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, ca
 	logger.Info("resource status updated")
 
 	return
-}
-
-func (u *AuthConfigStatusUpdater) partitionHostsByStatus(cacheId string, authConfig *api.AuthConfig) ([]string, []string) {
-	type obj struct{}
-	hosts := make(map[string]obj)
-	for _, host := range u.Cache.FindKeys(cacheId) {
-		hosts[host] = obj{}
-	}
-	linked := []string{}
-	loose := []string{}
-	for _, host := range authConfig.Spec.Hosts {
-		if _, ok := hosts[host]; ok {
-			linked = append(linked, host)
-		} else {
-			loose = append(loose, host)
-		}
-	}
-	return linked, loose
 }
 
 func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
@@ -156,27 +147,28 @@ func updateStatusAvailable(authConfig *api.AuthConfig, available bool) (changed 
 		Type:    api.StatusConditionAvailable,
 		Status:  status,
 		Reason:  reason,
-		Message: message,
+		Message: utils.CapitalizeString(message),
 	})
 
 	return
 }
 
-func updateStatusReady(authConfig *api.AuthConfig, ready bool) (changed bool) {
+func updateStatusReady(authConfig *api.AuthConfig, ready bool, reason, message string) (changed bool) {
 	status := k8score.ConditionFalse
-	reason := api.StatusReasonHostsNotLinked
-	message := "One or more hosts not linked to the resource"
 
 	if ready {
 		status = k8score.ConditionTrue
 		reason = api.StatusReasonReconciled
 		message = ""
+	} else if reason == "" {
+		reason = api.StatusReasonUnknown
 	}
+
 	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.Condition{
 		Type:    api.StatusConditionReady,
 		Status:  status,
 		Reason:  reason,
-		Message: message,
+		Message: utils.CapitalizeString(message),
 	})
 
 	return
@@ -184,6 +176,10 @@ func updateStatusReady(authConfig *api.AuthConfig, ready bool) (changed bool) {
 
 func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (changed bool) {
 	current := authConfig.Status.Summary
+
+	if len(newLinkedHosts) == 0 {
+		newLinkedHosts = []string{}
+	}
 
 	new := api.Summary{
 		Ready:                    authConfig.Status.Ready(),
@@ -200,7 +196,8 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 	sort.Strings(currentLinkedHosts)
 	sort.Strings(newLinkedHosts)
 
-	changed = new.NumHostsReady != current.NumHostsReady ||
+	changed = new.Ready != current.Ready ||
+		new.NumHostsReady != current.NumHostsReady ||
 		strings.Join(currentLinkedHosts, ",") != strings.Join(newLinkedHosts, ",") ||
 		new.NumIdentitySources != current.NumIdentitySources ||
 		new.NumMetadataSources != current.NumMetadataSources ||

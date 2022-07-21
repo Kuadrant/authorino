@@ -177,12 +177,14 @@ func main() {
 	}
 
 	cache := cache.NewCache()
+	statusReport := controllers.NewStatusReportMap()
 	controllerLogger := log.WithName("controller-runtime").WithName("manager").WithName("controller")
 
 	// sets up the auth config reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
 		Client:        mgr.GetClient(),
 		Cache:         cache,
+		StatusReport:  statusReport,
 		Logger:        controllerLogger.WithName("authconfig"),
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
@@ -240,7 +242,7 @@ func main() {
 	if err = (&controllers.AuthConfigStatusUpdater{
 		Client:        statusUpdateManager.GetClient(),
 		Logger:        controllerLogger.WithName("authconfig").WithName("statusupdater"),
-		Cache:         cache,
+		StatusReport:  statusReport,
 		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
 	}).SetupWithManager(statusUpdateManager); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfigstatusupdate")

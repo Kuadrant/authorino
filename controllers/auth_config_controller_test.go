@@ -135,10 +135,11 @@ func newTestK8sClient(initObjs ...runtime.Object) client.WithWatch {
 
 func newTestAuthConfigReconciler(client client.WithWatch, c cache.Cache) *AuthConfigReconciler {
 	return &AuthConfigReconciler{
-		Client: client,
-		Logger: log.WithName("test").WithName("authconfigreconciler"),
-		Scheme: nil,
-		Cache:  c,
+		Client:       client,
+		Logger:       log.WithName("test").WithName("authconfigreconciler"),
+		Scheme:       nil,
+		Cache:        c,
+		StatusReport: NewStatusReportMap(),
 	}
 }
 
