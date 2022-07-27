@@ -29,3 +29,6 @@ jobs:
       - name: Run make test
         run: |
           make test
+      - name: Run test benchmarks
+        run: |
+          make benchmarks
