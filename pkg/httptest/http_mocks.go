@@ -1,7 +1,6 @@
 package httptest
 
 import (
-	"log"
 	"net"
 	"net/http"
 	gohttptest "net/http/httptest"
@@ -16,8 +15,6 @@ type HttpServerMockResponse struct {
 type HttpServerMockResponseFunc func() HttpServerMockResponse
 
 func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerMockResponseFunc) *gohttptest.Server {
-	log.Printf("starting mock http server at %v", serverHost)
-
 	listener, err := net.Listen("tcp", serverHost)
 	if err != nil {
 		panic(err)

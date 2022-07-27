@@ -293,3 +293,28 @@ func TestCall(t *testing.T) {
 	assert.Check(t, authorized.(bool))
 	assert.Check(t, err == nil)
 }
+
+func BenchmarkJSONPatternMatchingAuthz(b *testing.B) {
+	ctrl := NewController(b)
+	defer ctrl.Finish()
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"headers":{"x-secret-header":"no-one-knows"}}}},"auth":{"identity":{"anonymous":true}}}`).MinTimes(1)
+	jsonAuth := &JSONPatternMatching{
+		Rules: []json.JSONPatternMatchingRule{
+			{
+				Selector: "context.request.http.headers.x-secret-header",
+				Operator: "eq",
+				Value:    "no-one-knows",
+			},
+		},
+	}
+
+	var err error
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err = jsonAuth.Call(pipelineMock, nil)
+	}
+	b.StopTimer()
+	assert.NilError(b, err)
+}

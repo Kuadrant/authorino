@@ -128,3 +128,21 @@ func TestLoadSecretsFail(t *testing.T) {
 	err := apiKey.loadSecrets(context.TODO())
 	assert.Error(t, err, "something terribly wrong happened")
 }
+
+func BenchmarkAPIKeyAuthn(b *testing.B) {
+	ctrl := gomock.NewController(b)
+	defer ctrl.Finish()
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetHttp().Return(nil).MinTimes(1)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil).MinTimes(1)
+	apiKey := NewApiKeyIdentity("jedi", map[string]string{"planet": "coruscant"}, "", authCredMock, testAPIKeyK8sClient, context.TODO())
+
+	var err error
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err = apiKey.Call(pipelineMock, context.TODO())
+	}
+	b.StopTimer()
+	assert.NilError(b, err)
+}

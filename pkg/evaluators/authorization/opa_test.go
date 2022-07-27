@@ -241,3 +241,20 @@ func opaAuthDataMock(path string, method string) string {
 
 	return string(authJSON)
 }
+
+func BenchmarkOPAAuthz(b *testing.B) {
+	ctrl := gomock.NewController(b)
+	defer ctrl.Finish()
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "GET")).MinTimes(1)
+	opa, _ := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, &OPAExternalSource{}, false, 0, context.TODO())
+
+	var err error
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err = opa.Call(pipelineMock, nil)
+	}
+	b.StopTimer()
+	assert.NilError(b, err)
+}

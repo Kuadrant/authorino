@@ -85,7 +85,7 @@ endef
 
 ##@ Development
 
-.PHONY: vendor fmt vet generate manifests run build test cover e2e
+.PHONY: vendor fmt vet generate manifests run build test benchmarks cover e2e
 
 vendor: ## Downloads vendor dependencies
 	go mod tidy
@@ -112,6 +112,9 @@ build: generate ## Builds the manager binary
 
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
+
+benchmarks: generate manifests envtest ## Runs the test with benchmarks
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -bench=. -run=^Benchmark -count=1 -cpu=1,4,10 -benchmem
 
 cover: ## Shows test coverage
 	go tool cover -html=cover.out
