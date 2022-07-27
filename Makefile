@@ -55,6 +55,10 @@ MOCKGEN = $(PROJECT_DIR)/bin/mockgen
 mockgen: ## Installs mockgen in $PROJECT_DIR/bin
 	$(call go-get-tool,$(MOCKGEN),github.com/golang/mock/mockgen@v1.6.0)
 
+BENCHSTAT = $(PROJECT_DIR)/bin/benchstat
+benchstat: ## Installs benchstat in $PROJECT_DIR/bin
+	$(call go-get-tool,$(BENCHSTAT),golang.org/x/perf/cmd/benchstat@latest)
+
 KIND = $(PROJECT_DIR)/bin/kind
 kind: ## Installs kind in $PROJECT_DIR/bin
 	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.11.1)
@@ -113,8 +117,9 @@ build: generate ## Builds the manager binary
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
 
-benchmarks: generate manifests envtest ## Runs the test with benchmarks
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -bench=. -run=^Benchmark -count=1 -cpu=1,4,10 -benchmem
+benchmarks: generate manifests envtest benchstat ## Runs the test with benchmarks
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -bench=. -run=^Benchmark -count=1 -cpu=1,4,10 -benchmem | tee benchmarks.out
+	$(BENCHSTAT) -split "" benchmarks.out
 
 cover: ## Shows test coverage
 	go tool cover -html=cover.out
