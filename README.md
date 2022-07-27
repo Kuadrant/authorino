@@ -16,6 +16,7 @@ Authorino is not about inventing anything new. It's about making the best things
 - [List of features](#list-of-features)
 - [Documentation](./docs/README.md)
 - [FAQ](#faq)
+- [Benchmarks](#benchmarks)
 - [Contributing](#contributing)
 
 ## Getting started
@@ -365,6 +366,75 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   You can, but you shouldn't. Check out instead [Limitador](https://github.com/kuadrant/limitador), for simple and efficient global rate limiting. Combine it with Authorino and Authorino's support for [Envoy Dynamic Metadata](./docs/architecture.md#envoy-dynamic-metadata) for authenticated rate limiting.
 </details>
+
+## Benchmarks
+
+**Configuration of the tests (Authorino features):**
+| Performance test           | Identity  | Metadata      | Authorization                                          | Response |
+|----------------------------|:---------:|:-------------:|:------------------------------------------------------:|:--------:|
+| `ReconcileAuthConfig`      | OIDC/JWT  | UserInfo, UMA | OPA<br/><sup>(inline Rego)</sup>                       | -        |
+| `AuthPipeline`             | OIDC/JWT  | -             | JSON pattern-matching<br/><sup>(JWT claim check)</sup> | -        |
+| `APIKeyAuthn`              | API key   | N/A           | N/A                                                    | N/A      |
+| `JSONPatternMatchingAuthz` | N/A       | N/A           | JSON pattern-matching                                  | N/A      |
+| `OPAAuthz`                 | N/A       | N/A           | OPA<br/><sup>(inline Rego)</sup>                       | N/A      |
+
+**Platform:** linux/amd64<br/>
+**CPU:** Intel® Xeon® Platinum 8370C 2.80GHz<br/>
+**Cores:** 1, 4, 10<br/>
+
+**Results:**
+```
+name                         time/op
+ReconcileAuthConfig          1.39ms ± 0%
+ReconcileAuthConfig-4        1.32ms ± 0%
+ReconcileAuthConfig-10       1.62ms ± 0%
+JSONPatternMatchingAuthz     1.68µs ± 0%
+JSONPatternMatchingAuthz-4   1.67µs ± 0%
+JSONPatternMatchingAuthz-10  1.64µs ± 0%
+OPAAuthz                     91.7µs ± 0%
+OPAAuthz-4                   82.6µs ± 0%
+OPAAuthz-10                  91.7µs ± 0%
+APIKeyAuthn                  3.28µs ± 0%
+APIKeyAuthn-4                3.17µs ± 0%
+APIKeyAuthn-10               3.18µs ± 0%
+AuthPipeline                  356µs ± 0%
+AuthPipeline-4                334µs ± 0%
+AuthPipeline-10               352µs ± 0%
+
+name                         alloc/op
+ReconcileAuthConfig           277kB ± 0%
+ReconcileAuthConfig-4         278kB ± 0%
+ReconcileAuthConfig-10        280kB ± 0%
+JSONPatternMatchingAuthz      64.0B ± 0%
+JSONPatternMatchingAuthz-4    64.0B ± 0%
+JSONPatternMatchingAuthz-10   64.0B ± 0%
+OPAAuthz                     28.5kB ± 0%
+OPAAuthz-4                   28.5kB ± 0%
+OPAAuthz-10                  28.5kB ± 0%
+APIKeyAuthn                    480B ± 0%
+APIKeyAuthn-4                  480B ± 0%
+APIKeyAuthn-10                 480B ± 0%
+AuthPipeline                 79.2kB ± 0%
+AuthPipeline-4               79.3kB ± 0%
+AuthPipeline-10              79.3kB ± 0%
+
+name                         allocs/op
+ReconcileAuthConfig           6.56k ± 0%
+ReconcileAuthConfig-4         6.56k ± 0%
+ReconcileAuthConfig-10        6.56k ± 0%
+JSONPatternMatchingAuthz       2.00 ± 0%
+JSONPatternMatchingAuthz-4     2.00 ± 0%
+JSONPatternMatchingAuthz-10    2.00 ± 0%
+OPAAuthz                        567 ± 0%
+OPAAuthz-4                      567 ± 0%
+OPAAuthz-10                     567 ± 0%
+APIKeyAuthn                    6.00 ± 0%
+APIKeyAuthn-4                  6.00 ± 0%
+APIKeyAuthn-10                 6.00 ± 0%
+AuthPipeline                    894 ± 0%
+AuthPipeline-4                  894 ± 0%
+AuthPipeline-10                 894 ± 0%
+```
 
 ## Contributing
 
