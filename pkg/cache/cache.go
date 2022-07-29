@@ -19,6 +19,7 @@ type Cache interface {
 	Delete(id string)
 	DeleteKey(id, key string)
 	List() []*evaluators.AuthConfig
+	Empty() bool
 
 	FindId(key string) (id string, found bool)
 	FindKeys(id string) []string
@@ -40,19 +41,22 @@ type cacheEntry struct {
 
 func newAuthConfigTree() *authConfigTree {
 	return &authConfigTree{
-		mu:   sync.Mutex{},
+		mu:   sync.RWMutex{},
 		root: newTreeNode(rootKeyLabel, nil),
 		keys: make(map[string][]string),
 	}
 }
 
 type authConfigTree struct {
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	root *treeNode
 	keys map[string][]string
 }
 
 func (c *authConfigTree) Get(key string) *evaluators.AuthConfig {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	if entry := c.root.get(revertKey(key)); entry != nil {
 		return &entry.AuthConfig
 	}
@@ -94,6 +98,9 @@ func (c *authConfigTree) DeleteKey(id, key string) {
 }
 
 func (c *authConfigTree) List() []*evaluators.AuthConfig {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	var configs []*evaluators.AuthConfig
 	for _, entry := range c.root.list() {
 		configs = append(configs, &entry.AuthConfig)
@@ -101,7 +108,14 @@ func (c *authConfigTree) List() []*evaluators.AuthConfig {
 	return configs
 }
 
+func (c *authConfigTree) Empty() bool {
+	return len(c.keys) == 0
+}
+
 func (c *authConfigTree) FindId(key string) (id string, found bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	if entry := c.root.get(revertKey(key)); entry != nil {
 		return entry.Id, true
 	}
@@ -109,6 +123,9 @@ func (c *authConfigTree) FindId(key string) (id string, found bool) {
 }
 
 func (c *authConfigTree) FindKeys(id string) []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	return c.keys[id]
 }
 

@@ -698,7 +698,21 @@ type AuthConfig struct {
 type AuthConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AuthConfig `json:"items"`
+	Items           AuthConfigSlice `json:"items"`
+}
+
+type AuthConfigSlice []AuthConfig
+
+func (s AuthConfigSlice) Len() int {
+	return len(s)
+}
+
+func (s AuthConfigSlice) Less(i, j int) bool {
+	return s[i].CreationTimestamp.Before(&s[j].CreationTimestamp)
+}
+
+func (s AuthConfigSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
 func init() {
