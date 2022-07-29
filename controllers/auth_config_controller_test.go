@@ -311,3 +311,18 @@ func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, len(c["app.com"].IdentityConfigs), 1)
 }
+
+func BenchmarkReconcileAuthConfig(b *testing.B) {
+	authConfig := newTestAuthConfig(map[string]string{})
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, cache.NewCache())
+
+	var err error
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err = reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
+	}
+	b.StopTimer()
+	assert.NilError(b, err)
+}

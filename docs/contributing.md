@@ -30,6 +30,7 @@ The following tools can be installed as part of the development workflow:
   - [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html): for building custom types and manifests
   - [Kustomize](https://kustomize.io/): for assembling flavoured manifests and installing/deploying
   - [setup-envtest](https://v0-19-x.sdk.operatorframework.io/docs/golang/references/env-test-setup): for running the tests – extra tools installed to `./testbin`
+  - [benchstat]https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
   - [mockgen](https://github.com/golang/mock/mockgen): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
   - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
 
