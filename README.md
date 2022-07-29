@@ -7,6 +7,9 @@ JWT authentication, API key, mTLS, pattern-matching authz, OPA, K8s SA tokens, K
 Authorino is not about inventing anything new. It's about making the best things about auth out there easy and simple to use. Authorino is multi-tenant, it's cloud-native and it's open source.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+[![Unit Tests](https://github.com/Kuadrant/authorino/actions/workflows/go-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/go-test.yaml)
+[![End-to-end Tests](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml)
+[![Smoke Tests](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml)
 
 ## Table of contents
 
