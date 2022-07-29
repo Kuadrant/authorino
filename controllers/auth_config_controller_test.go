@@ -136,11 +136,12 @@ func newTestK8sClient(initObjs ...runtime.Object) client.WithWatch {
 
 func newTestAuthConfigReconciler(client client.WithWatch, i index.Index) *AuthConfigReconciler {
 	return &AuthConfigReconciler{
-		Client:       client,
-		Logger:       log.WithName("test").WithName("authconfigreconciler"),
-		Scheme:       nil,
-		Index:        i,
-		StatusReport: NewStatusReportMap(),
+		Client:            client,
+		Logger:            log.WithName("test").WithName("authconfigreconciler"),
+		Scheme:            nil,
+		Index:             i,
+		StatusReport:      NewStatusReportMap(),
+		PreventCollisions: true,
 	}
 }
 
@@ -215,7 +216,7 @@ func TestTranslateAuthConfig(t *testing.T) {
 	// TODO
 }
 
-func TestPreventHostCollision(t *testing.T) {
+func TestPreventHostCollisionEnabled(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
 	indexMock := mock_index.NewMockIndex(mockController)
@@ -232,6 +233,30 @@ func TestPreventHostCollision(t *testing.T) {
 	indexMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 	indexMock.EXPECT().FindId("other.io").Return("", false)
 	indexMock.EXPECT().FindId("yet-another.io").Return(fmt.Sprintf("%s/other-auth-config-same-ns", authConfig.Namespace), true)
+	indexMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
+
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+}
+
+func TestPreventHostCollisionDisabled(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	indexMock := mock_index.NewMockIndex(mockController)
+
+	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Spec.Hosts = append(authConfig.Spec.Hosts, "other.io")
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, indexMock)
+	reconciler.PreventCollisions = false
+
+	indexMock.EXPECT().Empty().Return(false)
+	indexMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
+	indexMock.EXPECT().Set(authConfigName.String(), "echo-api", gomock.Any(), true)
 	indexMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})

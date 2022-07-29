@@ -51,12 +51,13 @@ const failedToCleanConfig = "failed to clean up all asynchronous workers"
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	Logger        logr.Logger
-	Scheme        *runtime.Scheme
-	Index         index.Index
-	StatusReport  *StatusReportMap
-	LabelSelector labels.Selector
-	Namespace     string
+	Logger            logr.Logger
+	Scheme            *runtime.Scheme
+	Index             index.Index
+	StatusReport      *StatusReportMap
+	LabelSelector     labels.Selector
+	Namespace         string
+	PreventCollisions bool
 
 	indexBootstrap sync.Mutex
 }
@@ -589,10 +590,12 @@ func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace
 
 	for _, host := range hosts {
 		// check for host name collision between resources
-		if indexedResourceId, found := r.Index.FindId(host); found && indexedResourceId != resourceId {
-			looseHosts = append(looseHosts, host)
-			logger.Info("host already taken", "host", host)
-			continue
+		if r.PreventCollisions {
+			if indexedResourceId, found := r.Index.FindId(host); found && indexedResourceId != resourceId {
+				looseHosts = append(looseHosts, host)
+				logger.Info("host already taken", "host", host)
+				continue
+			}
 		}
 
 		// add to the index

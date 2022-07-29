@@ -56,6 +56,7 @@ const (
 	envWatchNamespace                 = "WATCH_NAMESPACE"
 	envWatchedAuthConfigLabelSelector = "AUTH_CONFIG_LABEL_SELECTOR"
 	envWatchedSecretLabelSelector     = "SECRET_LABEL_SELECTOR"
+	envPreventAuthConfigCollisions    = "PREVENT_COLLISIONS"
 	envLogLevel                       = "LOG_LEVEL"
 	envLogMode                        = "LOG_MODE"
 	envTimeout                        = "TIMEOUT"
@@ -76,6 +77,7 @@ const (
 	defaultWatchNamespace                 = ""
 	defaultWatchedAuthConfigLabelSelector = ""
 	defaultWatchedSecretLabelSelector     = "authorino.kuadrant.io/managed-by=authorino"
+	defaultPreventAuthConfigCollisions    = "true"
 	defaultLogLevel                       = "info"
 	defaultLogMode                        = "production"
 	defaultTimeout                        = "0"
@@ -100,6 +102,7 @@ var (
 	watchNamespace                 = fetchEnv(envWatchNamespace, defaultWatchNamespace)
 	watchedAuthConfigLabelSelector = fetchEnv(envWatchedAuthConfigLabelSelector, defaultWatchedAuthConfigLabelSelector)
 	watchedSecretLabelSelector     = fetchEnv(envWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector)
+	preventAuthConfigCollisions, _ = strconv.ParseBool(fetchEnv(envPreventAuthConfigCollisions, defaultPreventAuthConfigCollisions))
 	logLevel                       = fetchEnv(envLogLevel, defaultLogLevel)
 	logMode                        = fetchEnv(envLogMode, defaultLogMode)
 	timeout, _                     = strconv.Atoi(fetchEnv(envTimeout, defaultTimeout))
@@ -143,6 +146,7 @@ func main() {
 		envWatchNamespace, watchNamespace,
 		envWatchedAuthConfigLabelSelector, watchedAuthConfigLabelSelector,
 		envWatchedSecretLabelSelector, watchedSecretLabelSelector,
+		envPreventAuthConfigCollisions, preventAuthConfigCollisions,
 		envLogLevel, logLevel,
 		envLogMode, logMode,
 		envTimeout, timeout,
@@ -182,13 +186,14 @@ func main() {
 
 	// sets up the auth config reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
-		Client:        mgr.GetClient(),
-		Index:         index,
-		StatusReport:  statusReport,
-		Logger:        controllerLogger.WithName("authconfig"),
-		Scheme:        mgr.GetScheme(),
-		LabelSelector: controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
-		Namespace:     watchNamespace,
+		Client:            mgr.GetClient(),
+		Index:             index,
+		StatusReport:      statusReport,
+		Logger:            controllerLogger.WithName("authconfig"),
+		Scheme:            mgr.GetScheme(),
+		LabelSelector:     controllers.ToLabelSelector(watchedAuthConfigLabelSelector),
+		Namespace:         watchNamespace,
+		PreventCollisions: preventAuthConfigCollisions,
 	}
 	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create controller", "controller", "authconfig")
