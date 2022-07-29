@@ -37,6 +37,7 @@
 - [Common feature: Priorities](#common-feature-priorities)
 - [Common feature: Conditions (`when`)](#common-feature-conditions-when)
 - [Common feature: Caching (`cache`)](#common-feature-caching-cache)
+- [Common feature: Metrics (`metrics`)](#common-feature-metrics-metrics)
 
 ## Overview
 
@@ -942,3 +943,50 @@ As for the 'complex-policy' authorization policy, the cache is a string composed
 _Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `EVALUATOR_CACHE_SIZE` environment variable or `spec.evaluatorCacheSize` field of the `Authorino` CR).
 
 _Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
+
+## Common feature: Metrics (`metrics`)
+
+By default, Authorino will only export metrics down to the level of the AuthConfig. Deeper metrics at the level of each evaluator within an AuthConfig can be activated by setting the common field `metrics: true` of the evaluator config.
+
+E.g.:
+
+```yaml
+apiVersion: authorino.kuadrant.io/v1beta1
+kind: AuthConfig
+metadata:
+  name: my-authconfig
+  namespame: my-ns
+spec:
+  metadata:
+  - name: my-external-metadata
+    http:
+      endpoint: http://my-external-source?search={context.request.http.path}
+    metrics: true
+```
+
+The above will enable the metrics `auth_server_evaluator_duration_seconds` (histogram) and `auth_server_evaluator_total` (counter) with labels `namespace="my-ns"`, `authconfig="my-authconfig"`, `evaluator_type="METADATA_GENERIC_HTTP"` and `evaluator_name="my-external-metadata"`.
+
+The same pattern works for other types of evaluators. Find below the list of all types and corresponding label constant used in the metric:
+
+| Evaluator type             | Metric's `evaluator_type` label |
+|----------------------------|---------------------------------|
+| `identity.apiKey`          | IDENTITY_APIKEY                 |
+| `identity.kubernetes`      | IDENTITY_KUBERNETES             |
+| `identity.oidc`            | IDENTITY_OIDC                   |
+| `identity.oauth2`          | IDENTITY_OAUTH2                 |
+| `identity.mtls`            | IDENTITY_MTLS                   |
+| `identity.hmac`            | IDENTITY_HMAC                   |
+| `identity.plain`           | IDENTITY_PLAIN                  |
+| `identity.anonymous`       | IDENTITY_NOOP                   |
+| `metadata.http`            | METADATA_GENERIC_HTTP           |
+| `metadata.userInfo`        | METADATA_USERINFO               |
+| `metadata.uma`             | METADATA_UMA                    |
+| `authorization.json`       | AUTHORIZATION_JSON              |
+| `authorization.opa`        | AUTHORIZATION_OPA               |
+| `authorization.kubernetes` | AUTHORIZATION_KUBERNETES        |
+| `response.json`            | RESPONSE_JSON                   |
+| `response.wristband`       | RESPONSE_WRISTBAND              |
+
+Metrics at the level of the evaluators can also be enforced to an entire Authorino instance, by setting the <code>DEEP_METRICS_ENABLED=true</code> environment variable. In this case, regardless of the value of the field `spec.(identity|metadata|authorization|response).metrics` in the AuthConfigs, individual metrics for all evaluators of all AuthConfigs will be exported.
+
+For more information about observability metrics in Authorino, see the user guide [Observability](./user-guides/metrics.md).
