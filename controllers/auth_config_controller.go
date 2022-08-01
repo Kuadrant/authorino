@@ -624,13 +624,13 @@ func (r *AuthConfigReconciler) bootstrapCacheIndex(ctx context.Context) error {
 		return nil
 	}
 
-	logger := r.Logger.WithName("bootstrap")
-	logger.Info("building cache index")
-
 	authConfigList := api.AuthConfigList{}
 	if err := r.List(ctx, &authConfigList); err != nil {
 		return err
 	}
+
+	logger := r.Logger.WithName("bootstrap")
+	logger.Info("building cache index", "count", len(authConfigList.Items))
 
 	sort.Sort(authConfigList.Items)
 
@@ -651,7 +651,7 @@ func (r *AuthConfigReconciler) bootstrapCacheIndex(ctx context.Context) error {
 		}
 
 		authConfigName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
-		logger.V(1).Info("building cache index", "authconfig", authConfigName)
+		logger.V(1).Info("building cache index", "authconfig", authConfigName.String())
 
 		_, _, err := r.addToCache(
 			log.IntoContext(ctx, logger.WithValues("authconfig", authConfigName)),
