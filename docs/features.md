@@ -118,7 +118,7 @@ API key secrets must be created in the same namespace of the `AuthConfig` (defau
 
 API key secrets must be labeled with the labels that match the selectors specified in `spec.identity.apiKey.labelSelectors` in the `AuthConfig`.
 
-Whenever an `AuthConfig` is cached, Authorino will also cache all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.labelSelectors` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
+Whenever an `AuthConfig` is indexed, Authorino will also index all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.labelSelectors` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
 
 **Example.** For the following `AuthConfig`:
 
@@ -242,7 +242,7 @@ Online token introspection of OpenShift-valid access tokens based on OpenShift's
 
 Authorino can verify x509 certificates presented by clients for authentication on the request to the protected APIs, at application level.
 
-Trusted root Certificate Authorities (CA) are stored in Kubernetes Secrets labeled according to selectors specified in the AuthConfig, watched and cached by Authorino. Make sure to create proper `kubernetes.io/tls`-typed Kubernetes Secrets, containing the public certificates of the CA stored in either a `tls.crt` or `ca.crt` entry inside the secret.
+Trusted root Certificate Authorities (CA) are stored in Kubernetes Secrets labeled according to selectors specified in the AuthConfig, watched and indexed by Authorino. Make sure to create proper `kubernetes.io/tls`-typed Kubernetes Secrets, containing the public certificates of the CA stored in either a `tls.crt` or `ca.crt` entry inside the secret.
 
 Truested root CA secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.identity.mtls.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
 
@@ -441,7 +441,7 @@ Policies can be either declared in-line in Rego language (`inlineRego`) or as an
 
 Policies pulled from external registries can be configured to be automatically refreshed (pulled again from the external registry), by setting the `authorization.opa.externalRegistry.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
 
-Authorino's built-in OPA module precompiles the policies during reconciliation of the AUthConfig and caches the precompiled policies for fast evaluation in runtime, where they receive the Authorization JSON as input.
+Authorino's built-in OPA module precompiles the policies during reconciliation of the AuthConfig and caches the precompiled policies for fast evaluation in runtime, where they receive the Authorization JSON as input.
 
 ![OPA](http://www.plantuml.com/plantuml/png/TP71IWD138RlynHXJmfklHTMMaKyMle6OPgwmKoopcQiHNntjqjTc8F79D__vm_PZ8xPIv8mlhCEc351ChNOPqi4dWk5CBMT8m-e3jlYlMLM0nm1_ueAQHuBYxUiyBhRDXVE1go9dGd7CsHwuz7p-G8jHGXT1tkAff65qTcqTKu4NHUMXT0-B09OmmrzEML5WM5sleLT4GaBqKxuegrTfcoJmNucAL_ruT9TXa-M1XQgPfMXcXC87NqD4MDF8QnMg-iT7uL6hm-eLx-Gmy5YIQGE9_OUM8VYTOJdJvI2_d-6YVc61aNirApdlzqVKKQwWoaA_8GDwQ4a-GK0)
 
@@ -936,7 +936,7 @@ spec:
 
 The example above sets caching for the 'external-metadata' metadata config and for the 'complex-policy' authorization policy. In the case of 'external-metadata', the cache key is the path of the original HTTP request being authorized by Authorino (fetched dynamically from the [Authorization JSON](./architecture.md#the-authorization-json)); i.e., after obtaining a metadata object from the external source for a given contextual HTTP path one first time, whenever that same HTTP path repeats in a subsequent request, Authorino will use the cached object instead of sending a request again to the external source of metadata. After 5 minutes (300 seconds), the cache entry will expire and Authorino will fetch again from the source if requested.
 
-As for the 'complex-policy' authorization policy, the cache is a string composed the 'group' the identity belongs to, the methodd of the HTTP request and the path of the HTTP request. Whenever these repeat, Authorino will use the result of the policy that was evaluated and cached priorly. Cache entries in this namespace expire after 60 seconds.
+As for the 'complex-policy' authorization policy, the cache key is a string composed the 'group' the identity belongs to, the methodd of the HTTP request and the path of the HTTP request. Whenever these repeat, Authorino will use the result of the policy that was evaluated and cached priorly. Cache entries in this namespace expire after 60 seconds.
 
 **Notes on evaluator caching**
 

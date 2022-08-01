@@ -12,12 +12,12 @@ import (
 	"gotest.tools/assert"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/cache"
-	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/index"
+	mock_index "github.com/kuadrant/authorino/pkg/index/mocks"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -44,7 +44,7 @@ func getHeader(headers []*envoy_core.HeaderValueOption, key string) string {
 
 func TestSuccessResponse(t *testing.T) {
 	service := AuthService{
-		Cache: cache.NewCache(),
+		Index: index.NewIndex(),
 	}
 
 	var resp *envoy_auth.OkHttpResponse
@@ -58,7 +58,7 @@ func TestSuccessResponse(t *testing.T) {
 
 func TestDeniedResponse(t *testing.T) {
 	service := AuthService{
-		Cache: cache.NewCache(),
+		Index: index.NewIndex(),
 	}
 
 	var resp *envoy_auth.DeniedHttpResponse
@@ -93,28 +93,28 @@ func TestDeniedResponse(t *testing.T) {
 func TestAuthConfigLookup(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	c := mock_cache.NewMockCache(ctrl)
-	service := AuthService{Cache: c}
+	i := mock_index.NewMockIndex(ctrl)
+	service := AuthService{Index: i}
 	authConfig := &evaluators.AuthConfig{}
 
 	var resp *envoy_auth.CheckResponse
 	var err error
 
-	c.EXPECT().Get("host.com").Return(nil)
+	i.EXPECT().Get("host.com").Return(nil)
 	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
 		Request: &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "host.com"}},
 	}})
 	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(404))
 	assert.NilError(t, err)
 
-	c.EXPECT().Get("host.com").Return(authConfig)
+	i.EXPECT().Get("host.com").Return(authConfig)
 	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
 		Request: &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "host.com"}},
 	}})
 	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(401))
 	assert.NilError(t, err)
 
-	c.EXPECT().Get("host-overwrite").Return(nil)
+	i.EXPECT().Get("host-overwrite").Return(nil)
 	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
 		Request:           &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "actual-host.com"}},
 		ContextExtensions: map[string]string{"host": "host-overwrite"},
@@ -122,7 +122,7 @@ func TestAuthConfigLookup(t *testing.T) {
 	assert.Equal(t, int32(resp.GetDeniedResponse().Status.Code), int32(404))
 	assert.NilError(t, err)
 
-	c.EXPECT().Get("host-overwrite").Return(authConfig)
+	i.EXPECT().Get("host-overwrite").Return(authConfig)
 	resp, err = service.Check(context.TODO(), &envoy_auth.CheckRequest{Attributes: &envoy_auth.AttributeContext{
 		Request:           &envoy_auth.AttributeContext_Request{Http: &envoy_auth.AttributeContext_HttpRequest{Host: "actual-host.com"}},
 		ContextExtensions: map[string]string{"host": "host-overwrite"},
@@ -146,9 +146,9 @@ func TestBuildDynamicEnvoyMetadata(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_Post(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -159,9 +159,9 @@ func TestAuthServiceRawHTTPAuthorization_Post(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_Get(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("GET", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -172,8 +172,8 @@ func TestAuthServiceRawHTTPAuthorization_Get(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_UnsupportedMethod(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("PUT", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -184,8 +184,8 @@ func TestAuthServiceRawHTTPAuthorization_UnsupportedMethod(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_InvalidPath(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("PUT", "http://myapp.io/foo", bytes.NewReader([]byte(`{}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -196,9 +196,9 @@ func TestAuthServiceRawHTTPAuthorization_InvalidPath(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_WithQueryString(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("POST", "http://myapp.io/check?foo=bar", bytes.NewReader([]byte(`{}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -215,8 +215,8 @@ func (n *notReadable) Read(_ []byte) (int, error) {
 func TestAuthServiceRawHTTPAuthorization_UnreadableBody(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("POST", "http://myapp.io/check", &notReadable{})
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -227,8 +227,8 @@ func TestAuthServiceRawHTTPAuthorization_UnreadableBody(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_PayloadSizeTooLarge(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: 1024}
+	indexMock := mock_index.NewMockIndex(mockController)
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: 1024}
 	request, _ := http.NewRequest("GET", "http://myapp.io/check", bytes.NewReader(make([]byte, 1025)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -249,9 +249,9 @@ func TestAuthServiceRawHTTPAuthorization_WithHeaders(t *testing.T) {
 			Properties: []json.JSONProperty{{Name: "headers", Value: json.JSONValue{Pattern: "context.request.http.headers"}}},
 		},
 	}}
-	cacheMock := mock_cache.NewMockCache(mockController)
-	cacheMock.EXPECT().Get("myapp.io").Return(authConfig)
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(authConfig)
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}, "Authorization": {"Bearer secret"}}
 	response := gohttptest.NewRecorder()
@@ -263,9 +263,9 @@ func TestAuthServiceRawHTTPAuthorization_WithHeaders(t *testing.T) {
 func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewAuthorized(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
-	cacheMock := mock_cache.NewMockCache(mockController)
-	cacheMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(mockAnonymousAccessAuthConfig())
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{"apiVersion":"admission.k8s.io/v1","kind":"AdmissionReview","request":{"uid":"2868ade4-a649-4812-b969-3662a7963535","operation":"CREATE","name":"my-secret","object":{"apiVersion":"v1","kind":"Secret","metadata":"my-secret","data":{"hex":"N2ZmNDcyMjhkYzRjNzRkYjZjY2FiNjJlNzY2YTVlMzgK"}}}}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()
@@ -285,9 +285,9 @@ func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewForbidden(t *testing.
 		IdentityConfigs:      []auth.AuthConfigEvaluator{identityConfig},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authorizationConfig},
 	}
-	cacheMock := mock_cache.NewMockCache(mockController)
-	cacheMock.EXPECT().Get("myapp.io").Return(authConfig)
-	authService := &AuthService{Cache: cacheMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(authConfig)
+	authService := &AuthService{Index: indexMock, MaxHttpRequestBodySize: defaultMaxHttpRequestBytes}
 	request, _ := http.NewRequest("POST", "http://myapp.io/check", bytes.NewReader([]byte(`{"apiVersion":"admission.k8s.io/v1","kind":"AdmissionReview","request":{"uid":"2868ade4-a649-4812-b969-3662a7963535","operation":"CREATE","name":"my-secret","object":{"apiVersion":"v1","kind":"Secret","metadata":"my-secret","data":{"hex":"N2ZmNDcyMjhkYzRjNzRkYjZjY2FiNjJlNzY2YTVlMzgK"}}}}`)))
 	request.Header = map[string][]string{"Content-Type": {"application/json"}}
 	response := gohttptest.NewRecorder()

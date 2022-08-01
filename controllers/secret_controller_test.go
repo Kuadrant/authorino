@@ -9,9 +9,9 @@ import (
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	mock_controller_builder "github.com/kuadrant/authorino/controllers/builder/mocks"
 	"github.com/kuadrant/authorino/pkg/auth"
-	mock_cache "github.com/kuadrant/authorino/pkg/cache/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
+	mock_index "github.com/kuadrant/authorino/pkg/index/mocks"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/golang/mock/gomock"
@@ -90,27 +90,27 @@ func newSecretReconcilerTest(mockCtrl *gomock.Controller, secretLabels map[strin
 	fakeK8sClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&secret).Build()
 
 	apiKeyLabelSelectors := map[string]string{"target": "echo-api"}
-	cachedAuthConfig := &evaluators.AuthConfig{
+	indexedAuthConfig := &evaluators.AuthConfig{
 		Labels: map[string]string{"namespace": "authorino", "name": "api-protection"},
 		IdentityConfigs: []auth.AuthConfigEvaluator{&fakeAPIKeyIdentityConfig{
 			evaluator: identity_evaluators.NewApiKeyIdentity("api-key", apiKeyLabelSelectors, "", auth.NewAuthCredential("", ""), fakeK8sClient, context.TODO()),
 		}},
 	}
-	cacheMock := mock_cache.NewMockCache(mockCtrl)
-	cacheMock.EXPECT().List().Return([]*evaluators.AuthConfig{cachedAuthConfig}).MaxTimes(1)
+	indexMock := mock_index.NewMockIndex(mockCtrl)
+	indexMock.EXPECT().List().Return([]*evaluators.AuthConfig{indexedAuthConfig}).MaxTimes(1)
 
 	secretReconciler := &SecretReconciler{
 		Client:        fakeK8sClient,
 		Logger:        log.WithName("test").WithName("secretreconciler"),
 		Scheme:        nil,
-		Cache:         cacheMock,
+		Index:         indexMock,
 		LabelSelector: ToLabelSelector("authorino.kuadrant.io/managed-by=authorino"),
 	}
 
 	return secretReconcilerTest{
 		secretReconciler,
 		secret,
-		cachedAuthConfig,
+		indexedAuthConfig,
 	}
 }
 

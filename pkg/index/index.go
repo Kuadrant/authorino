@@ -1,4 +1,4 @@
-package cache
+package index
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ const (
 	rootKeyLabel       string = "" // must differ `keyLabelsSeparator`
 )
 
-type Cache interface {
+type Index interface {
 	Set(id string, key string, config evaluators.AuthConfig, override bool) error
 	Get(key string) *evaluators.AuthConfig
 	Delete(id string)
@@ -25,18 +25,18 @@ type Cache interface {
 	FindKeys(id string) []string
 }
 
-func NewCache() Cache {
+func NewIndex() Index {
 	return newAuthConfigTree()
 }
 
-type cacheEntry struct {
+type indexEntry struct {
 	Id         string
 	AuthConfig evaluators.AuthConfig
 }
 
-// Cache of AuthConfigs structured as a radix tree.
+// Index of AuthConfigs structured as a radix tree.
 // Each dot ('.') in the key induces a new level in the tree.
-// Tree-based cache structures support wildcards ('*') in the keys.
+// Tree-based index structures support wildcards ('*') in the keys.
 // Wildcards match any value after the longest common path between the searched key and the levels of the tree.
 
 func newAuthConfigTree() *authConfigTree {
@@ -68,7 +68,7 @@ func (c *authConfigTree) Set(id, key string, config evaluators.AuthConfig, overr
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	entry := &cacheEntry{
+	entry := &indexEntry{
 		Id:         id,
 		AuthConfig: config,
 	}
@@ -145,12 +145,12 @@ func newTreeNode(label string, parent *treeNode) *treeNode {
 
 type treeNode struct {
 	label    string
-	entry    *cacheEntry
+	entry    *indexEntry
 	parent   *treeNode
 	children map[string]*treeNode
 }
 
-func (n *treeNode) get(key string) *cacheEntry {
+func (n *treeNode) get(key string) *indexEntry {
 	node, tail := n.longestCommonLabel(key)
 
 	// longest common node matches the key perfectly
@@ -173,12 +173,12 @@ func (n *treeNode) get(key string) *cacheEntry {
 	return nil
 }
 
-func (n *treeNode) set(key string, entry *cacheEntry, override bool) error {
+func (n *treeNode) set(key string, entry *indexEntry, override bool) error {
 	target, tail := n.longestCommonLabel(key)
 
 	if tail == "" {
 		if !override {
-			return fmt.Errorf("authconfig already exists in the cache: %s", key)
+			return fmt.Errorf("authconfig already exists in the index: %s", key)
 		}
 
 		target.entry = entry
@@ -209,7 +209,7 @@ func (n *treeNode) longestCommonLabel(key string) (node *treeNode, tail string) 
 		// We can panic here because:
 		// 1) the recursion only calls while there's a common path between labels of the key and nodes of tree;
 		// 2) all keys and the tree both root to `rootKeyLabel`.
-		panic("cannot traverse cache tree")
+		panic("cannot traverse index tree")
 	}
 
 	if len(labels) > 1 {
@@ -222,8 +222,8 @@ func (n *treeNode) longestCommonLabel(key string) (node *treeNode, tail string) 
 	return n, tail
 }
 
-func (n *treeNode) list() []*cacheEntry {
-	var entries []*cacheEntry
+func (n *treeNode) list() []*indexEntry {
+	var entries []*indexEntry
 	if n.entry != nil {
 		entries = append(entries, n.entry)
 	}

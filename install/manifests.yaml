@@ -1771,7 +1771,7 @@ spec:
                     type: boolean
                   hostsReady:
                     description: Lists the hosts from spec.hosts linked to the resource
-                      in the cache
+                      in the index
                     items:
                       type: string
                     type: array
@@ -1781,7 +1781,7 @@ spec:
                     type: integer
                   numHostsReady:
                     description: Number of hosts from spec.hosts linked to the resource
-                      in the cache, compared to the total number of hosts in spec.hosts
+                      in the index, compared to the total number of hosts in spec.hosts
                     type: string
                   numIdentitySources:
                     description: Number of trusted sources of identity for authentication
@@ -1799,7 +1799,7 @@ spec:
                     type: integer
                   ready:
                     description: Whether all hosts from spec.hosts have been linked
-                      to the resource in the cache
+                      to the resource in the index
                     type: boolean
                 required:
                 - festivalWristbandEnabled

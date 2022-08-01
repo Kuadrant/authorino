@@ -25,12 +25,12 @@ import (
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	authorization_evaluators "github.com/kuadrant/authorino/pkg/evaluators/authorization"
 	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
 	metadata_evaluators "github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -53,19 +53,19 @@ type AuthConfigReconciler struct {
 	client.Client
 	Logger        logr.Logger
 	Scheme        *runtime.Scheme
-	Cache         cache.Cache
+	Index         index.Index
 	StatusReport  *StatusReportMap
 	LabelSelector labels.Selector
 	Namespace     string
 
-	cacheRebuild sync.Mutex
+	indexBootstrap sync.Mutex
 }
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if err := r.bootstrapCacheIndex(ctx); err != nil {
-		r.Logger.Error(err, "failed to bootstrap cache index")
+	if err := r.bootstrapIndex(ctx); err != nil {
+		r.Logger.Error(err, "failed to bootstrap the index")
 	}
 
 	resourceId := req.String()
@@ -89,13 +89,13 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Error(err, failedToCleanConfig)
 		}
 
-		// delete related authconfigs from cache.
-		r.Cache.Delete(resourceId)
+		// delete related authconfigs from the index.
+		r.Index.Delete(resourceId)
 		r.StatusReport.Clear(resourceId)
 		reportReconciled = false
 	} else {
 		// resource found and it is to be watched by this controller
-		// we need to either create it or update it in the cache
+		// we need to either create it or update it in the index
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
 		if err := r.cleanConfigs(resourceId, ctx); err != nil {
@@ -108,16 +108,16 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
-		// delete unused hosts from cache
-		for _, host := range r.Cache.FindKeys(resourceId) {
+		// delete unused hosts from the index
+		for _, host := range r.Index.FindKeys(resourceId) {
 			if _, found := evaluatorConfigByHost[host]; found {
 				continue
 			}
 
-			r.Cache.DeleteKey(resourceId, host)
+			r.Index.DeleteKey(resourceId, host)
 		}
 
-		linkedHosts, looseHosts, err = r.addToCache(log.IntoContext(ctx, logger), req.Namespace, resourceId, evaluatorConfigByHost)
+		linkedHosts, looseHosts, err = r.addToIndex(log.IntoContext(ctx, logger), req.Namespace, resourceId, evaluatorConfigByHost)
 
 		if len(looseHosts) > 0 {
 			r.StatusReport.Set(resourceId, api.StatusReasonHostsNotLinked, "one or more hosts are not linked to the resource", linkedHosts)
@@ -142,9 +142,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *AuthConfigReconciler) cleanConfigs(resourceId string, ctx context.Context) error {
-	if hosts := r.Cache.FindKeys(resourceId); len(hosts) > 0 {
+	if hosts := r.Index.FindKeys(resourceId); len(hosts) > 0 {
 		// no need to clean for all the hosts as the config should be the same
-		if authConfig := r.Cache.Get(hosts[0]); authConfig != nil {
+		if authConfig := r.Index.Get(hosts[0]); authConfig != nil {
 			return authConfig.Clean(ctx)
 		}
 	}
@@ -590,23 +590,23 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	return evaluatorConfigByHost, nil
 }
 
-func (r *AuthConfigReconciler) addToCache(ctx context.Context, resourceNamespace, resourceId string, evaluatorConfigByHost map[string]evaluators.AuthConfig) (linkedHosts, looseHosts []string, err error) {
+func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, evaluatorConfigByHost map[string]evaluators.AuthConfig) (linkedHosts, looseHosts []string, err error) {
 	logger := log.FromContext(ctx)
 	linkedHosts = []string{}
 	looseHosts = []string{}
 
 	for host, evaluatorConfig := range evaluatorConfigByHost {
 		// check for host collision with another namespace
-		if cachedKey, found := r.Cache.FindId(host); found {
-			if cachedKeyParts := strings.Split(cachedKey, string(types.Separator)); cachedKeyParts[0] != resourceNamespace {
+		if indexedResourceId, found := r.Index.FindId(host); found {
+			if indexedResourceIdParts := strings.Split(indexedResourceId, string(types.Separator)); indexedResourceIdParts[0] != resourceNamespace {
 				looseHosts = append(looseHosts, host)
 				logger.Info("host already taken in another namespace", "host", host)
 				continue
 			}
 		}
 
-		// add to cache
-		if err = r.Cache.Set(resourceId, host, evaluatorConfig, true); err != nil {
+		// add to the index
+		if err = r.Index.Set(resourceId, host, evaluatorConfig, true); err != nil {
 			return
 		}
 
@@ -616,11 +616,11 @@ func (r *AuthConfigReconciler) addToCache(ctx context.Context, resourceNamespace
 	return
 }
 
-func (r *AuthConfigReconciler) bootstrapCacheIndex(ctx context.Context) error {
-	r.cacheRebuild.Lock()
-	defer r.cacheRebuild.Unlock()
+func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
+	r.indexBootstrap.Lock()
+	defer r.indexBootstrap.Unlock()
 
-	if !r.Cache.Empty() {
+	if !r.Index.Empty() {
 		return nil
 	}
 
@@ -630,7 +630,7 @@ func (r *AuthConfigReconciler) bootstrapCacheIndex(ctx context.Context) error {
 	}
 
 	logger := r.Logger.WithName("bootstrap")
-	logger.Info("building cache index", "count", len(authConfigList.Items))
+	logger.Info("building the index", "count", len(authConfigList.Items))
 
 	sort.Sort(authConfigList.Items)
 
@@ -651,9 +651,9 @@ func (r *AuthConfigReconciler) bootstrapCacheIndex(ctx context.Context) error {
 		}
 
 		authConfigName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
-		logger.V(1).Info("building cache index", "authconfig", authConfigName.String())
+		logger.V(1).Info("building index", "authconfig", authConfigName.String())
 
-		_, _, err := r.addToCache(
+		_, _, err := r.addToIndex(
 			log.IntoContext(ctx, logger.WithValues("authconfig", authConfigName)),
 			authConfig.Namespace,
 			authConfigName.String(),

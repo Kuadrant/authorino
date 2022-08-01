@@ -133,7 +133,7 @@ type: Opaque
 EOF
 ```
 
-Verify in the logs that only the `authorino-staging` instance adds the resources to the cache:
+Verify in the logs that only the `authorino-staging` instance adds the resources to the index:
 
 ```sh
 kubectl logs $(kubectl get pods -l authorino-resource=authorino-staging -o name)
@@ -183,7 +183,7 @@ type: Opaque
 EOF
 ```
 
-Verify in the logs that only the `authorino-production` instance adds the resources to the cache:
+Verify in the logs that only the `authorino-production` instance adds the resources to the index:
 
 ```sh
 kubectl logs $(kubectl get pods -l authorino-resource=authorino-production -o name)
@@ -199,7 +199,7 @@ kubectl -n myapp label authconfig/auth-config-2 disabled=true
 # authconfig.authorino.kuadrant.io/auth-config-2 labeled
 ```
 
-Verify in the logs that only the `authorino-production` instance adds the resources to the cache:
+Verify in the logs that only the `authorino-production` instance adds the resources to the index:
 
 ```sh
 kubectl logs $(kubectl get pods -l authorino-resource=authorino-production -o name)

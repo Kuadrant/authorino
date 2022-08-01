@@ -1,4 +1,4 @@
-package cache
+package index
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"gotest.tools/assert"
 )
 
-// TestAuthConfigTree tests operations to build and modify the following cache tree:
+// TestAuthConfigTree tests operations to build and modify the following index tree:
 //                    ┌───┐
 //          ┌─────────┤ . ├──────────┐
 //          │         └───┘          │
@@ -44,7 +44,7 @@ func TestAuthConfigTree(t *testing.T) {
 	authConfig3 := buildTestAuthConfig()
 	authConfig4 := buildTestAuthConfig()
 
-	// Build the cache
+	// Build the index
 	if err := c.Set("auth-1", "*.io", authConfig1, false); err != nil {
 		t.Error(err)
 	}

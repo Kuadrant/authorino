@@ -14,8 +14,8 @@ import (
 	gocontext "golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
@@ -69,13 +69,13 @@ func init() {
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
-	Cache                  cache.Cache
+	Index                  index.Index
 	Timeout                time.Duration
 	MaxHttpRequestBodySize int64
 }
 
-func NewAuthService(cache cache.Cache, timeout time.Duration, maxHttpRequestBodySize int64) *AuthService {
-	return &AuthService{Cache: cache, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize}
+func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBodySize int64) *AuthService {
+	return &AuthService{Index: index, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize}
 }
 
 // ServeHTTP invokes authorization check for a simple GET/POST HTTP authorization request
@@ -243,11 +243,11 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		host = requestData.Host
 	}
 
-	authConfig := a.Cache.Get(host)
+	authConfig := a.Index.Get(host)
 	// If the host is not found, but contains a port, remove the port part and retry.
 	if authConfig == nil && strings.Contains(host, ":") {
 		splitHost := strings.Split(host, ":")
-		authConfig = a.Cache.Get(splitHost[0])
+		authConfig = a.Index.Get(splitHost[0])
 	}
 
 	// If we couldn't find the AuthConfig in the config, we return and deny.

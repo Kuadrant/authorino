@@ -1,6 +1,6 @@
 # Host override via context extension
 
-By default, Authorino uses the host information of the HTTP request ([`Attributes.Http.Host`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#service-auth-v3-attributecontext-httprequest)) to lookup for a cached AuthConfig to be enforced. The host info be overridden by supplying a `host` entry as a (per-route) context entension ([`Attributes.ContextExtensions`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#envoy-v3-api-field-service-auth-v3-attributecontext-context-extensions)), which takes precedence whenever present.
+By default, Authorino uses the host information of the HTTP request ([`Attributes.Http.Host`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#service-auth-v3-attributecontext-httprequest)) to lookup for an indexed AuthConfig to be enforced. The host info be overridden by supplying a `host` entry as a (per-route) context entension ([`Attributes.ContextExtensions`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#envoy-v3-api-field-service-auth-v3-attributecontext-context-extensions)), which takes precedence whenever present.
 
 Overriding the host attribute of the HTTP request can be useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup**.
 
@@ -115,4 +115,4 @@ spec:
   identity: [...]
 ```
 
-Notice that requests to `dogs.pets.com` and to `cats.pets.com` are all routed by Envoy to the same API, with same external authorization configuration. in all the cases, Authorino will lookup for the cached AuthConfig associated with `pets.com`. The same is valid for a request sent, e.g., to `birds.pets.com`.
+Notice that requests to `dogs.pets.com` and to `cats.pets.com` are all routed by Envoy to the same API, with same external authorization configuration. in all the cases, Authorino will lookup for the indexed AuthConfig associated with `pets.com`. The same is valid for a request sent, e.g., to `birds.pets.com`.

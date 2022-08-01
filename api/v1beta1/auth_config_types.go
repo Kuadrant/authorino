@@ -634,13 +634,13 @@ type Condition struct {
 }
 
 type Summary struct {
-	// Whether all hosts from spec.hosts have been linked to the resource in the cache
+	// Whether all hosts from spec.hosts have been linked to the resource in the index
 	Ready bool `json:"ready"`
 
-	// Lists the hosts from spec.hosts linked to the resource in the cache
+	// Lists the hosts from spec.hosts linked to the resource in the index
 	HostsReady []string `json:"hostsReady"`
 
-	// Number of hosts from spec.hosts linked to the resource in the cache, compared to the total number of hosts in spec.hosts
+	// Number of hosts from spec.hosts linked to the resource in the index, compared to the total number of hosts in spec.hosts
 	NumHostsReady string `json:"numHostsReady"`
 
 	// Number of trusted sources of identity for authentication in the AuthConfig
