@@ -264,8 +264,8 @@ type Identity_OidcConfig struct {
 }
 
 type Identity_APIKey struct {
-	// The map of label selectors used by Authorino to match secrets from the cluster storing valid credentials to authenticate to this service
-	LabelSelectors map[string]string `json:"labelSelectors"`
+	// Label selector used by Authorino to match secrets from the cluster storing valid credentials to authenticate to this service
+	Selector *metav1.LabelSelector `json:"selector"`
 
 	// Whether Authorino should look for API key secrets in all namespaces or only in the same namespace as the AuthConfig.
 	// Enabling this option in namespaced Authorino instances has no effect.
@@ -274,8 +274,8 @@ type Identity_APIKey struct {
 }
 
 type Identity_MTLS struct {
-	// The map of label selectors used by Authorino to match secrets from the cluster storing trusted CA certificates to validate clients trying to authenticate to this service
-	LabelSelectors map[string]string `json:"labelSelectors"`
+	// Label selector used by Authorino to match secrets from the cluster storing trusted CA certificates to validate clients trying to authenticate to this service
+	Selector *metav1.LabelSelector `json:"selector"`
 
 	// Whether Authorino should look for TLS secrets in all namespaces or only in the same namespace as the AuthConfig.
 	// Enabling this option in namespaced Authorino instances has no effect.
