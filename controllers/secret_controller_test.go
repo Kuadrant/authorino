@@ -17,6 +17,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -57,7 +58,7 @@ func (i *fakeAPIKeyIdentityConfig) RevokeK8sSecretBasedIdentity(ctx context.Cont
 	i.deleted = true
 }
 
-func (i *fakeAPIKeyIdentityConfig) GetK8sSecretLabelSelectors() map[string]string {
+func (i *fakeAPIKeyIdentityConfig) GetK8sSecretLabelSelectors() labels.Selector {
 	return i.evaluator.GetK8sSecretLabelSelectors()
 }
 
@@ -89,7 +90,7 @@ func newSecretReconcilerTest(mockCtrl *gomock.Controller, secretLabels map[strin
 	// Create a fake k8s client with an existing secret.
 	fakeK8sClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&secret).Build()
 
-	apiKeyLabelSelectors := map[string]string{"target": "echo-api"}
+	apiKeyLabelSelectors, _ := labels.Parse("target=echo-api")
 	indexedAuthConfig := &evaluators.AuthConfig{
 		Labels: map[string]string{"namespace": "authorino", "name": "api-protection"},
 		IdentityConfigs: []auth.AuthConfigEvaluator{&fakeAPIKeyIdentityConfig{

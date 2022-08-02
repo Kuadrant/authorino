@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 
 	k8s "k8s.io/api/core/v1"
+	k8s_labels "k8s.io/apimachinery/pkg/labels"
 	k8s_types "k8s.io/apimachinery/pkg/types"
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -22,16 +23,16 @@ const (
 type APIKey struct {
 	auth.AuthCredentials
 
-	Name           string            `yaml:"name"`
-	LabelSelectors map[string]string `yaml:"labelSelectors"`
-	Namespace      string            `yaml:"namespace"`
+	Name           string              `yaml:"name"`
+	LabelSelectors k8s_labels.Selector `yaml:"labelSelectors"`
+	Namespace      string              `yaml:"namespace"`
 
 	secrets   map[string]k8s.Secret
 	mutex     sync.Mutex
 	k8sClient k8s_client.Reader
 }
 
-func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
 	apiKey := &APIKey{
 		AuthCredentials: authCred,
 		Name:            name,
@@ -48,7 +49,7 @@ func NewApiKeyIdentity(name string, labelSelectors map[string]string, namespace 
 
 // loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted API keys
 func (a *APIKey) loadSecrets(ctx context.Context) error {
-	opts := []k8s_client.ListOption{k8s_client.MatchingLabels(a.LabelSelectors)}
+	opts := []k8s_client.ListOption{k8s_client.MatchingLabelsSelector{Selector: a.LabelSelectors}}
 	if namespace := a.Namespace; namespace != "" {
 		opts = append(opts, k8s_client.InNamespace(namespace))
 	}
@@ -84,7 +85,7 @@ func (a *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
-func (a *APIKey) GetK8sSecretLabelSelectors() map[string]string {
+func (a *APIKey) GetK8sSecretLabelSelectors() k8s_labels.Selector {
 	return a.LabelSelectors
 }
 

@@ -7,12 +7,13 @@ package mock_auth
 import (
 	reflect "reflect"
 
-	envoy_service_auth_v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	gomock "github.com/golang/mock/gomock"
 	auth "github.com/kuadrant/authorino/pkg/auth"
 	json "github.com/kuadrant/authorino/pkg/json"
 	context "golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
 )
 
@@ -82,10 +83,10 @@ func (mr *MockAuthPipelineMockRecorder) GetAuthorizationJSON() *gomock.Call {
 }
 
 // GetHttp mocks base method.
-func (m *MockAuthPipeline) GetHttp() *envoy_service_auth_v3.AttributeContext_HttpRequest {
+func (m *MockAuthPipeline) GetHttp() *authv3.AttributeContext_HttpRequest {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHttp")
-	ret0, _ := ret[0].(*envoy_service_auth_v3.AttributeContext_HttpRequest)
+	ret0, _ := ret[0].(*authv3.AttributeContext_HttpRequest)
 	return ret0
 }
 
@@ -96,10 +97,10 @@ func (mr *MockAuthPipelineMockRecorder) GetHttp() *gomock.Call {
 }
 
 // GetRequest mocks base method.
-func (m *MockAuthPipeline) GetRequest() *envoy_service_auth_v3.CheckRequest {
+func (m *MockAuthPipeline) GetRequest() *authv3.CheckRequest {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRequest")
-	ret0, _ := ret[0].(*envoy_service_auth_v3.CheckRequest)
+	ret0, _ := ret[0].(*authv3.CheckRequest)
 	return ret0
 }
 
@@ -449,10 +450,10 @@ func (mr *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder) AddK8sSecretBas
 }
 
 // GetK8sSecretLabelSelectors mocks base method.
-func (m *MockK8sSecretBasedIdentityConfigEvaluator) GetK8sSecretLabelSelectors() map[string]string {
+func (m *MockK8sSecretBasedIdentityConfigEvaluator) GetK8sSecretLabelSelectors() labels.Selector {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetK8sSecretLabelSelectors")
-	ret0, _ := ret[0].(map[string]string)
+	ret0, _ := ret[0].(labels.Selector)
 	return ret0
 }
 

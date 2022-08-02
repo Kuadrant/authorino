@@ -13,6 +13,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 
 	k8s "k8s.io/api/core/v1"
+	k8s_labels "k8s.io/apimachinery/pkg/labels"
 	k8s_types "k8s.io/apimachinery/pkg/types"
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -21,7 +22,7 @@ type MTLS struct {
 	auth.AuthCredentials
 
 	Name           string
-	LabelSelectors map[string]string
+	LabelSelectors k8s_labels.Selector
 	Namespace      string
 
 	rootCerts map[string]*x509.Certificate
@@ -29,7 +30,7 @@ type MTLS struct {
 	k8sClient k8s_client.Reader
 }
 
-func NewMTLSIdentity(name string, labelSelectors map[string]string, namespace string, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
+func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
 	mtls := &MTLS{
 		AuthCredentials: &auth.AuthCredential{KeySelector: "Basic"},
 		Name:            name,
@@ -46,7 +47,7 @@ func NewMTLSIdentity(name string, labelSelectors map[string]string, namespace st
 
 // loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted root CAs
 func (m *MTLS) loadSecrets(ctx context.Context) error {
-	opts := []k8s_client.ListOption{k8s_client.MatchingLabels(m.LabelSelectors)}
+	opts := []k8s_client.ListOption{k8s_client.MatchingLabelsSelector{Selector: m.LabelSelectors}}
 	if namespace := m.Namespace; namespace != "" {
 		opts = append(opts, k8s_client.InNamespace(namespace))
 	}
@@ -96,7 +97,7 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
-func (m *MTLS) GetK8sSecretLabelSelectors() map[string]string {
+func (m *MTLS) GetK8sSecretLabelSelectors() k8s_labels.Selector {
 	return m.LabelSelectors
 }
 
