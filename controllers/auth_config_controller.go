@@ -104,7 +104,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
-			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), linkedHosts)
+			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), []string{})
 			return ctrl.Result{}, err
 		}
 
@@ -629,8 +629,13 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		return err
 	}
 
+	count := len(authConfigList.Items)
+	if count == 0 {
+		return nil
+	}
+
 	logger := r.Logger.WithName("bootstrap")
-	logger.Info("building the index", "count", len(authConfigList.Items))
+	logger.Info("building the index", "count", count)
 
 	sort.Sort(authConfigList.Items)
 
