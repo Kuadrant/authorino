@@ -72,9 +72,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", resourceId)
 	reportReconciled := true
 
-	var linkedHosts, looseHosts []string
+	r.StatusReport.Set(resourceId, api.StatusReasonReconciling, "", []string{})
 
-	r.StatusReport.Set(resourceId, api.StatusReasonReconciling, "", linkedHosts)
+	var linkedHosts, looseHosts []string
 
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
