@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
@@ -589,13 +588,11 @@ func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace
 	looseHosts = []string{}
 
 	for _, host := range hosts {
-		// check for host collision with another namespace
-		if indexedResourceId, found := r.Index.FindId(host); found {
-			if indexedResourceIdParts := strings.Split(indexedResourceId, string(types.Separator)); indexedResourceIdParts[0] != resourceNamespace {
-				looseHosts = append(looseHosts, host)
-				logger.Info("host already taken in another namespace", "host", host)
-				continue
-			}
+		// check for host name collision between resources
+		if indexedResourceId, found := r.Index.FindId(host); found && indexedResourceId != resourceId {
+			looseHosts = append(looseHosts, host)
+			logger.Info("host already taken", "host", host)
+			continue
 		}
 
 		// add to the index

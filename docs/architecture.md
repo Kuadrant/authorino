@@ -99,7 +99,7 @@ metadata:
   name: my-api-protection
 spec:
   # List of one or more hostname[:port] entries, lookup keys to find this config in request-time
-  # Authorino will try to prevent hostname collision across Kubernetes namespaces by rejecting a hostname already taken.
+  # Authorino will try to prevent hostname collision by rejecting a hostname already taken.
   hosts:
     - my-api.io # north-south traffic
     - my-api.ns.svc.cluster.local # east-west traffic
@@ -209,9 +209,9 @@ The host can include the port number (i.e. `hostname:port`) or it can be just th
 
 ### Avoiding host name collision
 
-Authorino tries to prevent host name collision across namespaces by rejecting `AuthConfig`s that include at least one host name already taken by another `AuthConfig` in a different namespace. This is intentionally designed to avoid that, in [cluster-wide deployments](#cluster-wide-vs-namespaced-instances) of Authorino, users of one namespace can surpersed `AuthConfig` of each other.
+Authorino tries to prevent host name collision between `AuthConfig`s by rejecting to link in the index any `AuthConfig` and host name if the host name is already linked to a different `AuthConfig` in the index. This was intentionally designed to prevent users from surperseding each others' `AuthConfig`s, partially or fully, by just picking the same host names or overlapping host names as others.
 
-With wildcards, a host that matches a higher level wildcard already added to the index will be considered already taken. That
+When wildcards are involved, a host name that matches a host wildcard already linked in the index to another `AuthConfig` will be considered taken, and therefore the newest `AuthConfig` will be rejected to be linked to that host.
 
 ## The Authorization JSON
 

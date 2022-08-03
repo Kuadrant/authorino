@@ -84,7 +84,7 @@ Some typical log messages output by the Authorino service are listed in the tabl
 | `authorino.controller-runtime.manager.events`                              | `debug` | "Normal" | `object={kind=ConfigMap, apiVersion=v1}`, `reauthorino.ason=LeaderElection`, `message="authorino-controller-manager-* became leader"`
 | `authorino.controller-runtime.manager.events`                              | `debug` | "Normal" | `object={kind=Lease, apiVersion=coordination.k8s.io/v1}`, `reauthorino.ason=LeaderElection`, `message="authorino-controller-manager-* became leader"`
 | `authorino.controller-runtime.manager.controller.authconfig`               | `info` | "resource reconciled" | `authconfig` |
-| `authorino.controller-runtime.manager.controller.authconfig`               | `info` | "host already taken in another namespace" | `authconfig`, `host` |
+| `authorino.controller-runtime.manager.controller.authconfig`               | `info` | "host already taken" | `authconfig`, `host` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `debug` | "resource status did not change" | `authconfig` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `debug` | "resource status changed" | `authconfig`, `authconfig/status` |
 | `authorino.controller-runtime.manager.controller.authconfig.statusupdater` | `error` | "failed to update the resource" | `authconfig` |
