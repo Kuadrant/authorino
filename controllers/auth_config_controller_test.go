@@ -308,13 +308,13 @@ func TestUnmatchingAuthConfigLabels(t *testing.T) {
 
 func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	r := &AuthConfigReconciler{}
-	c, err := r.translateAuthConfig(context.TODO(), &api.AuthConfig{
+	config, err := r.translateAuthConfig(context.TODO(), &api.AuthConfig{
 		Spec: api.AuthConfigSpec{
 			Hosts: []string{"app.com"},
 		},
 	})
 	assert.NilError(t, err)
-	assert.Equal(t, len(c["app.com"].IdentityConfigs), 1)
+	assert.Equal(t, len(config.IdentityConfigs), 1)
 }
 
 func TestEmptyIndex(t *testing.T) {

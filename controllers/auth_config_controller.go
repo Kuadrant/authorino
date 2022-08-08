@@ -33,6 +33,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-logr/logr"
 	"gopkg.in/square/go-jose.v2"
@@ -72,9 +73,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger := r.Logger.WithValues("authconfig", resourceId)
 	reportReconciled := true
 
-	var linkedHosts, looseHosts []string
+	r.StatusReport.Set(resourceId, api.StatusReasonReconciling, "", []string{})
 
-	r.StatusReport.Set(resourceId, api.StatusReasonReconciling, "", linkedHosts)
+	var linkedHosts, looseHosts []string
 
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
@@ -102,22 +103,18 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Error(err, failedToCleanConfig)
 		}
 
-		evaluatorConfigByHost, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
+		translatedAuthConfig, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
-			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), linkedHosts)
+			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), []string{})
 			return ctrl.Result{}, err
 		}
 
 		// delete unused hosts from the index
-		for _, host := range r.Index.FindKeys(resourceId) {
-			if _, found := evaluatorConfigByHost[host]; found {
-				continue
-			}
-
+		for _, host := range utils.SubtractSlice(r.Index.FindKeys(resourceId), authConfig.Spec.Hosts) {
 			r.Index.DeleteKey(resourceId, host)
 		}
 
-		linkedHosts, looseHosts, err = r.addToIndex(log.IntoContext(ctx, logger), req.Namespace, resourceId, evaluatorConfigByHost)
+		linkedHosts, looseHosts, err = r.addToIndex(log.IntoContext(ctx, logger), req.Namespace, resourceId, translatedAuthConfig, authConfig.Spec.Hosts)
 
 		if len(looseHosts) > 0 {
 			r.StatusReport.Set(resourceId, api.StatusReasonHostsNotLinked, "one or more hosts are not linked to the resource", linkedHosts)
@@ -151,7 +148,7 @@ func (r *AuthConfigReconciler) cleanConfigs(resourceId string, ctx context.Conte
 	return nil
 }
 
-func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (map[string]evaluators.AuthConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (*evaluators.AuthConfig, error) {
 	var ctxWithLogger context.Context
 
 	identityConfigs := make([]evaluators.IdentityConfig, 0)
@@ -568,7 +565,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 	}
 
-	evaluatorConfig := evaluators.AuthConfig{
+	translatedAuthConfig := &evaluators.AuthConfig{
 		Conditions:           buildJSONPatternExpressions(authConfig, authConfig.Spec.Conditions),
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
@@ -579,23 +576,19 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	// denyWith
 	if denyWith := authConfig.Spec.DenyWith; denyWith != nil {
-		evaluatorConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
-		evaluatorConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
+		translatedAuthConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
+		translatedAuthConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
 	}
 
-	evaluatorConfigByHost := make(map[string]evaluators.AuthConfig)
-	for _, host := range authConfig.Spec.Hosts {
-		evaluatorConfigByHost[host] = evaluatorConfig
-	}
-	return evaluatorConfigByHost, nil
+	return translatedAuthConfig, nil
 }
 
-func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, evaluatorConfigByHost map[string]evaluators.AuthConfig) (linkedHosts, looseHosts []string, err error) {
+func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, authConfig *evaluators.AuthConfig, hosts []string) (linkedHosts, looseHosts []string, err error) {
 	logger := log.FromContext(ctx)
 	linkedHosts = []string{}
 	looseHosts = []string{}
 
-	for host, evaluatorConfig := range evaluatorConfigByHost {
+	for _, host := range hosts {
 		// check for host collision with another namespace
 		if indexedResourceId, found := r.Index.FindId(host); found {
 			if indexedResourceIdParts := strings.Split(indexedResourceId, string(types.Separator)); indexedResourceIdParts[0] != resourceNamespace {
@@ -606,7 +599,7 @@ func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace
 		}
 
 		// add to the index
-		if err = r.Index.Set(resourceId, host, evaluatorConfig, true); err != nil {
+		if err = r.Index.Set(resourceId, host, *authConfig, true); err != nil {
 			return
 		}
 
@@ -629,13 +622,18 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		return err
 	}
 
+	count := len(authConfigList.Items)
+	if count == 0 {
+		return nil
+	}
+
 	logger := r.Logger.WithName("bootstrap")
-	logger.Info("building the index", "count", len(authConfigList.Items))
+	logger.Info("building the index", "count", count)
 
 	sort.Sort(authConfigList.Items)
 
 	ctx = log.IntoContext(ctx, logger)
-	denyAll := evaluators.AuthConfig{
+	denyAll := &evaluators.AuthConfig{
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{evaluators.NewDenyAllAuthorization(ctx, "deny-all", "")},
 		DenyWith:             evaluators.DenyWith{Unauthorized: &evaluators.DenyWithValues{Code: 503, Message: &json.JSONValue{Static: "Busy"}}},
 	}
@@ -645,11 +643,6 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 			continue
 		}
 
-		evaluatorConfigByHost := make(map[string]evaluators.AuthConfig)
-		for _, host := range authConfig.Spec.Hosts {
-			evaluatorConfigByHost[host] = denyAll
-		}
-
 		authConfigName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 		logger.V(1).Info("building index", "authconfig", authConfigName.String())
 
@@ -657,7 +650,8 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 			log.IntoContext(ctx, logger.WithValues("authconfig", authConfigName)),
 			authConfig.Namespace,
 			authConfigName.String(),
-			evaluatorConfigByHost,
+			denyAll,
+			authConfig.Spec.Hosts,
 		)
 
 		if err != nil {
