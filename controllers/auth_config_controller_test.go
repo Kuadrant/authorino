@@ -215,13 +215,13 @@ func TestTranslateAuthConfig(t *testing.T) {
 	// TODO
 }
 
-func TestHostColllision(t *testing.T) {
+func TestPreventHostCollision(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
 	indexMock := mock_index.NewMockIndex(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{})
-	authConfig.Spec.Hosts = append(authConfig.Spec.Hosts, "other.io")
+	authConfig.Spec.Hosts = append(authConfig.Spec.Hosts, "other.io", "yet-another.io")
 	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
@@ -231,6 +231,7 @@ func TestHostColllision(t *testing.T) {
 	indexMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
 	indexMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
 	indexMock.EXPECT().FindId("other.io").Return("", false)
+	indexMock.EXPECT().FindId("yet-another.io").Return(fmt.Sprintf("%s/other-auth-config-same-ns", authConfig.Namespace), true)
 	indexMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
