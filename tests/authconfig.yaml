@@ -28,8 +28,9 @@ spec:
       valueFrom: { authJSON: auth.identity.sub }
   - name: api-key
     apiKey:
-      labelSelectors:
-        app: talker-api
+      selector:
+        matchLabels:
+          app: talker-api
     credentials:
       in: custom_header
       keySelector: X-API-KEY
