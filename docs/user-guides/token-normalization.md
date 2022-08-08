@@ -122,8 +122,9 @@ spec:
         authJSON: auth.identity.realm_access.roles
   - name: api-key-friends
     apiKey:
-      labelSelectors:
-        group: friends
+      selector:
+        matchLabels:
+          group: friends
     credentials:
       in: authorization_header
       keySelector: APIKEY

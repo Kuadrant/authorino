@@ -146,8 +146,9 @@ spec:
   identity:
   - name: api-clients
     apiKey:
-      labelSelectors:
-        authorino.kuadrant.io/managed-by: authorino
+      selector:
+        matchLabels:
+          authorino.kuadrant.io/managed-by: authorino
       allNamespaces: true
     credentials:
       in: authorization_header

@@ -134,8 +134,9 @@ spec:
   identity:
     - name: api-key-users
       apiKey:
-        labelSelectors: # the key-value set used to select the matching `Secret`s; resources including these labels will be acepted as valid API keys to authenticate to this service
-          group: friends # some custom label
+        selector:
+          matchLabels: # the key-value set used to select the matching `Secret`s; resources including these labels will be acepted as valid API keys to authenticate to this service
+            group: friends # some custom label
         allNamespaces: true # only works with cluster-wide Authorino instances; otherwise, create the API key secrets in the same namespace of the AuthConfig
 ```
 
@@ -543,8 +544,9 @@ spec:
   identity:
     - name: edge
       apiKey:
-        labelSelectors:
-          authorino.kuadrant.io/managed-by: authorino
+        selector:
+          matchLabels:
+            authorino.kuadrant.io/managed-by: authorino
       credentials:
         in: authorization_header
         keySelector: APIKEY
@@ -598,8 +600,9 @@ spec:
   identity:
     - name: edge
       apiKey:
-        labelSelectors:
-          authorino.kuadrant.io/managed-by: authorino
+        selector:
+          matchLabels:
+            authorino.kuadrant.io/managed-by: authorino
       credentials:
         in: authorization_header
         keySelector: APIKEY
@@ -698,18 +701,21 @@ spec:
     - name: tier-1
       priority: 0
       apiKey:
-        labelSelectors:
-          tier: "1"
+        selector:
+          matchLabels:
+            tier: "1"
     - name: tier-2
       priority: 1
       apiKey:
-        labelSelectors:
-          tier: "2"
+        selector:
+          matchLabels:
+            tier: "2"
     - name: tier-3
       priority: 1
       apiKey:
-        labelSelectors:
-          tier: "3"
+        selector:
+          matchLabels:
+            tier: "3"
   metadata:
     - name: first
       http:

@@ -102,36 +102,41 @@ spec:
   identity:
   - name: members-authorization-header
     apiKey:
-      labelSelectors:
-        group: members
+      selector:
+        matchLabels:
+          group: members
     credentials:
       in: authorization_header
       keySelector: APIKEY # instead of the default prefix 'Bearer'
   - name: members-custom-header
     apiKey:
-      labelSelectors:
-        group: members
+      selector:
+        matchLabels:
+          group: members
     credentials:
       in: custom_header
       keySelector: X-API-Key
   - name: members-query-string-param
     apiKey:
-      labelSelectors:
-        group: members
+      selector:
+        matchLabels:
+          group: members
     credentials:
       in: query
       keySelector: api_key
   - name: members-cookie
     apiKey:
-      labelSelectors:
-        group: members
+      selector:
+        matchLabels:
+          group: members
     credentials:
       in: cookie
       keySelector: APIKEY
   - name: admins
     apiKey:
-      labelSelectors:
-        group: admins
+      selector:
+        matchLabels:
+          group: admins
 EOF
 ```
 

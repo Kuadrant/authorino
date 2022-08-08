@@ -95,15 +95,17 @@ spec:
   identity:
   - name: browser-users
     apiKey:
-      labelSelectors:
-        group: users
+      selector:
+        matchLabels:
+          group: users
     credentials:
       in: cookie
       keySelector: TOKEN
   - name: http-basic-auth
     apiKey:
-      labelSelectors:
-        group: users
+      selector:
+        matchLabels:
+          group: users
     credentials:
       in: authorization_header
       keySelector: Basic
