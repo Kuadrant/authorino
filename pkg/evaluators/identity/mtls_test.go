@@ -11,6 +11,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	k8s "k8s.io/api/core/v1"
 	k8s_meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s_labels "k8s.io/apimachinery/pkg/labels"
 	k8s_types "k8s.io/apimachinery/pkg/types"
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -50,19 +51,20 @@ func init() {
 		}
 	}
 
-	testMTLSK8sSecret1 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "pets", Namespace: "ns1", Labels: map[string]string{"app": "*"}}, Data: testCerts["pets"], Type: k8s.SecretTypeTLS}
-	testMTLSK8sSecret2 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "cars", Namespace: "ns1", Labels: map[string]string{"app": "*"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
-	testMTLSK8sSecret3 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "books", Namespace: "ns2", Labels: map[string]string{"app": "*"}}, Data: testCerts["books"], Type: k8s.SecretTypeTLS}
+	testMTLSK8sSecret1 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "pets", Namespace: "ns1", Labels: map[string]string{"app": "all"}}, Data: testCerts["pets"], Type: k8s.SecretTypeTLS}
+	testMTLSK8sSecret2 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "cars", Namespace: "ns1", Labels: map[string]string{"app": "all"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
+	testMTLSK8sSecret3 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "books", Namespace: "ns2", Labels: map[string]string{"app": "all"}}, Data: testCerts["books"], Type: k8s.SecretTypeTLS}
 	testMTLSK8sClient = mockK8sClient(testMTLSK8sSecret1, testMTLSK8sSecret2, testMTLSK8sSecret3)
 }
 
 func TestNewMTLSIdentity(t *testing.T) {
 	var exists bool
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, mtls.Name, "mtls")
-	assert.Equal(t, mtls.LabelSelectors["app"], "*")
+	assert.Equal(t, mtls.LabelSelectors.String(), "app=all")
 	assert.Equal(t, mtls.Namespace, "")
 	assert.Equal(t, len(mtls.rootCerts), 3)
 	_, exists = mtls.rootCerts["ns1/pets"]
@@ -76,10 +78,11 @@ func TestNewMTLSIdentity(t *testing.T) {
 func TestNewMTLSIdentitySingleNamespace(t *testing.T) {
 	var exists bool
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, mtls.Name, "mtls")
-	assert.Equal(t, mtls.LabelSelectors["app"], "*")
+	assert.Equal(t, mtls.LabelSelectors.String(), "app=all")
 	assert.Equal(t, mtls.Namespace, "ns1")
 	assert.Equal(t, len(mtls.rootCerts), 2)
 	_, exists = mtls.rootCerts["ns1/pets"]
@@ -91,31 +94,32 @@ func TestNewMTLSIdentitySingleNamespace(t *testing.T) {
 }
 
 func TestMTLSGetK8sSecretLabelSelectors(t *testing.T) {
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "test"}, "", testMTLSK8sClient, context.TODO())
-	labelsSelectors, _ := json.Marshal(mtls.GetK8sSecretLabelSelectors())
-	assert.Equal(t, string(labelsSelectors), `{"app":"test"}`)
+	selector, _ := k8s_labels.Parse("app=test")
+	mtls := NewMTLSIdentity("mtls", selector, "", testMTLSK8sClient, context.TODO())
+	assert.Equal(t, mtls.GetK8sSecretLabelSelectors().String(), "app=test")
 }
 
 func TestMTLSAddK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
-	newSecretWithinScope := k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "foo", Namespace: "ns1", Labels: map[string]string{"app": "*"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
+	newSecretWithinScope := k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "foo", Namespace: "ns1", Labels: map[string]string{"app": "all"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
 	mtls.AddK8sSecretBasedIdentity(context.TODO(), newSecretWithinScope)
 	assert.Equal(t, len(mtls.rootCerts), 3)
 	_, exists = mtls.rootCerts["ns1/foo"]
 	assert.Check(t, exists)
 
-	newSecretOutOfScope := k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "bar", Namespace: "ns2", Labels: map[string]string{"app": "*"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
+	newSecretOutOfScope := k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "bar", Namespace: "ns2", Labels: map[string]string{"app": "all"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
 	mtls.AddK8sSecretBasedIdentity(context.TODO(), newSecretOutOfScope)
 	assert.Equal(t, len(mtls.rootCerts), 3)
 	_, exists = mtls.rootCerts["ns1/bar"]
 	assert.Check(t, !exists)
 
-	newSecretInvalid := k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "inv", Namespace: "ns1", Labels: map[string]string{"app": "*"}}, Data: map[string][]byte{}, Type: k8s.SecretTypeTLS}
+	newSecretInvalid := k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "inv", Namespace: "ns1", Labels: map[string]string{"app": "all"}}, Data: map[string][]byte{}, Type: k8s.SecretTypeTLS}
 	mtls.AddK8sSecretBasedIdentity(context.TODO(), newSecretInvalid)
 	assert.Equal(t, len(mtls.rootCerts), 3)
 	_, exists = mtls.rootCerts["ns1/inv"]
@@ -125,7 +129,8 @@ func TestMTLSAddK8sSecretBasedIdentity(t *testing.T) {
 func TestMTLSRevokeK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
@@ -153,7 +158,8 @@ func TestCall(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// john (ca cert: pets)
@@ -187,7 +193,8 @@ func TestCallUnknownAuthority(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -206,7 +213,8 @@ func TestCallMissingClientCert(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -223,7 +231,8 @@ func TestCallInvalidClientCert(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mtls := NewMTLSIdentity("mtls", map[string]string{"app": "*"}, "ns1", testMTLSK8sClient, context.TODO())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{

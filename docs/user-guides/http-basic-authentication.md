@@ -96,8 +96,9 @@ spec:
   identity:
   - name: http-basic-auth
     apiKey:
-      labelSelectors:
-        group: users
+      selector:
+        matchLabels:
+          group: users
     credentials:
       in: authorization_header
       keySelector: Basic

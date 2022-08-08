@@ -110,9 +110,10 @@ spec:
   identity:
   - name: api-key
     apiKey:
-      labelSelectors:
-        authorino/api-key: "true"
-        authorino/environment: staging
+      selector:
+        matchLabels:
+          authorino/api-key: "true"
+          authorino/environment: staging
 EOF
 ```
 
@@ -160,9 +161,10 @@ spec:
   identity:
   - name: api-key
     apiKey:
-      labelSelectors:
-        authorino/api-key: "true"
-        authorino/environment: production
+      selector:
+        matchLabels:
+          authorino/api-key: "true"
+          authorino/environment: production
 EOF
 ```
 

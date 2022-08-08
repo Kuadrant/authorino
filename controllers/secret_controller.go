@@ -12,7 +12,6 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -112,7 +111,7 @@ func (r *SecretReconciler) refreshK8sSecretBasedIdentity(ctx context.Context, au
 			}
 		}
 		if ev, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
-			selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: ev.GetK8sSecretLabelSelectors()})
+			selector := ev.GetK8sSecretLabelSelectors()
 			if selector == nil || selector.Matches(labels.Set(secret.Labels)) {
 				logger.Info("adding k8s secret to the index")
 				ev.AddK8sSecretBasedIdentity(ctx, secret)

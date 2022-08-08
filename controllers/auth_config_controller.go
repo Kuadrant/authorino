@@ -38,6 +38,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -227,7 +228,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if identity.APIKey.AllNamespaces && r.ClusterWide() {
 				namespace = ""
 			}
-			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identity.Name, identity.APIKey.LabelSelectors, namespace, authCred, r.Client, ctxWithLogger)
+			selector, err := metav1.LabelSelectorAsSelector(identity.APIKey.Selector)
+			if err != nil {
+				return nil, err
+			}
+			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identity.Name, selector, namespace, authCred, r.Client, ctxWithLogger)
 
 		// MTLS
 		case api.IdentityMTLS:
@@ -235,7 +240,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if identity.MTLS.AllNamespaces && r.ClusterWide() {
 				namespace = ""
 			}
-			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identity.Name, identity.MTLS.LabelSelectors, namespace, r.Client, ctxWithLogger)
+			selector, err := metav1.LabelSelectorAsSelector(identity.MTLS.Selector)
+			if err != nil {
+				return nil, err
+			}
+			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identity.Name, selector, namespace, r.Client, ctxWithLogger)
 
 		// kubernetes auth
 		case api.IdentityKubernetesAuth:

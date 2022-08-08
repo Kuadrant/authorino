@@ -105,8 +105,9 @@ spec:
   identity:
   - name: friends
     apiKey:
-      labelSelectors:
-        group: friends
+      selector:
+        matchLabels:
+          group: friends
     credentials:
       in: authorization_header
       keySelector: APIKEY

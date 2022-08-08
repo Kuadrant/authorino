@@ -9,6 +9,7 @@ import (
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -54,7 +55,7 @@ type IdentityConfigEvaluator interface {
 }
 
 type K8sSecretBasedIdentityConfigEvaluator interface {
-	GetK8sSecretLabelSelectors() map[string]string
+	GetK8sSecretLabelSelectors() labels.Selector
 	AddK8sSecretBasedIdentity(context.Context, v1.Secret)
 	RevokeK8sSecretBasedIdentity(context.Context, types.NamespacedName)
 }

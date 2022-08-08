@@ -11,6 +11,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -234,7 +235,7 @@ func (config *IdentityConfig) RevokeK8sSecretBasedIdentity(ctx context.Context, 
 	ev.RevokeK8sSecretBasedIdentity(ctx, deleted)
 }
 
-func (config *IdentityConfig) GetK8sSecretLabelSelectors() map[string]string {
+func (config *IdentityConfig) GetK8sSecretLabelSelectors() labels.Selector {
 	var ev auth.K8sSecretBasedIdentityConfigEvaluator
 
 	switch config.GetType() {

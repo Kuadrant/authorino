@@ -433,7 +433,8 @@ spec:
   identity:
   - name: api-key
     apiKey:
-      labelSelectors: { app: myapp }
+      selector:
+        matchLabels: { app: myapp }
 EOF
 # Error from server: error when applying patch:
 # {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta1\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"hosts\":[\"myapp.io\"],\"identity\":[{\"apiKey\":{\"labelSelectors\":{\"app\":\"myapp\"}},\"name\":\"api-key\"}]}}\n"}},"spec":{"identity":[{"apiKey":{"labelSelectors":{"app":"myapp"}},"name":"api-key"}]}}
@@ -476,7 +477,8 @@ spec:
   identity:
   - name: api-key
     apiKey:
-      labelSelectors: { app: myapp }
+      selector:
+        matchLabels: { app: myapp }
 EOF
 # authconfig.authorino.kuadrant.io/myapp-protection configured
 ```

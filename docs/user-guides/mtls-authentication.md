@@ -302,8 +302,9 @@ spec:
   identity:
   - name: mtls
     mtls:
-      labelSelectors:
-        app: talker-api
+      selector:
+        matchLabels:
+          app: talker-api
   authorization:
   - name: acme
     json:
