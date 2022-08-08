@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/cache"
+	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 )
@@ -29,7 +29,7 @@ func init() {
 
 // OidcService implements an HTTP server for OpenID Connect Discovery
 type OidcService struct {
-	Cache cache.Cache
+	Index index.Index
 }
 
 func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
@@ -100,9 +100,9 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 }
 
 func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) auth.WristbandIssuer {
-	hosts := o.Cache.FindKeys(realm)
+	hosts := o.Index.FindKeys(realm)
 	if len(hosts) > 0 {
-		for _, config := range o.Cache.Get(hosts[0]).ResponseConfigs {
+		for _, config := range o.Index.Get(hosts[0]).ResponseConfigs {
 			respConfigEv, _ := config.(auth.ResponseConfigEvaluator)
 			if respConfigEv.GetName() == wristbandConfigName {
 				return respConfigEv.GetWristbandIssuer()

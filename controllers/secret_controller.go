@@ -5,8 +5,8 @@ import (
 
 	controller_builder "github.com/kuadrant/authorino/controllers/builder"
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -31,7 +31,7 @@ type SecretReconciler struct {
 	client.Client
 	Logger        logr.Logger
 	Scheme        *runtime.Scheme
-	Cache         cache.Cache
+	Index         index.Index
 	LabelSelector labels.Selector
 	Namespace     string
 }
@@ -82,7 +82,7 @@ func (r *SecretReconciler) eachAuthConfigsWithK8sSecretBasedIdentity(f func(*eva
 func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity() authConfigSet {
 	authConfigs := make(authConfigSet)
 	var s struct{}
-	for _, authConfig := range r.Cache.List() {
+	for _, authConfig := range r.Index.List() {
 		for _, identityEvaluator := range authConfig.IdentityConfigs {
 			if _, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
 				authConfigs[authConfig] = s
@@ -96,7 +96,7 @@ func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity() authConfig
 func (r *SecretReconciler) revokeK8sSecretBasedIdentity(ctx context.Context, authConfig *evaluators.AuthConfig, deleted types.NamespacedName) {
 	for _, identityEvaluator := range authConfig.IdentityConfigs {
 		if ev, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
-			log.FromContext(ctx).V(1).Info("deleting k8s secret from cache", "authconfig", authConfigName(authConfig))
+			log.FromContext(ctx).V(1).Info("deleting k8s secret from the index", "authconfig", authConfigName(authConfig))
 			ev.RevokeK8sSecretBasedIdentity(ctx, deleted)
 		}
 	}
@@ -114,10 +114,10 @@ func (r *SecretReconciler) refreshK8sSecretBasedIdentity(ctx context.Context, au
 		if ev, ok := identityEvaluator.(auth.K8sSecretBasedIdentityConfigEvaluator); ok {
 			selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: ev.GetK8sSecretLabelSelectors()})
 			if selector == nil || selector.Matches(labels.Set(secret.Labels)) {
-				logger.Info("adding k8s secret to cache")
+				logger.Info("adding k8s secret to the index")
 				ev.AddK8sSecretBasedIdentity(ctx, secret)
 			} else {
-				logger.Info("deleting k8s secret from cache")
+				logger.Info("deleting k8s secret from the index")
 				ev.RevokeK8sSecretBasedIdentity(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name})
 			}
 		}

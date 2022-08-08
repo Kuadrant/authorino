@@ -38,8 +38,8 @@ import (
 
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
-	"github.com/kuadrant/authorino/pkg/cache"
 	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
@@ -176,14 +176,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	cache := cache.NewCache()
+	index := index.NewIndex()
 	statusReport := controllers.NewStatusReportMap()
 	controllerLogger := log.WithName("controller-runtime").WithName("manager").WithName("controller")
 
 	// sets up the auth config reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
 		Client:        mgr.GetClient(),
-		Cache:         cache,
+		Index:         index,
 		StatusReport:  statusReport,
 		Logger:        controllerLogger.WithName("authconfig"),
 		Scheme:        mgr.GetScheme(),
@@ -200,7 +200,7 @@ func main() {
 		Client:        mgr.GetClient(),
 		Logger:        controllerLogger.WithName("secret"),
 		Scheme:        mgr.GetScheme(),
-		Cache:         cache,
+		Index:         index,
 		LabelSelector: controllers.ToLabelSelector(watchedSecretLabelSelector),
 		Namespace:     watchNamespace,
 	}).SetupWithManager(mgr); err != nil {
@@ -210,9 +210,9 @@ func main() {
 
 	// +kubebuilder:scaffold:builder
 
-	startExtAuthServerGRPC(cache)
-	startExtAuthServerHTTP(cache)
-	startOIDCServer(cache)
+	startExtAuthServerGRPC(index)
+	startExtAuthServerHTTP(index)
+	startOIDCServer(index)
 
 	_ = mgr.AddMetricsExtraHandler("/server-metrics", promhttp.Handler())
 
@@ -256,7 +256,7 @@ func main() {
 	}
 }
 
-func startExtAuthServerGRPC(authConfigCache cache.Cache) {
+func startExtAuthServerGRPC(authConfigIndex index.Index) {
 	lis, err := listen(extAuthGRPCPort)
 
 	if err != nil {
@@ -293,7 +293,7 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 
 	grpcServer := grpc.NewServer(grpcServerOpts...)
 
-	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Cache: authConfigCache, Timeout: timeoutMs})
+	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Index: authConfigIndex, Timeout: timeoutMs})
 	healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -308,12 +308,12 @@ func startExtAuthServerGRPC(authConfigCache cache.Cache) {
 	}()
 }
 
-func startExtAuthServerHTTP(authConfigCache cache.Cache) {
-	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, service.NewAuthService(authConfigCache, timeoutMs, maxHttpRequestBodySize))
+func startExtAuthServerHTTP(authConfigIndex index.Index) {
+	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, service.NewAuthService(authConfigIndex, timeoutMs, maxHttpRequestBodySize))
 }
 
-func startOIDCServer(authConfigCache cache.Cache) {
-	startHTTPService("oidc", oidcHTTPPort, service.OIDCBasePath, oidcTLSCertPath, oidcTLSCertKeyPath, &service.OidcService{Cache: authConfigCache})
+func startOIDCServer(authConfigIndex index.Index) {
+	startHTTPService("oidc", oidcHTTPPort, service.OIDCBasePath, oidcTLSCertPath, oidcTLSCertKeyPath, &service.OidcService{Index: authConfigIndex})
 }
 
 func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, handler http.Handler) {
