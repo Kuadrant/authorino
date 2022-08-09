@@ -10,7 +10,7 @@ Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with y
     </ul>
   </summary>
 
-  In Authorino, API keys are stored as Kubernetes `Secret`s. Each resource must contain an `api_key` entry with the value of the API key, and labeled to match the selectors specified in `spec.identity.apiKey.labelSelectors` of the `AuthConfig`.
+  In Authorino, API keys are stored as Kubernetes `Secret`s. Each resource must contain an `api_key` entry with the value of the API key, and labeled to match the selectors specified in `spec.identity.apiKey.selector` of the `AuthConfig`.
 
   API key `Secret`s must also include labels that match the `secretLabelSelector` field of the Authorino instance. See [Resource reconciliation and status update](../architecture.md#resource-reconciliation-and-status-update) for details.
 

@@ -437,7 +437,7 @@ spec:
         matchLabels: { app: myapp }
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta1\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"hosts\":[\"myapp.io\"],\"identity\":[{\"apiKey\":{\"labelSelectors\":{\"app\":\"myapp\"}},\"name\":\"api-key\"}]}}\n"}},"spec":{"identity":[{"apiKey":{"labelSelectors":{"app":"myapp"}},"name":"api-key"}]}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta1\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"hosts\":[\"myapp.io\"],\"identity\":[{\"apiKey\":{\"selector\":{\"matchLabels\":{\"app\":\"myapp\"}}},\"name\":\"api-key\"}]}}\n"}},"spec":{"identity":[{"apiKey":{"selector":{"matchLabels":{"app":"myapp"}}},"name":"api-key"}]}}
 # to:
 # Resource: "authorino.kuadrant.io/v1beta1, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta1, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
