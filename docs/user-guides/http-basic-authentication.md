@@ -13,7 +13,7 @@ Turn Authorino API key `Secret`s settings into HTTP basic auth.
 
   HTTP "Basic" Authentication ([RFC 7235](https://datatracker.ietf.org/doc/html/rfc7235)) is not recommended if you can afford other more secure methods such as OpenID Connect. To support legacy nonetheless it is sometimes necessary to implement it.
 
-  In Authorino, HTTP "Basic" Authentication can be modeled leveraging the API key authentication feature (stored as Kubernetes `Secret`s with an `api_key` entry and labeled to match selectors specified in `spec.identity.apiKey.labelSelectors` of the `AuthConfig`).
+  In Authorino, HTTP "Basic" Authentication can be modeled leveraging the API key authentication feature (stored as Kubernetes `Secret`s with an `api_key` entry and labeled to match selectors specified in `spec.identity.apiKey.selector` of the `AuthConfig`).
 
   Check out as well the user guide about [Authentication with API keys](./api-key-authentication.md).
 

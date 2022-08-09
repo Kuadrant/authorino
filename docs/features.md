@@ -116,9 +116,9 @@ To define an API key, create a `Secret` in the cluster containing an `api_key` e
 
 API key secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.identity.apiKey.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
 
-API key secrets must be labeled with the labels that match the selectors specified in `spec.identity.apiKey.labelSelectors` in the `AuthConfig`.
+API key secrets must be labeled with the labels that match the selectors specified in `spec.identity.apiKey.selector` in the `AuthConfig`.
 
-Whenever an `AuthConfig` is indexed, Authorino will also index all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.labelSelectors` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
+Whenever an `AuthConfig` is indexed, Authorino will also index all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.selector` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
 
 **Example.** For the following `AuthConfig`:
 
