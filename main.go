@@ -118,6 +118,8 @@ var (
 	scheme  = runtime.NewScheme()
 	logOpts = log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
 	logger  = log.NewLogger(logOpts).WithName("authorino")
+
+	version string
 )
 
 func init() {
@@ -138,6 +140,8 @@ func main() {
 	flag.StringVar(&metricsAddr, flagMetricsAddr, defaultMetricsAddr, "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, flagEnableLeaderElection, defaultEnableLeaderElection, "Enable leader election for status updater. Ensures only one instance of Authorino tries to update the status of reconciled resources.")
 	flag.Parse()
+
+	logger.Info("booting up authorino", "version", version)
 
 	logger.V(1).Info("setting up with options",
 		envWatchNamespace, watchNamespace,

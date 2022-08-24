@@ -1,6 +1,9 @@
 # Use bash as shell
 SHELL = /bin/bash
 
+# Authorino version
+VERSION = $(shell git rev-parse HEAD)
+
 # Use vi as default editor
 EDITOR ?= vi
 
@@ -89,7 +92,7 @@ endef
 
 ##@ Development
 
-.PHONY: vendor fmt vet generate manifests run build test benchmarks cover e2e
+.PHONY: vendor fmt vet generate manifests run build test benchmarks cover e2e docker-build
 
 vendor: ## Downloads vendor dependencies
 	go mod tidy
@@ -109,10 +112,21 @@ manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/i
 	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
 
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
-	go run ./main.go
+	go run -ldflags "-X main.version=$(VERSION)" ./main.go
 
 build: generate ## Builds the manager binary
-	go build -o bin/authorino main.go
+	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(VERSION)" -o bin/authorino main.go
+
+IMAGE_REPO ?= authorino
+using_semantic_version := $(shell [[ $(VERSION) =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$$ ]] && echo "true")
+ifdef using_semantic_version
+IMAGE_TAG=v$(VERSION)
+else
+IMAGE_TAG=local
+endif
+AUTHORINO_IMAGE ?= $(IMAGE_REPO):$(IMAGE_TAG)
+docker-build: ## Builds an image based on the current branch
+	docker build --build-arg version=$(VERSION) -t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
@@ -228,9 +242,7 @@ KIND_CLUSTER_NAME ?= authorino
 cluster: kind ## Starts a local Kubernetes cluster using Kind
 	kind create cluster --name $(KIND_CLUSTER_NAME)
 
-AUTHORINO_IMAGE ?= authorino:local
-local-build: kind ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
-	docker build -t $(AUTHORINO_IMAGE) .
+local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
 	kind load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
 local-setup: cluster local-build cert-manager install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
