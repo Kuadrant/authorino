@@ -105,6 +105,25 @@ func TestOPAExternalUrlJsonResponse(t *testing.T) {
 	assertOPAAuthorization(t, opa)
 }
 
+func TestOPAExternalUrlMissingContentType(t *testing.T) {
+	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+		"/rego": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoDataMock, Headers: map[string]string{"Content-Type": ""}}
+		},
+	})
+	defer extHttpMetadataServer.Close()
+
+	externalSource := &OPAExternalSource{
+		Endpoint:        "http://" + opaExtHttpServerMockAddr + "/rego",
+		AuthCredentials: auth.NewAuthCredential("", ""),
+	}
+
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, 0, context.TODO())
+
+	assert.NilError(t, err)
+	assertOPAAuthorization(t, opa)
+}
+
 func TestOPAExternalUrlWithTTL(t *testing.T) {
 	changed := false
 	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{

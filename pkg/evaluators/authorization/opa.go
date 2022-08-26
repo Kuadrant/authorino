@@ -221,7 +221,7 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
 
 		result := string(body)
 		//json
-		if resp.Header["Content-Type"][0] == "application/json" {
+		if strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
 			var jsonResponse responseOpaJson
 			if err := json.Unmarshal(body, &jsonResponse); err != nil {
 				return "", fmt.Errorf("unable to unmarshal json response: %v", err)
