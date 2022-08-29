@@ -28,7 +28,7 @@ type APIKey struct {
 	Namespace      string              `yaml:"namespace"`
 
 	secrets   map[string]k8s.Secret
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
@@ -73,6 +73,9 @@ func (a *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{
 	if reqKey, err := a.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
 		return nil, err
 	} else {
+		a.mutex.RLock()
+		defer a.mutex.RUnlock()
+
 		for key, secret := range a.secrets {
 			if key == reqKey {
 				return secret, nil

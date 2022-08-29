@@ -26,7 +26,7 @@ type MTLS struct {
 	Namespace      string
 
 	rootCerts map[string]*x509.Certificate
-	mutex     sync.Mutex
+	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
@@ -82,6 +82,9 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 	if cert == nil {
 		return nil, fmt.Errorf("invalid client certificate")
 	}
+
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	certs := x509.NewCertPool()
 	for _, cert := range m.rootCerts {

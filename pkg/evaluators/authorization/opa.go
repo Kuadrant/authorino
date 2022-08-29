@@ -77,10 +77,13 @@ type OPA struct {
 	policyName string
 	policyUID  string
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func (opa *OPA) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+	opa.mu.RLock()
+	defer opa.mu.RUnlock()
+
 	var authJSON interface{}
 	if err := json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON); err != nil {
 		return false, err
@@ -109,10 +112,33 @@ func (opa *OPA) Clean(_ context.Context) error {
 	return opa.ExternalSource.cleanupRefresher()
 }
 
-func (opa *OPA) precompilePolicy() error {
-	policyName := fmt.Sprintf(`authorino.authz["%s"]`, opa.policyUID)
-	policyContent := fmt.Sprintf(policyTemplate, policyName, opa.Rego)
-	policyFileName := opa.policyUID + ".rego"
+func (opa *OPA) updateRego(rego string, ctx context.Context, force bool) (bool, error) {
+	opa.mu.Lock()
+	defer opa.mu.Unlock()
+
+	newRego := cleanUpRegoDocument(rego)
+	currentRego := opa.Rego
+
+	if !force && hash(newRego) == hash(currentRego) {
+		return false, nil
+	}
+
+	opa.Rego = newRego
+
+	if policy, err := precompilePolicy(opa.opaContext, opa.policyUID, opa.Rego, opa.AllValues); err != nil {
+		opa.Rego = currentRego
+		log.FromContext(ctx).Error(err, msg_OpaPolicyPrecompileError, "policy", opa.policyName)
+		return false, err
+	} else {
+		opa.policy = policy
+		return true, nil
+	}
+}
+
+func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValues bool) (*rego.PreparedEvalQuery, error) {
+	policyName := fmt.Sprintf(`authorino.authz["%s"]`, policyUID)
+	policyContent := fmt.Sprintf(policyTemplate, policyName, policyRego)
+	policyFileName := policyUID + ".rego"
 	queryTemplate := `%s = object.get(data.` + policyName + `, "%s", null)`
 
 	var module *opaParser.Module
@@ -120,10 +146,10 @@ func (opa *OPA) precompilePolicy() error {
 	var err error
 
 	if module, err = opaParser.ParseModule(policyFileName, policyContent); err != nil {
-		return err
+		return nil, err
 	}
 
-	if opa.AllValues {
+	if allValues {
 		rules := map[string]interface{}{allowQuery: nil}
 		for _, rule := range module.Rules {
 			name := string(rule.Head.Name)
@@ -139,34 +165,11 @@ func (opa *OPA) precompilePolicy() error {
 		rego.ParsedModule(module),
 	)
 
-	if regoPolicy, err := r.PrepareForEval(opa.opaContext); err != nil {
-		return err
+	if regoPolicy, err := r.PrepareForEval(ctx); err != nil {
+		return nil, err
 	} else {
-		opa.policy = &regoPolicy
-		return nil
+		return &regoPolicy, nil
 	}
-}
-
-func (opa *OPA) updateRego(rego string, ctx context.Context, force bool) (bool, error) {
-	opa.mu.Lock()
-	defer opa.mu.Unlock()
-
-	newRego := cleanUpRegoDocument(rego)
-	currentRego := opa.Rego
-
-	if !force && hash(newRego) == hash(currentRego) {
-		return false, nil
-	}
-
-	opa.Rego = newRego
-
-	if err := opa.precompilePolicy(); err != nil {
-		opa.Rego = currentRego
-		log.FromContext(ctx).Error(err, msg_OpaPolicyPrecompileError, "policy", opa.policyName)
-		return false, err
-	}
-
-	return true, nil
 }
 
 func cleanUpRegoDocument(rego string) string {

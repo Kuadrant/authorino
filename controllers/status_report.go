@@ -13,10 +13,13 @@ func NewStatusReportMap() *StatusReportMap {
 
 type StatusReportMap struct {
 	statuses map[string]StatusReport
-	mu       sync.Mutex
+	mu       sync.RWMutex
 }
 
 func (m *StatusReportMap) Get(id string) (status StatusReport, found bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	status, found = m.statuses[id]
 	return
 }
@@ -34,6 +37,9 @@ func (m *StatusReportMap) Set(id, reason, message string, hosts []string) {
 }
 
 func (m *StatusReportMap) Clear(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	delete(m.statuses, id)
 }
 
