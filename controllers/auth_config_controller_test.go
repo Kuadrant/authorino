@@ -318,12 +318,12 @@ func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	assert.Equal(t, len(config.IdentityConfigs), 1)
 }
 
-func TestEmptyIndex(t *testing.T) {
+func TestBootstrapIndex(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
 	indexMock := mock_index.NewMockIndex(mockController)
 
-	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig := newTestAuthConfig(map[string]string{"scope": "in"})
 	authConfig.Status.Summary = api.Summary{
 		Ready:                    true,
 		HostsReady:               authConfig.Spec.Hosts,
@@ -334,11 +334,25 @@ func TestEmptyIndex(t *testing.T) {
 		NumResponseItems:         int64(len(authConfig.Spec.Response)),
 		FestivalWristbandEnabled: false,
 	}
+
+	authConfigOutOfScope := newTestAuthConfig(map[string]string{"scope": "out"})
+	authConfigOutOfScope.Status.Summary = api.Summary{
+		Ready:                    true,
+		HostsReady:               authConfig.Spec.Hosts,
+		NumHostsReady:            fmt.Sprintf("%d/%d", len(authConfig.Spec.Hosts), len(authConfig.Spec.Hosts)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
+		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
+		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		FestivalWristbandEnabled: false,
+	}
+
 	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
 	resourceId := authConfigName.String()
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, indexMock)
+	reconciler.LabelSelector = ToLabelSelector("scope=in")
 
 	indexMock.EXPECT().Empty().Return(true)
 	indexMock.EXPECT().FindKeys(resourceId).Return([]string{}).AnyTimes()

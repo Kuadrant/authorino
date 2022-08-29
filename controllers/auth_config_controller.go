@@ -624,7 +624,11 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 	}
 
 	authConfigList := api.AuthConfigList{}
-	if err := r.List(ctx, &authConfigList); err != nil {
+	listOptions := []client.ListOption{}
+	if r.LabelSelector != nil {
+		listOptions = append(listOptions, client.MatchingLabelsSelector{Selector: r.LabelSelector})
+	}
+	if err := r.List(ctx, &authConfigList, listOptions...); err != nil {
 		return err
 	}
 
