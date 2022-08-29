@@ -77,10 +77,13 @@ type OPA struct {
 	policyName string
 	policyUID  string
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func (opa *OPA) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+	opa.mu.RLock()
+	defer opa.mu.RUnlock()
+
 	var authJSON interface{}
 	if err := json.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON); err != nil {
 		return false, err
