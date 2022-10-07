@@ -1,6 +1,6 @@
 module github.com/kuadrant/authorino
 
-go 1.17
+go 1.18
 
 require (
 	github.com/coocood/freecache v1.1.1
