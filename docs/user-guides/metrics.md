@@ -416,7 +416,7 @@ go_gc_pauses_seconds_total_count 26
 go_goroutines 80
 # HELP go_info Information about the Go environment.
 # TYPE go_info gauge
-go_info{version="go1.17.7"} 1
+go_info{version="go1.18.7"} 1
 # HELP go_memory_classes_heap_free_bytes Memory that is completely free and eligible to be returned to the underlying system, but has not been. This metric is the runtime's estimate of free address space that is backed by physical memory.
 # TYPE go_memory_classes_heap_free_bytes gauge
 go_memory_classes_heap_free_bytes 589824
@@ -815,7 +815,7 @@ go_gc_pauses_seconds_total_count 22
 go_goroutines 79
 # HELP go_info Information about the Go environment.
 # TYPE go_info gauge
-go_info{version="go1.17.7"} 1
+go_info{version="go1.18.7"} 1
 # HELP go_memory_classes_heap_free_bytes Memory that is completely free and eligible to be returned to the underlying system, but has not been. This metric is the runtime's estimate of free address space that is backed by physical memory.
 # TYPE go_memory_classes_heap_free_bytes gauge
 go_memory_classes_heap_free_bytes 630784
