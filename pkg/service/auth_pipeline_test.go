@@ -78,10 +78,10 @@ func (c *failConfig) GetPriority() int {
 	return c.priority
 }
 
-func newTestAuthPipeline(authConfig evaluators.AuthConfig, req *envoy_auth.CheckRequest) AuthPipeline {
+func newTestAuthPipeline(authConfig evaluators.AuthConfig, req *envoy_auth.CheckRequest) *AuthPipeline {
 	p := NewAuthPipeline(context.TODO(), req, authConfig)
 	pipeline, _ := p.(*AuthPipeline)
-	return *pipeline
+	return pipeline
 }
 
 func TestEvaluateOneAuthConfig(t *testing.T) {
