@@ -82,6 +82,7 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
 		Response:      make(map[*evaluators.ResponseConfig]interface{}),
 		Logger:        logger,
+		mu:            sync.RWMutex{},
 	}
 }
 
@@ -99,6 +100,8 @@ type AuthPipeline struct {
 	Response      map[*evaluators.ResponseConfig]interface{}
 
 	Logger log.Logger
+
+	mu sync.RWMutex
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
@@ -217,7 +220,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 				// Needs to be done in 2 steps because `IdentityConfigEvaluator.ResolveExtendedProperties()` uses
 				// the resolved identity config object already stored in the auth pipeline result, to extend it.
 				// Once extended, the identity config object is stored again (replaced) in the auth pipeline result.
-				pipeline.Identity[conf] = obj
+				pipeline.setIdentityObj(conf, obj)
 
 				if extendedObj, err := conf.ResolveExtendedProperties(pipeline); err != nil {
 					resp.Error = err
@@ -228,7 +231,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 						errors[conf.Name] = err.Error()
 					}
 				} else {
-					pipeline.Identity[conf] = extendedObj
+					pipeline.setIdentityObj(conf, extendedObj)
 
 					logger.Info("identity validated", "config", conf, "object", extendedObj)
 					return resp
@@ -269,7 +272,7 @@ func (pipeline *AuthPipeline) evaluateMetadataConfigs() {
 			obj := resp.Object
 
 			if resp.Success() {
-				pipeline.Metadata[conf] = obj
+				pipeline.setMetadataObj(conf, obj)
 				logger.Info("fetched auth metadata", "config", conf, "object", obj)
 			} else {
 				logger.Info("cannot fetch metadata", "config", conf, "reason", resp.Error)
@@ -303,7 +306,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 			obj := resp.Object
 
 			if resp.Success() {
-				pipeline.Authorization[conf] = obj
+				pipeline.setAuthorizationObj(conf, obj)
 				logger.Info("access granted", "config", conf, "object", obj)
 			} else {
 				logger.Info("access denied", "config", conf, "reason", resp.Error)
@@ -333,7 +336,7 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 			obj := resp.Object
 
 			if resp.Success() {
-				pipeline.Response[conf] = obj
+				pipeline.setResponseObj(conf, obj)
 				logger.Info("dynamic response built", "config", conf, "object", obj)
 			} else {
 				logger.Info("cannot build dynamic response", "config", conf, "reason", resp.Error)
@@ -352,6 +355,56 @@ func (pipeline *AuthPipeline) evaluateConditions(conditions []json.JSONPatternMa
 		}
 	}
 	return nil
+}
+
+func getObjs[T any](m map[*T]interface{}, pipeline *AuthPipeline) map[*T]interface{} {
+	pipeline.mu.RLock()
+	defer pipeline.mu.RUnlock()
+	objs := make(map[*T]interface{})
+	for conf, obj := range m {
+		objs[conf] = obj
+	}
+	return objs
+}
+
+func (pipeline *AuthPipeline) getIdentityObjs() map[*evaluators.IdentityConfig]interface{} {
+	return getObjs(pipeline.Identity, pipeline)
+}
+
+func (pipeline *AuthPipeline) setIdentityObj(conf *evaluators.IdentityConfig, obj interface{}) {
+	pipeline.mu.Lock()
+	defer pipeline.mu.Unlock()
+	pipeline.Identity[conf] = obj
+}
+
+func (pipeline *AuthPipeline) getMetadataObjs() map[*evaluators.MetadataConfig]interface{} {
+	return getObjs(pipeline.Metadata, pipeline)
+}
+
+func (pipeline *AuthPipeline) setMetadataObj(conf *evaluators.MetadataConfig, obj interface{}) {
+	pipeline.mu.Lock()
+	defer pipeline.mu.Unlock()
+	pipeline.Metadata[conf] = obj
+}
+
+func (pipeline *AuthPipeline) getAuthorizationObjs() map[*evaluators.AuthorizationConfig]interface{} {
+	return getObjs(pipeline.Authorization, pipeline)
+}
+
+func (pipeline *AuthPipeline) setAuthorizationObj(conf *evaluators.AuthorizationConfig, obj interface{}) {
+	pipeline.mu.Lock()
+	defer pipeline.mu.Unlock()
+	pipeline.Authorization[conf] = obj
+}
+
+func (pipeline *AuthPipeline) getResponseObjs() map[*evaluators.ResponseConfig]interface{} {
+	return getObjs(pipeline.Response, pipeline)
+}
+
+func (pipeline *AuthPipeline) setResponseObj(conf *evaluators.ResponseConfig, obj interface{}) {
+	pipeline.mu.Lock()
+	defer pipeline.mu.Unlock()
+	pipeline.Response[conf] = obj
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
@@ -440,7 +493,7 @@ func (pipeline *AuthPipeline) GetAPI() interface{} {
 }
 
 func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
-	for identityConfig, identityObj := range pipeline.Identity {
+	for identityConfig, identityObj := range pipeline.getIdentityObjs() {
 		if identityObj != nil {
 			id := identityConfig
 			obj := identityObj
@@ -463,21 +516,21 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 
 	// metadata
 	metadata := make(map[string]interface{})
-	for config, obj := range pipeline.Metadata {
+	for config, obj := range pipeline.getMetadataObjs() {
 		metadata[config.Name] = obj
 	}
 	authData["metadata"] = metadata
 
 	// authorization
 	authorization := make(map[string]interface{})
-	for config, obj := range pipeline.Authorization {
+	for config, obj := range pipeline.getAuthorizationObjs() {
 		authorization[config.Name] = obj
 	}
 	authData["authorization"] = authorization
 
 	// response
 	response := make(map[string]interface{})
-	for config, obj := range pipeline.Response {
+	for config, obj := range pipeline.getResponseObjs() {
 		response[config.Name] = obj
 	}
 	authData["response"] = response
