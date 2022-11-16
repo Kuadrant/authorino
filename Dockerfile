@@ -1,15 +1,7 @@
 # Build the authorino binary
-FROM registry.access.redhat.com/ubi9-minimal:latest AS builder
+# https://catalog.redhat.com/software/containers/ubi9/go-toolset
+FROM registry.access.redhat.com/ubi9/go-toolset:1.18 AS builder
 USER root
-RUN microdnf install -y tar gzip
-RUN arch=""; \
-    case $(uname -m) in \
-      x86_64) arch="amd64";; \
-      aarch64) arch="arm64";; \
-    esac; \
-    curl -O -J "https://dl.google.com/go/go1.18.7.linux-${arch}.tar.gz"; \
-    tar -C /usr/local -xzf go1.18.7.linux-${arch}.tar.gz; \
-    ln -s /usr/local/go/bin/go /usr/local/bin/go
 WORKDIR /workspace
 COPY ./ ./
 ARG version=latest
