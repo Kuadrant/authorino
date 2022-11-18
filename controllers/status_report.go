@@ -36,6 +36,13 @@ func (m *StatusReportMap) Set(id, reason, message string, hosts []string) {
 	}
 }
 
+func (m *StatusReportMap) ReadAll() map[string]StatusReport {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.statuses
+}
+
 func (m *StatusReportMap) Clear(id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -682,6 +682,18 @@ func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+func (r *AuthConfigReconciler) Ready() error {
+	for id, status := range r.StatusReport.ReadAll() {
+		switch status.Reason {
+		case api.StatusReasonReconciled:
+			continue
+		default:
+			return fmt.Errorf("authconfig is not ready: %s (reason: %s)", id, status.Reason)
+		}
+	}
+	return nil
+}
+
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {
 	for _, id := range identityConfigs {
 		if id.Name == name {
