@@ -15,6 +15,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/open-policy-agent/opa v0.43.1
 	github.com/prometheus/client_golang v1.12.2
+	github.com/spf13/cobra v1.5.0
+	github.com/spf13/pflag v1.0.5
 	github.com/tidwall/gjson v1.14.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
@@ -59,6 +61,7 @@ require (
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -72,7 +75,6 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.4.6 // indirect

@@ -14,4 +14,4 @@ WORKDIR /
 COPY --from=builder /workspace/authorino .
 USER 1001
 
-ENTRYPOINT ["/authorino"]
+ENTRYPOINT ["/authorino", "server"]
