@@ -24,7 +24,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -36,6 +35,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
+	"github.com/kuadrant/authorino/pkg/utils"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -122,25 +122,25 @@ var (
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
 
-	defaultWatchNamespace                 = fetchEnv(envWatchNamespace, "")
-	defaultWatchedAuthConfigLabelSelector = fetchEnv(envWatchedAuthConfigLabelSelector, "")
-	defaultWatchedSecretLabelSelector     = fetchEnv(envWatchedSecretLabelSelector, "authorino.kuadrant.io/managed-by=authorino")
-	defaultLogLevel                       = fetchEnv(envLogLevel, "info")
-	defaultLogMode                        = fetchEnv(envLogMode, "production")
-	defaultTimeout, _                     = strconv.Atoi(fetchEnv(envTimeout, 0))
-	defaultExtAuthGRPCPort, _             = strconv.Atoi(fetchEnv(envExtAuthGRPCPort, 50051))
-	defaultExtAuthHTTPPort, _             = strconv.Atoi(fetchEnv(envExtAuthHTTPPort, 5001))
-	defaultTLSCertPath                    = fetchEnv(envTLSCertPath, "")
-	defaultTLSCertKeyPath                 = fetchEnv(envTLSCertKeyPath, "")
-	defaultOIDCHTTPPort, _                = strconv.Atoi(fetchEnv(envOIDCHTTPPort, 8083))
-	defaultOIDCTLSCertPath                = fetchEnv(envOIDCTLSCertPath, "")
-	defaultOIDCTLSCertKeyPath             = fetchEnv(envOIDCTLSCertKeyPath, "")
-	defaultEvaluatorCacheSize, _          = strconv.Atoi(fetchEnv(envEvaluatorCacheSize, 1)) // 1 Mb
-	defaultDeepMetricsEnabled, _          = strconv.ParseBool(fetchEnv(envDeepMetricsEnabled, false))
+	defaultWatchNamespace                 = utils.EnvVar(envWatchNamespace, "")
+	defaultWatchedAuthConfigLabelSelector = utils.EnvVar(envWatchedAuthConfigLabelSelector, "")
+	defaultWatchedSecretLabelSelector     = utils.EnvVar(envWatchedSecretLabelSelector, "authorino.kuadrant.io/managed-by=authorino")
+	defaultLogLevel                       = utils.EnvVar(envLogLevel, "info")
+	defaultLogMode                        = utils.EnvVar(envLogMode, "production")
+	defaultTimeout                        = utils.EnvVar(envTimeout, 0)
+	defaultExtAuthGRPCPort                = utils.EnvVar(envExtAuthGRPCPort, 50051)
+	defaultExtAuthHTTPPort                = utils.EnvVar(envExtAuthHTTPPort, 5001)
+	defaultTLSCertPath                    = utils.EnvVar(envTLSCertPath, "")
+	defaultTLSCertKeyPath                 = utils.EnvVar(envTLSCertKeyPath, "")
+	defaultOIDCHTTPPort                   = utils.EnvVar(envOIDCHTTPPort, 8083)
+	defaultOIDCTLSCertPath                = utils.EnvVar(envOIDCTLSCertPath, "")
+	defaultOIDCTLSCertKeyPath             = utils.EnvVar(envOIDCTLSCertKeyPath, "")
+	defaultEvaluatorCacheSize             = utils.EnvVar(envEvaluatorCacheSize, 1) // 1 Mb
+	defaultDeepMetricsEnabled             = utils.EnvVar(envDeepMetricsEnabled, false)
 	defaultMetricsAddr                    = ":8080"
 	defaultHealthProbeAddr                = ":8081"
 	defaultEnableLeaderElection           = false
-	defaultMaxHttpRequestBodySize, _      = strconv.ParseInt(fetchEnv(envMaxHttpRequestBodySize, 8192), 10, 64) // 8 Kb
+	defaultMaxHttpRequestBodySize         = utils.EnvVar(envMaxHttpRequestBodySize, int64(8192)) // 8 Kb
 
 	scheme = runtime.NewScheme()
 
