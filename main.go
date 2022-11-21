@@ -55,44 +55,6 @@ import (
 )
 
 const (
-	flagWatchNamespace                 = "watch-namespace"
-	flagWatchedAuthConfigLabelSelector = "auth-config-label-selector"
-	flagWatchedSecretLabelSelector     = "secret-label-selector"
-	flagLogLevel                       = "log-level"
-	flagLogMode                        = "log-mode"
-	flagTimeout                        = "timeout"
-	flagExtAuthGRPCPort                = "ext-auth-grpc-port"
-	flagExtAuthHTTPPort                = "ext-auth-http-port"
-	flagTLSCertPath                    = "tls-cert"
-	flagTLSCertKeyPath                 = "tls-cert-key"
-	flagOIDCHTTPPort                   = "oidc-http-port"
-	flagOIDCTLSCertPath                = "oidc-tls-cert"
-	flagOIDCTLSCertKeyPath             = "oidc-tls-cert-key"
-	flagEvaluatorCacheSize             = "evaluator-cache-size" // in megabytes
-	flagDeepMetricsEnabled             = "deep-metrics-enabled"
-	flagMetricsAddr                    = "metrics-addr"
-	flagHealthProbeAddr                = "health-probe-addr"
-	flagEnableLeaderElection           = "enable-leader-election"
-	flagMaxHttpRequestBodySize         = "max-http-request-body-size" // in bytes
-
-	// [DEPRECATED] use command-line flags instead
-	envWatchNamespace                 = "WATCH_NAMESPACE"
-	envWatchedAuthConfigLabelSelector = "AUTH_CONFIG_LABEL_SELECTOR"
-	envWatchedSecretLabelSelector     = "SECRET_LABEL_SELECTOR"
-	envLogLevel                       = "LOG_LEVEL"
-	envLogMode                        = "LOG_MODE"
-	envTimeout                        = "TIMEOUT"
-	envExtAuthGRPCPort                = "EXT_AUTH_GRPC_PORT"
-	envExtAuthHTTPPort                = "EXT_AUTH_HTTP_PORT"
-	envTLSCertPath                    = "TLS_CERT"
-	envTLSCertKeyPath                 = "TLS_CERT_KEY"
-	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
-	envOIDCTLSCertPath                = "OIDC_TLS_CERT"
-	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
-	envEvaluatorCacheSize             = "EVALUATOR_CACHE_SIZE" // in megabytes
-	envDeepMetricsEnabled             = "DEEP_METRICS_ENABLED"
-	envMaxHttpRequestBodySize         = "MAX_HTTP_REQUEST_BODY_SIZE" // in bytes
-
 	gRPCMaxConcurrentStreams = 10000
 	leaderElectionIDSuffix   = "authorino.kuadrant.io"
 )
@@ -122,26 +84,6 @@ var (
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
 
-	defaultWatchNamespace                 = utils.EnvVar(envWatchNamespace, "")
-	defaultWatchedAuthConfigLabelSelector = utils.EnvVar(envWatchedAuthConfigLabelSelector, "")
-	defaultWatchedSecretLabelSelector     = utils.EnvVar(envWatchedSecretLabelSelector, "authorino.kuadrant.io/managed-by=authorino")
-	defaultLogLevel                       = utils.EnvVar(envLogLevel, "info")
-	defaultLogMode                        = utils.EnvVar(envLogMode, "production")
-	defaultTimeout                        = utils.EnvVar(envTimeout, 0)
-	defaultExtAuthGRPCPort                = utils.EnvVar(envExtAuthGRPCPort, 50051)
-	defaultExtAuthHTTPPort                = utils.EnvVar(envExtAuthHTTPPort, 5001)
-	defaultTLSCertPath                    = utils.EnvVar(envTLSCertPath, "")
-	defaultTLSCertKeyPath                 = utils.EnvVar(envTLSCertKeyPath, "")
-	defaultOIDCHTTPPort                   = utils.EnvVar(envOIDCHTTPPort, 8083)
-	defaultOIDCTLSCertPath                = utils.EnvVar(envOIDCTLSCertPath, "")
-	defaultOIDCTLSCertKeyPath             = utils.EnvVar(envOIDCTLSCertKeyPath, "")
-	defaultEvaluatorCacheSize             = utils.EnvVar(envEvaluatorCacheSize, 1) // 1 Mb
-	defaultDeepMetricsEnabled             = utils.EnvVar(envDeepMetricsEnabled, false)
-	defaultMetricsAddr                    = ":8080"
-	defaultHealthProbeAddr                = ":8081"
-	defaultEnableLeaderElection           = false
-	defaultMaxHttpRequestBodySize         = utils.EnvVar(envMaxHttpRequestBodySize, int64(8192)) // 8 Kb
-
 	scheme = runtime.NewScheme()
 
 	logger logr.Logger
@@ -165,25 +107,25 @@ func main() {
 		Run:   run,
 	}
 
-	cmdServer.PersistentFlags().StringVar(&watchNamespace, flagWatchNamespace, defaultWatchNamespace, "Kubernetes namespace to watch")
-	cmdServer.PersistentFlags().StringVar(&watchedAuthConfigLabelSelector, flagWatchedAuthConfigLabelSelector, defaultWatchedAuthConfigLabelSelector, "Kubernetes label selector to filter AuthConfig resources to watch")
-	cmdServer.PersistentFlags().StringVar(&watchedSecretLabelSelector, flagWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector, "Kubernetes label selector to filter Secret resources to watch")
-	cmdServer.PersistentFlags().StringVar(&logLevel, flagLogLevel, defaultLogLevel, "Log level")
-	cmdServer.PersistentFlags().StringVar(&logMode, flagLogMode, defaultLogMode, "Log mode")
-	cmdServer.PersistentFlags().IntVar(&timeout, flagTimeout, defaultTimeout, "Server timeout - in milliseconds")
-	cmdServer.PersistentFlags().IntVar(&extAuthGRPCPort, flagExtAuthGRPCPort, defaultExtAuthGRPCPort, "Port number of authorization server - gRPC interface")
-	cmdServer.PersistentFlags().IntVar(&extAuthHTTPPort, flagExtAuthHTTPPort, defaultExtAuthHTTPPort, "Port number of authorization server - raw HTTP interface")
-	cmdServer.PersistentFlags().StringVar(&tlsCertPath, flagTLSCertPath, defaultTLSCertPath, "Path to the public TLS server certificate file in the file system - authorization server")
-	cmdServer.PersistentFlags().StringVar(&tlsCertKeyPath, flagTLSCertKeyPath, defaultTLSCertKeyPath, "Path to the private TLS server certificate key file in the file system - authorization server")
-	cmdServer.PersistentFlags().IntVar(&oidcHTTPPort, flagOIDCHTTPPort, defaultOIDCHTTPPort, "Port number of OIDC Discovery server for Festival Wristband tokens")
-	cmdServer.PersistentFlags().StringVar(&oidcTLSCertPath, flagOIDCTLSCertPath, defaultOIDCTLSCertPath, "Path to the public TLS server certificate file in the file system - Festival Wristband OIDC Discovery server")
-	cmdServer.PersistentFlags().StringVar(&oidcTLSCertKeyPath, flagOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath, "Path to the private TLS server certificate key file in the file system - Festival Wristband OIDC Discovery server")
-	cmdServer.PersistentFlags().IntVar(&evaluatorCacheSize, flagEvaluatorCacheSize, defaultEvaluatorCacheSize, "Cache size of each Authorino evaluator if enabled in the AuthConfig - in megabytes")
-	cmdServer.PersistentFlags().BoolVar(&deepMetricsEnabled, flagDeepMetricsEnabled, defaultDeepMetricsEnabled, "Enable deep metrics at the level of each evaluator when requested in the AuthConfig, exported by the metrics server")
-	cmdServer.PersistentFlags().StringVar(&metricsAddr, flagMetricsAddr, defaultMetricsAddr, "The network address the metrics endpoint binds to")
-	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, flagHealthProbeAddr, defaultHealthProbeAddr, "The network address the health probe endpoint binds to")
-	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, flagEnableLeaderElection, defaultEnableLeaderElection, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
-	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, flagMaxHttpRequestBodySize, defaultMaxHttpRequestBodySize, "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+	cmdServer.PersistentFlags().StringVar(&watchNamespace, "watch-namespace", utils.EnvVar("WATCH_NAMESPACE", ""), "Kubernetes namespace to watch")
+	cmdServer.PersistentFlags().StringVar(&watchedAuthConfigLabelSelector, "auth-config-label-selector", utils.EnvVar("AUTH_CONFIG_LABEL_SELECTOR", ""), "Kubernetes label selector to filter AuthConfig resources to watch")
+	cmdServer.PersistentFlags().StringVar(&watchedSecretLabelSelector, "secret-label-selector", utils.EnvVar("SECRET_LABEL_SELECTOR", "authorino.kuadrant.io/managed-by=authorino"), "Kubernetes label selector to filter Secret resources to watch")
+	cmdServer.PersistentFlags().StringVar(&logLevel, "log-level", utils.EnvVar("LOG_LEVEL", "info"), "Log level")
+	cmdServer.PersistentFlags().StringVar(&logMode, "log-mode", utils.EnvVar("LOG_MODE", "production"), "Log mode")
+	cmdServer.PersistentFlags().IntVar(&timeout, "timeout", utils.EnvVar("TIMEOUT", 0), "Server timeout - in milliseconds")
+	cmdServer.PersistentFlags().IntVar(&extAuthGRPCPort, "ext-auth-grpc-port", utils.EnvVar("EXT_AUTH_GRPC_PORT", 50051), "Port number of authorization server - gRPC interface")
+	cmdServer.PersistentFlags().IntVar(&extAuthHTTPPort, "ext-auth-http-port", utils.EnvVar("EXT_AUTH_HTTP_PORT", 5001), "Port number of authorization server - raw HTTP interface")
+	cmdServer.PersistentFlags().StringVar(&tlsCertPath, "tls-cert", utils.EnvVar("TLS_CERT", ""), "Path to the public TLS server certificate file in the file system - authorization server")
+	cmdServer.PersistentFlags().StringVar(&tlsCertKeyPath, "tls-cert-key", utils.EnvVar("TLS_CERT_KEY", ""), "Path to the private TLS server certificate key file in the file system - authorization server")
+	cmdServer.PersistentFlags().IntVar(&oidcHTTPPort, "oidc-http-port", utils.EnvVar("OIDC_HTTP_PORT", 8083), "Port number of OIDC Discovery server for Festival Wristband tokens")
+	cmdServer.PersistentFlags().StringVar(&oidcTLSCertPath, "oidc-tls-cert", utils.EnvVar("OIDC_TLS_CERT", ""), "Path to the public TLS server certificate file in the file system - Festival Wristband OIDC Discovery server")
+	cmdServer.PersistentFlags().StringVar(&oidcTLSCertKeyPath, "oidc-tls-cert-key", utils.EnvVar("OIDC_TLS_CERT_KEY", ""), "Path to the private TLS server certificate key file in the file system - Festival Wristband OIDC Discovery server")
+	cmdServer.PersistentFlags().IntVar(&evaluatorCacheSize, "evaluator-cache-size", utils.EnvVar("EVALUATOR_CACHE_SIZE", 1), "Cache size of each Authorino evaluator if enabled in the AuthConfig - in megabytes")
+	cmdServer.PersistentFlags().BoolVar(&deepMetricsEnabled, "deep-metrics-enabled", utils.EnvVar("DEEP_METRICS_ENABLED", false), "Enable deep metrics at the level of each evaluator when requested in the AuthConfig, exported by the metrics server")
+	cmdServer.PersistentFlags().StringVar(&metricsAddr, "metrics-addr", ":8080", "The network address the metrics endpoint binds to")
+	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
+	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
+	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
 
 	cmdVersion := &cobra.Command{
 		Use:   "version",
