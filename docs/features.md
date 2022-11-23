@@ -118,7 +118,7 @@ API key secrets must be created in the same namespace of the `AuthConfig` (defau
 
 API key secrets must be labeled with the labels that match the selectors specified in `spec.identity.apiKey.selector` in the `AuthConfig`.
 
-Whenever an `AuthConfig` is indexed, Authorino will also index all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `SECRET_LABEL_SELECTOR` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.selector` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
+Whenever an `AuthConfig` is indexed, Authorino will also index all matching API key secrets. In order for Authorino to also watch events related to API key secrets individually (e.g. new `Secret` created, updates, deletion/revocation), `Secret`s must also include a label that matches Authorino's bootstrap configuration `--secret-label-selector` (default: `authorino.kuadrant.io/managed-by=authorino`). This label may or may not be present to `spec.identity.apiKey.selector` in the `AuthConfig` without implications for the caching of the API keys when triggered by the reconciliation of the `AuthConfig`; however, if not present, individual changes related to the API key secret (i.e. without touching the `AuthConfig`) will be ignored by the reconciler.
 
 **Example.** For the following `AuthConfig`:
 
@@ -946,7 +946,7 @@ As for the 'complex-policy' authorization policy, the cache key is a string comp
 
 **Notes on evaluator caching**
 
-_Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `EVALUATOR_CACHE_SIZE` environment variable or `spec.evaluatorCacheSize` field of the `Authorino` CR).
+_Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `--evaluator-cache-size` command-line flag or `spec.evaluatorCacheSize` field of the `Authorino` CR).
 
 _Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
 
@@ -993,6 +993,6 @@ The same pattern works for other types of evaluators. Find below the list of all
 | `response.json`            | RESPONSE_JSON                   |
 | `response.wristband`       | RESPONSE_WRISTBAND              |
 
-Metrics at the level of the evaluators can also be enforced to an entire Authorino instance, by setting the <code>DEEP_METRICS_ENABLED=true</code> environment variable. In this case, regardless of the value of the field `spec.(identity|metadata|authorization|response).metrics` in the AuthConfigs, individual metrics for all evaluators of all AuthConfigs will be exported.
+Metrics at the level of the evaluators can also be enforced to an entire Authorino instance, by setting the <code>--deep-metrics-enabled</code> command-line flag. In this case, regardless of the value of the field `spec.(identity|metadata|authorization|response).metrics` in the AuthConfigs, individual metrics for all evaluators of all AuthConfigs will be exported.
 
-For more information about observability metrics in Authorino, see the user guide [Observability](./user-guides/metrics.md).
+For more information about metrics exported by Authorino, see [Observability](./user-guides/observability.md#metrics).
