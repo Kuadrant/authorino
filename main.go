@@ -235,8 +235,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	readinessCheck := health.NewHandler(health.Observe(authConfigReconciler))
-	if err := mgr.AddReadyzCheck("authconfigs", readinessCheck.HandleReadyzCheck); err != nil {
+	readinessCheck := health.NewHandler(controllers.AuthConfigsReadyzSubpath, health.Observe(authConfigReconciler))
+	if err := mgr.AddReadyzCheck(controllers.AuthConfigsReadyzSubpath, readinessCheck.HandleReadyzCheck); err != nil {
 		logger.Error(err, "unable to set up controller readiness check")
 		os.Exit(1)
 	}
