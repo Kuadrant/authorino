@@ -39,3 +39,11 @@ func SliceContains[T comparable](s []T, val T) bool {
 	}
 	return false
 }
+
+func CopyMap[T comparable, U any](m map[T]U) map[T]U {
+	m2 := make(map[T]U)
+	for k, v := range m {
+		m2[k] = v
+	}
+	return m2
+}
