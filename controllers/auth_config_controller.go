@@ -47,7 +47,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const failedToCleanConfig = "failed to clean up all asynchronous workers"
+const (
+	failedToCleanConfig = "failed to clean up all asynchronous workers"
+
+	AuthConfigsReadyzSubpath = "authconfigs"
+)
 
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
@@ -680,6 +684,22 @@ func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&api.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
 		Complete(r)
+}
+
+func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {
+	if !utils.SliceContains(includes, AuthConfigsReadyzSubpath) {
+		return nil
+	}
+
+	for id, status := range r.StatusReport.ReadAll() {
+		switch status.Reason {
+		case api.StatusReasonReconciled:
+			continue
+		default:
+			return fmt.Errorf("authconfig is not ready: %s (reason: %s)", id, status.Reason)
+		}
+	}
+	return nil
 }
 
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {

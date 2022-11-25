@@ -30,3 +30,20 @@ func SubtractSlice(sl1, sl2 []string) []string {
 	}
 	return diff
 }
+
+func SliceContains[T comparable](s []T, val T) bool {
+	for _, v := range s {
+		if v == val {
+			return true
+		}
+	}
+	return false
+}
+
+func CopyMap[T comparable, U any](m map[T]U) map[T]U {
+	m2 := make(map[T]U)
+	for k, v := range m {
+		m2[k] = v
+	}
+	return m2
+}

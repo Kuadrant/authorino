@@ -3,6 +3,8 @@ package controllers
 import (
 	"sync"
 	"time"
+
+	"github.com/kuadrant/authorino/pkg/utils"
 )
 
 func NewStatusReportMap() *StatusReportMap {
@@ -34,6 +36,13 @@ func (m *StatusReportMap) Set(id, reason, message string, hosts []string) {
 		LinkedHosts:   hosts,
 		LastUpdatedAt: time.Now(),
 	}
+}
+
+func (m *StatusReportMap) ReadAll() map[string]StatusReport {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return utils.CopyMap(m.statuses)
 }
 
 func (m *StatusReportMap) Clear(id string) {

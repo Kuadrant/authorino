@@ -39,6 +39,7 @@ import (
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/health"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
@@ -49,6 +50,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -71,6 +73,7 @@ const (
 	envMaxHttpRequestBodySize         = "MAX_HTTP_REQUEST_BODY_SIZE" // in bytes
 
 	flagMetricsAddr          = "metrics-addr"
+	flagHealthProbeAddr      = "health-probe-addr"
 	flagEnableLeaderElection = "enable-leader-election"
 
 	defaultWatchNamespace                 = ""
@@ -89,6 +92,7 @@ const (
 	defaultEvaluatorCacheSize             = "1"
 	defaultDeepMetricsEnabled             = "false"
 	defaultMetricsAddr                    = ":8080"
+	defaultHealthProbeAddr                = ":8081"
 	defaultEnableLeaderElection           = false
 	defaultMaxHttpRequestBodySize         = "8192" // 8KB
 
@@ -135,9 +139,10 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
+	var metricsAddr, healthProbeAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, flagMetricsAddr, defaultMetricsAddr, "The address the metric endpoint binds to.")
+	flag.StringVar(&healthProbeAddr, flagHealthProbeAddr, defaultHealthProbeAddr, "The address the health probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, flagEnableLeaderElection, defaultEnableLeaderElection, "Enable leader election for status updater. Ensures only one instance of Authorino tries to update the status of reconciled resources.")
 	flag.Parse()
 
@@ -160,14 +165,16 @@ func main() {
 		envEvaluatorCacheSize, metadataCacheSize,
 		envDeepMetricsEnabled, deepMetricEnabled,
 		flagMetricsAddr, metricsAddr,
+		flagHealthProbeAddr, healthProbeAddr,
 		flagEnableLeaderElection, enableLeaderElection,
 	)
 
 	managerOptions := ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     false,
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		HealthProbeBindAddress: healthProbeAddr,
+		Port:                   9443,
+		LeaderElection:         false,
 	}
 
 	if watchNamespace != "" {
@@ -218,7 +225,21 @@ func main() {
 	startExtAuthServerHTTP(index)
 	startOIDCServer(index)
 
-	_ = mgr.AddMetricsExtraHandler("/server-metrics", promhttp.Handler())
+	if err := mgr.AddMetricsExtraHandler("/server-metrics", promhttp.Handler()); err != nil {
+		logger.Error(err, "unable to set up controller metrics server")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
+		logger.Error(err, "unable to set up controller health check")
+		os.Exit(1)
+	}
+
+	readinessCheck := health.NewHandler(controllers.AuthConfigsReadyzSubpath, health.Observe(authConfigReconciler))
+	if err := mgr.AddReadyzCheck(controllers.AuthConfigsReadyzSubpath, readinessCheck.HandleReadyzCheck); err != nil {
+		logger.Error(err, "unable to set up controller readiness check")
+		os.Exit(1)
+	}
 
 	signalHandler := ctrl.SetupSignalHandler()
 
@@ -236,6 +257,7 @@ func main() {
 	managerOptions.LeaderElection = enableLeaderElection
 	managerOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
 	managerOptions.MetricsBindAddress = "0"
+	managerOptions.HealthProbeBindAddress = "0"
 	statusUpdateManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
 		logger.Error(err, "unable to start status update manager")
