@@ -112,7 +112,7 @@ manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/i
 	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
 
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
-	go run -ldflags "-X main.version=$(VERSION)" ./main.go
+	go run -ldflags "-X main.version=$(VERSION)" ./main.go server
 
 build: generate ## Builds the manager binary
 	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(VERSION)" -o bin/authorino main.go

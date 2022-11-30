@@ -20,22 +20,13 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
+	"github.com/go-logr/logr"
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -44,7 +35,16 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
+	"github.com/kuadrant/authorino/pkg/utils"
 
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -55,119 +55,108 @@ import (
 )
 
 const (
-	envWatchNamespace                 = "WATCH_NAMESPACE"
-	envWatchedAuthConfigLabelSelector = "AUTH_CONFIG_LABEL_SELECTOR"
-	envWatchedSecretLabelSelector     = "SECRET_LABEL_SELECTOR"
-	envLogLevel                       = "LOG_LEVEL"
-	envLogMode                        = "LOG_MODE"
-	envTimeout                        = "TIMEOUT"
-	envExtAuthGRPCPort                = "EXT_AUTH_GRPC_PORT"
-	envExtAuthHTTPPort                = "EXT_AUTH_HTTP_PORT"
-	envTLSCertPath                    = "TLS_CERT"
-	envTLSCertKeyPath                 = "TLS_CERT_KEY"
-	envOIDCHTTPPort                   = "OIDC_HTTP_PORT"
-	envOIDCTLSCertPath                = "OIDC_TLS_CERT"
-	envOIDCTLSCertKeyPath             = "OIDC_TLS_CERT_KEY"
-	envEvaluatorCacheSize             = "EVALUATOR_CACHE_SIZE" // in megabytes
-	envDeepMetricsEnabled             = "DEEP_METRICS_ENABLED"
-	envMaxHttpRequestBodySize         = "MAX_HTTP_REQUEST_BODY_SIZE" // in bytes
-
-	flagMetricsAddr          = "metrics-addr"
-	flagHealthProbeAddr      = "health-probe-addr"
-	flagEnableLeaderElection = "enable-leader-election"
-
-	defaultWatchNamespace                 = ""
-	defaultWatchedAuthConfigLabelSelector = ""
-	defaultWatchedSecretLabelSelector     = "authorino.kuadrant.io/managed-by=authorino"
-	defaultLogLevel                       = "info"
-	defaultLogMode                        = "production"
-	defaultTimeout                        = "0"
-	defaultExtAuthGRPCPort                = "50051"
-	defaultExtAuthHTTPPort                = "5001"
-	defaultTLSCertPath                    = ""
-	defaultTLSCertKeyPath                 = ""
-	defaultOIDCHTTPPort                   = "8083"
-	defaultOIDCTLSCertPath                = ""
-	defaultOIDCTLSCertKeyPath             = ""
-	defaultEvaluatorCacheSize             = "1"
-	defaultDeepMetricsEnabled             = "false"
-	defaultMetricsAddr                    = ":8080"
-	defaultHealthProbeAddr                = ":8081"
-	defaultEnableLeaderElection           = false
-	defaultMaxHttpRequestBodySize         = "8192" // 8KB
-
 	gRPCMaxConcurrentStreams = 10000
 	leaderElectionIDSuffix   = "authorino.kuadrant.io"
 )
 
 var (
-	watchNamespace                 = fetchEnv(envWatchNamespace, defaultWatchNamespace)
-	watchedAuthConfigLabelSelector = fetchEnv(envWatchedAuthConfigLabelSelector, defaultWatchedAuthConfigLabelSelector)
-	watchedSecretLabelSelector     = fetchEnv(envWatchedSecretLabelSelector, defaultWatchedSecretLabelSelector)
-	logLevel                       = fetchEnv(envLogLevel, defaultLogLevel)
-	logMode                        = fetchEnv(envLogMode, defaultLogMode)
-	timeout, _                     = strconv.Atoi(fetchEnv(envTimeout, defaultTimeout))
-	timeoutMs                      = time.Duration(timeout) * time.Millisecond
-	extAuthGRPCPort                = fetchEnv(envExtAuthGRPCPort, defaultExtAuthGRPCPort)
-	extAuthHTTPPort                = fetchEnv(envExtAuthHTTPPort, defaultExtAuthHTTPPort)
-	tlsCertPath                    = fetchEnv(envTLSCertPath, defaultTLSCertPath)
-	tlsCertKeyPath                 = fetchEnv(envTLSCertKeyPath, defaultTLSCertKeyPath)
-	oidcHTTPPort                   = fetchEnv(envOIDCHTTPPort, defaultOIDCHTTPPort)
-	oidcTLSCertPath                = fetchEnv(envOIDCTLSCertPath, defaultOIDCTLSCertPath)
-	oidcTLSCertKeyPath             = fetchEnv(envOIDCTLSCertKeyPath, defaultOIDCTLSCertKeyPath)
-	metadataCacheSize              = fetchEnv(envEvaluatorCacheSize, defaultEvaluatorCacheSize)
-	deepMetricEnabled              = fetchEnv(envDeepMetricsEnabled, defaultDeepMetricsEnabled)
-	maxHttpRequestBodySize, _      = strconv.ParseInt(fetchEnv(envMaxHttpRequestBodySize, defaultMaxHttpRequestBodySize), 10, 64)
-
-	scheme  = runtime.NewScheme()
-	logOpts = log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
-	logger  = log.NewLogger(logOpts).WithName("authorino")
-
+	// ldflags
 	version string
+
+	// option flags
+	watchNamespace                 string
+	watchedAuthConfigLabelSelector string
+	watchedSecretLabelSelector     string
+	logLevel                       string
+	logMode                        string
+	timeout                        int
+	extAuthGRPCPort                int
+	extAuthHTTPPort                int
+	tlsCertPath                    string
+	tlsCertKeyPath                 string
+	oidcHTTPPort                   int
+	oidcTLSCertPath                string
+	oidcTLSCertKeyPath             string
+	evaluatorCacheSize             int
+	deepMetricsEnabled             bool
+	metricsAddr                    string
+	healthProbeAddr                string
+	enableLeaderElection           bool
+	maxHttpRequestBodySize         int64
+
+	scheme = runtime.NewScheme()
+
+	logger logr.Logger
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(api.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
-
-	log.SetLogger(logger, logOpts)
-
-	evaluators.EvaluatorCacheSize, _ = strconv.Atoi(metadataCacheSize)
-	metrics.DeepMetricsEnabled, _ = strconv.ParseBool(deepMetricEnabled)
 }
 
 func main() {
-	var metricsAddr, healthProbeAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, flagMetricsAddr, defaultMetricsAddr, "The address the metric endpoint binds to.")
-	flag.StringVar(&healthProbeAddr, flagHealthProbeAddr, defaultHealthProbeAddr, "The address the health probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, flagEnableLeaderElection, defaultEnableLeaderElection, "Enable leader election for status updater. Ensures only one instance of Authorino tries to update the status of reconciled resources.")
-	flag.Parse()
+	cmdRoot := &cobra.Command{
+		Use:   "authorino",
+		Short: "Authorino is a Kubernetes-native authorization server.",
+	}
+
+	cmdServer := &cobra.Command{
+		Use:   "server",
+		Short: "Runs the authorization server",
+		Run:   run,
+	}
+
+	cmdServer.PersistentFlags().StringVar(&watchNamespace, "watch-namespace", utils.EnvVar("WATCH_NAMESPACE", ""), "Kubernetes namespace to watch")
+	cmdServer.PersistentFlags().StringVar(&watchedAuthConfigLabelSelector, "auth-config-label-selector", utils.EnvVar("AUTH_CONFIG_LABEL_SELECTOR", ""), "Kubernetes label selector to filter AuthConfig resources to watch")
+	cmdServer.PersistentFlags().StringVar(&watchedSecretLabelSelector, "secret-label-selector", utils.EnvVar("SECRET_LABEL_SELECTOR", "authorino.kuadrant.io/managed-by=authorino"), "Kubernetes label selector to filter Secret resources to watch")
+	cmdServer.PersistentFlags().StringVar(&logLevel, "log-level", utils.EnvVar("LOG_LEVEL", "info"), "Log level")
+	cmdServer.PersistentFlags().StringVar(&logMode, "log-mode", utils.EnvVar("LOG_MODE", "production"), "Log mode")
+	cmdServer.PersistentFlags().IntVar(&timeout, "timeout", utils.EnvVar("TIMEOUT", 0), "Server timeout - in milliseconds")
+	cmdServer.PersistentFlags().IntVar(&extAuthGRPCPort, "ext-auth-grpc-port", utils.EnvVar("EXT_AUTH_GRPC_PORT", 50051), "Port number of authorization server - gRPC interface")
+	cmdServer.PersistentFlags().IntVar(&extAuthHTTPPort, "ext-auth-http-port", utils.EnvVar("EXT_AUTH_HTTP_PORT", 5001), "Port number of authorization server - raw HTTP interface")
+	cmdServer.PersistentFlags().StringVar(&tlsCertPath, "tls-cert", utils.EnvVar("TLS_CERT", ""), "Path to the public TLS server certificate file in the file system - authorization server")
+	cmdServer.PersistentFlags().StringVar(&tlsCertKeyPath, "tls-cert-key", utils.EnvVar("TLS_CERT_KEY", ""), "Path to the private TLS server certificate key file in the file system - authorization server")
+	cmdServer.PersistentFlags().IntVar(&oidcHTTPPort, "oidc-http-port", utils.EnvVar("OIDC_HTTP_PORT", 8083), "Port number of OIDC Discovery server for Festival Wristband tokens")
+	cmdServer.PersistentFlags().StringVar(&oidcTLSCertPath, "oidc-tls-cert", utils.EnvVar("OIDC_TLS_CERT", ""), "Path to the public TLS server certificate file in the file system - Festival Wristband OIDC Discovery server")
+	cmdServer.PersistentFlags().StringVar(&oidcTLSCertKeyPath, "oidc-tls-cert-key", utils.EnvVar("OIDC_TLS_CERT_KEY", ""), "Path to the private TLS server certificate key file in the file system - Festival Wristband OIDC Discovery server")
+	cmdServer.PersistentFlags().IntVar(&evaluatorCacheSize, "evaluator-cache-size", utils.EnvVar("EVALUATOR_CACHE_SIZE", 1), "Cache size of each Authorino evaluator if enabled in the AuthConfig - in megabytes")
+	cmdServer.PersistentFlags().BoolVar(&deepMetricsEnabled, "deep-metrics-enabled", utils.EnvVar("DEEP_METRICS_ENABLED", false), "Enable deep metrics at the level of each evaluator when requested in the AuthConfig, exported by the metrics server")
+	cmdServer.PersistentFlags().StringVar(&metricsAddr, "metrics-addr", ":8080", "The network address the metrics endpoint binds to")
+	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
+	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
+	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+
+	cmdVersion := &cobra.Command{
+		Use:   "version",
+		Short: "Prints the Authorino version info",
+		Run:   printVersion,
+	}
+
+	cmdRoot.AddCommand(cmdServer, cmdVersion)
+
+	if err := cmdRoot.Execute(); err != nil {
+		fmt.Println("error: ", err)
+		os.Exit(1)
+	}
+}
+
+func run(cmd *cobra.Command, _ []string) {
+	logOpts := log.Options{Level: log.ToLogLevel(logLevel), Mode: log.ToLogMode(logMode)}
+	logger = log.NewLogger(logOpts).WithName("authorino")
+	log.SetLogger(logger, logOpts)
 
 	logger.Info("booting up authorino", "version", version)
 
-	logger.V(1).Info("setting up with options",
-		envWatchNamespace, watchNamespace,
-		envWatchedAuthConfigLabelSelector, watchedAuthConfigLabelSelector,
-		envWatchedSecretLabelSelector, watchedSecretLabelSelector,
-		envLogLevel, logLevel,
-		envLogMode, logMode,
-		envTimeout, timeout,
-		envExtAuthGRPCPort, extAuthGRPCPort,
-		envExtAuthHTTPPort, extAuthHTTPPort,
-		envTLSCertPath, tlsCertPath,
-		envTLSCertKeyPath, tlsCertKeyPath,
-		envOIDCHTTPPort, oidcHTTPPort,
-		envOIDCTLSCertPath, oidcTLSCertPath,
-		envOIDCTLSCertKeyPath, oidcTLSCertKeyPath,
-		envEvaluatorCacheSize, metadataCacheSize,
-		envDeepMetricsEnabled, deepMetricEnabled,
-		flagMetricsAddr, metricsAddr,
-		flagHealthProbeAddr, healthProbeAddr,
-		flagEnableLeaderElection, enableLeaderElection,
-	)
+	var flags []interface{}
+	cmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
+		flags = append(flags, flag.Name, flag.Value.String())
+	})
+
+	logger.V(1).Info("setting up with options", flags...)
+
+	evaluators.EvaluatorCacheSize = evaluatorCacheSize
+	metrics.DeepMetricsEnabled = deepMetricsEnabled
 
 	managerOptions := ctrl.Options{
 		Scheme:                 scheme,
@@ -319,7 +308,7 @@ func startExtAuthServerGRPC(authConfigIndex index.Index) {
 
 	grpcServer := grpc.NewServer(grpcServerOpts...)
 
-	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Index: authConfigIndex, Timeout: timeoutMs})
+	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Index: authConfigIndex, Timeout: timeoutMs()})
 	healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -335,14 +324,14 @@ func startExtAuthServerGRPC(authConfigIndex index.Index) {
 }
 
 func startExtAuthServerHTTP(authConfigIndex index.Index) {
-	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, service.NewAuthService(authConfigIndex, timeoutMs, maxHttpRequestBodySize))
+	startHTTPService("auth", extAuthHTTPPort, service.HTTPAuthorizationBasePath, tlsCertPath, tlsCertKeyPath, service.NewAuthService(authConfigIndex, timeoutMs(), maxHttpRequestBodySize))
 }
 
 func startOIDCServer(authConfigIndex index.Index) {
 	startHTTPService("oidc", oidcHTTPPort, service.OIDCBasePath, oidcTLSCertPath, oidcTLSCertKeyPath, &service.OidcService{Index: authConfigIndex})
 }
 
-func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, handler http.Handler) {
+func startHTTPService(name string, port int, basePath, tlsCertPath, tlsCertKeyPath string, handler http.Handler) {
 	lis, err := listen(port)
 
 	if err != nil {
@@ -383,23 +372,31 @@ func startHTTPService(name, port, basePath, tlsCertPath, tlsCertKeyPath string, 
 	}()
 }
 
-func listen(port string) (net.Listener, error) {
-	if p, err := strconv.Atoi(port); err != nil || p == 0 {
+func listen(port int) (net.Listener, error) {
+	if port == 0 {
 		return nil, nil
 	}
 
-	if lis, err := net.Listen("tcp", ":"+port); err != nil {
+	if lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err != nil {
 		return nil, err
 	} else {
 		return lis, nil
 	}
 }
 
-func fetchEnv(key string, def string) string {
+func fetchEnv(key string, def interface{}) string {
 	val, ok := os.LookupEnv(key)
 	if !ok {
-		return def
+		return fmt.Sprint(def)
 	} else {
 		return val
 	}
+}
+
+func timeoutMs() time.Duration {
+	return time.Duration(timeout) * time.Millisecond
+}
+
+func printVersion(_ *cobra.Command, _ []string) {
+	fmt.Println("Authorino", version)
 }
