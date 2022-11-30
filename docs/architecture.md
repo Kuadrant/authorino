@@ -154,7 +154,7 @@ More concrete examples of `AuthConfig`s for specific use-cases can be found in t
 
 The instances of the Authorino authorization service workload, following the [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator), watch events related to the `AuthConfig` custom resources, to build and reconcile an in-memory index of configs. Whenever a replica receives traffic for authorization request, it [looks up in the index](#host-lookup) of `AuthConfig`s and then [triggers the "Auth Pipeline"](#the-auth-pipeline-aka-enforcing-protection-in-request-time), i.e. enforces the associated auth spec onto the request.
 
-An instance can be a single authorization service workload or a set of replicas. All replicas watch and reconcile the same set of resources that match the `AUTH_CONFIG_LABEL_SELECTOR` and `SECRET_LABEL_SELECTOR` configuration options. (See both [Cluster-wide vs. Namespaced instances](#cluster-wide-vs-namespaced-instances) and [Sharding](#sharding), for details about defining the reconciliation space of Authorino instances.)
+An instance can be a single authorization service workload or a set of replicas. All replicas watch and reconcile the same set of resources that match the `--auth-config-label-selector` and `--secret-label-selector` configuration options. (See both [Cluster-wide vs. Namespaced instances](#cluster-wide-vs-namespaced-instances) and [Sharding](#sharding), for details about defining the reconciliation space of Authorino instances.)
 
 The above means that all replicas of an Authorino instance should be able to receive traffic for authorization requests.
 
@@ -164,7 +164,7 @@ The status of an `AuthConfig` tells whether the resource is "ready" (i.e. indexe
 
 Apart from watching events related to `AuthConfig` custom resources, Authorino also watches events related to Kubernetes `Secret`s, as part of Authorino's [API key authentication](./features.md#api-key-identityapikey) feature. `Secret` resources that store API keys are linked to their corresponding `AuthConfig`s in the index. Whenever the Authorino instance detects a change in the set of API key `Secret`s linked to an `AuthConfig`s, the instance reconciles the index.
 
-Authorino only watches events related to `Secret`s whose `metadata.labels` match the label selector `SECRET_LABEL_SELECTOR` of the Authorino instance. The default values of the label selector for Kubernetes `Secret`s representing Authorino API keys is `authorino.kuadrant.io/managed-by=authorino`.
+Authorino only watches events related to `Secret`s whose `metadata.labels` match the label selector `--secret-label-selector` of the Authorino instance. The default values of the label selector for Kubernetes `Secret`s representing Authorino API keys is `authorino.kuadrant.io/managed-by=authorino`.
 
 ## The "Auth Pipeline" (_aka:_ enforcing protection in request-time)
 
@@ -349,16 +349,16 @@ Use-cases for sharding of `AuthConfig`s:
 - Horizontal load balancing of traffic of authorization requests
 - Supporting for managed centralized instances of Authorino to API owners who create and maintain their own `AuthConfig`s within their own user namespaces.
 
-Authorino's custom controllers filter the `AuthConfig`-related events to be reconciled using [Kubernetes label selectors](https://pkg.go.dev/k8s.io/apimachinery/pkg/labels#Parse), defined for the Authorino instance via `AUTH_CONFIG_LABEL_SELECTOR` environment variable. By default, `AUTH_CONFIG_LABEL_SELECTOR` is empty, meaning all `AuthConfig`s in the space are watched; this variable can be set to any value parseable as a valid label selector, causing Authorino to then watch only events of `AuthConfig`s whose `metadata.labels` match the selector.
+Authorino's custom controllers filter the `AuthConfig`-related events to be reconciled using [Kubernetes label selectors](https://pkg.go.dev/k8s.io/apimachinery/pkg/labels#Parse), defined for the Authorino instance via `--auth-config-label-selector` command-line flag. By default, `--auth-config-label-selector` is empty, meaning all `AuthConfig`s in the space are watched; this variable can be set to any value parseable as a valid label selector, causing Authorino to then watch only events of `AuthConfig`s whose `metadata.labels` match the selector.
 
 The following are all valid examples of `AuthConfig` label selector filters:
 
 ```
-AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by=authorino"
-AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by=authorino,other-label=other-value"
-AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by in (authorino,kuadrant)"
-AUTH_CONFIG_LABEL_SELECTOR="authorino.kuadrant.io/managed-by!=authorino-v0.4"
-AUTH_CONFIG_LABEL_SELECTOR="!disabled"
+--auth-config-label-selector="authorino.kuadrant.io/managed-by=authorino"
+--auth-config-label-selector="authorino.kuadrant.io/managed-by=authorino,other-label=other-value"
+--auth-config-label-selector="authorino.kuadrant.io/managed-by in (authorino,kuadrant)"
+--auth-config-label-selector="authorino.kuadrant.io/managed-by!=authorino-v0.4"
+--auth-config-label-selector="!disabled"
 ```
 
 ## RBAC
@@ -379,4 +379,4 @@ The table below describes the roles and role bindings defined by the Authorino s
 
 ## Observability
 
-Please refer to the respective user guides for info about [Metrics & Observability](./user-guides/metrics.md) and [Logging & Tracing](./user-guides/logging.md).
+Please refer to the [Observability](./user-guides/observability.md) user guide for info on Prometheus metrics exported by Authorino, readiness probe, logging, tracing, etc.

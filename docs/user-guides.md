@@ -81,11 +81,5 @@ Have multiple instances of Authorino running in the same space (Kubernetes names
 - **[Caching](./user-guides/caching.md)**<br/>
 Cache auth objects resolved at runtime for any configuration bit of an AuthConfig, for easy access in subsequent requests whenever an arbitrary cache key repeats, until the cache entry expires.
 
-- **[Observability](./user-guides/metrics.md)**<br/>
-Prometheus metrics exported by Authorino.
-
-- **[Logging](./user-guides/logging.md)**<br/>
-Parse Authorino's structured JSON log messages; activate debug log level and get more user-friendly outputs in dev environment.
-
-- **[Tracing](./user-guides/logging.md#3-tracing-id)**<br/>
-Trace authorization requests deep across the stack.
+- **[Observability](./user-guides/observability.md)**<br/>
+Prometheus metrics exported by Authorino, readiness probe, logging, tracing, etc.
