@@ -81,6 +81,7 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 		Metadata:      make(map[*evaluators.MetadataConfig]interface{}),
 		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
 		Response:      make(map[*evaluators.ResponseConfig]interface{}),
+		Notify:        make(map[*evaluators.NotifyConfig]interface{}),
 		Logger:        logger,
 		mu:            sync.RWMutex{},
 	}
@@ -98,6 +99,7 @@ type AuthPipeline struct {
 	Metadata      map[*evaluators.MetadataConfig]interface{}
 	Authorization map[*evaluators.AuthorizationConfig]interface{}
 	Response      map[*evaluators.ResponseConfig]interface{}
+	Notify        map[*evaluators.NotifyConfig]interface{}
 
 	Logger log.Logger
 
@@ -345,6 +347,33 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	}
 }
 
+func (pipeline *AuthPipeline) evaluateNotifyConfigs() {
+	logger := pipeline.Logger.WithName("notify").V(1)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.NotifyConfigs)
+
+	for _, priority := range priorities {
+		configs := authConfigsByPriority[priority]
+		respChannel := make(chan EvaluationResponse, len(configs))
+
+		go func() {
+			defer close(respChannel)
+			pipeline.evaluateAnyAuthConfig(configs, &respChannel)
+		}()
+
+		for resp := range respChannel {
+			conf, _ := resp.Evaluator.(*evaluators.NotifyConfig)
+			obj := resp.Object
+
+			if resp.Success() {
+				pipeline.setNotifyObj(conf, obj)
+				logger.Info("notification sent", "config", conf, "object", obj)
+			} else {
+				logger.Info("cannot send notification", "config", conf, "reason", resp.Error)
+			}
+		}
+	}
+}
+
 func (pipeline *AuthPipeline) evaluateConditions(conditions []json.JSONPatternMatchingRule) error {
 	authJSON := pipeline.GetAuthorizationJSON()
 	for _, condition := range conditions {
@@ -407,14 +436,23 @@ func (pipeline *AuthPipeline) setResponseObj(conf *evaluators.ResponseConfig, ob
 	pipeline.Response[conf] = obj
 }
 
+func (pipeline *AuthPipeline) getNotifyObjs() map[*evaluators.NotifyConfig]interface{} {
+	return getObjs(pipeline.Notify, pipeline)
+}
+
+func (pipeline *AuthPipeline) setNotifyObj(conf *evaluators.NotifyConfig, obj interface{}) {
+	pipeline.mu.Lock()
+	defer pipeline.mu.Unlock()
+	pipeline.Notify[conf] = obj
+}
+
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
+	result := auth.AuthResult{Code: rpc.OK}
+
 	if err := pipeline.evaluateConditions(pipeline.AuthConfig.Conditions); err != nil {
 		pipeline.Logger.V(1).Info("skipping", "reason", err)
-
-		return auth.AuthResult{
-			Code: rpc.OK,
-		}
+		return result
 	}
 
 	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
@@ -427,42 +465,33 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 		evaluateFunc := func() {
 			// phase 1: identity verification
 			if resp := pipeline.evaluateIdentityConfigs(); !resp.Success() {
-				code := rpc.UNAUTHENTICATED
-				pipeline.reportStatusMetric(code)
-				authResult <- pipeline.customizeDenyWith(auth.AuthResult{
-					Code:    code,
-					Message: resp.GetErrorMessage(),
-					Headers: pipeline.AuthConfig.GetChallengeHeaders(),
-				}, pipeline.AuthConfig.Unauthenticated)
-				return
+				result.Code = rpc.UNAUTHENTICATED
+				result.Message = resp.GetErrorMessage()
+				result.Headers = pipeline.AuthConfig.GetChallengeHeaders()
+				result = pipeline.customizeDenyWith(result, pipeline.AuthConfig.Unauthenticated)
+			} else {
+				// phase 2: external metadata
+				pipeline.evaluateMetadataConfigs()
+
+				// phase 3: policy enforcement (authorization)
+				if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
+					result.Code = rpc.PERMISSION_DENIED
+					result.Message = resp.GetErrorMessage()
+					result = pipeline.customizeDenyWith(result, pipeline.AuthConfig.Unauthorized)
+				} else {
+					// phase 4: response
+					pipeline.evaluateResponseConfigs()
+					responseHeaders, responseMetadata := evaluators.WrapResponses(pipeline.Response)
+					result.Headers = []map[string]string{responseHeaders}
+					result.Metadata = responseMetadata
+				}
 			}
 
-			// phase 2: external metadata
-			pipeline.evaluateMetadataConfigs()
+			// phase 5: notify
+			pipeline.evaluateNotifyConfigs()
 
-			// phase 3: policy enforcement (authorization)
-			if resp := pipeline.evaluateAuthorizationConfigs(); !resp.Success() {
-				code := rpc.PERMISSION_DENIED
-				pipeline.reportStatusMetric(code)
-				authResult <- pipeline.customizeDenyWith(auth.AuthResult{
-					Code:    code,
-					Message: resp.GetErrorMessage(),
-				}, pipeline.AuthConfig.Unauthorized)
-				return
-			}
-
-			// phase 4: response
-			pipeline.evaluateResponseConfigs()
-
-			// auth result
-			responseHeaders, responseMetadata := evaluators.WrapResponses(pipeline.Response)
-			code := rpc.OK
-			pipeline.reportStatusMetric(code)
-			authResult <- auth.AuthResult{
-				Code:     code,
-				Headers:  []map[string]string{responseHeaders},
-				Metadata: responseMetadata,
-			}
+			pipeline.reportStatusMetric(result.Code)
+			authResult <- result
 		}
 
 		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
@@ -534,6 +563,15 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 		response[config.Name] = obj
 	}
 	authData["response"] = response
+
+	// notify
+	notify := make(map[string]interface{})
+	for config, obj := range pipeline.getNotifyObjs() {
+		notify[config.Name] = obj
+	}
+	if len(notify) > 0 {
+		authData["notify"] = notify
+	}
 
 	authJSON, _ := gojson.Marshal(&authorizationJSON{
 		Context:  pipeline.GetRequest().Attributes,

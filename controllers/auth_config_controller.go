@@ -326,64 +326,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// generic http
 		case api.MetadataGenericHTTP:
-			genericHttp := metadata.GenericHTTP
-			sharedSecretRef := genericHttp.SharedSecret
-			creds := genericHttp.Credentials
-
-			var sharedSecret string
-			secret := &v1.Secret{}
-			if sharedSecretRef != nil {
-				if err := r.Client.Get(ctx, types.NamespacedName{
-					Namespace: authConfig.Namespace,
-					Name:      sharedSecretRef.Name},
-					secret); err != nil {
-					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
-				}
-				sharedSecret = string(secret.Data[sharedSecretRef.Key])
+			ev, err := r.buildGenericHttpEvaluator(ctx, metadata.GenericHTTP, authConfig.Namespace)
+			if err != nil {
+				return nil, err
 			}
-
-			var body *json.JSONValue
-			if b := genericHttp.Body; b != nil {
-				body = &json.JSONValue{Static: b.Value, Pattern: b.ValueFrom.AuthJSON}
-			}
-
-			params := make([]json.JSONProperty, 0, len(genericHttp.Parameters))
-			for _, param := range genericHttp.Parameters {
-				params = append(params, json.JSONProperty{
-					Name: param.Name,
-					Value: json.JSONValue{
-						Static:  param.Value,
-						Pattern: param.ValueFrom.AuthJSON,
-					},
-				})
-			}
-
-			headers := make([]json.JSONProperty, 0, len(genericHttp.Headers))
-			for _, header := range genericHttp.Headers {
-				headers = append(headers, json.JSONProperty{
-					Name: header.Name,
-					Value: json.JSONValue{
-						Static:  header.Value,
-						Pattern: header.ValueFrom.AuthJSON,
-					},
-				})
-			}
-
-			method := "GET"
-			if m := genericHttp.Method; m != nil {
-				method = string(*m)
-			}
-
-			translatedMetadata.GenericHTTP = &metadata_evaluators.GenericHttp{
-				Endpoint:        genericHttp.Endpoint,
-				Method:          method,
-				Body:            body,
-				Parameters:      params,
-				Headers:         headers,
-				ContentType:     string(genericHttp.ContentType),
-				SharedSecret:    sharedSecret,
-				AuthCredentials: auth.NewAuthCredential(creds.KeySelector, string(creds.In)),
-			}
+			translatedMetadata.GenericHTTP = ev
 
 		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown metadata type %v", metadata)
@@ -577,12 +524,39 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 	}
 
+	interfacedNotifyConfigs := make([]auth.AuthConfigEvaluator, 0)
+
+	for _, notify := range authConfig.Spec.Notify {
+		translatedNotify := &evaluators.NotifyConfig{
+			Name:       notify.Name,
+			Priority:   notify.Priority,
+			Conditions: buildJSONPatternExpressions(authConfig, notify.Conditions),
+			Metrics:    notify.Metrics,
+		}
+
+		switch notify.GetType() {
+		// http
+		case api.NotifyHTTP:
+			ev, err := r.buildGenericHttpEvaluator(ctx, notify.HTTP, authConfig.Namespace)
+			if err != nil {
+				return nil, err
+			}
+			translatedNotify.HTTP = ev
+
+		case api.TypeUnknown:
+			return nil, fmt.Errorf("unknown notify type %v", notify)
+		}
+
+		interfacedNotifyConfigs = append(interfacedNotifyConfigs, translatedNotify)
+	}
+
 	translatedAuthConfig := &evaluators.AuthConfig{
 		Conditions:           buildJSONPatternExpressions(authConfig, authConfig.Spec.Conditions),
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 		ResponseConfigs:      interfacedResponseConfigs,
+		NotifyConfigs:        interfacedNotifyConfigs,
 		Labels:               map[string]string{"namespace": authConfig.Namespace, "name": authConfig.Name},
 	}
 
@@ -700,6 +674,63 @@ func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {
 		}
 	}
 	return nil
+}
+
+func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, http *api.Metadata_GenericHTTP, namespace string) (*metadata_evaluators.GenericHttp, error) {
+	sharedSecretRef := http.SharedSecret
+	creds := http.Credentials
+
+	var sharedSecret string
+	secret := &v1.Secret{}
+	if sharedSecretRef != nil {
+		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+		}
+		sharedSecret = string(secret.Data[sharedSecretRef.Key])
+	}
+
+	var body *json.JSONValue
+	if b := http.Body; b != nil {
+		body = &json.JSONValue{Static: b.Value, Pattern: b.ValueFrom.AuthJSON}
+	}
+
+	params := make([]json.JSONProperty, 0, len(http.Parameters))
+	for _, param := range http.Parameters {
+		params = append(params, json.JSONProperty{
+			Name: param.Name,
+			Value: json.JSONValue{
+				Static:  param.Value,
+				Pattern: param.ValueFrom.AuthJSON,
+			},
+		})
+	}
+
+	headers := make([]json.JSONProperty, 0, len(http.Headers))
+	for _, header := range http.Headers {
+		headers = append(headers, json.JSONProperty{
+			Name: header.Name,
+			Value: json.JSONValue{
+				Static:  header.Value,
+				Pattern: header.ValueFrom.AuthJSON,
+			},
+		})
+	}
+
+	method := "GET"
+	if m := http.Method; m != nil {
+		method = string(*m)
+	}
+
+	return &metadata_evaluators.GenericHttp{
+		Endpoint:        http.Endpoint,
+		Method:          method,
+		Body:            body,
+		Parameters:      params,
+		Headers:         headers,
+		ContentType:     string(http.ContentType),
+		SharedSecret:    sharedSecret,
+		AuthCredentials: auth.NewAuthCredential(creds.KeySelector, string(creds.In)),
+	}, nil
 }
 
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {

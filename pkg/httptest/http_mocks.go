@@ -39,3 +39,25 @@ func NewHttpServerMock(serverHost string, httpServerMocks map[string]HttpServerM
 
 	return server
 }
+
+func NewHttpServerMockResponseFunc(status int, headers map[string]string, body string) HttpServerMockResponseFunc {
+	return func() HttpServerMockResponse {
+		return HttpServerMockResponse{
+			status,
+			headers,
+			body,
+		}
+	}
+}
+
+func NewHttpServerMockResponseFuncJSON(body string) HttpServerMockResponseFunc {
+	return NewHttpServerMockResponseFunc(http.StatusOK, contentType("application/json"), body)
+}
+
+func NewHttpServerMockResponseFuncPlain(body string) HttpServerMockResponseFunc {
+	return NewHttpServerMockResponseFunc(http.StatusOK, contentType("text/plain"), body)
+}
+
+func contentType(ct string) map[string]string {
+	return map[string]string{"Content-Type": ct}
+}

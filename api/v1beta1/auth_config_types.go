@@ -39,6 +39,7 @@ const (
 	AuthorizationKubernetesAuthz     = "AUTHORIZATION_KUBERNETESAUTHZ"
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
+	NotifyHTTP                       = "NOTIFY_HTTP"
 	EvaluatorDefaultCacheTTL         = 60
 
 	// Status conditions
@@ -135,6 +136,10 @@ type AuthConfigSpec struct {
 	// List of response configs.
 	// Authorino gathers data from the auth pipeline to build custom responses for the client.
 	Response []*Response `json:"response,omitempty"`
+
+	// List of notification configs.
+	// Authorino sends notification messages to specified endpoints at the end of the auth pipeline.
+	Notify []*Notify `json:"notify,omitempty"`
 
 	// Custom denial response codes, statuses and headers to override default 40x's.
 	DenyWith *DenyWith `json:"denyWith,omitempty"`
@@ -548,6 +553,36 @@ func (r *Response) GetType() string {
 		return ResponseWristband
 	} else if r.JSON != nil {
 		return ResponseDynamicJSON
+	}
+	return TypeUnknown
+}
+
+// Endpoints to notify at the end of each auth pipeline.
+type Notify struct {
+	// Name of the notification.
+	// It can be used to refer to the resolved notification response in other configs.
+	Name string `json:"name"`
+
+	// Priority group of the config.
+	// All configs in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+	// +kubebuilder:default:=0
+	Priority int `json:"priority,omitempty"`
+
+	// Whether this notification config should generate individual observability metrics
+	// +kubebuilder:default:=false
+	Metrics bool `json:"metrics,omitempty"`
+
+	// Conditions for Authorino to perform this notification.
+	// If omitted, the notification will be attempted for all requests.
+	// If present, all conditions must match for the notification to be attempted; otherwise, the notification will be skipped.
+	Conditions []JSONPattern `json:"when,omitempty"`
+
+	HTTP *Metadata_GenericHTTP `json:"http"` // make this 'omitempty' if other alternate methods are added
+}
+
+func (r *Notify) GetType() string {
+	if r.HTTP != nil {
+		return NotifyHTTP
 	}
 	return TypeUnknown
 }

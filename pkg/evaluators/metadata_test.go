@@ -20,9 +20,7 @@ const testMetadataServerHost string = "127.0.0.1:9008"
 
 func TestMetadataCaching(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(testMetadataServerHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 

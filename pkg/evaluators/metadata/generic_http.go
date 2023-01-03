@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
@@ -53,7 +54,13 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 		return nil, fmt.Errorf("unsupported method")
 	}
 
-	req, err := h.BuildRequestWithCredentials(ctx, endpoint, method, h.SharedSecret, requestBody)
+	var req *http.Request
+	var err error
+	if h.AuthCredentials != nil {
+		req, err = h.BuildRequestWithCredentials(ctx, endpoint, method, h.SharedSecret, requestBody)
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, endpoint, requestBody)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +91,22 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	}
 	defer resp.Body.Close()
 
-	// parse the response
-	var claims map[string]interface{}
-	err = gojson.NewDecoder(resp.Body).Decode(&claims)
+	// parse the response as json
+	if strings.Contains(strings.Join(resp.Header["Content-Type"], ";"), "application/json") {
+		var claims map[string]interface{}
+		if err = gojson.NewDecoder(resp.Body).Decode(&claims); err != nil {
+			return nil, err
+		}
+		return claims, nil
+	}
+
+	// parse the response as text
+	defer resp.Body.Close()
+	str, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-
-	return claims, nil
+	return string(str), nil
 }
 
 func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
