@@ -41,7 +41,7 @@ When Authorino is triggered by Envoy via the **gRPC** interface, it starts evalu
 
 Apart from static rules, these parameters can include instructions to contact online with external identity verifiers, external sources of **metadata** and policy decision points (**PDPs**).
 
-On every request, Authorino's "working memory" is called [**Authorization JSON**](#the-authorization-json), a data structure that holds information about the context (the HTTP request) and objects from each phase of the auth pipeline: i.e., identity verification (phase i), ad-hoc metadata fetching (phase ii), authorization policy enforcement (phase iii) and dynamic response (phase iv). The evaluators in each of these phases can both read and write from the Authorization JSON for dynamic steps and decisions of authN/authZ.
+On every request, Authorino's "working memory" is called [**Authorization JSON**](#the-authorization-json), a data structure that holds information about the context (the HTTP request) and objects from each phase of the auth pipeline: i.e., identity verification (phase i), ad-hoc metadata fetching (phase ii), authorization policy enforcement (phase iii), dynamic response (phase iv), and notification (phase v). The evaluators in each of these phases can both read and write from the Authorization JSON for dynamic steps and decisions of authN/authZ.
 
 ## Topologies
 
@@ -131,7 +131,11 @@ spec:
   # - Envoy Dynamic Metadata
   response: […]
 
-  # Custom HTTP status code, message and headers to replace the default `401 Unauthorized` and `403 Forbidden` (optional)
+  # List of notification targets:
+  # - Endpoints for HTTP requests
+  notify: […]
+
+# Custom HTTP status code, message and headers to replace the default `401 Unauthorized` and `403 Forbidden` (optional)
   denyWith:
     unauthenticated:
       code: 302
@@ -168,16 +172,17 @@ Authorino only watches events related to `Secret`s whose `metadata.labels` match
 
 ## The "Auth Pipeline" (_aka:_ enforcing protection in request-time)
 
-![Authorino Auth Pipeline](auth-pipeline.png)
+![Authorino Auth Pipeline](auth-pipeline.gif)
 
-In each request to the protected API, Authorino triggers the so-called "Auth Pipeline", a set of configured *evaluators* that are organized in a 4-phase pipeline:
+In each request to the protected API, Authorino triggers the so-called "Auth Pipeline", a set of configured *evaluators* that are organized in a 5-phase pipeline:
 
 - **(i) Identity phase:** at least one source of identity (i.e., one identity evaluator) must resolve the supplied credential in the request into a valid identity or Authorino will otherwise reject the request as unauthenticated (401 HTTP response status).
-- **(ii) Metadata phase:** optional fetching of additional data from external sources, to add up to context and identity information, and used in authorization policies and dynamic responses (phases iii and iv).
+- **(ii) Metadata phase:** optional fetching of additional data from external sources, to add up to context and identity information, and used in authorization policies, dynamic responses and notification requests (phases iii to v).
 - **(iii) Authorization phase:** all unskipped policies must evaluate to a positive result ("authorized"), or Authorino will otherwise reject the request as unauthorized (403 HTTP response code).
 - **(iv) Response phase** – Authorino builds all user-defined response items (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), which are supplied back to the external authorization client within added HTTP headers or as Envoy Dynamic Metadata
+- **(v) Notification phase** – Authorino sends notification messages to specified HTTP endpoints.
 
-Each phase is sequential to the other, from (i) to (iv), while the evaluators within each phase are triggered concurrently or as prioritized. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
+Each phase is sequential to the other, from (i) to (v), while the evaluators within each phase are triggered concurrently or as prioritized. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
 
 ## Host lookup
 
@@ -215,7 +220,7 @@ When wildcards are involved, a host name that matches a host wildcard already li
 
 ## The Authorization JSON
 
-On every Auth Pipeline, Authorino builds the **Authorization JSON**, a "working-memory" data structure composed of `context` (information about the request, as supplied by the Envoy proxy to Authorino) and `auth` (objects resolved in phases (i), (ii) and (iii) of the pipeline). The evaluators of each phase can read from the Authorization JSON and implement dynamic properties and decisions based on its values.
+On every Auth Pipeline, Authorino builds the **Authorization JSON**, a "working-memory" data structure composed of `context` (information about the request, as supplied by the Envoy proxy to Authorino) and `auth` (objects resolved in phases (i) to (v) of the pipeline). The evaluators of each phase can read from the Authorization JSON and implement dynamic properties and decisions based on its values.
 
 At phase (iii), the authorization evaluators count on an Auhtorization JSON payload that looks like the following:
 

@@ -34,6 +34,8 @@
     - [Added HTTP headers](#added-http-headers)
     - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
   - [_Extra:_ Custom denial status (`denyWith`)](#extra-custom-denial-status-denywith)
+- [Notifications (`notify`)](#notifications-notify)
+  - [HTTP notifications (`notify.http`)](#http-notifications-notifyhttp)
 - [Common feature: Priorities](#common-feature-priorities)
 - [Common feature: Conditions (`when`)](#common-feature-conditions-when)
 - [Common feature: Caching (`cache`)](#common-feature-caching-cache)
@@ -671,6 +673,37 @@ rate_limits:
 ### _Extra:_ Custom denial status ([`denyWith`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#DenyWith))
 
 By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline)) or authorization (phase ii) fail. These can be customized by specifying `spec.denyWith` in the `AuthConfig`.
+
+## Notifications (`notify`)
+
+### HTTP notifications (`notify.http`)
+
+Sends notification requests to specified HTTP endpoints at the end of the auth pipeline.
+
+Example:
+
+```yaml
+spec:
+  identity: […]
+  authorization: […]
+
+  notify:
+    - name: log
+      http:
+        endpoint: http://logsys
+        method: POST
+        body:
+          valueFrom:
+            authJSON: |
+              \{"requestId":context.request.http.id,"username":"{auth.identity.username}","authorizationResult":{auth.authorization}\}
+    - name: important-forbidden
+      when:
+        - selector: auth.authorization.important-policy
+          operator: eq
+          value: "false"
+      http:
+        endpoint: "http://monitoring/important?forbidden-user={auth.identity.username}"
+```
 
 ## Common feature: Priorities
 

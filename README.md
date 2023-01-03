@@ -66,7 +66,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
 
 **Request-time:**
 
-![How it works](http://www.plantuml.com/plantuml/png/VP5FIyGm4CNl-HHpNyIx1rbTLeI2NMJreXvYCss3pKoTp0Zrqnl_KAf2ho-_zmA_sMRrefO6bryYZLvyWiJ4JI-S45GCdVEcJ9QUKToEALj2WPDpsDCRJt06ryVZ0GHV3REwxx2yNfZsB96u4DtjOUSwOHk_uZBIniu1m8BwKxb7YUq4CI1fr6aTla9jUaYeFdZrw-oUMfO6mPVi7KOUOXCnhtSkBGu16ilA2GJpM2oWGmfkKLaOgQlJcxg2HzhyAyr-xiQiWZuL_A6kddvPX0tu4310ZpwWP3V3dx_CD_XHFszlaOAbuGC0)
+![How it works](http://www.plantuml.com/plantuml/png/VP51ImD138NlyojoB-BTWrHBHIZOejMBUeWpsMwmawoPZ51_lOFAKXNs-lAzF7XlNXpDQzw7yieoe666hAAnDyq4RfL2mEegDR-GXOLAgPaCJivXAUzwW3EutcutOFHMgNZu5jlredglngADsDrk5c5dMeSlkJtfU1S0u8ZwOtaWu-u0d4YS_J0DNv777Z8v9dISPfVIgKK2RDe73Bhdo5IcFPULzmbYBQuPZCgWKcZQSaUIGDIvuuZEpH2Q4exuemRNgzERzGgUPFOlPEppVYXkXBdXZ-lLyw_MOGQO4YNe2HDP2IFSKc3SR9pgv_US9BNfFm40)
 
 1. A user or service account (_"Consumer"_) obtains an access token to consume resources of the _Upstream_ service, and sends a request to the _Envoy_ ingress endpoint
 2. The Envoy proxy establishes fast gRPC connection with _Authorino_ carrying data of the HTTP request (context info), which causes Authorino to lookup for an `AuthConfig` Custom Resource to enforce (pre-cached)
@@ -74,9 +74,10 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
 4. **External metadata phase** - Authorino fetches aditional metadata for the authorization from external sources (optional)
 5. **Policy enforcement (authorization) phase** - Authorino takes as input a JSON composed out of context data, resolved identity object and fetched additional metadata from previous phases, and triggers the evaluation of user-defined authorization policies
 6. **Response (metadata-out) phase** – Authorino builds user-defined custom responses (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), to be supplied back to the client and/or upstream service within added HTTP headers or as Envoy Dynamic Metadata (optional)
-7. Authorino and Envoy settle the authorization protocol with either OK/NOK response
-8. If authorized, Envoy triggers other HTTP filters in the chain (if any), pre-injecting eventual dynamic metadata returned by Authorino, and ultimately redirects the request to the _Upstream_
-9. The _Upstream_ serves the requested resource to the consumer
+7. **Notification phase** – Authorino sends notification messages to specified HTTP endpoints (optional)
+8. Authorino and Envoy settle the authorization protocol with either OK/NOK response
+9. If authorized, Envoy triggers other HTTP filters in the chain (if any), pre-injecting eventual dynamic metadata returned by Authorino, and ultimately redirects the request to the _Upstream_
+10. The _Upstream_ serves the requested resource to the consumer
 
 <details>
   <summary>More</summary>
@@ -174,6 +175,11 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
     </tr>
     <tr>
       <td>Custom response status code/messages <small>(e.g. redirect)</small></td>
+      <td><i>Ready</i></td>
+    </tr>
+    <tr>
+      <td>Notifications</td>
+      <td>HTTP endpoints</td>
       <td><i>Ready</i></td>
     </tr>
     <tr>
