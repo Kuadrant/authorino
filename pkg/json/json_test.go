@@ -234,6 +234,12 @@ func TestBase64JSONStr(t *testing.T) {
 	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.decoded.@base64:encode`).String(), "am9obg==")
 }
 
+func TestStripJSONStr(t *testing.T) {
+	const jsonData = "{\"auth\":{\"identity\":{\"username\": \"\n\nbob\u0012\"}}}"
+
+	assert.Equal(t, gjson.Get(jsonData, "auth.identity.username.@strip").String(), "bob")
+}
+
 func TestStringifyJSON(t *testing.T) {
 	var source interface{}
 	var str string

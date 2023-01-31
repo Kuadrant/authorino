@@ -105,7 +105,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           type: object
@@ -196,7 +196,8 @@ spec:
                                         Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                         can be used. The following string modifiers
                                         are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                        @case:upper|lower, and @base64:encode|decode.'
+                                        @case:upper|lower, @base64:encode|decode and
+                                        @strip.'
                                       type: string
                                   type: object
                               type: object
@@ -222,7 +223,8 @@ spec:
                                         Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                         can be used. The following string modifiers
                                         are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                        @case:upper|lower, and @base64:encode|decode.'
+                                        @case:upper|lower, @base64:encode|decode and
+                                        @strip.'
                                       type: string
                                   type: object
                               type: object
@@ -248,7 +250,8 @@ spec:
                                         Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                         can be used. The following string modifiers
                                         are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                        @case:upper|lower, and @base64:encode|decode.'
+                                        @case:upper|lower, @base64:encode|decode and
+                                        @strip.'
                                       type: string
                                   type: object
                               type: object
@@ -274,7 +277,8 @@ spec:
                                         Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                         can be used. The following string modifiers
                                         are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                        @case:upper|lower, and @base64:encode|decode.'
+                                        @case:upper|lower, @base64:encode|decode and
+                                        @strip.'
                                       type: string
                                   type: object
                               type: object
@@ -300,7 +304,8 @@ spec:
                                         Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                         can be used. The following string modifiers
                                         are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                        @case:upper|lower, and @base64:encode|decode.'
+                                        @case:upper|lower, @base64:encode|decode and
+                                        @strip.'
                                       type: string
                                   type: object
                               type: object
@@ -326,7 +331,8 @@ spec:
                                         Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                         can be used. The following string modifiers
                                         are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                        @case:upper|lower, and @base64:encode|decode.'
+                                        @case:upper|lower, @base64:encode|decode and
+                                        @strip.'
                                       type: string
                                   type: object
                               type: object
@@ -351,7 +357,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           type: object
@@ -526,7 +532,7 @@ spec:
                                   Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                   can be used. The following string modifiers are
                                   available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                  @case:upper|lower, and @base64:encode|decode.'
+                                  @case:upper|lower, @base64:encode|decode and @strip.'
                                 type: string
                             type: object
                         type: object
@@ -560,7 +566,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           required:
@@ -585,7 +591,7 @@ spec:
                                   Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                   can be used. The following string modifiers are
                                   available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                  @case:upper|lower, and @base64:encode|decode.'
+                                  @case:upper|lower, @base64:encode|decode and @strip.'
                                 type: string
                             type: object
                         type: object
@@ -612,7 +618,7 @@ spec:
                                   Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                   can be used. The following string modifiers are
                                   available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                  @case:upper|lower, and @base64:encode|decode.'
+                                  @case:upper|lower, @base64:encode|decode and @strip.'
                                 type: string
                             type: object
                         type: object
@@ -646,7 +652,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           required:
@@ -671,7 +677,7 @@ spec:
                                   Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                   can be used. The following string modifiers are
                                   available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                  @case:upper|lower, and @base64:encode|decode.'
+                                  @case:upper|lower, @base64:encode|decode and @strip.'
                                 type: string
                             type: object
                         type: object
@@ -781,7 +787,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           type: object
@@ -849,7 +855,7 @@ spec:
                                   Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                   can be used. The following string modifiers are
                                   available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                  @case:upper|lower, and @base64:encode|decode.'
+                                  @case:upper|lower, @base64:encode|decode and @strip.'
                                 type: string
                             type: object
                         required:
@@ -991,7 +997,7 @@ spec:
                             by https://pkg.go.dev/github.com/tidwall/gjson can be
                             used. The following string modifiers are available: @extract:{sep:"
                             ",pos:0}, @replace{old:"",new:""}, @case:upper|lower,
-                            and @base64:encode|decode.'
+                            @base64:encode|decode and @strip.'
                           type: string
                       type: object
                     priority:
@@ -1074,7 +1080,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           type: object
@@ -1111,7 +1117,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           type: object
@@ -1141,7 +1147,8 @@ spec:
                                       Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                       can be used. The following string modifiers
                                       are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                      @case:upper|lower, and @base64:encode|decode.'
+                                      @case:upper|lower, @base64:encode|decode and
+                                      @strip.'
                                     type: string
                                 type: object
                             required:
@@ -1217,7 +1224,8 @@ spec:
                                       Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                       can be used. The following string modifiers
                                       are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                      @case:upper|lower, and @base64:encode|decode.'
+                                      @case:upper|lower, @base64:encode|decode and
+                                      @strip.'
                                     type: string
                                 type: object
                             required:
@@ -1412,7 +1420,7 @@ spec:
                                     Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                     can be used. The following string modifiers are
                                     available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
+                                    @case:upper|lower, @base64:encode|decode and @strip.'
                                   type: string
                               type: object
                           type: object
@@ -1449,7 +1457,8 @@ spec:
                                       Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                       can be used. The following string modifiers
                                       are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                      @case:upper|lower, and @base64:encode|decode.'
+                                      @case:upper|lower, @base64:encode|decode and
+                                      @strip.'
                                     type: string
                                 type: object
                             required:
@@ -1551,7 +1560,8 @@ spec:
                                       Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
                                       can be used. The following string modifiers
                                       are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                      @case:upper|lower, and @base64:encode|decode.'
+                                      @case:upper|lower, @base64:encode|decode and
+                                      @strip.'
                                     type: string
                                 type: object
                             required:
