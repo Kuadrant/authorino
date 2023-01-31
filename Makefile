@@ -131,9 +131,14 @@ docker-build: ## Builds an image based on the current branch
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
 
+BENCHMARKS_FILE=benchmarks.out
 benchmarks: generate manifests envtest benchstat ## Runs the test with benchmarks
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -bench=. -run=^Benchmark -count=1 -cpu=1,4,10 -benchmem | tee benchmarks.out
-	$(BENCHSTAT) -split "" benchmarks.out
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -bench=. -run=^Benchmark -count=10 -cpu=1,4,10 -benchmem | tee $(BENCHMARKS_FILE)
+	$(MAKE) report-benchmarks
+
+report-benchmarks:
+	$(BENCHSTAT) -filter "-.name:JSONPatternMatchingAuthz AND -.name:OPAAuthz" -table .name current=$(BENCHMARKS_FILE)
+	$(BENCHSTAT) -filter ".name:/(JSONPatternMatchingAuthz|OPAAuthz)/" -col ".name@(OPAAuthz JSONPatternMatchingAuthz)" -table "" current=$(BENCHMARKS_FILE)
 
 cover: ## Shows test coverage
 	go tool cover -html=cover.out
