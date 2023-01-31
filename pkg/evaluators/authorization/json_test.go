@@ -299,13 +299,18 @@ func BenchmarkJSONPatternMatchingAuthz(b *testing.B) {
 	defer ctrl.Finish()
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
-	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"headers":{"x-secret-header":"no-one-knows"}}}},"auth":{"identity":{"anonymous":true}}}`).MinTimes(1)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/allow"}}},"auth":{"identity":{"anonymous":true}}}`).MinTimes(1)
 	jsonAuth := &JSONPatternMatching{
 		Rules: []json.JSONPatternMatchingRule{
 			{
-				Selector: "context.request.http.headers.x-secret-header",
+				Selector: "context.request.http.method",
 				Operator: "eq",
-				Value:    "no-one-knows",
+				Value:    "GET",
+			},
+			{
+				Selector: "context.request.http.path",
+				Operator: "eq",
+				Value:    "/allow",
 			},
 		},
 	}

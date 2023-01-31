@@ -393,56 +393,52 @@ For a detailed description of the features above, refer to the [Features](./docs
 
 **Results:**
 ```
-name                         time/op
-ReconcileAuthConfig          1.39ms ± 0%
-ReconcileAuthConfig-4        1.32ms ± 0%
-ReconcileAuthConfig-10       1.62ms ± 0%
-JSONPatternMatchingAuthz     1.68µs ± 0%
-JSONPatternMatchingAuthz-4   1.67µs ± 0%
-JSONPatternMatchingAuthz-10  1.64µs ± 0%
-OPAAuthz                     91.7µs ± 0%
-OPAAuthz-4                   82.6µs ± 0%
-OPAAuthz-10                  91.7µs ± 0%
-APIKeyAuthn                  3.28µs ± 0%
-APIKeyAuthn-4                3.17µs ± 0%
-APIKeyAuthn-10               3.18µs ± 0%
-AuthPipeline                  356µs ± 0%
-AuthPipeline-4                334µs ± 0%
-AuthPipeline-10               352µs ± 0%
+ReconcileAuthConfig:
 
-name                         alloc/op
-ReconcileAuthConfig           277kB ± 0%
-ReconcileAuthConfig-4         278kB ± 0%
-ReconcileAuthConfig-10        280kB ± 0%
-JSONPatternMatchingAuthz      64.0B ± 0%
-JSONPatternMatchingAuthz-4    64.0B ± 0%
-JSONPatternMatchingAuthz-10   64.0B ± 0%
-OPAAuthz                     28.5kB ± 0%
-OPAAuthz-4                   28.5kB ± 0%
-OPAAuthz-10                  28.5kB ± 0%
-APIKeyAuthn                    480B ± 0%
-APIKeyAuthn-4                  480B ± 0%
-APIKeyAuthn-10                 480B ± 0%
-AuthPipeline                 79.2kB ± 0%
-AuthPipeline-4               79.3kB ± 0%
-AuthPipeline-10              79.3kB ± 0%
+        │   sec/op    │     B/op     │  allocs/op  │
+*         1.533m ± 2%   264.4Ki ± 0%   6.470k ± 0%
+*-4       1.381m ± 6%   264.5Ki ± 0%   6.471k ± 0%
+*-10      1.563m ± 5%   270.2Ki ± 0%   6.426k ± 0%
+geomean   1.491m        266.4Ki        6.456k
 
-name                         allocs/op
-ReconcileAuthConfig           6.56k ± 0%
-ReconcileAuthConfig-4         6.56k ± 0%
-ReconcileAuthConfig-10        6.56k ± 0%
-JSONPatternMatchingAuthz       2.00 ± 0%
-JSONPatternMatchingAuthz-4     2.00 ± 0%
-JSONPatternMatchingAuthz-10    2.00 ± 0%
-OPAAuthz                        567 ± 0%
-OPAAuthz-4                      567 ± 0%
-OPAAuthz-10                     567 ± 0%
-APIKeyAuthn                    6.00 ± 0%
-APIKeyAuthn-4                  6.00 ± 0%
-APIKeyAuthn-10                 6.00 ± 0%
-AuthPipeline                    894 ± 0%
-AuthPipeline-4                  894 ± 0%
-AuthPipeline-10                 894 ± 0%
+AuthPipeline:
+
+        │   sec/op    │     B/op     │ allocs/op  │
+*         388.0µ ± 2%   80.70Ki ± 0%   894.0 ± 0%
+*-4       348.4µ ± 5%   80.67Ki ± 2%   894.0 ± 3%
+*-10      356.4µ ± 2%   78.97Ki ± 0%   860.0 ± 0%
+geomean   363.9µ        80.11Ki        882.5
+
+APIKeyAuthn:
+
+        │   sec/op    │    B/op      │ allocs/op  │
+*         3.246µ ± 1%   480.0 ± 0%     6.000 ± 0%
+*-4       3.111µ ± 0%   480.0 ± 0%     6.000 ± 0%
+*-10      3.091µ ± 1%   480.0 ± 0%     6.000 ± 0%
+geomean   3.148µ        480.0          6.000
+
+OPAAuthz vs JSONPatternMatchingAuthz:
+
+        │   OPAAuthz   │      JSONPatternMatchingAuthz       │
+        │    sec/op    │   sec/op     vs base                │
+*         87.469µ ± 1%   1.797µ ± 1%  -97.95% (p=0.000 n=10)
+*-4       95.954µ ± 3%   1.766µ ± 0%  -98.16% (p=0.000 n=10)
+*-10      96.789µ ± 4%   1.763µ ± 0%  -98.18% (p=0.000 n=10)
+geomean    93.31µ        1.775µ       -98.10%
+
+        │   OPAAuthz    │      JSONPatternMatchingAuthz      │
+        │     B/op      │    B/op     vs base                │
+*         28826.00 ± 0%   64.00 ± 0%  -99.78% (p=0.000 n=10)
+*-4       28844.00 ± 0%   64.00 ± 0%  -99.78% (p=0.000 n=10)
+*-10      28862.00 ± 0%   64.00 ± 0%  -99.78% (p=0.000 n=10)
+geomean    28.17Ki        64.00       -99.78%
+
+        │   OPAAuthz   │      JSONPatternMatchingAuthz      │
+        │  allocs/op   │ allocs/op   vs base                │
+*         569.000 ± 0%   2.000 ± 0%  -99.65% (p=0.000 n=10)
+*-4       569.000 ± 0%   2.000 ± 0%  -99.65% (p=0.000 n=10)
+*-10      569.000 ± 0%   2.000 ± 0%  -99.65% (p=0.000 n=10)
+geomean     569.0        2.000       -99.65%
 ```
 
 ## Contributing
