@@ -20,6 +20,7 @@ type AuthConfig struct {
 	MetadataConfigs      []auth.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []auth.AuthConfigEvaluator `yaml:"authorization,omitempty"`
 	ResponseConfigs      []auth.AuthConfigEvaluator `yaml:"response,omitempty"`
+	NotifyConfigs        []auth.AuthConfigEvaluator `yaml:"notify,omitempty"`
 
 	DenyWith
 }
@@ -28,9 +29,10 @@ func (config *AuthConfig) GetChallengeHeaders() []map[string]string {
 	challengeHeaders := make([]map[string]string, 0)
 
 	for _, authConfig := range config.IdentityConfigs {
-		idConfig := authConfig.(*IdentityConfig)
-		challenge := fmt.Sprintf("%v realm=\"%v\"", idConfig.GetAuthCredentials().GetCredentialsKeySelector(), idConfig.Name)
-		challengeHeaders = append(challengeHeaders, map[string]string{"WWW-Authenticate": challenge})
+		if idConfig, ok := authConfig.(*IdentityConfig); ok {
+			challenge := fmt.Sprintf("%v realm=\"%v\"", idConfig.GetAuthCredentials().GetCredentialsKeySelector(), idConfig.Name)
+			challengeHeaders = append(challengeHeaders, map[string]string{"WWW-Authenticate": challenge})
+		}
 	}
 
 	return challengeHeaders
@@ -42,6 +44,7 @@ func (config *AuthConfig) Clean(ctx context.Context) error {
 	evaluators = append(evaluators, config.MetadataConfigs...)
 	evaluators = append(evaluators, config.AuthorizationConfigs...)
 	evaluators = append(evaluators, config.ResponseConfigs...)
+	evaluators = append(evaluators, config.NotifyConfigs...)
 
 	var errors error
 	var wait sync.WaitGroup

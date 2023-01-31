@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	gojson "encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -16,15 +17,11 @@ import (
 	"gotest.tools/assert"
 )
 
-const (
-	extHttpServiceHost string = "127.0.0.1:9005"
-)
+const extHttpServiceHost string = "127.0.0.1:9005"
 
 func TestGenericHttpCallWithGET(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -58,9 +55,7 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 
 func TestGenericHttpCallWithPOST(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -97,9 +92,7 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 
 func TestGenericHttpCallWithStaticBody(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -136,9 +129,7 @@ func TestGenericHttpCallWithStaticBody(t *testing.T) {
 
 func TestGenericHttpCallWithDynamicBody(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -175,9 +166,7 @@ func TestGenericHttpCallWithDynamicBody(t *testing.T) {
 
 func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata?p=some-origin": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata?p=some-origin": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -212,9 +201,7 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 
 func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: `{"foo":"bar"}`}
-		},
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
 	})
 	defer extHttpMetadataServer.Close()
 
@@ -246,6 +233,56 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, httpRequestMock.Header.Get("X-Requested-By"), "authorino")
 	assert.Equal(t, httpRequestMock.Header.Get("Content-Type"), "text/plain")
+}
+
+func TestGenericHttpWithInvalidJSONResponse(t *testing.T) {
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{not a valid JSON`),
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + extHttpServiceHost + "/metadata"
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+	metadata := &GenericHttp{
+		Endpoint: endpoint,
+		Method:   "GET",
+	}
+
+	obj, err := metadata.Call(pipelineMock, ctx)
+	assert.ErrorContains(t, err, "invalid")
+	assert.Check(t, obj == nil)
+}
+
+func TestGenericHttpWithTextPlainResponse(t *testing.T) {
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": httptest.NewHttpServerMockResponseFuncPlain("OK"),
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + extHttpServiceHost + "/metadata"
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+	metadata := &GenericHttp{
+		Endpoint: endpoint,
+		Method:   "GET",
+	}
+
+	obj, err := metadata.Call(pipelineMock, ctx)
+	assert.NilError(t, err)
+	assert.Equal(t, fmt.Sprintf("%s", obj), "OK")
 }
 
 func genericHttpAuthDataMock() string {
