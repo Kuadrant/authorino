@@ -34,8 +34,8 @@
     - [Added HTTP headers](#added-http-headers)
     - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
   - [_Extra:_ Custom denial status (`denyWith`)](#extra-custom-denial-status-denywith)
-- [Notifications (`notify`)](#notifications-notify)
-  - [HTTP notifications (`notify.http`)](#http-notifications-notifyhttp)
+- [Callbacks (`callbacks`)](#callbacks-callbacks)
+  - [HTTP endpoints (`callbacks.http`)](#http-endpoints-callbackshttp)
 - [Common feature: Priorities](#common-feature-priorities)
 - [Common feature: Conditions (`when`)](#common-feature-conditions-when)
 - [Common feature: Caching (`cache`)](#common-feature-caching-cache)
@@ -674,11 +674,11 @@ rate_limits:
 
 By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline)) or authorization (phase ii) fail. These can be customized by specifying `spec.denyWith` in the `AuthConfig`.
 
-## Notifications (`notify`)
+## Callbacks (`callbacks`)
 
-### HTTP notifications (`notify.http`)
+### HTTP endpoints (`callbacks.http`)
 
-Sends notification requests to specified HTTP endpoints at the end of the auth pipeline.
+Sends requests to specified HTTP endpoints at the end of the auth pipeline.
 
 Example:
 
@@ -687,7 +687,7 @@ spec:
   identity: […]
   authorization: […]
 
-  notify:
+  callbacks:
     - name: log
       http:
         endpoint: http://logsys

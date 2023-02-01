@@ -20,7 +20,7 @@ type AuthConfig struct {
 	MetadataConfigs      []auth.AuthConfigEvaluator `yaml:"metadata,omitempty"`
 	AuthorizationConfigs []auth.AuthConfigEvaluator `yaml:"authorization,omitempty"`
 	ResponseConfigs      []auth.AuthConfigEvaluator `yaml:"response,omitempty"`
-	NotifyConfigs        []auth.AuthConfigEvaluator `yaml:"notify,omitempty"`
+	CallbackConfigs      []auth.AuthConfigEvaluator `yaml:"callbacks,omitempty"`
 
 	DenyWith
 }
@@ -44,7 +44,7 @@ func (config *AuthConfig) Clean(ctx context.Context) error {
 	evaluators = append(evaluators, config.MetadataConfigs...)
 	evaluators = append(evaluators, config.AuthorizationConfigs...)
 	evaluators = append(evaluators, config.ResponseConfigs...)
-	evaluators = append(evaluators, config.NotifyConfigs...)
+	evaluators = append(evaluators, config.CallbackConfigs...)
 
 	var errors error
 	var wait sync.WaitGroup

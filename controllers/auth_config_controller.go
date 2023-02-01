@@ -524,30 +524,30 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 	}
 
-	interfacedNotifyConfigs := make([]auth.AuthConfigEvaluator, 0)
+	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
 
-	for _, notify := range authConfig.Spec.Notify {
-		translatedNotify := &evaluators.NotifyConfig{
-			Name:       notify.Name,
-			Priority:   notify.Priority,
-			Conditions: buildJSONPatternExpressions(authConfig, notify.Conditions),
-			Metrics:    notify.Metrics,
+	for _, callback := range authConfig.Spec.Callbacks {
+		translatedCallback := &evaluators.CallbackConfig{
+			Name:       callback.Name,
+			Priority:   callback.Priority,
+			Conditions: buildJSONPatternExpressions(authConfig, callback.Conditions),
+			Metrics:    callback.Metrics,
 		}
 
-		switch notify.GetType() {
+		switch callback.GetType() {
 		// http
-		case api.NotifyHTTP:
-			ev, err := r.buildGenericHttpEvaluator(ctx, notify.HTTP, authConfig.Namespace)
+		case api.CallbackHTTP:
+			ev, err := r.buildGenericHttpEvaluator(ctx, callback.HTTP, authConfig.Namespace)
 			if err != nil {
 				return nil, err
 			}
-			translatedNotify.HTTP = ev
+			translatedCallback.HTTP = ev
 
 		case api.TypeUnknown:
-			return nil, fmt.Errorf("unknown notify type %v", notify)
+			return nil, fmt.Errorf("unknown callback type %v", callback)
 		}
 
-		interfacedNotifyConfigs = append(interfacedNotifyConfigs, translatedNotify)
+		interfacedCallbackConfigs = append(interfacedCallbackConfigs, translatedCallback)
 	}
 
 	translatedAuthConfig := &evaluators.AuthConfig{
@@ -556,7 +556,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 		ResponseConfigs:      interfacedResponseConfigs,
-		NotifyConfigs:        interfacedNotifyConfigs,
+		CallbackConfigs:      interfacedCallbackConfigs,
 		Labels:               map[string]string{"namespace": authConfig.Namespace, "name": authConfig.Name},
 	}
 

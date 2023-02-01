@@ -10,20 +10,20 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
-const notifyHTTP = "NOTIFY_HTTP"
+const callbackHTTP = "CALLBACK_HTTP"
 
-func NewNotifyConfig(name string, priority int, conditions []json.JSONPatternMatchingRule, metricsEnabled bool) *NotifyConfig {
-	notifyConfig := NotifyConfig{
+func NewCallbackConfig(name string, priority int, conditions []json.JSONPatternMatchingRule, metricsEnabled bool) *CallbackConfig {
+	callbackConfig := CallbackConfig{
 		Name:       name,
 		Priority:   priority,
 		Conditions: conditions,
 		Metrics:    metricsEnabled,
 	}
 
-	return &notifyConfig
+	return &callbackConfig
 }
 
-type NotifyConfig struct {
+type CallbackConfig struct {
 	Name       string                         `yaml:"name"`
 	Priority   int                            `yaml:"priority"`
 	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
@@ -32,9 +32,9 @@ type NotifyConfig struct {
 	HTTP *metadata.GenericHttp `yaml:"http,omitempty"`
 }
 
-func (config *NotifyConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
+func (config *CallbackConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
 	switch config.GetType() {
-	case notifyHTTP:
+	case callbackHTTP:
 		return config.HTTP
 	default:
 		return nil
@@ -43,11 +43,11 @@ func (config *NotifyConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
 
 // impl:AuthConfigEvaluator
 
-func (config *NotifyConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+func (config *CallbackConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	if evaluator := config.GetAuthConfigEvaluator(); evaluator == nil {
-		return nil, fmt.Errorf("invalid notify config")
+		return nil, fmt.Errorf("invalid callback config")
 	} else {
-		logger := log.FromContext(ctx).WithName("notify")
+		logger := log.FromContext(ctx).WithName("callback")
 
 		obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
 
@@ -57,16 +57,16 @@ func (config *NotifyConfig) Call(pipeline auth.AuthPipeline, ctx context.Context
 
 // impl:NamedEvaluator
 
-func (config *NotifyConfig) GetName() string {
+func (config *CallbackConfig) GetName() string {
 	return config.Name
 }
 
 // impl:TypedEvaluator
 
-func (config *NotifyConfig) GetType() string {
+func (config *CallbackConfig) GetType() string {
 	switch {
 	case config.HTTP != nil:
-		return notifyHTTP
+		return callbackHTTP
 	default:
 		return ""
 	}
@@ -74,18 +74,18 @@ func (config *NotifyConfig) GetType() string {
 
 // impl:Prioritizable
 
-func (config *NotifyConfig) GetPriority() int {
+func (config *CallbackConfig) GetPriority() int {
 	return config.Priority
 }
 
 // impl:ConditionalEvaluator
 
-func (config *NotifyConfig) GetConditions() []json.JSONPatternMatchingRule {
+func (config *CallbackConfig) GetConditions() []json.JSONPatternMatchingRule {
 	return config.Conditions
 }
 
 // impl:metrics.Object
 
-func (config *NotifyConfig) MetricsEnabled() bool {
+func (config *CallbackConfig) MetricsEnabled() bool {
 	return config.Metrics
 }

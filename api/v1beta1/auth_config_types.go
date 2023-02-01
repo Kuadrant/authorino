@@ -39,7 +39,7 @@ const (
 	AuthorizationKubernetesAuthz     = "AUTHORIZATION_KUBERNETESAUTHZ"
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
-	NotifyHTTP                       = "NOTIFY_HTTP"
+	CallbackHTTP                     = "CALLBACK_HTTP"
 	EvaluatorDefaultCacheTTL         = 60
 
 	// Status conditions
@@ -137,9 +137,9 @@ type AuthConfigSpec struct {
 	// Authorino gathers data from the auth pipeline to build custom responses for the client.
 	Response []*Response `json:"response,omitempty"`
 
-	// List of notification configs.
-	// Authorino sends notification messages to specified endpoints at the end of the auth pipeline.
-	Notify []*Notify `json:"notify,omitempty"`
+	// List of callback configs.
+	// Authorino sends callbacks to specified endpoints at the end of the auth pipeline.
+	Callbacks []*Callback `json:"callbacks,omitempty"`
 
 	// Custom denial response codes, statuses and headers to override default 40x's.
 	DenyWith *DenyWith `json:"denyWith,omitempty"`
@@ -557,10 +557,10 @@ func (r *Response) GetType() string {
 	return TypeUnknown
 }
 
-// Endpoints to notify at the end of each auth pipeline.
-type Notify struct {
-	// Name of the notification.
-	// It can be used to refer to the resolved notification response in other configs.
+// Endpoints to callback at the end of each auth pipeline.
+type Callback struct {
+	// Name of the callback.
+	// It can be used to refer to the resolved callback response in other configs.
 	Name string `json:"name"`
 
 	// Priority group of the config.
@@ -568,21 +568,21 @@ type Notify struct {
 	// +kubebuilder:default:=0
 	Priority int `json:"priority,omitempty"`
 
-	// Whether this notification config should generate individual observability metrics
+	// Whether this callback config should generate individual observability metrics
 	// +kubebuilder:default:=false
 	Metrics bool `json:"metrics,omitempty"`
 
-	// Conditions for Authorino to perform this notification.
-	// If omitted, the notification will be attempted for all requests.
-	// If present, all conditions must match for the notification to be attempted; otherwise, the notification will be skipped.
+	// Conditions for Authorino to perform this callback.
+	// If omitted, the callback will be attempted for all requests.
+	// If present, all conditions must match for the callback to be attempted; otherwise, the callback will be skipped.
 	Conditions []JSONPattern `json:"when,omitempty"`
 
 	HTTP *Metadata_GenericHTTP `json:"http"` // make this 'omitempty' if other alternate methods are added
 }
 
-func (r *Notify) GetType() string {
+func (r *Callback) GetType() string {
 	if r.HTTP != nil {
-		return NotifyHTTP
+		return CallbackHTTP
 	}
 	return TypeUnknown
 }
