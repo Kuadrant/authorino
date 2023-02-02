@@ -14,25 +14,25 @@ import (
 	"gotest.tools/assert"
 )
 
-const testNotifyServerHost string = "127.0.0.1:9010"
+const testCallbackServerHost string = "127.0.0.1:9010"
 
-func TestNotify(t *testing.T) {
-	var notified bool
-	extHttpNotifyServer := httptest.NewHttpServerMock(testNotifyServerHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/notify": func() httptest.HttpServerMockResponse {
-			notified = true
+func TestCallbacks(t *testing.T) {
+	var called bool
+	extHttpCallbackServer := httptest.NewHttpServerMock(testCallbackServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/callback": func() httptest.HttpServerMockResponse {
+			called = true
 			return httptest.NewHttpServerMockResponseFuncPlain("OK")()
 		},
 	})
-	defer extHttpNotifyServer.Close()
+	defer extHttpCallbackServer.Close()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	notifyConfig := NotifyConfig{
+	callbackConfig := CallbackConfig{
 		Name: "test",
 		HTTP: &metadata.GenericHttp{
-			Endpoint:        fmt.Sprintf("http://%s/notify", testNotifyServerHost),
+			Endpoint:        fmt.Sprintf("http://%s/callback", testCallbackServerHost),
 			Method:          "GET",
 			AuthCredentials: auth.NewAuthCredential("", "authorization_header"),
 		},
@@ -41,9 +41,9 @@ func TestNotify(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{}`)
 
-	assert.Check(t, !notified)
-	obj, err := notifyConfig.Call(pipelineMock, context.TODO())
+	assert.Check(t, !called)
+	obj, err := callbackConfig.Call(pipelineMock, context.TODO())
 	assert.NilError(t, err)
 	assert.Equal(t, fmt.Sprintf("%s", obj), "OK")
-	assert.Check(t, notified)
+	assert.Check(t, called)
 }

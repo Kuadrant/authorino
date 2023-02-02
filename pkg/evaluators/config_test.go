@@ -42,7 +42,7 @@ func TestCleanConfig(t *testing.T) {
 		MetadataConfigs:      []auth.AuthConfigEvaluator{ev2a, ev2b},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{ev3a, ev3b},
 		ResponseConfigs:      []auth.AuthConfigEvaluator{ev4a, ev4b},
-		NotifyConfigs:        []auth.AuthConfigEvaluator{ev5a, ev5b},
+		CallbackConfigs:      []auth.AuthConfigEvaluator{ev5a, ev5b},
 	}
 
 	err := config.Clean(context.Background())

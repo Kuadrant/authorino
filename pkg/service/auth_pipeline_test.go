@@ -491,48 +491,48 @@ func TestAuthPipelineWithMatchingConditionsInTheEvaluator(t *testing.T) {
 	assert.Check(t, authzConfig.called)
 }
 
-func TestAuthPipelineWithNotify(t *testing.T) {
-	notifyConfig := &successConfig{}
+func TestAuthPipelineWithCallbacks(t *testing.T) {
+	callbackConfig := &successConfig{}
 
 	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Noop: &identity.Noop{}}},                          // trivial success with returning object
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{&evaluators.AuthorizationConfig{JSON: &authorization.JSONPatternMatching{}}}, // trivial success with returning object
-		NotifyConfigs:        []auth.AuthConfigEvaluator{notifyConfig},
+		CallbackConfigs:      []auth.AuthConfigEvaluator{callbackConfig},
 	}, &requestMock)
 
 	_ = pipeline.Evaluate()
 
-	assert.Check(t, notifyConfig.called)
+	assert.Check(t, callbackConfig.called)
 }
 
-func TestAuthPipelineWithNotifyUnauthorized(t *testing.T) {
-	notifyConfig := &successConfig{}
+func TestAuthPipelineWithCallbacksUnauthorized(t *testing.T) {
+	callbackConfig := &successConfig{}
 	authzConfig := &successConfig{}
 
 	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{&failConfig{}},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{authzConfig},
-		NotifyConfigs:        []auth.AuthConfigEvaluator{notifyConfig},
+		CallbackConfigs:      []auth.AuthConfigEvaluator{callbackConfig},
 	}, &requestMock)
 
 	_ = pipeline.Evaluate()
 
 	assert.Check(t, !authzConfig.called)
-	assert.Check(t, notifyConfig.called)
+	assert.Check(t, callbackConfig.called)
 }
 
-func TestAuthPipelineWithNotifyForbidden(t *testing.T) {
-	notifyConfig := &successConfig{}
+func TestAuthPipelineWithCallbacksForbidden(t *testing.T) {
+	callbackConfig := &successConfig{}
 
 	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Noop: &identity.Noop{}}},
 		AuthorizationConfigs: []auth.AuthConfigEvaluator{&failConfig{}},
-		NotifyConfigs:        []auth.AuthConfigEvaluator{notifyConfig},
+		CallbackConfigs:      []auth.AuthConfigEvaluator{callbackConfig},
 	}, &requestMock)
 
 	_ = pipeline.Evaluate()
 
-	assert.Check(t, notifyConfig.called)
+	assert.Check(t, callbackConfig.called)
 }
 
 func BenchmarkAuthPipeline(b *testing.B) {

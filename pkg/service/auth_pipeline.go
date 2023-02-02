@@ -81,7 +81,7 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 		Metadata:      make(map[*evaluators.MetadataConfig]interface{}),
 		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
 		Response:      make(map[*evaluators.ResponseConfig]interface{}),
-		Notify:        make(map[*evaluators.NotifyConfig]interface{}),
+		Callbacks:     make(map[*evaluators.CallbackConfig]interface{}),
 		Logger:        logger,
 		mu:            sync.RWMutex{},
 	}
@@ -99,7 +99,7 @@ type AuthPipeline struct {
 	Metadata      map[*evaluators.MetadataConfig]interface{}
 	Authorization map[*evaluators.AuthorizationConfig]interface{}
 	Response      map[*evaluators.ResponseConfig]interface{}
-	Notify        map[*evaluators.NotifyConfig]interface{}
+	Callbacks     map[*evaluators.CallbackConfig]interface{}
 
 	Logger log.Logger
 
@@ -347,9 +347,9 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 	}
 }
 
-func (pipeline *AuthPipeline) evaluateNotifyConfigs() {
-	logger := pipeline.Logger.WithName("notify").V(1)
-	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.NotifyConfigs)
+func (pipeline *AuthPipeline) executeCallbacks() {
+	logger := pipeline.Logger.WithName("callbacks").V(1)
+	authConfigsByPriority, priorities := groupAuthConfigsByPriority(pipeline.AuthConfig.CallbackConfigs)
 
 	for _, priority := range priorities {
 		configs := authConfigsByPriority[priority]
@@ -361,14 +361,14 @@ func (pipeline *AuthPipeline) evaluateNotifyConfigs() {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*evaluators.NotifyConfig)
+			conf, _ := resp.Evaluator.(*evaluators.CallbackConfig)
 			obj := resp.Object
 
 			if resp.Success() {
-				pipeline.setNotifyObj(conf, obj)
-				logger.Info("notification sent", "config", conf, "object", obj)
+				pipeline.setCallbackObj(conf, obj)
+				logger.Info("callback executed", "config", conf, "object", obj)
 			} else {
-				logger.Info("cannot send notification", "config", conf, "reason", resp.Error)
+				logger.Info("cannot execute callback", "config", conf, "reason", resp.Error)
 			}
 		}
 	}
@@ -436,14 +436,14 @@ func (pipeline *AuthPipeline) setResponseObj(conf *evaluators.ResponseConfig, ob
 	pipeline.Response[conf] = obj
 }
 
-func (pipeline *AuthPipeline) getNotifyObjs() map[*evaluators.NotifyConfig]interface{} {
-	return getObjs(pipeline.Notify, pipeline)
+func (pipeline *AuthPipeline) getCallbackObjs() map[*evaluators.CallbackConfig]interface{} {
+	return getObjs(pipeline.Callbacks, pipeline)
 }
 
-func (pipeline *AuthPipeline) setNotifyObj(conf *evaluators.NotifyConfig, obj interface{}) {
+func (pipeline *AuthPipeline) setCallbackObj(conf *evaluators.CallbackConfig, obj interface{}) {
 	pipeline.mu.Lock()
 	defer pipeline.mu.Unlock()
-	pipeline.Notify[conf] = obj
+	pipeline.Callbacks[conf] = obj
 }
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
@@ -487,8 +487,8 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 				}
 			}
 
-			// phase 5: notify
-			pipeline.evaluateNotifyConfigs()
+			// phase 5: callbacks
+			pipeline.executeCallbacks()
 
 			pipeline.reportStatusMetric(result.Code)
 			authResult <- result
@@ -564,13 +564,13 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	}
 	authData["response"] = response
 
-	// notify
-	notify := make(map[string]interface{})
-	for config, obj := range pipeline.getNotifyObjs() {
-		notify[config.Name] = obj
+	// callbacks
+	callbacks := make(map[string]interface{})
+	for config, obj := range pipeline.getCallbackObjs() {
+		callbacks[config.Name] = obj
 	}
-	if len(notify) > 0 {
-		authData["notify"] = notify
+	if len(callbacks) > 0 {
+		authData["callbacks"] = callbacks
 	}
 
 	authJSON, _ := gojson.Marshal(&authorizationJSON{

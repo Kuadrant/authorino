@@ -500,6 +500,238 @@ spec:
                   - name
                   type: object
                 type: array
+              callbacks:
+                description: List of callback configs. Authorino sends callbacks to
+                  specified endpoints at the end of the auth pipeline.
+                items:
+                  description: Endpoints to callback at the end of each auth pipeline.
+                  properties:
+                    http:
+                      description: Generic HTTP interface to obtain authorization
+                        metadata from a HTTP service.
+                      properties:
+                        body:
+                          description: Raw body of the HTTP request. Supersedes 'bodyParameters';
+                            use either one or the other. Use it with method=POST;
+                            for GET requests, set parameters as query string in the
+                            'endpoint' (placeholders can be used).
+                          properties:
+                            value:
+                              description: Static value
+                              type: string
+                            valueFrom:
+                              description: Dynamic value
+                              properties:
+                                authJSON:
+                                  description: 'Selector to fetch a value from the
+                                    authorization JSON. It can be any path pattern
+                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                    or a string template with variable placeholders
+                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                    can be used. The following string modifiers are
+                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                    @case:upper|lower, and @base64:encode|decode.'
+                                  type: string
+                              type: object
+                          type: object
+                        bodyParameters:
+                          description: Custom parameters to encode in the body of
+                            the HTTP request. Superseded by 'body'; use either one
+                            or the other. Use it with method=POST; for GET requests,
+                            set parameters as query string in the 'endpoint' (placeholders
+                            can be used).
+                          items:
+                            properties:
+                              name:
+                                description: The name of the JSON property
+                                type: string
+                              value:
+                                description: Static value of the JSON property
+                                x-kubernetes-preserve-unknown-fields: true
+                              valueFrom:
+                                description: Dynamic value of the JSON property
+                                properties:
+                                  authJSON:
+                                    description: 'Selector to fetch a value from the
+                                      authorization JSON. It can be any path pattern
+                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                      or a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The following string modifiers
+                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      @case:upper|lower, and @base64:encode|decode.'
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
+                        contentType:
+                          default: application/x-www-form-urlencoded
+                          description: Content-Type of the request body. Shapes how
+                            'bodyParameters' are encoded. Use it with method=POST;
+                            for GET requests, Content-Type is automatically set to
+                            'text/plain'.
+                          enum:
+                          - application/x-www-form-urlencoded
+                          - application/json
+                          type: string
+                        credentials:
+                          description: Defines where client credentials will be passed
+                            in the request to the service. If omitted, it defaults
+                            to client credentials passed in the HTTP Authorization
+                            header and the "Bearer" prefix expected prepended to the
+                            secret value.
+                          properties:
+                            in:
+                              default: authorization_header
+                              description: The location in the request where client
+                                credentials shall be passed on requests authenticating
+                                with this identity source/authentication mode.
+                              enum:
+                              - authorization_header
+                              - custom_header
+                              - query
+                              - cookie
+                              type: string
+                            keySelector:
+                              description: Used in conjunction with the `in` parameter.
+                                When used with `authorization_header`, the value is
+                                the prefix of the client credentials string, separated
+                                by a white-space, in the HTTP Authorization header
+                                (e.g. "Bearer", "Basic"). When used with `custom_header`,
+                                `query` or `cookie`, the value is the name of the
+                                HTTP header, query string parameter or cookie key,
+                                respectively.
+                              type: string
+                          required:
+                          - keySelector
+                          type: object
+                        endpoint:
+                          description: Endpoint of the HTTP service. The endpoint
+                            accepts variable placeholders in the format "{selector}",
+                            where "selector" is any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson
+                            and selects value from the authorization JSON. E.g. https://ext-auth-server.io/metadata?p={context.request.http.path}
+                          type: string
+                        headers:
+                          description: Custom headers in the HTTP request.
+                          items:
+                            properties:
+                              name:
+                                description: The name of the JSON property
+                                type: string
+                              value:
+                                description: Static value of the JSON property
+                                x-kubernetes-preserve-unknown-fields: true
+                              valueFrom:
+                                description: Dynamic value of the JSON property
+                                properties:
+                                  authJSON:
+                                    description: 'Selector to fetch a value from the
+                                      authorization JSON. It can be any path pattern
+                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
+                                      or a string template with variable placeholders
+                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
+                                      can be used. The following string modifiers
+                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
+                                      @case:upper|lower, and @base64:encode|decode.'
+                                    type: string
+                                type: object
+                            required:
+                            - name
+                            type: object
+                          type: array
+                        method:
+                          default: GET
+                          description: 'HTTP verb used in the request to the service.
+                            Accepted values: GET (default), POST. When the request
+                            method is POST, the authorization JSON is passed in the
+                            body of the request.'
+                          enum:
+                          - GET
+                          - POST
+                          type: string
+                        sharedSecretRef:
+                          description: Reference to a Secret key whose value will
+                            be passed by Authorino in the request. The HTTP service
+                            can use the shared secret to authenticate the origin of
+                            the request.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              description: The name of the secret in the Authorino's
+                                namespace to select from.
+                              type: string
+                          required:
+                          - key
+                          - name
+                          type: object
+                      required:
+                      - endpoint
+                      type: object
+                    metrics:
+                      default: false
+                      description: Whether this callback config should generate individual
+                        observability metrics
+                      type: boolean
+                    name:
+                      description: Name of the callback. It can be used to refer to
+                        the resolved callback response in other configs.
+                      type: string
+                    priority:
+                      default: 0
+                      description: Priority group of the config. All configs in the
+                        same priority group are evaluated concurrently; consecutive
+                        priority groups are evaluated sequentially.
+                      type: integer
+                    when:
+                      description: Conditions for Authorino to perform this callback.
+                        If omitted, the callback will be attempted for all requests.
+                        If present, all conditions must match for the callback to
+                        be attempted; otherwise, the callback will be skipped.
+                      items:
+                        properties:
+                          operator:
+                            description: 'The binary operator to be applied to the
+                              content fetched from the authorization JSON, for comparison
+                              with "value". Possible values are: "eq" (equal to),
+                              "neq" (not equal to), "incl" (includes; for arrays),
+                              "excl" (excludes; for arrays), "matches" (regex)'
+                            enum:
+                            - eq
+                            - neq
+                            - incl
+                            - excl
+                            - matches
+                            type: string
+                          patternRef:
+                            description: Name of a named pattern
+                            type: string
+                          selector:
+                            description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
+                              The value is used to fetch content from the input authorization
+                              JSON built by Authorino along the identity and metadata
+                              phases.
+                            type: string
+                          value:
+                            description: The value of reference for the comparison
+                              with the content fetched from the authorization JSON.
+                              If used with the "matches" operator, the value must
+                              compile to a valid Golang regex.
+                            type: string
+                        type: object
+                      type: array
+                  required:
+                  - http
+                  - name
+                  type: object
+                type: array
               denyWith:
                 description: Custom denial response codes, statuses and headers to
                   override default 40x's.
@@ -1342,238 +1574,6 @@ spec:
                         type: object
                       type: array
                   required:
-                  - name
-                  type: object
-                type: array
-              notify:
-                description: List of notification configs. Authorino sends notification
-                  messages to specified endpoints at the end of the auth pipeline.
-                items:
-                  description: Endpoints to notify at the end of each auth pipeline.
-                  properties:
-                    http:
-                      description: Generic HTTP interface to obtain authorization
-                        metadata from a HTTP service.
-                      properties:
-                        body:
-                          description: Raw body of the HTTP request. Supersedes 'bodyParameters';
-                            use either one or the other. Use it with method=POST;
-                            for GET requests, set parameters as query string in the
-                            'endpoint' (placeholders can be used).
-                          properties:
-                            value:
-                              description: Static value
-                              type: string
-                            valueFrom:
-                              description: Dynamic value
-                              properties:
-                                authJSON:
-                                  description: 'Selector to fetch a value from the
-                                    authorization JSON. It can be any path pattern
-                                    to fetch from the authorization JSON (e.g. ''context.request.http.host'')
-                                    or a string template with variable placeholders
-                                    that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
-                                    Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
-                                    can be used. The following string modifiers are
-                                    available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                    @case:upper|lower, and @base64:encode|decode.'
-                                  type: string
-                              type: object
-                          type: object
-                        bodyParameters:
-                          description: Custom parameters to encode in the body of
-                            the HTTP request. Superseded by 'body'; use either one
-                            or the other. Use it with method=POST; for GET requests,
-                            set parameters as query string in the 'endpoint' (placeholders
-                            can be used).
-                          items:
-                            properties:
-                              name:
-                                description: The name of the JSON property
-                                type: string
-                              value:
-                                description: Static value of the JSON property
-                                x-kubernetes-preserve-unknown-fields: true
-                              valueFrom:
-                                description: Dynamic value of the JSON property
-                                properties:
-                                  authJSON:
-                                    description: 'Selector to fetch a value from the
-                                      authorization JSON. It can be any path pattern
-                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
-                                      or a string template with variable placeholders
-                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
-                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
-                                      can be used. The following string modifiers
-                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                      @case:upper|lower, and @base64:encode|decode.'
-                                    type: string
-                                type: object
-                            required:
-                            - name
-                            type: object
-                          type: array
-                        contentType:
-                          default: application/x-www-form-urlencoded
-                          description: Content-Type of the request body. Shapes how
-                            'bodyParameters' are encoded. Use it with method=POST;
-                            for GET requests, Content-Type is automatically set to
-                            'text/plain'.
-                          enum:
-                          - application/x-www-form-urlencoded
-                          - application/json
-                          type: string
-                        credentials:
-                          description: Defines where client credentials will be passed
-                            in the request to the service. If omitted, it defaults
-                            to client credentials passed in the HTTP Authorization
-                            header and the "Bearer" prefix expected prepended to the
-                            secret value.
-                          properties:
-                            in:
-                              default: authorization_header
-                              description: The location in the request where client
-                                credentials shall be passed on requests authenticating
-                                with this identity source/authentication mode.
-                              enum:
-                              - authorization_header
-                              - custom_header
-                              - query
-                              - cookie
-                              type: string
-                            keySelector:
-                              description: Used in conjunction with the `in` parameter.
-                                When used with `authorization_header`, the value is
-                                the prefix of the client credentials string, separated
-                                by a white-space, in the HTTP Authorization header
-                                (e.g. "Bearer", "Basic"). When used with `custom_header`,
-                                `query` or `cookie`, the value is the name of the
-                                HTTP header, query string parameter or cookie key,
-                                respectively.
-                              type: string
-                          required:
-                          - keySelector
-                          type: object
-                        endpoint:
-                          description: Endpoint of the HTTP service. The endpoint
-                            accepts variable placeholders in the format "{selector}",
-                            where "selector" is any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson
-                            and selects value from the authorization JSON. E.g. https://ext-auth-server.io/metadata?p={context.request.http.path}
-                          type: string
-                        headers:
-                          description: Custom headers in the HTTP request.
-                          items:
-                            properties:
-                              name:
-                                description: The name of the JSON property
-                                type: string
-                              value:
-                                description: Static value of the JSON property
-                                x-kubernetes-preserve-unknown-fields: true
-                              valueFrom:
-                                description: Dynamic value of the JSON property
-                                properties:
-                                  authJSON:
-                                    description: 'Selector to fetch a value from the
-                                      authorization JSON. It can be any path pattern
-                                      to fetch from the authorization JSON (e.g. ''context.request.http.host'')
-                                      or a string template with variable placeholders
-                                      that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
-                                      Any patterns supported by https://pkg.go.dev/github.com/tidwall/gjson
-                                      can be used. The following string modifiers
-                                      are available: @extract:{sep:" ",pos:0}, @replace{old:"",new:""},
-                                      @case:upper|lower, and @base64:encode|decode.'
-                                    type: string
-                                type: object
-                            required:
-                            - name
-                            type: object
-                          type: array
-                        method:
-                          default: GET
-                          description: 'HTTP verb used in the request to the service.
-                            Accepted values: GET (default), POST. When the request
-                            method is POST, the authorization JSON is passed in the
-                            body of the request.'
-                          enum:
-                          - GET
-                          - POST
-                          type: string
-                        sharedSecretRef:
-                          description: Reference to a Secret key whose value will
-                            be passed by Authorino in the request. The HTTP service
-                            can use the shared secret to authenticate the origin of
-                            the request.
-                          properties:
-                            key:
-                              description: The key of the secret to select from.  Must
-                                be a valid secret key.
-                              type: string
-                            name:
-                              description: The name of the secret in the Authorino's
-                                namespace to select from.
-                              type: string
-                          required:
-                          - key
-                          - name
-                          type: object
-                      required:
-                      - endpoint
-                      type: object
-                    metrics:
-                      default: false
-                      description: Whether this notification config should generate
-                        individual observability metrics
-                      type: boolean
-                    name:
-                      description: Name of the notification. It can be used to refer
-                        to the resolved notification response in other configs.
-                      type: string
-                    priority:
-                      default: 0
-                      description: Priority group of the config. All configs in the
-                        same priority group are evaluated concurrently; consecutive
-                        priority groups are evaluated sequentially.
-                      type: integer
-                    when:
-                      description: Conditions for Authorino to perform this notification.
-                        If omitted, the notification will be attempted for all requests.
-                        If present, all conditions must match for the notification
-                        to be attempted; otherwise, the notification will be skipped.
-                      items:
-                        properties:
-                          operator:
-                            description: 'The binary operator to be applied to the
-                              content fetched from the authorization JSON, for comparison
-                              with "value". Possible values are: "eq" (equal to),
-                              "neq" (not equal to), "incl" (includes; for arrays),
-                              "excl" (excludes; for arrays), "matches" (regex)'
-                            enum:
-                            - eq
-                            - neq
-                            - incl
-                            - excl
-                            - matches
-                            type: string
-                          patternRef:
-                            description: Name of a named pattern
-                            type: string
-                          selector:
-                            description: Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson.
-                              The value is used to fetch content from the input authorization
-                              JSON built by Authorino along the identity and metadata
-                              phases.
-                            type: string
-                          value:
-                            description: The value of reference for the comparison
-                              with the content fetched from the authorization JSON.
-                              If used with the "matches" operator, the value must
-                              compile to a valid Golang regex.
-                            type: string
-                        type: object
-                      type: array
-                  required:
-                  - http
                   - name
                   type: object
                 type: array
