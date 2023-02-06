@@ -423,6 +423,29 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err
 			}
 
+		case api.AuthorizationAuthzed:
+			authzed := authorization.Authzed
+
+			secret := &v1.Secret{}
+			var sharedSecret string
+			if secretRef := authzed.SharedSecret; secretRef != nil {
+				if err := r.Client.Get(ctx, types.NamespacedName{Namespace: authConfig.Namespace, Name: secretRef.Name}, secret); err != nil {
+					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+				}
+				sharedSecret = string(secret.Data[secretRef.Key])
+			}
+
+			translatedAuthzed := &authorization_evaluators.Authzed{
+				Endpoint:     authzed.Endpoint,
+				Insecure:     authzed.Insecure,
+				SharedSecret: sharedSecret,
+				Permission:   *getJsonFromStaticDynamic(&authzed.Permission),
+			}
+			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = authzedObjectToJsonValues(authzed.Subject)
+			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = authzedObjectToJsonValues(authzed.Resource)
+
+			translatedAuthorization.Authzed = translatedAuthzed
+
 		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown authorization type %v", authorization)
 		}
@@ -812,4 +835,15 @@ func getJsonFromStaticDynamic(value *api.StaticOrDynamicValue) *json.JSONValue {
 		Static:  value.Value,
 		Pattern: value.ValueFrom.AuthJSON,
 	}
+}
+
+func authzedObjectToJsonValues(obj *api.AuthzedObject) (name json.JSONValue, kind json.JSONValue) {
+	if obj == nil {
+		return
+	}
+
+	name = *getJsonFromStaticDynamic(&obj.Name)
+	kind = *getJsonFromStaticDynamic(&obj.Kind)
+
+	return name, kind
 }
