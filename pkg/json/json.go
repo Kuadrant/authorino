@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/tidwall/gjson"
 )
@@ -284,9 +285,21 @@ var base64JSONStr = func(json, arg string) string {
 	}
 }
 
+var stripJSONstr = func(json, arg string) string {
+	json = strings.Map(func(r rune) rune {
+		if unicode.IsPrint(r) {
+			return r
+		}
+		return -1
+	}, json)
+
+	return json
+}
+
 func init() {
 	gjson.AddModifier("extract", extractJSONStr)
 	gjson.AddModifier("replace", replaceJSONStr)
 	gjson.AddModifier("case", caseJSONStr)
 	gjson.AddModifier("base64", base64JSONStr)
+	gjson.AddModifier("strip", stripJSONstr)
 }

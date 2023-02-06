@@ -84,11 +84,15 @@ Examples below provided for the following Authorization JSON:
   "auth": {
     "identity": {
       "username": "jane",
-      "fullname": "Jane Smith"
+      "fullname": "Jane Smith",
+      "email": "\u0006jane\u0012@petcorp.com\n"
     },
   },
 }
 ```
+
+**`@strip`**<br/>
+Strips out any non printable characters such as carrige return. E.g. `auth.identity.email.@strip` → `"jane@petcorp.com"`.
 
 **`@case:upper|lower`**<br/>
 Changes the case of a string. E.g. `auth.identity.username.@case:upper` → `"JANE"`.
