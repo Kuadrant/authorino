@@ -260,6 +260,42 @@ func TestGenericHttpWithInvalidJSONResponse(t *testing.T) {
 	assert.Check(t, obj == nil)
 }
 
+func TestGenericHttpMultipleElementsJSONResponse(t *testing.T) {
+	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}{"blah":"bleh"}`),
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + extHttpServiceHost + "/metadata"
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
+	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
+	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "secret", nil).Return(httpRequestMock, nil)
+
+	metadata := &GenericHttp{
+		Endpoint:        endpoint,
+		Method:          "GET",
+		SharedSecret:    "secret",
+		AuthCredentials: sharedCredsMock,
+	}
+
+	obj, err := metadata.Call(pipelineMock, ctx)
+
+	assert.NilError(t, err)
+
+	objJSON := obj.([]map[string]interface{})
+	assert.Equal(t, len(objJSON), 2)
+	assert.Equal(t, objJSON[0]["foo"], "bar")
+	assert.Equal(t, objJSON[1]["blah"], "bleh")
+}
+
 func TestGenericHttpWithTextPlainResponse(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(extHttpServiceHost, map[string]httptest.HttpServerMockResponseFunc{
 		"/metadata": httptest.NewHttpServerMockResponseFuncPlain("OK"),
