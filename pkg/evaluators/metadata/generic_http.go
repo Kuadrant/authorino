@@ -93,11 +93,28 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 
 	// parse the response as json
 	if strings.Contains(strings.Join(resp.Header["Content-Type"], ";"), "application/json") {
-		var claims map[string]interface{}
-		if err = gojson.NewDecoder(resp.Body).Decode(&claims); err != nil {
-			return nil, err
+		decoder := gojson.NewDecoder(resp.Body)
+
+		var elements []map[string]interface{}
+
+		for {
+			var claims map[string]interface{}
+			if err = decoder.Decode(&claims); err != nil {
+				return nil, err
+			}
+			elements = append(elements, claims)
+			if !decoder.More() {
+				break
+			}
 		}
-		return claims, nil
+
+		if len(elements) > 1 {
+			return elements, nil
+		} else if len(elements) == 1 {
+			return elements[0], nil
+		} else {
+			return nil, nil
+		}
 	}
 
 	// parse the response as text
