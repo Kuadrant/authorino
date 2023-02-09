@@ -442,7 +442,7 @@ func (a *Authorization) GetType() string {
 	return TypeUnknown
 }
 
-//ExternalRegistry specifies external source of data (i.e. OPA policy registry)
+// ExternalRegistry specifies external source of data (i.e. OPA policy registry)
 type ExternalRegistry struct {
 	// Endpoint of the HTTP external registry.
 	// The endpoint must respond with either plain/text or application/json content-type.
