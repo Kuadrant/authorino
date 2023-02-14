@@ -26,7 +26,9 @@ import (
 	"os"
 	"time"
 
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/go-logr/logr"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -36,9 +38,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
 	"github.com/kuadrant/authorino/pkg/utils"
-
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -83,6 +82,7 @@ var (
 	healthProbeAddr                string
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
+	enableTrace                    bool
 
 	scheme = runtime.NewScheme()
 
@@ -126,6 +126,7 @@ func main() {
 	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
 	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+	cmdServer.PersistentFlags().BoolVar(&enableTrace, "enable-trace", true, "Enables tracing")
 
 	cmdVersion := &cobra.Command{
 		Use:   "version",
