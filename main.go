@@ -26,9 +26,7 @@ import (
 	"os"
 	"time"
 
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/go-logr/logr"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	api "github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -37,10 +35,15 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
+	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
+
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -170,6 +173,9 @@ func run(cmd *cobra.Command, _ []string) {
 	if watchNamespace != "" {
 		managerOptions.Namespace = watchNamespace
 	}
+
+	tp := trace.CreateTraceProvider("http://localhost:14268/api/authorino")
+	otel.SetTracerProvider(tp)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {

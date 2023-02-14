@@ -12,14 +12,14 @@ import (
 )
 
 // NewExporter returns a Jaeger Exporter
-func newExporter(url string) (*jaeger.Exporter, error) {
+func NewExporter(url string) (*jaeger.Exporter, error) {
 	endPoint := jaeger.WithEndpoint(url)
 	collector := jaeger.WithCollectorEndpoint(endPoint)
 	jagerEndpoint, err := jaeger.New(collector)
 	return jagerEndpoint, err
 }
 
-func newResource() *resource.Resource {
+func NewResource() *resource.Resource {
 	r, _ := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
@@ -32,15 +32,15 @@ func newResource() *resource.Resource {
 	return r
 }
 
-func createTraceProvider(address string) *trace.TracerProvider {
-	exp, err := newExporter(address)
+func CreateTraceProvider(url string) *trace.TracerProvider {
+	exp, err := NewExporter(url)
 	if err != nil {
 		fmt.Println("error: ", err)
 		os.Exit(1)
 	}
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
-		trace.WithResource(newResource()),
+		trace.WithResource(NewResource()),
 	)
 	return tp
 }
