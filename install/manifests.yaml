@@ -706,11 +706,61 @@ spec:
                           - GET
                           - POST
                           type: string
+                        oauth2:
+                          description: Authentication with the HTTP service by OAuth2
+                            Client Credentials grant.
+                          properties:
+                            cache:
+                              default: true
+                              description: Caches and reuses the token until expired.
+                                Set it to false to force fetch the token at every
+                                authorization request regardless of expiration.
+                              type: boolean
+                            clientId:
+                              description: OAuth2 Client ID.
+                              type: string
+                            clientSecretRef:
+                              description: Reference to a Kuberentes Secret key that
+                                stores that OAuth2 Client Secret.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  description: The name of the secret in the Authorino's
+                                    namespace to select from.
+                                  type: string
+                              required:
+                              - key
+                              - name
+                              type: object
+                            extraParams:
+                              additionalProperties:
+                                type: string
+                              description: Optional extra parameters for the requests
+                                to the token URL.
+                              type: object
+                            scopes:
+                              description: Optional scopes for the client credentials
+                                grant, if supported by he OAuth2 server.
+                              items:
+                                type: string
+                              type: array
+                            tokenUrl:
+                              description: Token endpoint URL of the OAuth2 resource
+                                server.
+                              type: string
+                          required:
+                          - clientId
+                          - clientSecretRef
+                          - tokenUrl
+                          type: object
                         sharedSecretRef:
                           description: Reference to a Secret key whose value will
                             be passed by Authorino in the request. The HTTP service
                             can use the shared secret to authenticate the origin of
-                            the request.
+                            the request. Ignored if used together with oauth2.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1602,11 +1652,61 @@ spec:
                           - GET
                           - POST
                           type: string
+                        oauth2:
+                          description: Authentication with the HTTP service by OAuth2
+                            Client Credentials grant.
+                          properties:
+                            cache:
+                              default: true
+                              description: Caches and reuses the token until expired.
+                                Set it to false to force fetch the token at every
+                                authorization request regardless of expiration.
+                              type: boolean
+                            clientId:
+                              description: OAuth2 Client ID.
+                              type: string
+                            clientSecretRef:
+                              description: Reference to a Kuberentes Secret key that
+                                stores that OAuth2 Client Secret.
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  description: The name of the secret in the Authorino's
+                                    namespace to select from.
+                                  type: string
+                              required:
+                              - key
+                              - name
+                              type: object
+                            extraParams:
+                              additionalProperties:
+                                type: string
+                              description: Optional extra parameters for the requests
+                                to the token URL.
+                              type: object
+                            scopes:
+                              description: Optional scopes for the client credentials
+                                grant, if supported by he OAuth2 server.
+                              items:
+                                type: string
+                              type: array
+                            tokenUrl:
+                              description: Token endpoint URL of the OAuth2 resource
+                                server.
+                              type: string
+                          required:
+                          - clientId
+                          - clientSecretRef
+                          - tokenUrl
+                          type: object
                         sharedSecretRef:
                           description: Reference to a Secret key whose value will
                             be passed by Authorino in the request. The HTTP service
                             can use the shared secret to authenticate the origin of
-                            the request.
+                            the request. Ignored if used together with oauth2.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must

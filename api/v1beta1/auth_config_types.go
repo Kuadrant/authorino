@@ -394,11 +394,32 @@ type Metadata_GenericHTTP struct {
 
 	// Reference to a Secret key whose value will be passed by Authorino in the request.
 	// The HTTP service can use the shared secret to authenticate the origin of the request.
+	// Ignored if used together with oauth2.
 	SharedSecret *SecretKeyReference `json:"sharedSecretRef,omitempty"`
+
+	// Authentication with the HTTP service by OAuth2 Client Credentials grant.
+	OAuth2 *OAuth2ClientAuthentication `json:"oauth2,omitempty"`
 
 	// Defines where client credentials will be passed in the request to the service.
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
 	Credentials Credentials `json:"credentials,omitempty"`
+}
+
+type OAuth2ClientAuthentication struct {
+	// Token endpoint URL of the OAuth2 resource server.
+	TokenUrl string `json:"tokenUrl"`
+	// OAuth2 Client ID.
+	ClientId string `json:"clientId"`
+	// Reference to a Kuberentes Secret key that stores that OAuth2 Client Secret.
+	ClientSecret SecretKeyReference `json:"clientSecretRef"`
+	// Optional scopes for the client credentials grant, if supported by he OAuth2 server.
+	Scopes []string `json:"scopes,omitempty"`
+	// Optional extra parameters for the requests to the token URL.
+	ExtraParams map[string]string `json:"extraParams,omitempty"`
+	// Caches and reuses the token until expired.
+	// Set it to false to force fetch the token at every authorization request regardless of expiration.
+	// +kubebuilder:default:=true
+	Cache *bool `json:"cache,omitempty"`
 }
 
 // Authorization policy to be enforced.

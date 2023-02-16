@@ -32,6 +32,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/oauth2"
 	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-logr/logr"
@@ -677,16 +678,27 @@ func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {
 }
 
 func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, http *api.Metadata_GenericHTTP, namespace string) (*metadata_evaluators.GenericHttp, error) {
-	sharedSecretRef := http.SharedSecret
-	creds := http.Credentials
-
 	var sharedSecret string
-	secret := &v1.Secret{}
-	if sharedSecretRef != nil {
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+	if sharedSecretRef := http.SharedSecret; sharedSecretRef != nil {
+		secret := &v1.Secret{}
+		if sharedSecretRef != nil {
+			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			}
+			sharedSecret = string(secret.Data[sharedSecretRef.Key])
+		}
+	}
+
+	var oauth2ClientCredentialsConfig *oauth2.ClientCredentials
+	oauth2TokenForceFetch := false
+	if oauth2Config := http.OAuth2; oauth2Config != nil {
+		secret := &v1.Secret{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: oauth2Config.ClientSecret.Name}, secret); err != nil {
 			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 		}
-		sharedSecret = string(secret.Data[sharedSecretRef.Key])
+		clientSecret := string(secret.Data[oauth2Config.ClientSecret.Key])
+		oauth2ClientCredentialsConfig = oauth2.NewClientCredentialsConfig(oauth2Config.TokenUrl, oauth2Config.ClientId, clientSecret, oauth2Config.Scopes, oauth2Config.ExtraParams)
+		oauth2TokenForceFetch = oauth2Config.Cache != nil && !*oauth2Config.Cache
 	}
 
 	var body *json.JSONValue
@@ -721,15 +733,22 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		method = string(*m)
 	}
 
+	var creds *auth.AuthCredential
+	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {
+		creds = auth.NewAuthCredential(http.Credentials.KeySelector, string(http.Credentials.In))
+	}
+
 	return &metadata_evaluators.GenericHttp{
-		Endpoint:        http.Endpoint,
-		Method:          method,
-		Body:            body,
-		Parameters:      params,
-		Headers:         headers,
-		ContentType:     string(http.ContentType),
-		SharedSecret:    sharedSecret,
-		AuthCredentials: auth.NewAuthCredential(creds.KeySelector, string(creds.In)),
+		Endpoint:              http.Endpoint,
+		Method:                method,
+		Body:                  body,
+		Parameters:            params,
+		Headers:               headers,
+		ContentType:           string(http.ContentType),
+		SharedSecret:          sharedSecret,
+		OAuth2:                oauth2ClientCredentialsConfig,
+		OAuth2TokenForceFetch: oauth2TokenForceFetch,
+		AuthCredentials:       creds,
 	}, nil
 }
 

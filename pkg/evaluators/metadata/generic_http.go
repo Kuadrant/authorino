@@ -14,16 +14,19 @@ import (
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/oauth2"
 )
 
 type GenericHttp struct {
-	Endpoint     string
-	Method       string
-	Body         *json.JSONValue
-	Parameters   []json.JSONProperty
-	Headers      []json.JSONProperty
-	ContentType  string
-	SharedSecret string
+	Endpoint              string
+	Method                string
+	Body                  *json.JSONValue
+	Parameters            []json.JSONProperty
+	Headers               []json.JSONProperty
+	ContentType           string
+	SharedSecret          string
+	OAuth2                *oauth2.ClientCredentials
+	OAuth2TokenForceFetch bool
 	auth.AuthCredentials
 }
 
@@ -35,54 +38,9 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	authJSON := pipeline.GetAuthorizationJSON()
 	endpoint := json.ReplaceJSONPlaceholders(h.Endpoint, authJSON)
 
-	var requestBody io.Reader
-	var contentType string
-
-	method := h.Method
-	switch method {
-	case "GET":
-		contentType = "text/plain"
-		requestBody = nil
-	case "POST":
-		var err error
-		contentType = h.ContentType
-		requestBody, err = h.buildRequestBody(authJSON)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unsupported method")
-	}
-
-	var req *http.Request
-	var err error
-	if h.AuthCredentials != nil {
-		req, err = h.BuildRequestWithCredentials(ctx, endpoint, method, h.SharedSecret, requestBody)
-	} else {
-		req, err = http.NewRequestWithContext(ctx, method, endpoint, requestBody)
-	}
+	req, err := h.buildRequest(ctx, endpoint, authJSON)
 	if err != nil {
 		return nil, err
-	}
-
-	for _, header := range h.Headers {
-		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(authJSON)))
-	}
-
-	req.Header.Set("Content-Type", contentType)
-
-	if logger := log.FromContext(ctx).WithName("http").V(1); logger.Enabled() {
-		logData := []interface{}{
-			"method", method,
-			"url", endpoint,
-			"headers", req.Header,
-		}
-		if requestBody != nil {
-			if b, ok := requestBody.(*bytes.Buffer); ok {
-				logData = append(logData, "body", b.String())
-			}
-		}
-		logger.Info("sending request", logData...)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -124,6 +82,68 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 		return nil, err
 	}
 	return string(str), nil
+}
+
+func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON string) (*http.Request, error) {
+	var requestBody io.Reader
+	var contentType string
+
+	method := h.Method
+	switch method {
+	case "GET":
+		contentType = "text/plain"
+		requestBody = nil
+	case "POST":
+		var err error
+		contentType = h.ContentType
+		requestBody, err = h.buildRequestBody(authJSON)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported method")
+	}
+
+	var req *http.Request
+	var err error
+	if h.AuthCredentials != nil {
+		creds := h.SharedSecret
+		if h.OAuth2 != nil {
+			token, err := h.OAuth2.ClientCredentialsToken(ctx, h.OAuth2TokenForceFetch)
+			if err != nil {
+				return nil, err
+			}
+			creds = token.AccessToken
+		}
+		req, err = h.BuildRequestWithCredentials(ctx, endpoint, method, creds, requestBody)
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, endpoint, requestBody)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	for _, header := range h.Headers {
+		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(authJSON)))
+	}
+
+	req.Header.Set("Content-Type", contentType)
+
+	if logger := log.FromContext(ctx).WithName("http").V(1); logger.Enabled() {
+		logData := []interface{}{
+			"method", method,
+			"url", endpoint,
+			"headers", req.Header,
+		}
+		if requestBody != nil {
+			if b, ok := requestBody.(*bytes.Buffer); ok {
+				logData = append(logData, "body", b.String())
+			}
+		}
+		logger.Info("sending request", logData...)
+	}
+
+	return req, nil
 }
 
 func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
