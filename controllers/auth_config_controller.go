@@ -756,12 +756,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		method = string(*m)
 	}
 
-	var creds *auth.AuthCredential
-	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {
-		creds = auth.NewAuthCredential(http.Credentials.KeySelector, string(http.Credentials.In))
-	}
-
-	return &metadata_evaluators.GenericHttp{
+	ev := &metadata_evaluators.GenericHttp{
 		Endpoint:              http.Endpoint,
 		Method:                method,
 		Body:                  body,
@@ -771,8 +766,13 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		SharedSecret:          sharedSecret,
 		OAuth2:                oauth2ClientCredentialsConfig,
 		OAuth2TokenForceFetch: oauth2TokenForceFetch,
-		AuthCredentials:       creds,
-	}, nil
+	}
+
+	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {
+		ev.AuthCredentials = auth.NewAuthCredential(http.Credentials.KeySelector, string(http.Credentials.In))
+	}
+
+	return ev, nil
 }
 
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {
