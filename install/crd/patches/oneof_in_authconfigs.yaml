@@ -70,6 +70,10 @@
         name: {}
         kubernetes: {}
       required: [name, kubernetes]
+    - properties:
+        name: {}
+        kubernetes: {}
+      required: [name, authzed]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/json/properties/rules/items/oneOf

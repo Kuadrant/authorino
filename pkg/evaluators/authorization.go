@@ -14,6 +14,7 @@ const (
 	authorizationOPA        = "AUTHORIZATION_OPA"
 	authorizationJSON       = "AUTHORIZATION_JSON"
 	authorizationKubernetes = "AUTHORIZATION_KUBERNETES"
+	authorizationAuthzed    = "AUTHORIZATION_AUTHZED"
 )
 
 type AuthorizationConfig struct {
@@ -26,6 +27,7 @@ type AuthorizationConfig struct {
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
 	JSON            *authorization.JSONPatternMatching `yaml:"json,omitempty"`
 	KubernetesAuthz *authorization.KubernetesAuthz     `yaml:"kubernetes,omitempty"`
+	Authzed         *authorization.Authzed             `yaml:"authzed,omitempty"`
 }
 
 func (config *AuthorizationConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
@@ -36,6 +38,8 @@ func (config *AuthorizationConfig) GetAuthConfigEvaluator() auth.AuthConfigEvalu
 		return config.JSON
 	case authorizationKubernetes:
 		return config.KubernetesAuthz
+	case authorizationAuthzed:
+		return config.Authzed
 	default:
 		return nil
 	}
@@ -89,6 +93,8 @@ func (config *AuthorizationConfig) GetType() string {
 		return authorizationJSON
 	case config.KubernetesAuthz != nil:
 		return authorizationKubernetes
+	case config.Authzed != nil:
+		return authorizationAuthzed
 	default:
 		return ""
 	}

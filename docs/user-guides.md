@@ -57,6 +57,9 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
 - **[Authorization with Keycloak Authorization Services](./user-guides/keycloak-authorization-services.md)**<br/>
 Use Authorino as an adapter for Keycloak Authorization Services without importing any library or rebuilding your application code.
 
+- **[Integration with Authzed/SpiceDB](./user-guides/authzed.md)**<br/>
+Permission requests sent to a Google Zanzibar-based [Authzed/SpiceDB](https://authzed.com) instance, via gRPC.
+
 - **[Injecting data in the request](./user-guides/injecting-data.md)**<br/>
 Inject HTTP headers with serialized JSON content.
 

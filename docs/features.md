@@ -26,6 +26,7 @@
   - [JSON pattern-matching authorization rules (`authorization.json`)](#json-pattern-matching-authorization-rules-authorizationjson)
   - [Open Policy Agent (OPA) Rego policies (`authorization.opa`)](#open-policy-agent-opa-rego-policies-authorizationopa)
   - [Kubernetes SubjectAccessReview (`authorization.kubernetes`)](#kubernetes-subjectaccessreview-authorizationkubernetes)
+  - [Authzed/SpiceDB (`authorization.authzed`)](#authzedspicedb-authorizationauthzed)
   - [Keycloak Authorization Services (UMA-compliant Authorization API)](#keycloak-authorization-services-uma-compliant-authorization-api)
 - [Dynamic response features (`response`)](#dynamic-response-features-response)
   - [JSON injection (`response.json`)](#json-injection-responsejson)
@@ -521,6 +522,39 @@ authorization:
 `user` and properties of `resourceAttributes` can be defined from fixed values or patterns of the Authorization JSON.
 
 An array of `groups` (optional) can as well be set. When defined, it will be used in the `SubjectAccessReview` request.
+
+### Authzed/SpiceDB ([`authorization.authzed`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_Authzed))
+
+Check permission requests sent to a Google Zanzibar-based [Authzed/SpiceDB](https://authzed.com) instance, via gRPC.
+
+Subject, resource and permission parameters can be set to static values or read from the Authorization JSON.
+
+```yaml
+spec:
+  authorization:
+  - name: authzed
+    authzed:
+      endpoint: spicedb:50051
+      insecure: true # disables TLS
+      sharedSecretRef:
+        name: spicedb
+        key: token
+      subject:
+        kind:
+          value: blog/user
+        name:
+          valueFrom:
+            authJSON: auth.identity.sub
+      resource:
+        kind:
+          value: blog/post
+        name:
+          valueFrom:
+            authJSON: context.request.http.path.@extract:{"sep":"/","pos":2} # /posts/{id}
+      permission:
+        valueFrom:
+          authJSON: context.request.http.method
+```
 
 ### Keycloak Authorization Services (UMA-compliant Authorization API)
 

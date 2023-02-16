@@ -37,6 +37,7 @@ const (
 	AuthorizationOPA                 = "AUTHORIZATION_OPA"
 	AuthorizationJSONPatternMatching = "AUTHORIZATION_JSON"
 	AuthorizationKubernetesAuthz     = "AUTHORIZATION_KUBERNETESAUTHZ"
+	AuthorizationAuthzed             = "AUTHORIZATION_AUTHZED"
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
 	CallbackHTTP                     = "CALLBACK_HTTP"
@@ -450,6 +451,7 @@ type Authorization struct {
 	OPA             *Authorization_OPA                 `json:"opa,omitempty"`
 	JSON            *Authorization_JSONPatternMatching `json:"json,omitempty"`
 	KubernetesAuthz *Authorization_KubernetesAuthz     `json:"kubernetes,omitempty"`
+	Authzed         *Authorization_Authzed             `json:"authzed,omitempty"`
 }
 
 func (a *Authorization) GetType() string {
@@ -459,6 +461,8 @@ func (a *Authorization) GetType() string {
 		return AuthorizationJSONPatternMatching
 	} else if a.KubernetesAuthz != nil {
 		return AuthorizationKubernetesAuthz
+	} else if a.Authzed != nil {
+		return AuthorizationAuthzed
 	}
 	return TypeUnknown
 }
@@ -527,6 +531,30 @@ type Authorization_KubernetesAuthz struct {
 	// Use ResourceAttributes for checking permissions on Kubernetes resources
 	// If omitted, it performs a non-resource `SubjectAccessReview`, with verb and path inferred from the request.
 	ResourceAttributes *Authorization_KubernetesAuthz_ResourceAttributes `json:"resourceAttributes,omitempty"`
+}
+
+// Authzed authorization
+type Authorization_Authzed struct {
+	// Endpoint of the Authzed service.
+	Endpoint string `json:"endpoint"`
+
+	// Insecure HTTP connection (i.e. disables TLS verification)
+	Insecure bool `json:"insecure,omitempty"`
+
+	// Reference to a Secret key whose value will be used by Authorino to authenticate with the Authzed service.
+	SharedSecret *SecretKeyReference `json:"sharedSecretRef,omitempty"`
+
+	// The subject that will be checked for the permission or relation.
+	Subject *AuthzedObject `json:"subject,omitempty"`
+	// The resource on which to check the permission or relation.
+	Resource *AuthzedObject `json:"resource,omitempty"`
+	// The name of the permission (or relation) on which to execute the check.
+	Permission StaticOrDynamicValue `json:"permission,omitempty"`
+}
+
+type AuthzedObject struct {
+	Name StaticOrDynamicValue `json:"name,omitempty"`
+	Kind StaticOrDynamicValue `json:"kind,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=httpHeader;envoyDynamicMetadata
