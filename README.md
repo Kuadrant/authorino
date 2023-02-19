@@ -151,7 +151,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td rowspan="4">Policy enforcement/authorization</td>
+      <td rowspan="5">Policy enforcement/authorization</td>
       <td>JSON pattern matching <small>(e.g. JWT claims, request attributes checking)</small></td>
       <td><i>Ready</i></td>
     </tr>
@@ -161,6 +161,10 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
     </tr>
     <tr>
       <td>Kubernetes SubjectAccessReview <small>(resource and non-resource attributes)</small></td>
+      <td><i>Ready</i></td>
+    </tr>
+    <tr>
+      <td>Authzed/SpiceDB</td>
       <td><i>Ready</i></td>
     </tr>
     <tr>

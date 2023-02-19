@@ -32,6 +32,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/oauth2"
 	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-logr/logr"
@@ -422,6 +423,29 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err
 			}
 
+		case api.AuthorizationAuthzed:
+			authzed := authorization.Authzed
+
+			secret := &v1.Secret{}
+			var sharedSecret string
+			if secretRef := authzed.SharedSecret; secretRef != nil {
+				if err := r.Client.Get(ctx, types.NamespacedName{Namespace: authConfig.Namespace, Name: secretRef.Name}, secret); err != nil {
+					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+				}
+				sharedSecret = string(secret.Data[secretRef.Key])
+			}
+
+			translatedAuthzed := &authorization_evaluators.Authzed{
+				Endpoint:     authzed.Endpoint,
+				Insecure:     authzed.Insecure,
+				SharedSecret: sharedSecret,
+				Permission:   *getJsonFromStaticDynamic(&authzed.Permission),
+			}
+			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = authzedObjectToJsonValues(authzed.Subject)
+			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = authzedObjectToJsonValues(authzed.Resource)
+
+			translatedAuthorization.Authzed = translatedAuthzed
+
 		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown authorization type %v", authorization)
 		}
@@ -677,16 +701,27 @@ func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {
 }
 
 func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, http *api.Metadata_GenericHTTP, namespace string) (*metadata_evaluators.GenericHttp, error) {
-	sharedSecretRef := http.SharedSecret
-	creds := http.Credentials
-
 	var sharedSecret string
-	secret := &v1.Secret{}
-	if sharedSecretRef != nil {
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+	if sharedSecretRef := http.SharedSecret; sharedSecretRef != nil {
+		secret := &v1.Secret{}
+		if sharedSecretRef != nil {
+			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			}
+			sharedSecret = string(secret.Data[sharedSecretRef.Key])
+		}
+	}
+
+	var oauth2ClientCredentialsConfig *oauth2.ClientCredentials
+	oauth2TokenForceFetch := false
+	if oauth2Config := http.OAuth2; oauth2Config != nil {
+		secret := &v1.Secret{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: oauth2Config.ClientSecret.Name}, secret); err != nil {
 			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 		}
-		sharedSecret = string(secret.Data[sharedSecretRef.Key])
+		clientSecret := string(secret.Data[oauth2Config.ClientSecret.Key])
+		oauth2ClientCredentialsConfig = oauth2.NewClientCredentialsConfig(oauth2Config.TokenUrl, oauth2Config.ClientId, clientSecret, oauth2Config.Scopes, oauth2Config.ExtraParams)
+		oauth2TokenForceFetch = oauth2Config.Cache != nil && !*oauth2Config.Cache
 	}
 
 	var body *json.JSONValue
@@ -721,16 +756,23 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		method = string(*m)
 	}
 
-	return &metadata_evaluators.GenericHttp{
-		Endpoint:        http.Endpoint,
-		Method:          method,
-		Body:            body,
-		Parameters:      params,
-		Headers:         headers,
-		ContentType:     string(http.ContentType),
-		SharedSecret:    sharedSecret,
-		AuthCredentials: auth.NewAuthCredential(creds.KeySelector, string(creds.In)),
-	}, nil
+	ev := &metadata_evaluators.GenericHttp{
+		Endpoint:              http.Endpoint,
+		Method:                method,
+		Body:                  body,
+		Parameters:            params,
+		Headers:               headers,
+		ContentType:           string(http.ContentType),
+		SharedSecret:          sharedSecret,
+		OAuth2:                oauth2ClientCredentialsConfig,
+		OAuth2TokenForceFetch: oauth2TokenForceFetch,
+	}
+
+	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {
+		ev.AuthCredentials = auth.NewAuthCredential(http.Credentials.KeySelector, string(http.Credentials.In))
+	}
+
+	return ev, nil
 }
 
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {
@@ -793,4 +835,15 @@ func getJsonFromStaticDynamic(value *api.StaticOrDynamicValue) *json.JSONValue {
 		Static:  value.Value,
 		Pattern: value.ValueFrom.AuthJSON,
 	}
+}
+
+func authzedObjectToJsonValues(obj *api.AuthzedObject) (name json.JSONValue, kind json.JSONValue) {
+	if obj == nil {
+		return
+	}
+
+	name = *getJsonFromStaticDynamic(&obj.Name)
+	kind = *getJsonFromStaticDynamic(&obj.Kind)
+
+	return name, kind
 }

@@ -26,6 +26,7 @@
   - [JSON pattern-matching authorization rules (`authorization.json`)](#json-pattern-matching-authorization-rules-authorizationjson)
   - [Open Policy Agent (OPA) Rego policies (`authorization.opa`)](#open-policy-agent-opa-rego-policies-authorizationopa)
   - [Kubernetes SubjectAccessReview (`authorization.kubernetes`)](#kubernetes-subjectaccessreview-authorizationkubernetes)
+  - [Authzed/SpiceDB (`authorization.authzed`)](#authzedspicedb-authorizationauthzed)
   - [Keycloak Authorization Services (UMA-compliant Authorization API)](#keycloak-authorization-services-uma-compliant-authorization-api)
 - [Dynamic response features (`response`)](#dynamic-response-features-response)
   - [JSON injection (`response.json`)](#json-injection-responsejson)
@@ -381,7 +382,9 @@ The adapter allows issuing requests either by GET or POST methods; in both cases
 
 POST request parameters as well as the encoding of the content can be controlled using the `bodyParameters` and `contentType` fields of the config, respectively. The Content-Type of POST requests can be either `application/x-www-form-urlencoded` (default) or `application/json`.
 
-A shared secret between Authorino and the external HTTP service can be defined (see `sharedSecretRef` field), and the  service can use such secret to authenticate the origin of the request. The location where the secret travels in the request performed by Authorino to the HTTP service can be specified in a typical [`credentials`](#extra-auth-credentials-credentials) field.
+Authentication of Authorino with the external metadata server can be set either via long-lived shared secret stored in a Kubernetes Secret or via OAuth2 client credentials grant. For long-lived shared secret, set the `sharedSecretRef` field. For OAuth2 client credentials grant, use the `oauth2` option.
+
+In both cases, the location where the secret (long-lived or OAuth2 access token) travels in the request performed to the external HTTP service can be specified in the [`credentials`](#extra-auth-credentials-credentials) field. By default, the authentication secret is supplied in the `Authorization` header with the `Bearer` prefix.
 
 Custom headers can be set with the `headers` field. Nevertheless, headers such as `Content-Type` and `Authorization` (or eventual custom header used for carrying the authentication secret, set instead via the `credentials` option) will be superseded by the respective values defined for the fields `contentType` and `sharedSecretRef`.
 
@@ -519,6 +522,39 @@ authorization:
 `user` and properties of `resourceAttributes` can be defined from fixed values or patterns of the Authorization JSON.
 
 An array of `groups` (optional) can as well be set. When defined, it will be used in the `SubjectAccessReview` request.
+
+### Authzed/SpiceDB ([`authorization.authzed`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization_Authzed))
+
+Check permission requests sent to a Google Zanzibar-based [Authzed/SpiceDB](https://authzed.com) instance, via gRPC.
+
+Subject, resource and permission parameters can be set to static values or read from the Authorization JSON.
+
+```yaml
+spec:
+  authorization:
+  - name: authzed
+    authzed:
+      endpoint: spicedb:50051
+      insecure: true # disables TLS
+      sharedSecretRef:
+        name: spicedb
+        key: token
+      subject:
+        kind:
+          value: blog/user
+        name:
+          valueFrom:
+            authJSON: auth.identity.sub
+      resource:
+        kind:
+          value: blog/post
+        name:
+          valueFrom:
+            authJSON: context.request.http.path.@extract:{"sep":"/","pos":2} # /posts/{id}
+      permission:
+        valueFrom:
+          authJSON: context.request.http.method
+```
 
 ### Keycloak Authorization Services (UMA-compliant Authorization API)
 
@@ -683,6 +719,8 @@ By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `4
 ### HTTP endpoints (`callbacks.http`)
 
 Sends requests to specified HTTP endpoints at the end of the auth pipeline.
+
+The scheme of the `http` field is the same as of [`metadata.http`](#http-getget-by-post-metadatahttp).
 
 Example:
 
