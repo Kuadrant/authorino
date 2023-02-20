@@ -38,7 +38,7 @@ A few examples are:
 
 - For **OpenID Connect**, make sure you have access to an identity provider (IdP) and an authority that can issue ID tokens (JWTs). Check out [Keycloak](https://www.keycloak.org) which can solve both and connect to external identity sources and user federation like LDAP.
 
-- For **Kubernetes authentication** tokens, platform support for the TokenReview and SubjectAccessReview APIs of Kubernetes shall be required. In case you want to be able to requests access tokens for clients running outside the custer, you may also want to check out the requisites for using Kubernetes [TokenRquest API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#tokenrequest-v1-storage-k8s-io) (GA in v1.20).
+- For **Kubernetes authentication** tokens, platform support for the TokenReview and SubjectAccessReview APIs of Kubernetes shall be required. In case you want to be able to requests access tokens for clients running outside the custer, you may also want to check out the requisites for using Kubernetes [TokenRequest API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#tokenrequest-v1-storage-k8s-io) (GA in v1.20).
 
 - For **User-Managed Access (UMA)** resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more tipically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
 
