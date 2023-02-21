@@ -12,8 +12,7 @@ import (
 func newExporter(url string) (*jaeger.Exporter, error) {
 	endpoint := jaeger.WithEndpoint(url)
 	collector := jaeger.WithCollectorEndpoint(endpoint)
-	jagerEndpoint, err := jaeger.New(collector)
-	return jagerEndpoint, err
+	return jaeger.New(collector)
 }
 
 func newResource(version string) *resource.Resource {
