@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	gocontext "golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -228,6 +230,9 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
+	_, span := otel.Tracer("AuthService").Start(parentContext, "Check")
+	defer span.End()
+
 	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", req.Attributes.Request.Http.GetId())
 	ctx := log.IntoContext(context.New(context.WithParent(parentContext), context.WithTimeout(a.Timeout)), requestLogger)
 
@@ -261,6 +266,8 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		result := auth.AuthResult{Code: rpc.UNAVAILABLE}
 		a.logAuthResult(result, ctx)
 		context.Cancel(ctx)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return a.deniedResponse(result), nil
 	}
 
