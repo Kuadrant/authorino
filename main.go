@@ -86,6 +86,7 @@ var (
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
 	observabilityServiceEndpoint   string
+	observabilityServiveSeed       string
 
 	scheme = runtime.NewScheme()
 
@@ -175,6 +176,7 @@ func run(cmd *cobra.Command, _ []string) {
 	}
 
 	if observabilityServiceEndpoint != "" {
+		otel.SetLogger(logger)
 		tp, err := trace.CreateTraceProvider(observabilityServiceEndpoint, version)
 		if err != nil {
 			logger.Error(err, "unable to create traceprovider")

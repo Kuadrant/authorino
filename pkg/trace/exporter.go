@@ -1,7 +1,6 @@
 package trace
 
 import (
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -22,7 +21,6 @@ func newResource(version string) *resource.Resource {
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String("authorino"),
 			semconv.ServiceVersionKey.String(version),
-			attribute.String("environment", "demo"),
 		),
 	)
 	return r
