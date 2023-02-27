@@ -37,6 +37,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/service"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
+	otel_grpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	otel_http "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -183,6 +186,7 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(otel_propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
@@ -301,8 +305,8 @@ func startExtAuthServerGRPC(authConfigIndex index.Index) {
 
 	grpcServerOpts := []grpc.ServerOption{
 		grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.ChainStreamInterceptor(grpc_prometheus.StreamServerInterceptor, otel_grpc.StreamServerInterceptor()),
+		grpc.ChainUnaryInterceptor(grpc_prometheus.UnaryServerInterceptor, otel_grpc.UnaryServerInterceptor()),
 	}
 
 	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
@@ -359,7 +363,7 @@ func startHTTPService(name string, port int, basePath, tlsCertPath, tlsCertKeyPa
 		return
 	}
 
-	http.Handle(basePath, handler)
+	http.Handle(basePath, otel_http.NewHandler(handler, name))
 
 	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
 

@@ -12,7 +12,10 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
+	otel_attr "go.opentelemetry.io/otel/attribute"
+	otel_codes "go.opentelemetry.io/otel/codes"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
+	otel_trace "go.opentelemetry.io/otel/trace"
 	gocontext "golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -86,7 +89,15 @@ func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBody
 // the response is compatible with the Dynamic Admission API
 func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	ctx := context.New(context.WithTimeout(a.Timeout))
+	ctx = otel.GetTextMapPropagator().Extract(ctx, otel_propagation.HeaderCarrier(req.Header))
 	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+
+	attr := otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId))
+	ctx, span := otel.Tracer("AuthService").Start(ctx, "ServeHTTP", attr)
+
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(resp.Header()))
+	defer span.End()
+
 	logger := log.
 		WithName("service").
 		WithName("auth").
@@ -230,10 +241,12 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
-	_, span := otel.Tracer("AuthService").Start(parentContext, "Check")
+	requestId := req.Attributes.Request.Http.GetId()
+	attr := otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId))
+	_, span := otel.Tracer("AuthService").Start(parentContext, "Check", attr)
 	defer span.End()
 
-	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", req.Attributes.Request.Http.GetId())
+	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
 	ctx := log.IntoContext(context.New(context.WithParent(parentContext), context.WithTimeout(a.Timeout)), requestLogger)
 
 	a.logAuthRequest(req, ctx)
@@ -267,7 +280,7 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		a.logAuthResult(result, ctx)
 		context.Cancel(ctx)
 		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		span.SetStatus(otel_codes.Error, err.Error())
 		return a.deniedResponse(result), nil
 	}
 
