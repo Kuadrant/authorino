@@ -37,16 +37,16 @@ import (
 	"github.com/kuadrant/authorino/pkg/service"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
-	otel_grpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	otel_http "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	otel_propagation "go.opentelemetry.io/otel/propagation"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	otel_grpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	otel_http "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -89,7 +89,7 @@ var (
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
 	observabilityServiceEndpoint   string
-	observabilityServiveSeed       string
+	observabilityServiceSeed       string
 
 	scheme = runtime.NewScheme()
 
@@ -133,7 +133,7 @@ func main() {
 	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
 	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
-	cmdServer.PersistentFlags().StringVar(&observabilityServiceEndpoint, "observability-service-endpoint", "", "Endpoint URL of the OpenTelemetry collector service")
+	cmdServer.PersistentFlags().StringVar(&observabilityServiceSeed, "observability-service-seed", "", "Seed attribute of the OpenTelemetry resource")
 
 	cmdVersion := &cobra.Command{
 		Use:   "version",
@@ -180,7 +180,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if observabilityServiceEndpoint != "" {
 		otel.SetLogger(logger)
-		tp, err := trace.CreateTraceProvider(observabilityServiceEndpoint, version)
+		tp, err := trace.CreateTraceProvider(observabilityServiceEndpoint, version, observabilityServiceSeed)
 		if err != nil {
 			logger.Error(err, "unable to create traceprovider")
 			os.Exit(1)

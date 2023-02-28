@@ -21,18 +21,18 @@ type options struct {
 	timeout time.Duration
 }
 
-type option func(options)
+type option func(*options)
 
 // WithParent returns an option to create a new context based on an existing parent context.
 func WithParent(parent gocontext.Context) option {
-	return func(opts options) {
+	return func(opts *options) {
 		opts.parent = parent
 	}
 }
 
 // WithTimeout return an option to create a new context that cancels itself automatically after the timeout.
 func WithTimeout(timeout time.Duration) option {
-	return func(opts options) {
+	return func(opts *options) {
 		opts.timeout = timeout
 	}
 }
@@ -41,15 +41,16 @@ func WithTimeout(timeout time.Duration) option {
 // If a parent context is provided, creates a copy of the parent with further options.
 // If a timeout option is provided, creates a context that cancels itself automatically after the timeout.
 func New(opts ...option) gocontext.Context {
-	o := options{}
+	o := &options{}
 	for _, opt := range opts {
 		opt(o)
 	}
 
-	ctx := gocontext.Background()
-
+	var ctx gocontext.Context
 	if o.parent != nil {
 		ctx = o.parent
+	} else {
+		ctx = gocontext.Background()
 	}
 
 	if o.timeout > 0 {
