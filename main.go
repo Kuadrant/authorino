@@ -133,6 +133,7 @@ func main() {
 	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
 	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+	cmdServer.PersistentFlags().StringVar(&observabilityServiceEndpoint, "observability-service-endpoint", "", "Endpoint URL of the OpenTelemetry collector service")
 	cmdServer.PersistentFlags().StringVar(&observabilityServiceSeed, "observability-service-seed", "", "Seed attribute of the OpenTelemetry resource")
 
 	cmdVersion := &cobra.Command{
