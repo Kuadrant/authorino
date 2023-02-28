@@ -22,7 +22,6 @@ func newResource(version, seed string) *resource.Resource {
 	}
 	if seed != "" {
 		attrs = append(attrs, attribute.String("seed", seed))
-
 	}
 	res := resource.NewWithAttributes(semconv.SchemaURL, attrs...)
 	r, _ := resource.Merge(resource.Default(), res)

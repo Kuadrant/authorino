@@ -11,10 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	otel_attr "go.opentelemetry.io/otel/attribute"
-	otel_codes "go.opentelemetry.io/otel/codes"
-	otel_trace "go.opentelemetry.io/otel/trace"
 	gocontext "golang.org/x/net/context"
 
 	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -30,6 +26,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	v1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"go.opentelemetry.io/otel"
+	otel_attr "go.opentelemetry.io/otel/attribute"
+	otel_codes "go.opentelemetry.io/otel/codes"
+	otel_trace "go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -87,9 +88,9 @@ func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBody
 // the response is compatible with the Dynamic Admission API
 func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+
 	ctx := context.New(context.WithParent(req.Context()), context.WithTimeout(a.Timeout))
 	ctx, span := otel.Tracer("AuthService").Start(ctx, "ServeHTTP", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
-
 	defer span.End()
 
 	logger := log.
@@ -237,6 +238,7 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	requestData := req.Attributes.Request.Http
 	requestId := requestData.GetId()
+
 	ctx, span := otel.Tracer("AuthService").Start(parentContext, "Check", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
 	defer span.End()
 
