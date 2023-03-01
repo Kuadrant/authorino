@@ -35,6 +35,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
+	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -51,6 +52,11 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+
+	otel_grpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	otel_http "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -83,6 +89,8 @@ var (
 	healthProbeAddr                string
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
+	observabilityServiceEndpoint   string
+	observabilityServiceSeed       string
 
 	scheme = runtime.NewScheme()
 
@@ -126,6 +134,8 @@ func main() {
 	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
 	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+	cmdServer.PersistentFlags().StringVar(&observabilityServiceEndpoint, "observability-service-endpoint", "", "Endpoint URL of the OpenTelemetry collector service")
+	cmdServer.PersistentFlags().StringVar(&observabilityServiceSeed, "observability-service-seed", "", "Seed attribute of the OpenTelemetry resource")
 
 	cmdVersion := &cobra.Command{
 		Use:   "version",
@@ -168,6 +178,17 @@ func run(cmd *cobra.Command, _ []string) {
 
 	if watchNamespace != "" {
 		managerOptions.Namespace = watchNamespace
+	}
+
+	if observabilityServiceEndpoint != "" {
+		otel.SetLogger(logger)
+		tp, err := trace.CreateTraceProvider(observabilityServiceEndpoint, version, observabilityServiceSeed)
+		if err != nil {
+			logger.Error(err, "unable to create traceprovider")
+			os.Exit(1)
+		}
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(otel_propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
@@ -286,8 +307,8 @@ func startExtAuthServerGRPC(authConfigIndex index.Index) {
 
 	grpcServerOpts := []grpc.ServerOption{
 		grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams),
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.ChainStreamInterceptor(grpc_prometheus.StreamServerInterceptor, otel_grpc.StreamServerInterceptor()),
+		grpc.ChainUnaryInterceptor(grpc_prometheus.UnaryServerInterceptor, otel_grpc.UnaryServerInterceptor()),
 	}
 
 	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
@@ -344,7 +365,7 @@ func startHTTPService(name string, port int, basePath, tlsCertPath, tlsCertKeyPa
 		return
 	}
 
-	http.Handle(basePath, handler)
+	http.Handle(basePath, otel_http.NewHandler(handler, name))
 
 	tlsEnabled := tlsCertPath != "" && tlsCertKeyPath != ""
 

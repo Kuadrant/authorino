@@ -13,20 +13,24 @@ import (
 
 	gocontext "golang.org/x/net/context"
 
+	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+	"github.com/gogo/googleapis/google/rpc"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
-
-	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
-	"github.com/gogo/googleapis/google/rpc"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 	v1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"go.opentelemetry.io/otel"
+	otel_attr "go.opentelemetry.io/otel/attribute"
+	otel_codes "go.opentelemetry.io/otel/codes"
+	otel_trace "go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -83,8 +87,12 @@ func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBody
 // The body can be any JSON object; in case the input is a Kubernetes AdmissionReview resource,
 // the response is compatible with the Dynamic Admission API
 func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	ctx := context.New(context.WithTimeout(a.Timeout))
 	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+
+	ctx := context.New(context.WithParent(req.Context()), context.WithTimeout(a.Timeout))
+	ctx, span := otel.Tracer("AuthService").Start(ctx, "ServeHTTP", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
+	defer span.End()
+
 	logger := log.
 		WithName("service").
 		WithName("auth").
@@ -228,12 +236,16 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
-	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", req.Attributes.Request.Http.GetId())
-	ctx := log.IntoContext(context.New(context.WithParent(parentContext), context.WithTimeout(a.Timeout)), requestLogger)
+	requestData := req.Attributes.Request.Http
+	requestId := requestData.GetId()
+
+	ctx, span := otel.Tracer("AuthService").Start(parentContext, "Check", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
+	defer span.End()
+
+	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
+	ctx = log.IntoContext(context.New(context.WithParent(ctx), context.WithTimeout(a.Timeout)), requestLogger)
 
 	a.logAuthRequest(req, ctx)
-
-	requestData := req.Attributes.Request.Http
 
 	// service config
 	var host string
@@ -261,6 +273,8 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		result := auth.AuthResult{Code: rpc.UNAVAILABLE}
 		a.logAuthResult(result, ctx)
 		context.Cancel(ctx)
+		span.RecordError(err)
+		span.SetStatus(otel_codes.Error, err.Error())
 		return a.deniedResponse(result), nil
 	}
 
