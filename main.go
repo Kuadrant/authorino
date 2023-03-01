@@ -188,8 +188,9 @@ func run(cmd *cobra.Command, _ []string) {
 			os.Exit(1)
 		}
 		otel.SetTracerProvider(tp)
-		otel.SetTextMapPropagator(otel_propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
 	}
+
+	otel.SetTextMapPropagator(otel_propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
