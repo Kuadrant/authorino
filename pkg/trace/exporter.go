@@ -1,6 +1,8 @@
 package trace
 
 import (
+	"strings"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -15,27 +17,31 @@ func newExporter(url string) (*jaeger.Exporter, error) {
 	return jaeger.New(collector)
 }
 
-func newResource(version, seed string) *resource.Resource {
+func newResource(version, tags string) *resource.Resource {
 	attrs := []attribute.KeyValue{
 		semconv.ServiceNameKey.String("authorino"),
 		semconv.ServiceVersionKey.String(version),
 	}
-	if seed != "" {
-		attrs = append(attrs, attribute.String("seed", seed))
+	for _, tag := range strings.Split(tags, ",") {
+		parts := strings.Split(strings.TrimSpace(tag), "=")
+		if len(parts) < 2 {
+			continue
+		}
+		attrs = append(attrs, attribute.String(parts[0], strings.Join(parts[1:], "=")))
 	}
 	res := resource.NewWithAttributes(semconv.SchemaURL, attrs...)
 	r, _ := resource.Merge(resource.Default(), res)
 	return r
 }
 
-func CreateTraceProvider(url, version, seed string) (*trace.TracerProvider, error) {
+func CreateTraceProvider(url, version, tags string) (*trace.TracerProvider, error) {
 	exp, err := newExporter(url)
 	if err != nil {
 		return nil, err
 	}
 	tp := trace.NewTracerProvider(
 		trace.WithBatcher(exp),
-		trace.WithResource(newResource(version, seed)),
+		trace.WithResource(newResource(version, tags)),
 	)
 	return tp, nil
 }
