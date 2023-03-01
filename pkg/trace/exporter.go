@@ -17,12 +17,12 @@ func newExporter(url string) (*jaeger.Exporter, error) {
 	return jaeger.New(collector)
 }
 
-func newResource(version, tags string) *resource.Resource {
+func newResource(version string, tags []string) *resource.Resource {
 	attrs := []attribute.KeyValue{
 		semconv.ServiceNameKey.String("authorino"),
 		semconv.ServiceVersionKey.String(version),
 	}
-	for _, tag := range strings.Split(tags, ",") {
+	for _, tag := range tags {
 		parts := strings.Split(strings.TrimSpace(tag), "=")
 		if len(parts) < 2 {
 			continue
@@ -34,7 +34,7 @@ func newResource(version, tags string) *resource.Resource {
 	return r
 }
 
-func CreateTraceProvider(url, version, tags string) (*trace.TracerProvider, error) {
+func CreateTraceProvider(url, version string, tags []string) (*trace.TracerProvider, error) {
 	exp, err := newExporter(url)
 	if err != nil {
 		return nil, err

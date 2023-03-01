@@ -90,7 +90,7 @@ var (
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
 	tracingServiceEndpoint         string
-	tracingServiceTags             string
+	tracingServiceTags             []string
 
 	scheme = runtime.NewScheme()
 
@@ -135,7 +135,7 @@ func main() {
 	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
 	cmdServer.PersistentFlags().StringVar(&tracingServiceEndpoint, "tracing-service-endpoint", "", "Endpoint URL of the OpenTelemetry tracing collector service")
-	cmdServer.PersistentFlags().StringVar(&tracingServiceTags, "tracing-service-tags", "", "Comma-separated list of key=value tags to add to OpenTelemetry traces")
+	cmdServer.PersistentFlags().StringArrayVar(&tracingServiceTags, "tracing-service-tag", []string{}, "Fixed key=value tag to add to the OpenTelemetry traces")
 
 	cmdVersion := &cobra.Command{
 		Use:   "version",

@@ -1425,6 +1425,6 @@ Most log messages associated with an authorization request include the [`request
 
 Integration with an OpenTelemetry collector can be enabled by supplying the `--tracing-service-endpoint` command-line flag (e.g. `authorino server --tracing-service-endpoint=http://jaeger:14268/api/traces`).
 
-The additional `--tracing-service-tags` command-line flag allow to specify fixed agent-level key-value tags for the trace signals emitted by Authorino (`key1=value1[,keyN=valueN]*`).
+The additional `--tracing-service-tags` command-line flag allow to specify fixed agent-level key-value tags for the trace signals emitted by Authorino (e.g. `authorino server --tracing-service-endpoint=... --tracing-service-tag=key1=value1 --tracing-service-tag=key2=value2`).
 
 Traces related to authorization requests are additionally tagged with the [`authorino.request_id`](#request-id) attribute.
