@@ -10,6 +10,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/log"
+
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 type UserInfo struct {
@@ -53,6 +56,8 @@ func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Co
 	if err != nil {
 		return nil, err
 	}
+
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

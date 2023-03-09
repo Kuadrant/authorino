@@ -15,6 +15,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"
+
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 type GenericHttp struct {
@@ -128,6 +131,7 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 	}
 
 	req.Header.Set("Content-Type", contentType)
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
 	if logger := log.FromContext(ctx).WithName("http").V(1); logger.Enabled() {
 		logData := []interface{}{

@@ -17,6 +17,9 @@ import (
 
 	opaParser "github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 const (
@@ -207,6 +210,8 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	otel.GetTextMapPropagator().Inject(req.Context(), otel_propagation.HeaderCarrier(req.Header))
 
 	if resp, err := http.DefaultClient.Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
