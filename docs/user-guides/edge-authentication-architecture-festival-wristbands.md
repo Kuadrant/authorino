@@ -23,7 +23,7 @@ As a minimum, EAA allows to simplify authentication between applications and mic
 
   Festival Wristbands are OpenID Connect ID tokens (signed JWTs) issued by Authorino by the end of the Auth Pipeline, for authorized requests. It can be configured to include claims based on static values and values fetched from the [Authorization JSON](./../architecture.md#the-authorization-json).
 
-  Check out as well the user guides about [Token normalization](./user-guides/token-normalization.md), [Authentication with API keys](./api-key-authentication.md) and [OpenID Connect Discovery and authentication with JWTs](./oidc-jwt-authentication.md).
+  Check out as well the user guides about [Token normalization](./token-normalization.md), [Authentication with API keys](./api-key-authentication.md) and [OpenID Connect Discovery and authentication with JWTs](./oidc-jwt-authentication.md).
 
   For further details about Authorino features in general, check the [docs](./../features.md).
 </details>
@@ -256,7 +256,7 @@ WRISTBAND_TOKEN=$(curl -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcR
 Consume the API:
 
 ```sh
-curl -H "Authorization: Bearer $WRISTBAND_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
+curl -H "Authorization: Bearer $WRISTBAND_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
 # HTTP/1.1 200 OK
 ```
 
@@ -339,7 +339,7 @@ WRISTBAND_TOKEN=$(curl -H "Authorization: Bearer $ACCESS_TOKEN" http://edge-auth
 Consume the API:
 
 ```sh
-curl -H "Authorization: Bearer $WRISTBAND_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/hello
+curl -H "Authorization: Bearer $WRISTBAND_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
 # HTTP/1.1 200 OK
 ```
 
