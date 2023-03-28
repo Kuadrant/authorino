@@ -46,6 +46,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -329,6 +330,7 @@ func startExtAuthServerGRPC(authConfigIndex index.Index) {
 	}
 
 	grpcServer := grpc.NewServer(grpcServerOpts...)
+	reflection.Register(grpcServer)
 
 	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Index: authConfigIndex, Timeout: timeoutMs()})
 	healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
