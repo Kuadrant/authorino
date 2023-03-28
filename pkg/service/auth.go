@@ -1,10 +1,8 @@
 package service
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -17,6 +15,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
+	"github.com/google/uuid"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/index"
@@ -87,7 +86,7 @@ func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBody
 // The body can be any JSON object; in case the input is a Kubernetes AdmissionReview resource,
 // the response is compatible with the Dynamic Admission API
 func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+	requestId := ensureRequestId(req.Header.Get("x-request-id"))
 
 	ctx := context.New(context.WithParent(req.Context()), context.WithTimeout(a.Timeout))
 	ctx, span := otel.Tracer("AuthService").Start(ctx, "ServeHTTP", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
@@ -237,7 +236,10 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	requestData := req.Attributes.Request.Http
-	requestId := requestData.GetId()
+	requestId := ensureRequestId(requestData.GetId())
+	if requestData.GetId() == "" {
+		req.Attributes.Request.Http.Id = requestId
+	}
 
 	ctx, span := otel.Tracer("AuthService").Start(parentContext, "Check", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
 	defer span.End()
@@ -470,4 +472,11 @@ func closeWithStatus(respStatusCode envoy_type.StatusCode, response http.Respons
 		closingFunc()
 	}
 	context.Cancel(ctx)
+}
+
+func ensureRequestId(requestId string) string {
+	if requestId != "" {
+		return requestId
+	}
+	return uuid.NewString()
 }
