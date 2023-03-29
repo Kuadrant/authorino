@@ -13,6 +13,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
+
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 type providerJSON struct {
@@ -132,6 +135,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+pat.String())
 
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -241,6 +245,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 
 	log.FromContext(ctx).V(1).Info("requesting pat", "url", tokenURL.String(), "data", encodedData, "headers", req.Header)
 
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

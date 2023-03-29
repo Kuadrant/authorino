@@ -11,6 +11,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/log"
+
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 type OAuth2 struct {
@@ -67,6 +70,8 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 	}
 
 	log.FromContext(ctx).WithName("oauth2").V(1).Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
+
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
