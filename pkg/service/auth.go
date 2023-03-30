@@ -1,10 +1,8 @@
 package service
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,30 +11,30 @@ import (
 
 	gocontext "golang.org/x/net/context"
 
-	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
-	"github.com/gogo/googleapis/google/rpc"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
+	"github.com/kuadrant/authorino/pkg/trace"
+
+	envoy_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+	"github.com/gogo/googleapis/google/rpc"
+	"github.com/google/uuid"
+	otel_codes "go.opentelemetry.io/otel/codes"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 	v1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"go.opentelemetry.io/otel"
-	otel_attr "go.opentelemetry.io/otel/attribute"
-	otel_codes "go.opentelemetry.io/otel/codes"
-	otel_trace "go.opentelemetry.io/otel/trace"
 )
 
 const (
 	HTTPAuthorizationBasePath = "/check"
 
-	X_EXT_AUTH_REASON_HEADER = "X-Ext-Auth-Reason"
+	X_EXT_AUTH_REASON_HEADER      = "X-Ext-Auth-Reason"
+	ENVOY_TRACE_REQUEST_ID_HEADER = "X-Request-Id"
 
 	RESPONSE_MESSAGE_INVALID_REQUEST   = "Invalid request"
 	RESPONSE_MESSAGE_SERVICE_NOT_FOUND = "Service not found"
@@ -87,10 +85,11 @@ func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBody
 // The body can be any JSON object; in case the input is a Kubernetes AdmissionReview resource,
 // the response is compatible with the Dynamic Admission API
 func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	requestId := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(req))))
+	propagationRequestId := req.Header.Get(ENVOY_TRACE_REQUEST_ID_HEADER)
+	requestId := ensureRequestId(propagationRequestId)
 
 	ctx := context.New(context.WithParent(req.Context()), context.WithTimeout(a.Timeout))
-	ctx, span := otel.Tracer("AuthService").Start(ctx, "ServeHTTP", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
+	ctx, span := trace.NewAuthorizationRequestSpan(ctx, "AuthService", "ServeHTTP", requestId, propagationRequestId)
 	defer span.End()
 
 	logger := log.
@@ -237,9 +236,12 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
 	requestData := req.Attributes.Request.Http
-	requestId := requestData.GetId()
 
-	ctx, span := otel.Tracer("AuthService").Start(parentContext, "Check", otel_trace.WithAttributes(otel_attr.String("authorino.request_id", requestId)))
+	propagationRequestId := requestData.Headers[strings.ToLower(ENVOY_TRACE_REQUEST_ID_HEADER)]
+	requestId := ensureRequestId(propagationRequestId, requestData.GetId())
+	req.Attributes.Request.Http.Id = requestId
+
+	ctx, span := trace.NewAuthorizationRequestSpan(parentContext, "AuthService", "Check", requestId, propagationRequestId)
 	defer span.End()
 
 	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
@@ -470,4 +472,13 @@ func closeWithStatus(respStatusCode envoy_type.StatusCode, response http.Respons
 		closingFunc()
 	}
 	context.Cancel(ctx)
+}
+
+func ensureRequestId(requestIdCandidates ...string) string {
+	for _, requestId := range requestIdCandidates {
+		if requestId != "" {
+			return requestId
+		}
+	}
+	return uuid.NewString()
 }
