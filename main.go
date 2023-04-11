@@ -91,6 +91,7 @@ var (
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
 	tracingServiceEndpoint         string
+	tracingServiceInsecure         bool
 	tracingServiceTags             []string
 
 	scheme = runtime.NewScheme()
@@ -135,8 +136,9 @@ func main() {
 	cmdServer.PersistentFlags().StringVar(&healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
 	cmdServer.PersistentFlags().BoolVar(&enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmdServer.PersistentFlags().Int64Var(&maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
-	cmdServer.PersistentFlags().StringVar(&tracingServiceEndpoint, "tracing-service-endpoint", "", "Endpoint URL of the OpenTelemetry tracing collector service")
-	cmdServer.PersistentFlags().StringArrayVar(&tracingServiceTags, "tracing-service-tag", []string{}, "Fixed key=value tag to add to the OpenTelemetry traces")
+	cmdServer.PersistentFlags().StringVar(&tracingServiceEndpoint, "tracing-service-endpoint", "", "Endpoint URL of the tracing exporter service - use either 'rpc://' or 'http://' scheme")
+	cmdServer.PersistentFlags().BoolVar(&tracingServiceInsecure, "tracing-service-insecure", false, "Disable TLS for the tracing service connection")
+	cmdServer.PersistentFlags().StringArrayVar(&tracingServiceTags, "tracing-service-tag", []string{}, "Fixed key=value tag to add to emitted traces")
 
 	cmdVersion := &cobra.Command{
 		Use:   "version",
@@ -181,14 +183,22 @@ func run(cmd *cobra.Command, _ []string) {
 		managerOptions.Namespace = watchNamespace
 	}
 
+	telemetryLogger := logger.WithName("telemetry")
+	otel.SetLogger(telemetryLogger)
+	otel.SetErrorHandler(&trace.ErrorHandler{Logger: telemetryLogger})
+
 	if tracingServiceEndpoint != "" {
-		otel.SetLogger(logger)
-		tp, err := trace.CreateTraceProvider(tracingServiceEndpoint, version, tracingServiceTags)
+		tp, err := trace.CreateTraceProvider(trace.Config{
+			Endpoint: tracingServiceEndpoint,
+			Insecure: tracingServiceInsecure,
+			Version:  version,
+			Tags:     tracingServiceTags,
+		})
 		if err != nil {
-			logger.Error(err, "unable to create traceprovider")
-			os.Exit(1)
+			logger.Error(err, "unable to set trace provider")
+		} else {
+			otel.SetTracerProvider(tp)
 		}
-		otel.SetTracerProvider(tp)
 	}
 
 	otel.SetTextMapPropagator(otel_propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
