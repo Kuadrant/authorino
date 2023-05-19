@@ -30,6 +30,7 @@
   - [Keycloak Authorization Services (UMA-compliant Authorization API)](#keycloak-authorization-services-uma-compliant-authorization-api)
 - [Dynamic response features (`response`)](#dynamic-response-features-response)
   - [JSON injection (`response.json`)](#json-injection-responsejson)
+  - [Plain (`response.plain`)](#plain-responseplain)
   - [Festival Wristband tokens (`response.wristband`)](#festival-wristband-tokens-responsewristband)
   - [_Extra:_ Response wrappers (`wrapper` and `wrapperKey`)](#extra-response-wrappers-wrapper-and-wrapperkey)
     - [Added HTTP headers](#added-http-headers)
@@ -622,6 +623,28 @@ spec:
           - name: api-key-name
             valueFrom:
               authJSON: auth.identity.metadata.name
+```
+
+### Plain ([`response.plain`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Response_Plain))
+
+Simpler, yet more generalized form, for extending the authorization response for header mutation and Envoy Dynamic Metadata, based on plain text values.
+
+The value can be static:
+
+```yaml
+response:
+- name: x-auth-service
+  plain:
+    value: Authorino
+```
+
+or fetched dynamically from the [Authorization JSON](./architecture.md#the-authorization-json) (which includes support for [interpolation](#interpolation)):
+
+```yaml
+- name: x-username
+  plain:
+    valueFrom:
+      authJSON: auth.identity.username
 ```
 
 ### Festival Wristband tokens ([`response.wristband`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Response_Wristband))
