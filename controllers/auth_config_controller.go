@@ -541,6 +541,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 			translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
+		// plain
+		case api.ResponsePlain:
+			translatedResponse.Plain = &response_evaluators.Plain{
+				JSONValue: json.JSONValue{
+					Static:  response.Plain.Value,
+					Pattern: response.Plain.ValueFrom.AuthJSON,
+				},
+			}
+
 		case api.TypeUnknown:
 			return nil, fmt.Errorf("unknown response type %v", response)
 		}
