@@ -9,12 +9,16 @@ done
 
 namespace=${NAMESPACE:-"authorino"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
+authconfig_invalid=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig-invalid.yaml"}
 verbose=${VERBOSE}
 timeout=${TIMEOUT:-"600"}
 
 HOSTNAME="talker-api-authorino.127.0.0.1.nip.io"
 IP_IN="109.69.200.56" # IT
 IP_OUT="79.123.45.67" # GB
+
+SUCCESS_MESSAGE="\033[32mSUCCESS\033[0m"
+FAIL_MESSAGE="\033[31mFAIL\033[0m"
 
 test_count=0
 
@@ -31,7 +35,7 @@ function wait_until {
     sleep 3
     if [ $(($SECONDS - $start_time)) -gt $timeout ]; then
       printf " (timeout)"
-      teardown "FAIL"
+      teardown "$FAIL_MESSAGE"
     fi
   done
   echo " condition met"
@@ -42,13 +46,13 @@ function teardown {
 
   echo
   echo
-  echo $result
+  printf "$result\n"
 
   for pid in $keycloak_pid $envoy_pid $wristband_pid; do
     kill $pid 2>/dev/null
   done
 
-  if [ "$result" == "FAIL" ]; then
+  if [[ "$result" =~ "FAIL" ]]; then
     exit 1
   fi
 }
@@ -80,12 +84,12 @@ function send {
     echo "  Expected: $expected"
     echo "  Actual: $actual"
 
-    teardown "FAIL"
+    teardown "$FAIL_MESSAGE"
   else
     if [ "$verbose" == "1" ]; then
       echo -e "[#$test_count]\tExpected: $expected\tActual: $actual\t$target"
     else
-      printf "."
+      printf "\033[32m.\033[0m"
     fi
   fi
 }
@@ -175,16 +179,22 @@ kubectl -n $namespace port-forward deployment/keycloak 8080:8080 2>&1 >/dev/null
 keycloak_pid=$!
 wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --max-time 2 http://localhost:8080/auth/realms/kuadrant/.well-known/openid-configuration"
 
-# authconfig
+# authconfig - invalid
+printf "testing invalid authconfig "
+echo $(kubectl -n $namespace apply -f $authconfig_invalid --dry-run=server 2>&1) | grep "must validate one and only one schema (oneOf)" >/dev/null && printf "[$SUCCESS_MESSAGE]\n" || teardown "$FAIL_MESSAGE"
+
+sleep 1
+
+# authconfig - valid
+echo "testing valid authconfig"
+
 kubectl -n $namespace apply -f $authconfig
 wait_until "authconfig ready" "^True$" "kubectl -n $namespace get authconfigs/e2e-test -o jsonpath={.status.conditions[?(@.type==\"Ready\")].status}"
 
 kubectl -n $namespace port-forward services/authorino-authorino-oidc 8083:8083 2>&1 >/dev/null &
 wristband_pid=$!
 
-# tests
-echo
-echo "running tests"
+echo "sending multiple requests"
 
 send_k8s_sa_requests $IP_IN "app-1-sa" "
     GET / => 200
@@ -261,4 +271,4 @@ send_requests "https" "authorino-authorino-oidc" "8083" $IP_IN "" "
     GET /invalid/e2e-test/wristband/.well-known/openid-configuration => 404
     GET /invalid => 404"
 
-teardown "SUCCESS"
+teardown "$SUCCESS_MESSAGE"
