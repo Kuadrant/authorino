@@ -2047,7 +2047,7 @@ spec:
                   oneOf:
                   - properties:
                       name: {}
-                      opa: {}
+                      wristband: {}
                     required:
                     - name
                     - wristband
@@ -2058,8 +2058,8 @@ spec:
                     - name
                     - json
                   - properties:
-                      kubernetes: {}
                       name: {}
+                      plain: {}
                     required:
                     - name
                     - plain

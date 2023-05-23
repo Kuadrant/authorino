@@ -80,7 +80,7 @@
   value:
     - properties:
         name: {}
-        opa: {}
+        wristband: {}
       required: [name, wristband]
     - properties:
         name: {}
@@ -88,7 +88,7 @@
       required: [name, json]
     - properties:
         name: {}
-        kubernetes: {}
+        plain: {}
       required: [name, plain]
 
 - op: add
