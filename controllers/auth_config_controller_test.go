@@ -58,6 +58,14 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 					Oidc: &api.Identity_OidcConfig{
 						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
 					},
+					ExtendedProperties: []api.ExtendedProperty{
+						{
+							JsonProperty: api.JsonProperty{
+								Name:  "source",
+								Value: runtime.RawExtension{Raw: []byte(`"test"`)},
+							},
+						},
+					},
 				},
 			},
 			Metadata: []*api.Metadata{
@@ -145,15 +153,22 @@ func newTestAuthConfigReconciler(client client.WithWatch, i index.Index) *AuthCo
 }
 
 func TestReconcileAuthConfigOk(t *testing.T) {
+	authConfigIndex := index.NewIndex()
 	authConfig := newTestAuthConfig(map[string]string{})
 	secret := newTestOAuthClientSecret()
 	client := newTestK8sClient(&authConfig, &secret)
-	reconciler := newTestAuthConfigReconciler(client, index.NewIndex())
+	reconciler := newTestAuthConfigReconciler(client, authConfigIndex)
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
 
 	assert.NilError(t, err)
 	assert.DeepEqual(t, result, ctrl.Result{}) // Result should be empty
+
+	config := authConfigIndex.Get("echo-api")
+	assert.Check(t, config != nil)
+	idConfig, _ := config.IdentityConfigs[0].(*evaluators.IdentityConfig)
+	assert.Equal(t, idConfig.ExtendedProperties[0].Name, "source")
+	// TODO(@guicassolato): assert other fields of the AuthConfig
 }
 
 func TestMissingRequiredSecret(t *testing.T) {

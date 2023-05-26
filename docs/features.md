@@ -366,11 +366,13 @@ By default, authentication secrets are expected to be supplied in the `Authoriza
 
 ### _Extra:_ Identity extension ([`extendedProperties`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Identity))
 
-Resolved identity objects can be extended with user-defined JSON properties. Values can be static or fetched from the Authorization JSON
+Resolved identity objects can be extended with user-defined JSON properties. Values can be static or fetched from the Authorization JSON.
 
 A typical use-case for this feature is token normalization. Say you have more than one identity source listed in the your `AuthConfig` but each source issues an access token with a different JSON structure – e.g. two OIDC issuers that use different names for custom JWT claims of similar meaning; when two different identity verification/authentication methods are combined, such as API keys (whose identity objects are the corresponding Kubernetes `Secret`s) and Kubernetes tokens (whose identity objects are Kubernetes UserInfo data).
 
 In such cases, identity extension can be used to normalize the token so it always includes the same set of JSON properties of interest, regardless of the source of identity that issued the original token verified by Authorino. This simplifies the writing of authorization policies and configuration of dynamic responses.
+
+In case of extending an existing property of the identity object (replacing), the API allows to control whether to overwrite the value or not. This is particularly useful for normalizing tokens of a same identity source that nonetheless may occasionally differ in structure, such as in the case of JWT claims that sometimes may not be present but can be safely replaced with another (e.g. `username` or `sub`).
 
 ## External auth metadata features ([`metadata`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Metadata))
 

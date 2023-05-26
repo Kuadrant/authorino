@@ -186,6 +186,13 @@ type Credentials struct {
 	KeySelector string `json:"keySelector"`
 }
 
+type ExtendedProperty struct {
+	JsonProperty `json:",omitempty"`
+	// Whether the value should overwrite the value of an existing property with the same name.
+	// +kubebuilder:default:=false
+	Overwrite bool `json:"overwrite,omitempty"`
+}
+
 // The identity source/authentication mode config.
 // Apart from "name", one of the following parameters is required and only one of the following parameters is allowed: "oicd", "apiKey" or "kubernetes".
 type Identity struct {
@@ -218,7 +225,7 @@ type Identity struct {
 
 	// Extends the resolved identity object with additional custom properties before appending to the authorization JSON.
 	// It requires the resolved identity object to always be of the JSON type 'object'. Other JSON types (array, string, etc) will break.
-	ExtendedProperties []JsonProperty `json:"extendedProperties,omitempty"`
+	ExtendedProperties []ExtendedProperty `json:"extendedProperties,omitempty"`
 
 	OAuth2         *Identity_OAuth2Config   `json:"oauth2,omitempty"`
 	Oidc           *Identity_OidcConfig     `json:"oidc,omitempty"`

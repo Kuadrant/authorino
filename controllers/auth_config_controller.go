@@ -170,15 +170,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	for _, identity := range authConfigIdentityConfigs {
-		extendedProperties := make([]json.JSONProperty, 0)
-		for _, property := range identity.ExtendedProperties {
-			extendedProperties = append(extendedProperties, json.JSONProperty{
-				Name: property.Name,
-				Value: json.JSONValue{
-					Static:  property.Value,
-					Pattern: property.ValueFrom.AuthJSON,
-				},
-			})
+		extendedProperties := make([]evaluators.IdentityExtension, len(identity.ExtendedProperties))
+		for i, property := range identity.ExtendedProperties {
+			extendedProperties[i] = evaluators.NewIdentityExtension(property.Name, json.JSONValue{
+				Static:  property.Value,
+				Pattern: property.ValueFrom.AuthJSON,
+			}, property.Overwrite)
 		}
 
 		translatedIdentity := &evaluators.IdentityConfig{
