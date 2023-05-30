@@ -40,9 +40,9 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 	identityConfig = IdentityConfig{
 		Name:           "test",
 		KubernetesAuth: &identity.KubernetesAuth{},
-		ExtendedProperties: []json.JSONProperty{
-			{Name: "prop1", Value: json.JSONValue{Static: "value1"}},
-			{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.sub"}},
+		ExtendedProperties: []IdentityExtension{
+			NewIdentityExtension("prop1", json.JSONValue{Static: "value1"}, true),
+			NewIdentityExtension("prop2", json.JSONValue{Pattern: "auth.identity.sub"}, true),
 		},
 	}
 

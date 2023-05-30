@@ -42,7 +42,7 @@ type IdentityConfig struct {
 	Plain          *identity.Plain          `yaml:"plain,omitempty"`
 	Noop           *identity.Noop           `yaml:"noop,omitempty"`
 
-	ExtendedProperties []json.JSONProperty `yaml:"extendedProperties"`
+	ExtendedProperties []IdentityExtension `yaml:"extendedProperties"`
 }
 
 func (config *IdentityConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
@@ -197,7 +197,7 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, extendedProperty := range config.ExtendedProperties {
-		extendedIdentityObject[extendedProperty.Name] = extendedProperty.Value.ResolveFor(authJSON)
+		extendedIdentityObject[extendedProperty.Name] = extendedProperty.ResolveFor(extendedIdentityObject, authJSON)
 	}
 
 	return extendedIdentityObject, nil

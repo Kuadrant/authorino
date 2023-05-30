@@ -1295,6 +1295,11 @@ spec:
                           name:
                             description: The name of the JSON property
                             type: string
+                          overwrite:
+                            default: false
+                            description: Whether the value should overwrite the value
+                              of an existing property with the same name.
+                            type: boolean
                           value:
                             description: Static value of the JSON property
                             x-kubernetes-preserve-unknown-fields: true
