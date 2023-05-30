@@ -1,0 +1,30 @@
+apiVersion: authorino.kuadrant.io/v1beta1
+kind: AuthConfig
+metadata:
+  name: e2e-test-invalid
+spec:
+  hosts:
+  - talker-api-authorino.127.0.0.1.nip.io
+
+  identity:
+  - name: multiple-identity-methods
+    apiKey:
+      selector:
+        matchLabels:
+          app: talker-api
+    oidc:
+      endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+
+  metadata:
+  - name: multiple-metadata-methods
+    http:
+      endpoint: http://metadata-service
+    userInfo:
+      identitySource: keycloak
+
+  authorization:
+  - name: multiple-authorization-methods
+    opa:
+      inlineRego: "allow = true"
+    json:
+      rules: []

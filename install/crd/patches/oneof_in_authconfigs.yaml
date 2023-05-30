@@ -21,7 +21,7 @@
     - properties:
         name: {}
         credentials: {}
-        apiKey: {}
+        mtls: {}
       required: [name, mtls]
     - properties:
         name: {}
@@ -36,7 +36,7 @@
     - properties:
         name: {}
         credentials: {}
-        anonymous: {}
+        plain: {}
       required: [name, plain]
 
 - op: add
@@ -52,7 +52,7 @@
       required: [name, uma]
     - properties:
         name: {}
-        uma: {}
+        http: {}
       required: [name, http]
 
 - op: add
@@ -72,7 +72,7 @@
       required: [name, kubernetes]
     - properties:
         name: {}
-        kubernetes: {}
+        authzed: {}
       required: [name, authzed]
 
 - op: add

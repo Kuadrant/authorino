@@ -98,7 +98,7 @@ spec:
                     - name
                     - kubernetes
                   - properties:
-                      kubernetes: {}
+                      authzed: {}
                       name: {}
                     required:
                     - name
@@ -1228,8 +1228,8 @@ spec:
                     - name
                     - apiKey
                   - properties:
-                      apiKey: {}
                       credentials: {}
+                      mtls: {}
                       name: {}
                     required:
                     - name
@@ -1249,9 +1249,9 @@ spec:
                     - name
                     - anonymous
                   - properties:
-                      anonymous: {}
                       credentials: {}
                       name: {}
+                      plain: {}
                     required:
                     - name
                     - plain
@@ -1636,8 +1636,8 @@ spec:
                     - name
                     - uma
                   - properties:
+                      http: {}
                       name: {}
-                      uma: {}
                     required:
                     - name
                     - http
