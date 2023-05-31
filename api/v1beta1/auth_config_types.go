@@ -40,6 +40,7 @@ const (
 	AuthorizationAuthzed             = "AUTHORIZATION_AUTHZED"
 	ResponseWristband                = "RESPONSE_WRISTBAND"
 	ResponseDynamicJSON              = "RESPONSE_DYNAMIC_JSON"
+	ResponsePlain                    = "RESPONSE_PLAIN"
 	CallbackHTTP                     = "CALLBACK_HTTP"
 	EvaluatorDefaultCacheTTL         = 60
 
@@ -602,6 +603,7 @@ type Response struct {
 
 	Wristband *Response_Wristband   `json:"wristband,omitempty"`
 	JSON      *Response_DynamicJSON `json:"json,omitempty"`
+	Plain     *Response_Plain       `json:"plain,omitempty"`
 }
 
 func (r *Response) GetType() string {
@@ -609,6 +611,8 @@ func (r *Response) GetType() string {
 		return ResponseWristband
 	} else if r.JSON != nil {
 		return ResponseDynamicJSON
+	} else if r.Plain != nil {
+		return ResponsePlain
 	}
 	return TypeUnknown
 }
@@ -671,6 +675,8 @@ type Response_DynamicJSON struct {
 	// List of JSON property-value pairs to be added to the dynamic response.
 	Properties []JsonProperty `json:"properties"`
 }
+
+type Response_Plain StaticOrDynamicValue
 
 // +kubebuilder:validation:Minimum:=300
 // +kubebuilder:validation:Maximum:=599

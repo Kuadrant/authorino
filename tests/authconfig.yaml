@@ -165,6 +165,12 @@ spec:
     priority: 1
 
   response:
+  - name: x-auth-service
+    plain:
+      value: Authorino
+  - name: x-username
+    plain:
+      valueFrom: { authJSON: auth.identity.username }
   - name: x-auth-data
     json:
       properties:

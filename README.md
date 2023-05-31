@@ -172,12 +172,16 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td>In analysis</td>
     </tr>
     <tr>
-      <td rowspan="3">Custom responses</td>
+      <td rowspan="4">Custom responses</td>
       <td>Festival Wristbands tokens <small>(token normalization, Edge Authentication Architecture)</small></td>
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>JSON injection <small>(added HTTP headers, Envoy Dynamic Metadata)</small></td>
+      <td>JSON injection <small>(header injection, Envoy Dynamic Metadata)</small></td>
+      <td><i>Ready</i></td>
+    </tr>
+    <tr>
+      <td>Plain text value <small>(header injection)</small></td>
       <td><i>Ready</i></td>
     </tr>
     <tr>

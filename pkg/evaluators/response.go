@@ -13,6 +13,7 @@ import (
 const (
 	responseWristband = "RESPONSE_WRISTBAND"
 	responseJSON      = "RESPONSE_JSON"
+	responsePlain     = "RESPONSE_PLAIN"
 
 	HTTP_HEADER_WRAPPER            = "httpHeader"
 	ENVOY_DYNAMIC_METADATA_WRAPPER = "envoyDynamicMetadata"
@@ -52,6 +53,7 @@ type ResponseConfig struct {
 
 	Wristband   auth.WristbandIssuer  `yaml:"wristband,omitempty"`
 	DynamicJSON *response.DynamicJSON `yaml:"json,omitempty"`
+	Plain       *response.Plain       `yaml:"plain,omitempty"`
 }
 
 func (config *ResponseConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator {
@@ -60,6 +62,8 @@ func (config *ResponseConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator 
 		return config.Wristband
 	case responseJSON:
 		return config.DynamicJSON
+	case responsePlain:
+		return config.Plain
 	default:
 		return nil
 	}
@@ -111,6 +115,8 @@ func (config *ResponseConfig) GetType() string {
 		return responseWristband
 	case config.DynamicJSON != nil:
 		return responseJSON
+	case config.Plain != nil:
+		return responsePlain
 	default:
 		return ""
 	}
@@ -140,6 +146,16 @@ func (config *ResponseConfig) MetricsEnabled() bool {
 	return config.Metrics
 }
 
+func (config *ResponseConfig) WrapObjectAsHeaderValue(obj any) string {
+	switch config.GetType() {
+	case responseJSON, responseWristband:
+		j, _ := json.StringifyJSON(obj)
+		return j
+	default:
+		return fmt.Sprintf("%v", obj)
+	}
+}
+
 func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders map[string]string, responseMetadata map[string]interface{}) {
 	responseHeaders = make(map[string]string)
 	responseMetadata = make(map[string]interface{})
@@ -147,7 +163,7 @@ func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders m
 	for responseConfig, authObj := range responses {
 		switch responseConfig.Wrapper {
 		case HTTP_HEADER_WRAPPER:
-			responseHeaders[responseConfig.WrapperKey], _ = json.StringifyJSON(authObj)
+			responseHeaders[responseConfig.WrapperKey] = responseConfig.WrapObjectAsHeaderValue(authObj)
 		case ENVOY_DYNAMIC_METADATA_WRAPPER:
 			responseMetadata[responseConfig.WrapperKey] = authObj
 		}
