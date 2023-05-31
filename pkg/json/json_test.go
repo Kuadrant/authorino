@@ -228,10 +228,19 @@ func TestCaseJSONStr(t *testing.T) {
 }
 
 func TestBase64JSONStr(t *testing.T) {
-	const jsonData = `{"auth":{"identity":{"username":{"encoded":"am9obg==","decoded":"john"}}}}`
-
+	jsonData := `{"auth":{"identity":{"username":{"encoded":"am9obg","decoded":"john"}}}}`
 	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.encoded.@base64:decode`).String(), "john")
 	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.decoded.@base64:encode`).String(), "am9obg==")
+
+	jsonData = `{"auth":{"identity":{"username":{"encoded":"am9obg==","decoded":"john"}}}}`
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.encoded.@base64:decode`).String(), "john")
+	assert.Equal(t, gjson.Get(jsonData, `auth.identity.username.decoded.@base64:encode`).String(), "am9obg==")
+}
+
+func TestParseJWTFromAuthzHeader(t *testing.T) {
+	// JWT: {"alg":"RS256","kid":"Ruk8dcoOv7kJqmchIJPtks7sHirl27ErFhfOVpBClHE"}{"aud":["https://kubernetes.default.svc.cluster.local"],"exp":1685557675,"iat":1685554075,"iss":"https://kubernetes.default.svc.cluster.local","kubernetes.io":{"namespace":"default","serviceaccount":{"name":"default","uid":"1edfd768-d05a-445f-a03a-0a834b45688e"}},"nbf":1685554075,"sub":"system:serviceaccount:default:default"}
+	jsonData := `{"access_token":"Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IlJ1azhkY29PdjdrSnFtY2hJSlB0a3M3c0hpcmwyN0VyRmhmT1ZwQkNsSEUifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjg1NTU3Njc1LCJpYXQiOjE2ODU1NTQwNzUsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJkZWZhdWx0Iiwic2VydmljZWFjY291bnQiOnsibmFtZSI6ImRlZmF1bHQiLCJ1aWQiOiIxZWRmZDc2OC1kMDVhLTQ0NWYtYTAzYS0wYTgzNGI0NTY4OGUifX0sIm5iZiI6MTY4NTU1NDA3NSwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmRlZmF1bHQ6ZGVmYXVsdCJ9.0KxjmGyzOaUdFdCWiGC9Y5BilCr-K8cuP3rI51ayu_rV91EC93c-HzojWbOI-Z9qKK4wt7Kd1NE_9IzDO53ZC_IBRBjPUaDXvw2Bt06pwRYlqfFsK6q9hr4h3VceWerCxq2wVdiBZaDa_eagpJMmz0JwOiQ3uxfI4aefnjl3KJaPke9nH0rzBfWGtYo1oOHMjqxIPmKAaJhzJqX1RmQKPdxncsl_gRQXCD9UdsJE6Gnlt2R01bJVaLYQQ-Y8w-wzvXFeSz0FBgSXla5KSqeMYFVkjT5pSvT7bxATmGVNfmmNR2rseS405cSqvDyU64FZ0oZEZTsiCGGXQdLO6-6hOA"}`
+	assert.Equal(t, gjson.Get(jsonData, `access_token.@extract:{"pos":1}|@extract:{"sep":".","pos":1}|@base64:decode|exp`).Num, float64(1685557675))
 }
 
 func TestStripJSONStr(t *testing.T) {

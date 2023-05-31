@@ -275,10 +275,14 @@ var base64JSONStr = func(json, arg string) string {
 
 	switch arg {
 	case "encode":
-		encoded := base64.URLEncoding.EncodeToString([]byte(str))
+		encoded := base64.StdEncoding.EncodeToString([]byte(str))
 		return fmt.Sprintf("\"%s\"", encoded)
 	case "decode":
-		decoded, _ := base64.URLEncoding.DecodeString(str)
+		encoding := base64.StdEncoding
+		if !strings.HasSuffix(str, "=") {
+			encoding = base64.RawStdEncoding
+		}
+		decoded, _ := encoding.DecodeString(str)
 		return fmt.Sprintf("\"%s\"", decoded)
 	default:
 		return json
