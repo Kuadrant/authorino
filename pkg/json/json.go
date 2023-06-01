@@ -283,7 +283,7 @@ var base64JSONStr = func(json, arg string) string {
 			encoding = base64.RawStdEncoding
 		}
 		decoded, _ := encoding.DecodeString(str)
-		return fmt.Sprintf("\"%s\"", decoded)
+		return fmt.Sprintf("\"%s\"", strings.ReplaceAll(string(decoded), `"`, `\"`))
 	default:
 		return json
 	}

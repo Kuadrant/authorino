@@ -79,6 +79,7 @@ Examples below provided for the following Authorization JSON:
         "path": "/pets/123",
         "headers": {
           "authorization": "Basic amFuZTpzZWNyZXQK" // jane:secret
+          "baggage": "eyJrZXkxIjoidmFsdWUxIn0=" // {"key1":"value1"}
         }
       }
     }
