@@ -9,7 +9,7 @@ done
 
 namespace=${NAMESPACE:-"authorino"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
-authconfig_invalid=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig-invalid.yaml"}
+authconfig_invalid=${AUTHCONFIG_INVALID:-"$(dirname $(realpath $0))/authconfig-invalid.yaml"}
 verbose=${VERBOSE}
 timeout=${TIMEOUT:-"600"}
 
@@ -137,7 +137,7 @@ function send_oidc_requests {
   local passwd=$1; shift
   local access_token=""
   while [ "$access_token" == "" ]; do
-    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.$namespace.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
+    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl:8.1.1 -- http://keycloak.$namespace.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
     sleep 1
   done
   local requests="$@"
@@ -151,7 +151,7 @@ function send_oauth_opaque_requests {
   local passwd=$1; shift
   local access_token=""
   while [ "$access_token" == "" ]; do
-    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.$namespace.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
+    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl:8.1.1 -- http://keycloak.$namespace.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
     sleep 1
   done
   local requests="$@"

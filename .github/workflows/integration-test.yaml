@@ -80,5 +80,6 @@ jobs:
         env:
           NAMESPACE: authorino
           AUTHCONFIG: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/authconfig.yaml
+          AUTHCONFIG_INVALID: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/authconfig-invalid.yaml
         run: |
           curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/e2e-test.sh | bash
