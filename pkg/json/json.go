@@ -236,7 +236,7 @@ var extractJSONStr = func(json, arg string) string {
 		return "n"
 	}
 
-	return fmt.Sprintf("\"%s\"", parts[pos])
+	return wrap(parts[pos])
 }
 
 var replaceJSONStr = func(json, arg string) string {
@@ -257,7 +257,7 @@ var replaceJSONStr = func(json, arg string) string {
 	})
 
 	str := gjson.Parse(json).String()
-	return fmt.Sprintf("\"%s\"", strings.ReplaceAll(str, old, new))
+	return wrap(strings.ReplaceAll(str, old, new))
 }
 
 var caseJSONStr = func(json, arg string) string {
@@ -275,11 +275,17 @@ var base64JSONStr = func(json, arg string) string {
 
 	switch arg {
 	case "encode":
-		encoded := base64.URLEncoding.EncodeToString([]byte(str))
-		return fmt.Sprintf("\"%s\"", encoded)
+		encoded := base64.StdEncoding.EncodeToString([]byte(str))
+		return wrap(encoded)
 	case "decode":
-		decoded, _ := base64.URLEncoding.DecodeString(str)
-		return fmt.Sprintf("\"%s\"", decoded)
+		if len(str)%4 == 0 {
+			if decoded, err := base64.StdEncoding.DecodeString(str); err == nil {
+				return wrap(escapeQuotes(string(decoded)))
+			}
+		}
+		// try raw standard encoding if unpadded or error
+		decoded, _ := base64.RawStdEncoding.DecodeString(str)
+		return wrap(escapeQuotes(string(decoded)))
 	default:
 		return json
 	}
@@ -294,6 +300,14 @@ var stripJSONstr = func(json, arg string) string {
 	}, json)
 
 	return json
+}
+
+func wrap(s string) string {
+	return fmt.Sprintf("\"%s\"", s)
+}
+
+func escapeQuotes(s string) string {
+	return strings.ReplaceAll(s, `"`, `\"`)
 }
 
 func init() {
