@@ -91,7 +91,7 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 		certs.AddCert(cert)
 	}
 
-	if _, err := cert.Verify(x509.VerifyOptions{Roots: certs}); err != nil {
+	if _, err := cert.Verify(x509.VerifyOptions{Roots: certs, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}}); err != nil {
 		return nil, err
 	}
 

@@ -203,6 +203,8 @@ Trusted root Certificate Authorities (CA) are stored in Kubernetes Secrets label
 
 Trusted root CA secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.authentication.x509.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
 
+Client certificates must include x509 v3 extension specifying 'Client Authentication' extended key usage.
+
 The identity object resolved out of a client x509 certificate is equal to the subject field of the certificate, and it serializes as JSON within the Authorization JSON usually as follows:
 
 ```jsonc

@@ -108,7 +108,14 @@ kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/m
 Create a CA (Certificate Authority) certificate to issue the client certificates that will be used to authenticate clients that send requests to the Talker API:
 
 ```sh
-openssl req -x509 -sha256 -days 365 -nodes -newkey rsa:2048 -subj "/CN=talker-api-ca" -keyout /tmp/ca.key -out /tmp/ca.crt
+openssl req -x509 -sha256 -nodes \
+  -days 365 \
+  -newkey rsa:2048 \
+  -subj "/CN=talker-api-ca" \
+  -addext basicConstraints=CA:TRUE \
+  -addext keyUsage=digitalSignature,keyCertSign \
+  -keyout /tmp/ca.key \
+  -out /tmp/ca.crt
 ```
 
 Store the CA cert in a Kubernetes `Secret`, labeled to be discovered by Authorino and to be mounted in the file system of the Envoy container:
@@ -116,6 +123,17 @@ Store the CA cert in a Kubernetes `Secret`, labeled to be discovered by Authorin
 ```sh
 kubectl create secret tls talker-api-ca --cert=/tmp/ca.crt --key=/tmp/ca.key
 kubectl label secret talker-api-ca authorino.kuadrant.io/managed-by=authorino app=talker-api
+```
+
+Prepare an extension file for the client certificate signing requests:
+
+```sh
+cat > /tmp/x509v3.ext << EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment
+extendedKeyUsage=clientAuth
+EOF
 ```
 
 ## ❺ Setup Envoy
@@ -361,8 +379,8 @@ With a TLS certificate signed by the trusted CA:
 
 ```sh
 openssl genrsa -out /tmp/aisha.key 2048
-openssl req -new -key /tmp/aisha.key -out /tmp/aisha.csr -subj "/CN=aisha/C=PK/L=Islamabad/O=ACME Inc./OU=Engineering"
-openssl x509 -req -in /tmp/aisha.csr -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -out /tmp/aisha.crt -days 1 -sha256
+openssl req -new -subj "/CN=aisha/C=PK/L=Islamabad/O=ACME Inc./OU=Engineering" -key /tmp/aisha.key -out /tmp/aisha.csr
+openssl x509 -req -sha256 -days 1 -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/aisha.csr -out /tmp/aisha.crt
 
 curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api.127.0.0.1.nip.io:8000 -i
 # HTTP/1.1 200 OK
@@ -372,8 +390,8 @@ With a TLS certificate signed by the trusted CA, though missing an authorized Or
 
 ```sh
 openssl genrsa -out /tmp/john.key 2048
-openssl req -new -key /tmp/john.key -out /tmp/john.csr -subj "/CN=john/C=UK/L=London"
-openssl x509 -req -in /tmp/john.csr -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -out /tmp/john.crt -days 1 -sha256
+openssl req -new -subj "/CN=john/C=UK/L=London" -key /tmp/john.key -out /tmp/john.csr
+openssl x509 -req -sha256 -days 1 -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/john.csr -out /tmp/john.crt
 
 curl -k --cert /tmp/john.crt --key /tmp/john.key https://talker-api.127.0.0.1.nip.io:8000 -i
 # HTTP/1.1 403 Forbidden
@@ -398,10 +416,18 @@ curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key -H 'Content-Type: application
 With a TLS certificate signed by an unknown authority:
 
 ```sh
-openssl req -x509 -sha256 -days 365 -nodes -newkey rsa:2048 -subj "/CN=untrusted" -keyout /tmp/untrusted-ca.key -out /tmp/untrusted-ca.crt
+openssl req -x509 -sha256 -nodes \
+  -days 365 \
+  -newkey rsa:2048 \
+  -subj "/CN=untrusted" \
+  -addext basicConstraints=CA:TRUE \
+  -addext keyUsage=digitalSignature,keyCertSign \
+  -keyout /tmp/untrusted-ca.key \
+  -out /tmp/untrusted-ca.crt
+
 openssl genrsa -out /tmp/niko.key 2048
-openssl req -new -key /tmp/niko.key -out /tmp/niko.csr -subj "/CN=niko/C=JP/L=Osaka"
-openssl x509 -req -in /tmp/niko.csr -CA /tmp/untrusted-ca.crt -CAkey /tmp/untrusted-ca.key -CAcreateserial -out /tmp/niko.crt -days 1 -sha256
+openssl req -new -subj "/CN=niko/C=JP/L=Osaka" -key /tmp/niko.key -out /tmp/niko.csr
+openssl x509 -req -sha256 -days 1 -CA /tmp/untrusted-ca.crt -CAkey /tmp/untrusted-ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/niko.csr -out /tmp/niko.crt
 
 curl -k --cert /tmp/niko.crt --key /tmp/niko.key -H 'Content-Type: application/json' -d '{}' https://talker-api.127.0.0.1.nip.io:5001/check -i
 # HTTP/2 401
