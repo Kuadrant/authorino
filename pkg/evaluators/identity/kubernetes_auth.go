@@ -8,7 +8,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/log"
 
-	"github.com/golang-jwt/jwt"
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -89,22 +88,8 @@ func (kubeAuth *KubernetesAuth) audiencesWithDefault(defaultAudience string) []s
 func parseTokenReviewResult(tokenReview *authv1.TokenReview) (interface{}, error) {
 	tokenReviewStatus := tokenReview.Status
 	if tokenReviewStatus.Authenticated {
-		// returns the jwt claims (if the token is in fact a jwt); otherwise, returns the "user" in the TokenReview status
-		if claims, err := decodeTrustedJWT(tokenReview.Spec.Token); err == nil {
-			return claims, nil
-		} else {
-			return tokenReviewStatus.User, nil
-		}
+		return tokenReviewStatus, nil
 	} else {
 		return nil, fmt.Errorf("Not authenticated")
-	}
-}
-
-func decodeTrustedJWT(rawToken string) (jwt.Claims, error) {
-	claims := jwt.MapClaims{}
-	if token, _, err := new(jwt.Parser).ParseUnverified(rawToken, claims); err != nil { // we don't care about verifying the jwt because it has been authenticated ("reviewed") already
-		return nil, err
-	} else {
-		return token.Claims, nil
 	}
 }

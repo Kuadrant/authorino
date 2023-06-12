@@ -208,7 +208,7 @@ spec:
           - bar
 ```
 
-The resolved identity object, added to the authorization JSON following a Kubernetes authentication identity source evaluation, is the decoded JWT when the Kubernetes token is a valid JWT, or the value of `status.user` in the response to the TokenReview request (see Kubernetes [UserInfo](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#userinfo-v1-authentication-k8s-io) for details).
+The resolved identity object added to the authorization JSON following a successful Kubernetes authentication identity evaluation is the `status` field of TokenReview response (see [TokenReviewStatus](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/#TokenReviewStatus) for reference).
 
 ### OpenID Connect (OIDC) JWT/JOSE verification and validation ([`identity.oidc`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Identity_OidcConfig))
 
