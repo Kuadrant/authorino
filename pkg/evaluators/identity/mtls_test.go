@@ -1,12 +1,19 @@
 package identity
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"encoding/pem"
+	"math"
+	"math/big"
 	"net/url"
 	"testing"
+	"time"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 
@@ -28,13 +35,10 @@ var (
 )
 
 func init() {
-	// load test ca and client certs from ./tests/certs
-	for _, name := range []string{"pets", "cars", "books", "john", "bob", "aisha", "niko"} {
+	// generate ca certs
+	for _, name := range []string{"pets", "cars", "books"} {
 		testCerts[name] = make(map[string][]byte)
-		testCerts[name]["tls.crt"], _ = ioutil.ReadFile(testCertFileBasePath(name, "crt"))
-		if certKey, err := ioutil.ReadFile(testCertFileBasePath(name, "key")); err != nil {
-			testCerts[name]["tls.key"] = certKey
-		}
+		testCerts[name]["tls.crt"], testCerts[name]["tls.key"] = issueCertificate(pkix.Name{CommonName: name}, nil, 1)
 	}
 
 	// store the ca certs in k8s secrets
@@ -42,6 +46,37 @@ func init() {
 	testMTLSK8sSecret2 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "cars", Namespace: "ns1", Labels: map[string]string{"app": "all"}}, Data: testCerts["cars"], Type: k8s.SecretTypeTLS}
 	testMTLSK8sSecret3 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "books", Namespace: "ns2", Labels: map[string]string{"app": "all"}}, Data: testCerts["books"], Type: k8s.SecretTypeTLS}
 	testMTLSK8sClient = mockK8sClient(testMTLSK8sSecret1, testMTLSK8sSecret2, testMTLSK8sSecret3)
+
+	// generate client certs
+	for name, data := range map[string]struct {
+		subject pkix.Name
+		caName  string
+		days    int
+	}{
+		"john": {
+			subject: pkix.Name{CommonName: "john", Country: []string{"UK"}, Locality: []string{"London"}},
+			caName:  "pets",
+			days:    1,
+		},
+		"bob": {
+			subject: pkix.Name{CommonName: "bob", Country: []string{"US"}, Locality: []string{"Boston"}},
+			caName:  "pets",
+			days:    -1,
+		},
+		"aisha": {
+			subject: pkix.Name{CommonName: "aisha", Country: []string{"PK"}, Locality: []string{"Islamabad"}, Organization: []string{"ACME Inc."}, OrganizationalUnit: []string{"Engineering"}},
+			caName:  "cars",
+			days:    1,
+		},
+		"niko": {
+			subject: pkix.Name{CommonName: "niko", Country: []string{"JP"}, Locality: []string{"Osaka"}},
+			caName:  "books",
+			days:    1,
+		},
+	} {
+		testCerts[name] = make(map[string][]byte)
+		testCerts[name]["tls.crt"], testCerts[name]["tls.key"] = issueCertificate(data.subject, testCerts[data.caName], data.days)
+	}
 }
 
 func TestNewMTLSIdentity(t *testing.T) {
@@ -160,7 +195,7 @@ func TestCall(t *testing.T) {
 	obj, err := mtls.Call(pipeline, context.TODO())
 	assert.NilError(t, err)
 	data, _ = json.Marshal(obj)
-	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,3],"Value":"john"},{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"}],"ExtraNames":null}`)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
 
 	// aisha (ca: cars)
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -173,7 +208,7 @@ func TestCall(t *testing.T) {
 	obj, err = mtls.Call(pipeline, context.TODO())
 	assert.NilError(t, err)
 	data, _ = json.Marshal(obj)
-	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,3],"Value":"aisha"},{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"}],"ExtraNames":null}`)
+	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"},{"Type":[2,5,4,3],"Value":"aisha"}],"ExtraNames":null}`)
 }
 
 func TestCallUnknownAuthority(t *testing.T) {
@@ -256,6 +291,61 @@ func TestCallExpiredClientCert(t *testing.T) {
 	assert.ErrorContains(t, err, "certificate has expired or is not yet valid")
 }
 
-func testCertFileBasePath(name, ext string) string {
-	return fmt.Sprintf("../../../tests/certs/%s.%s", name, ext)
+func issueCertificate(subject pkix.Name, ca map[string][]byte, days int) ([]byte, []byte) {
+	serialNumber, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	isCA := ca == nil
+	cert := &x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               subject,
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(0, 0, days),
+		IsCA:                  isCA,
+		BasicConstraintsValid: isCA,
+	}
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	privKey := key
+	parent := cert
+	if !isCA {
+		parent = decodeCertificate(ca["tls.crt"])
+		privKey = decodePrivateKey(ca["tls.key"])
+	}
+	certBytes, _ := x509.CreateCertificate(rand.Reader, cert, parent, &key.PublicKey, privKey)
+	return encodeCertificate(certBytes), encodePrivateKey(key)
+}
+
+func encodeCertificate(cert []byte) []byte {
+	certPEM := new(bytes.Buffer)
+	pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert,
+	})
+	return certPEM.Bytes()
+}
+
+func encodePrivateKey(key *rsa.PrivateKey) []byte {
+	keyPEM := new(bytes.Buffer)
+	pem.Encode(keyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+	return keyPEM.Bytes()
+}
+
+func decodePrivateKey(encodedCert []byte) (key *rsa.PrivateKey) {
+	for len(encodedCert) > 0 {
+		var block *pem.Block
+		block, encodedCert = pem.Decode(encodedCert)
+		if block == nil {
+			break
+		}
+		if block.Type != "RSA PRIVATE KEY" || len(block.Headers) != 0 {
+			continue
+		}
+		var err error
+		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			continue
+		}
+	}
+	return key
 }
