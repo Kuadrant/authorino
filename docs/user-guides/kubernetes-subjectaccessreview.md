@@ -104,7 +104,7 @@ spec:
   - name: k8s-rbac
     kubernetes:
       user:
-        valueFrom: { authJSON: auth.identity.sub }
+        valueFrom: { authJSON: auth.identity.user.username }
 EOF
 ```
 

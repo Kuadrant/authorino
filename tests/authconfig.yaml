@@ -25,7 +25,7 @@ spec:
     - name: kubernetes-rbac
       value: true
     - name: username
-      valueFrom: { authJSON: auth.identity.sub }
+      valueFrom: { authJSON: auth.identity.user.username }
   - name: api-key
     apiKey:
       selector:
