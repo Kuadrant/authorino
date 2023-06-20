@@ -13,7 +13,7 @@ jobs:
     name: End-to-end Tests
     strategy:
       matrix:
-        go-version: [1.18.x]
+        go-version: [1.19.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     defaults:
