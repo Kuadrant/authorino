@@ -163,7 +163,7 @@ The [Authorino Operator](https://github.com/kuadrant/authorino-operator) creates
       <td>auth_server_authconfig_duration_seconds</td>
       <td>Response latency of authconfig enforced by the auth server (in seconds).</td>
       <td><code>namespace</code>, <code>authconfig</code></td>
-      <td>counter</td>
+      <td>histogram</td>
     </tr>
     <tr>
       <td>auth_server_response_status</td>
