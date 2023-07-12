@@ -64,7 +64,7 @@ benchstat: ## Installs benchstat in $PROJECT_DIR/bin
 
 KIND = $(PROJECT_DIR)/bin/kind
 kind: ## Installs kind in $PROJECT_DIR/bin
-	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.11.1)
+	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.20.0)
 
 ifeq ($(shell uname),Darwin)
 SED=$(shell which gsed)
@@ -245,10 +245,10 @@ deploy: certs sed ## Deploys an instance of Authorino into the Kubernetes cluste
 
 KIND_CLUSTER_NAME ?= authorino
 cluster: kind ## Starts a local Kubernetes cluster using Kind
-	kind create cluster --name $(KIND_CLUSTER_NAME)
+	$(KIND) create cluster --name $(KIND_CLUSTER_NAME)
 
 local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
-	kind load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
+	$(KIND) load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
 local-setup: cluster local-build cert-manager install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
@@ -262,4 +262,4 @@ local-rollout: local-build ## Rebuilds and pushes the docker image to the local 
 	kubectl -n $(NAMESPACE) rollout restart deployment/authorino
 
 local-cleanup: kind ## Deletes the local Kubernetes cluster started using Kind
-	kind delete cluster --name $(KIND_CLUSTER_NAME)
+	$(KIND) delete cluster --name $(KIND_CLUSTER_NAME)
