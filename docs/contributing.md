@@ -264,4 +264,4 @@ Other repos:
 
 ## Reach out
 
-[kuadrant.slack.com](https://kuadrant.slack.com)
+[#kuadrant](https://kubernetes.slack.com/archives/C05J0D0V525) channel on kubernetes.slack.com.

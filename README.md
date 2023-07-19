@@ -456,4 +456,4 @@ geomean     569.0        2.000       -99.65%
 
 If you are interested in contributing to Authorino, please refer to the [Developer's guide](./docs/contributing.md) for info about the stack and requirements, workflow, policies and Code of Conduct.
 
-Join us on [kuadrant.slack.com](https://kuadrant.slack.com) for live discussions about the roadmap and more.
+Join us on the [#kuadrant](https://kubernetes.slack.com/archives/C05J0D0V525) channel in the Kubernetes Slack workspace, for live discussions about the roadmap and more.
