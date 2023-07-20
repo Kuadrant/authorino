@@ -1,6 +1,6 @@
 # Host override via context extension
 
-By default, Authorino uses the host information of the HTTP request ([`Attributes.Http.Host`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#service-auth-v3-attributecontext-httprequest)) to lookup for an indexed AuthConfig to be enforced. The host info be overridden by supplying a `host` entry as a (per-route) context entension ([`Attributes.ContextExtensions`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#envoy-v3-api-field-service-auth-v3-attributecontext-context-extensions)), which takes precedence whenever present.
+By default, Authorino uses the host information of the HTTP request ([`Attributes.Http.Host`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#service-auth-v3-attributecontext-httprequest)) to lookup for an indexed AuthConfig to be enforced. The host info be overridden by supplying a `host` entry as a (per-route) context extension ([`Attributes.ContextExtensions`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/service/auth/v3/attribute_context.proto#envoy-v3-api-field-service-auth-v3-attributecontext-context-extensions)), which takes precedence whenever present.
 
 Overriding the host attribute of the HTTP request can be useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup**.
 

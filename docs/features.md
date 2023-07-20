@@ -47,9 +47,9 @@
 
 We call _features_ of Authorino the different things one can do to enforce identity verification & authentication and authorization on requests against protected services. These can be a specific identity verification method based on a supported authentication protocol, or a method to fetch additional auth metadata in request-time, etc.
 
-Most features of Authorino relate to the different phases of the [Auth Pipeline](./architecture.md#the-auth-pipeline) and therefore are configured in the Authorino [`AuthConfig`](./architecture.md#the-authorino-authconfig-custom-resource-definition-crd). An _identity verification feature_ usually refers to a functionality of Authorino such as the [API key-based authentication](#api-key-identityapikey) implemented by Authorino, the [validation of JWTs/OIDC ID tokens](#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc), and authentication based on [Kubernetes TokenReviews](#kubernetes-tokenreview-identitykubernetes). Analogously, [OPA](#open-policy-agent-opa-rego-policies-authorizationopa), [JSON pattern-matching](#json-pattern-matching-authorization-rules-authorizationjson) and [Kuberentes SubjectAccessReview](#kubernetes-subjectaccessreview-authorizationkubernetes) are examples of _authorization features_ of Authorino.
+Most features of Authorino relate to the different phases of the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time) and therefore are configured in the Authorino [`AuthConfig`](./architecture.md#the-authorino-authconfig-custom-resource-definition-crd). An _identity verification feature_ usually refers to a functionality of Authorino such as the [API key-based authentication](#api-key-identityapikey) implemented by Authorino, the [validation of JWTs/OIDC ID tokens](#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc), and authentication based on [Kubernetes TokenReviews](#kubernetes-tokenreview-identitykubernetes). Analogously, [OPA](#open-policy-agent-opa-rego-policies-authorizationopa), [JSON pattern-matching](#json-pattern-matching-authorization-rules-authorizationjson) and [Kubernetes SubjectAccessReview](#kubernetes-subjectaccessreview-authorizationkubernetes) are examples of _authorization features_ of Authorino.
 
-At a deeper level, a _feature_ can also be an additional funcionality within a bigger feature, usually applicable to the whole class the bigger feature belongs to. For instance, the configuration of the location and key selector of [auth credentials](#extra-auth-credentials-credentials), available for all identity verification-related features. Other examples would be [_Identity extension_](#extra-identity-extension-extendedproperties) and [_Response wrappers_](#extra-response-wrappers-wrapper-and-wrapperkey).
+At a deeper level, a _feature_ can also be an additional functionality within a bigger feature, usually applicable to the whole class the bigger feature belongs to. For instance, the configuration of the location and key selector of [auth credentials](#extra-auth-credentials-credentials), available for all identity verification-related features. Other examples would be [_Identity extension_](#extra-identity-extension-extendedproperties) and [_Response wrappers_](#extra-response-wrappers-wrapper-and-wrapperkey).
 
 A full specification of all features of Authorino that can be configured in an `AuthConfig` can be found in the official [spec](../install/crd/authorino.kuadrant.io_authconfigs.yaml) of the custom resource definition.
 
@@ -95,7 +95,7 @@ Examples below provided for the following Authorization JSON:
 ```
 
 **`@strip`**<br/>
-Strips out any non printable characters such as carrige return. E.g. `auth.identity.email.@strip` → `"jane@petcorp.com"`.
+Strips out any non-printable characters such as carriage return. E.g. `auth.identity.email.@strip` → `"jane@petcorp.com"`.
 
 **`@case:upper|lower`**<br/>
 Changes the case of a string. E.g. `auth.identity.username.@case:upper` → `"JANE"`.
@@ -144,7 +144,7 @@ spec:
     - name: api-key-users
       apiKey:
         selector:
-          matchLabels: # the key-value set used to select the matching `Secret`s; resources including these labels will be acepted as valid API keys to authenticate to this service
+          matchLabels: # the key-value set used to select the matching `Secret`s; resources including these labels will be accepted as valid API keys to authenticate to this service
             group: friends # some custom label
         allNamespaces: true # only works with cluster-wide Authorino instances; otherwise, create the API key secrets in the same namespace of the AuthConfig
 ```
@@ -236,7 +236,7 @@ Developers must set the token introspection endpoint in the `AuthConfig`, as wel
 
 ![OAuth 2.0 Token Introspect](http://www.plantuml.com/plantuml/png/NP1DJiD038NtSmehQuQgsr4R5TZ0gXLaHwHgD779g8aTF1xAZv0u3GVZ9BHH18YbttkodxzLKY-Q-ywaVQJ1Y--XP-BG2lS8AXcDkRSbN6HjMIAnWrjyp9ZK_4Xmz8lrQOI4yeHIW8CRKk4qO51GtYCPOaMG-D2gWytwhe9P_8rSLzLcDZ-VrtJ5f4XggvS17VXXw6Bm6fbcp_PmEDWTIs-pT4Y16sngccgyZY47b-W51HQJRqCNJ-k2O9FAcceQsomNsgBr8M1ATbJAoTdgyV2sZQJBHKueji5T96nAy-z5-vSAE7Y38gbNBDo8xGo-FZxXtQoGcYFVRm00)
 
-The response returned by the OAuth2 server to the token introspection request is the the resolved identity appended to the authorization JSON.
+The response returned by the OAuth2 server to the token introspection request is the resolved identity appended to the authorization JSON.
 
 ### OpenShift OAuth (user-echo endpoint) (`identity.openshift`)
 
@@ -254,9 +254,9 @@ Authorino can verify x509 certificates presented by clients for authentication o
 
 Trusted root Certificate Authorities (CA) are stored in Kubernetes Secrets labeled according to selectors specified in the AuthConfig, watched and indexed by Authorino. Make sure to create proper `kubernetes.io/tls`-typed Kubernetes Secrets, containing the public certificates of the CA stored in either a `tls.crt` or `ca.crt` entry inside the secret.
 
-Truested root CA secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.identity.mtls.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
+Trusted root CA secrets must be created in the same namespace of the `AuthConfig` (default) or `spec.identity.mtls.allNamespaces` must be set to `true` (only works with [cluster-wide Authorino instances](./architecture.md#cluster-wide-vs-namespaced-instances)).
 
-The identitiy object resolved out of a client x509 certificate is equal to the subject field of the certificate, and it serializes as JSON within the Authorization JSON usually as follows:
+The identity object resolved out of a client x509 certificate is equal to the subject field of the certificate, and it serializes as JSON within the Authorization JSON usually as follows:
 
 ```jsonc
 {
@@ -332,7 +332,7 @@ spec:
   - name: jwt
     oidc: { endpoint: ... }
   - name: anonymous
-    priority: 1 # expired oidc token, missing creds, etc default to anonymous access
+    priority: 1 # expired oidc token, missing creds, etc. default to anonymous access
     anonymous: {}
   authorization:
   - name: read-only-access-if-authn-fails
@@ -359,20 +359,20 @@ All the identity verification methods supported by Authorino can be configured r
 
 By default, authentication secrets are expected to be supplied in the `Authorization` HTTP header, with the `Bearer` prefix and plain authentication secret, separated by space. The full list of supported options for the location of authentication secrets and selector is specified in the table below:
 
-| Location (`credentials.in`) | Description                  | Selector (`credentials.keySelector`)             |
-| --------------------------- | ---------------------------- | ------------------------------------------------ |
-| `authorization_header`      | `Authorization` HTTP header  | Prefix (default: `Bearer`)                       |
-| `custom_header`             | Custom HTTP header           | Name of the header. Value should have no prefix. |
-| `query`                     | Query string parameter       | Name of the parameter                            |
-| `cookie`                    | Cookie header                | ID of the cookie entry                           |
+| Location (`credentials.in`) | Description                 | Selector (`credentials.keySelector`)             |
+|-----------------------------|-----------------------------|--------------------------------------------------|
+| `authorization_header`      | `Authorization` HTTP header | Prefix (default: `Bearer`)                       |
+| `custom_header`             | Custom HTTP header          | Name of the header. Value should have no prefix. |
+| `query`                     | Query string parameter      | Name of the parameter                            |
+| `cookie`                    | Cookie header               | ID of the cookie entry                           |
 
 ### _Extra:_ Identity extension ([`extendedProperties`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Identity))
 
 Resolved identity objects can be extended with user-defined JSON properties. Values can be static or fetched from the Authorization JSON.
 
-A typical use-case for this feature is token normalization. Say you have more than one identity source listed in the your `AuthConfig` but each source issues an access token with a different JSON structure – e.g. two OIDC issuers that use different names for custom JWT claims of similar meaning; when two different identity verification/authentication methods are combined, such as API keys (whose identity objects are the corresponding Kubernetes `Secret`s) and Kubernetes tokens (whose identity objects are Kubernetes UserInfo data).
+A typical use-case for this feature is token normalization. Say you have more than one identity source listed in your `AuthConfig` but each source issues an access token with a different JSON structure – e.g. two OIDC issuers that use different names for custom JWT claims of similar meaning; when two different identity verification/authentication methods are combined, such as API keys (whose identity objects are the corresponding Kubernetes `Secret`s) and Kubernetes tokens (whose identity objects are Kubernetes UserInfo data).
 
-In such cases, identity extension can be used to normalize the token so it always includes the same set of JSON properties of interest, regardless of the source of identity that issued the original token verified by Authorino. This simplifies the writing of authorization policies and configuration of dynamic responses.
+In such cases, identity extension can be used to normalize the token to always include the same set of JSON properties of interest, regardless of the source of identity that issued the original token verified by Authorino. This simplifies the writing of authorization policies and configuration of dynamic responses.
 
 In case of extending an existing property of the identity object (replacing), the API allows to control whether to overwrite the value or not. This is particularly useful for normalizing tokens of a same identity source that nonetheless may occasionally differ in structure, such as in the case of JWT claims that sometimes may not be present but can be safely replaced with another (e.g. `username` or `sub`).
 
@@ -380,7 +380,7 @@ In case of extending an existing property of the identity object (replacing), th
 
 ### HTTP GET/GET-by-POST ([`metadata.http`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Metadata_GenericHTTP))
 
-Generic HTTP adapter that sends a request to an external service. It can be used to fetch external metadata for the authorization policies (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline)), or as a web hook.
+Generic HTTP adapter that sends a request to an external service. It can be used to fetch external metadata for the authorization policies (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)), or as a web hook.
 
 The adapter allows issuing requests either by GET or POST methods; in both cases with URL and parameters defined by the user in the spec. Dynamic values fetched from the Authorization JSON can be used.
 
@@ -394,7 +394,7 @@ Custom headers can be set with the `headers` field. Nevertheless, headers such a
 
 ### OIDC UserInfo ([`metadata.userInfo`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Metadata_UserInfo))
 
-Online fetching of OpenID Connect (OIDC) UserInfo data (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline)), associated with an OIDC identity source configured and resolved in phase (i).
+Online fetching of OpenID Connect (OIDC) UserInfo data (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)), associated with an OIDC identity source configured and resolved in phase (i).
 
 Apart from possibly complementing information of the JWT, fetching OpenID Connect UserInfo in request-time can be particularly useful for remote checking the state of the session, as opposed to only verifying the JWT/JWS offline.
 
@@ -412,9 +412,9 @@ A UMA-compliant server is an external authorization server (e.g., Keycloak) wher
 
 ![UMA](http://www.plantuml.com/plantuml/png/ZOx1IWCn48RlUOgX9pri7w0GxOBYGGGj5G_Y8QHJTp2PgPE9qhStmhBW9NWSvll__ziM2ser9rS-Y4z1GuOiB75IoGYc5Ptp7dOOXICb2aR2Wr5xUk_6QfCeiS1m1QldXn4AwXVg2ZRmUzrGYTBki_lp71gzH1lwWYaDzopV357uIE-EnH0I7cq3CSG9dLklrxF9PyLY_rAOMNWSzts11dIBdYhg6HIBL8rOuEAwAlbJiEcoN_pQj9VOMtVZxdQ_BFHBTpC5Xs31RP4FDQSV)
 
-It's important to notice that Authorino does NOT manage resources in the UMA-compliant server. As shown in the flow above, Authorino's UMA client is only to fetch data about the requested resources. Authorino exchanges client credentials for a Protected API Token (PAT), then queries for resources whose URI match the path of the HTTP request (as passed to Authorino by the Envoy proxy) and fetches data of each macthing resource.
+It's important to notice that Authorino does NOT manage resources in the UMA-compliant server. As shown in the flow above, Authorino's UMA client is only to fetch data about the requested resources. Authorino exchanges client credentials for a Protected API Token (PAT), then queries for resources whose URI match the path of the HTTP request (as passed to Authorino by the Envoy proxy) and fetches data of each matching resource.
 
-The resources data is added as metadata of the authorization payload and passed as input for the configured authorization policies. All resources returned by the UMA-compliant server in the query by URI are passed along. They are available in the PDPs (authorization payload) as `input.auth.metadata.custom-name => Array`. (See [The "Auth Pipeline"](./architecture.md#the-auth-pipeline) for details.)
+The resources data is added as metadata of the authorization payload and passed as input for the configured authorization policies. All resources returned by the UMA-compliant server in the query by URI are passed along. They are available in the PDPs (authorization payload) as `input.auth.metadata.custom-name => Array`. (See [The "Auth Pipeline"](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time) for details.)
 
 ## Authorization features ([`authorization`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#Authorization))
 
@@ -440,7 +440,7 @@ spec:
             value: "true"
           - patternRef: admin
 
-  pattterns:
+  patterns:
     admin: # a named pattern that can be reused in other sets of rules or conditions
       - selector: auth.identity.roles
         operator: incl
@@ -465,7 +465,7 @@ An optional field `allValues: boolean` makes the values of all rules declared in
 
 Access control enforcement based on rules defined in the Kubernetes authorization system, i.e. `Role`, `ClusterRole`, `RoleBinding` and `ClusterRoleBinding` resources of Kubernetes RBAC.
 
-Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/kubernetes-api/authorization-resources/subject-access-review-v1) (SAR) inquiry that checks with the underlying Kubernetes server whether the user can access a particular resource, resurce kind or generic URL.
+Authorino issues a [SubjectAccessReview](https://kubernetes.io/docs/reference/kubernetes-api/authorization-resources/subject-access-review-v1) (SAR) inquiry that checks with the underlying Kubernetes server whether the user can access a particular resource, resource kind or generic URL.
 
 It supports **resource attributes authorization check** (parameters defined in the `AuthConfig`) and **non-resource attributes authorization check** (HTTP endpoint inferred from the original request).
 - Resource attributes: adequate for permissions set at namespace level, defined in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb)
@@ -496,20 +496,20 @@ rules:
   verbs: ["put", "delete"]
 ```
 
-Kubernetes authorization policy configs look like the following in an Authorino `AuthConfig`:
+Kubernetes' authorization policy configs look like the following in an Authorino `AuthConfig`:
 
 ```yaml
 authorization:
   - name: kubernetes-rbac
     kubernetes:
       user:
-        valueFrom: # values of the parameter can be fixed (`value`) or fetched from the Auhtorization JSON (`valueFrom.authJSON`)
+        valueFrom: # values of the parameter can be fixed (`value`) or fetched from the Authorization JSON (`valueFrom.authJSON`)
           authJSON: auth.identity.metadata.annotations.userid
 
       groups: [] # user groups to test for.
 
       # for resource attributes permission checks; omit it to perform a non-resource attributes SubjectAccessReview with path and method/verb assumed from the original request
-      # if included, use the resource attributes, where the values for each parameter can be fixed (`value`) or fetched from the Auhtorization JSON (`valueFrom.authJSON`)
+      # if included, use the resource attributes, where the values for each parameter can be fixed (`value`) or fetched from the Authorization JSON (`valueFrom.authJSON`)
       resourceAttributes:
         namespace:
           value: default
@@ -738,7 +738,7 @@ rate_limits:
 
 ### _Extra:_ Custom denial status ([`denyWith`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta1?utm_source=gopls#DenyWith))
 
-By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline)) or authorization (phase ii) fail. These can be customized by specifying `spec.denyWith` in the `AuthConfig`.
+By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)) or authorization (phase ii) fail. These can be customized by specifying `spec.denyWith` in the `AuthConfig`.
 
 ## Callbacks (`callbacks`)
 
@@ -872,15 +872,15 @@ spec:
 
 For the `AuthConfig` above,
 
-- Identity configs `tier-2` and `tier-3` (priority 1) will only trigger (concurrently) in case `tier-1` (priority 0) fails to validate the authentication token first. (This behavior happens without perjudice of context canceling between concurrent evaluators – i.e. evaluators that _are_ triggered concurrently to another, such as `tier-2` and `tier-3`, continue to cancel the context of each other if any of them succeeds validating the token first.)
+- Identity configs `tier-2` and `tier-3` (priority 1) will only trigger (concurrently) in case `tier-1` (priority 0) fails to validate the authentication token first. (This behavior happens without prejudice of context canceling between concurrent evaluators – i.e. evaluators that _are_ triggered concurrently to another, such as `tier-2` and `tier-3`, continue to cancel the context of each other if any of them succeeds validating the token first.)
 
 - Metadata source `second` (priority 1) uses the response of the request issued by metadata source `first` (priority 0), so it will wait for `first` to finish by triggering only in the second block.
 
-- Authorization policy `allowed-endpoints` (piority 0) is considered to be a lot less expensive than `more-expensive-policy` (priority 1) and has a high chance of denying access to the protected service (if the path is not one of the allowed endpoints). By setting different priorities to these policies we ensure the more expensive policy if triggered in sequence of the less expensive one, instead of concurrently.
+- Authorization policy `allowed-endpoints` (priority 0) is considered to be a lot less expensive than `more-expensive-policy` (priority 1) and has a high chance of denying access to the protected service (if the path is not one of the allowed endpoints). By setting different priorities to these policies we ensure the more expensive policy if triggered in sequence of the less expensive one, instead of concurrently.
 
 ## Common feature: Conditions (`when`)
 
-_Conditions_, named `when` in the AUthCOnfig API, are sets of expressions (JSON patterns) that, whenever included, must evaluate to true against the [Authorization JSON](./architecture.md#the-authorization-json), so the scope where the expressions are defined is enforced. If any of the expressions in the set of conditions for a given scope does not match, Authorino will skip that scope in the [Auth Pipeline](./architecture.md#the-auth-pipeline).
+_Conditions_, named `when` in the AuthConfig API, are sets of expressions (JSON patterns) that, whenever included, must evaluate to true against the [Authorization JSON](./architecture.md#the-authorization-json), so the scope where the expressions are defined is enforced. If any of the expressions in the set of conditions for a given scope does not match, Authorino will skip that scope in the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time).
 
 The scope for a set of `when` conditions can be the entire `AuthConfig` ("top-level conditions") or a particular evaluator of any phase of the auth pipeline.
 
@@ -911,7 +911,7 @@ spec:
   - name: metadata-source
     http:
       endpoint: https://my-metadata-source.io
-    when: # only fetch the external metadata if the context is HTTP method different than OPTIONS
+    when: # only fetch the external metadata if the context is HTTP method other than OPTIONS
     - selector: context.request.http.method
       operator: neq
       value: OPTIONS
@@ -992,7 +992,7 @@ spec:
   identity:
   - name: jwt
     when:
-    - selector: selector: context.request.http.headers.authorization
+    - selector: context.request.http.headers.authorization
       operator: matches
       value: JWT .+
     oidc: {...}
@@ -1009,7 +1009,7 @@ spec:
 
 Objects resolved at runtime in an [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time) can be cached "in-memory", and avoided being evaluated again at a subsequent request, until it expires. A lookup cache key and a TTL can be set individually for any evaluator config in an AuthConfig.
 
-Each cache config induces a completely independent cache table (or "cache namespace"). Consequently, different evaluator configs can use the same cache key and there will be no colision between entries from different evaluators.
+Each cache config induces a completely independent cache table (or "cache namespace"). Consequently, different evaluator configs can use the same cache key and there will be no collision between entries from different evaluators.
 
 E.g.:
 
@@ -1043,7 +1043,7 @@ spec:
 
 The example above sets caching for the 'external-metadata' metadata config and for the 'complex-policy' authorization policy. In the case of 'external-metadata', the cache key is the path of the original HTTP request being authorized by Authorino (fetched dynamically from the [Authorization JSON](./architecture.md#the-authorization-json)); i.e., after obtaining a metadata object from the external source for a given contextual HTTP path one first time, whenever that same HTTP path repeats in a subsequent request, Authorino will use the cached object instead of sending a request again to the external source of metadata. After 5 minutes (300 seconds), the cache entry will expire and Authorino will fetch again from the source if requested.
 
-As for the 'complex-policy' authorization policy, the cache key is a string composed the 'group' the identity belongs to, the methodd of the HTTP request and the path of the HTTP request. Whenever these repeat, Authorino will use the result of the policy that was evaluated and cached priorly. Cache entries in this namespace expire after 60 seconds.
+As for the 'complex-policy' authorization policy, the cache key is a string composed the 'group' the identity belongs to, the method of the HTTP request and the path of the HTTP request. Whenever these repeat, Authorino will use the result of the policy that was evaluated and cached priorly. Cache entries in this namespace expire after 60 seconds.
 
 **Notes on evaluator caching**
 
@@ -1062,7 +1062,7 @@ apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig
 metadata:
   name: my-authconfig
-  namespame: my-ns
+  namespace: my-ns
 spec:
   metadata:
   - name: my-external-metadata

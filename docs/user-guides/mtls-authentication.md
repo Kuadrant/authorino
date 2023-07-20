@@ -71,7 +71,7 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination enabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination enabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
 ## 3. Deploy the Talker API
 
@@ -355,7 +355,7 @@ curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key -H 'Content-Type: application
 # HTTP/2 200
 ```
 
-With a TLS certificate signed by a unknown authority:
+With a TLS certificate signed by an unknown authority:
 
 ```sh
 openssl req -x509 -sha256 -days 365 -nodes -newkey rsa:2048 -subj "/CN=untrusted" -keyout /tmp/untrusted-ca.key -out /tmp/untrusted-ca.crt

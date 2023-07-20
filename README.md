@@ -73,8 +73,8 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
 
 1. A user or service account (_"Consumer"_) obtains an access token to consume resources of the _Upstream_ service, and sends a request to the _Envoy_ ingress endpoint
 2. The Envoy proxy establishes fast gRPC connection with _Authorino_ carrying data of the HTTP request (context info), which causes Authorino to lookup for an `AuthConfig` Custom Resource to enforce (pre-cached)
-3. **Identity verification (authentication) phase** - Authorino verifies the identity of the the consumer, where at least one authentication method/identity provider must go through
-4. **External metadata phase** - Authorino fetches aditional metadata for the authorization from external sources (optional)
+3. **Identity verification (authentication) phase** - Authorino verifies the identity of the consumer, where at least one authentication method/identity provider must go through
+4. **External metadata phase** - Authorino fetches additional metadata for the authorization from external sources (optional)
 5. **Policy enforcement (authorization) phase** - Authorino takes as input a JSON composed out of context data, resolved identity object and fetched additional metadata from previous phases, and triggers the evaluation of user-defined authorization policies
 6. **Response (metadata-out) phase** – Authorino builds user-defined custom responses (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), to be supplied back to the client and/or upstream service within added HTTP headers or as Envoy Dynamic Metadata (optional)
 7. **Callbacks phase** – Authorino sends callbacks to specified HTTP endpoints (optional)
@@ -287,7 +287,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 <details>
   <summary><strong>Can't I just use Envoy JWT Authentication and RBAC filters?</strong></summary>
 
-  Envoy's [JWT Authentication](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/jwt_authn/v3/config.proto.html) works pretty much similar to Authorino's [JOSE/JWT verification and validation for OpenID Connect](#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc). In both cases, the JSON Web Key Sets (JWKS) to verify the JWTs are auto-loaded and cached to be used in request-time. Moreover, you can configure for details such as where to extract the JWT from the HTTP request (header, param or cookie) and do some cool tricks regarding how dynamic metadata based on JWT claims can be injected to consecutive filters in the chain.
+  Envoy's [JWT Authentication](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/jwt_authn/v3/config.proto.html) works pretty much similar to Authorino's [JOSE/JWT verification and validation for OpenID Connect](./docs/features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc). In both cases, the JSON Web Key Sets (JWKS) to verify the JWTs are auto-loaded and cached to be used in request-time. Moreover, you can configure for details such as where to extract the JWT from the HTTP request (header, param or cookie) and do some cool tricks regarding how dynamic metadata based on JWT claims can be injected to consecutive filters in the chain.
 
   However, in terms of authorization, while Envoy's implementation essentially allows to check for the list of audiences (`aud` JWT claim), Authorino opens up for a lot more options such as pattern-matching rules with operators and conditionals, built-in OPA and other methods of evaluating authorization policies.
 
@@ -325,9 +325,9 @@ For a detailed description of the features above, refer to the [Features](./docs
 <details>
   <summary><strong>Do I have to learn OPA/Rego language to use Authorino?</strong></summary>
 
-  No, you do not. However, if you are comfortable with [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) from Open Policy Agent (OPA), there are some quite interresting things you can do in Authorino, just as you would in any OPA server or OPA plugin, but leveraging Authorino's [built-in OPA module](./docs/architecture.md#open-policy-agent-opa-rego-policies-authorizationopa) instead. Authorino's OPA module is compiled as part of Authorino's code directly from the Golang packages, and imposes no extra latency to the evaluation of your authorization policies. Even the policies themselves are pre-compiled in reconciliation-time, for fast evaluation afterwards, in request-time.
+  No, you do not. However, if you are comfortable with [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) from Open Policy Agent (OPA), there are some quite interesting things you can do in Authorino, just as you would in any OPA server or OPA plugin, but leveraging Authorino's [built-in OPA module](./docs/features.md#open-policy-agent-opa-rego-policies-authorizationopa) instead. Authorino's OPA module is compiled as part of Authorino's code directly from the Golang packages, and imposes no extra latency to the evaluation of your authorization policies. Even the policies themselves are pre-compiled in reconciliation-time, for fast evaluation afterwards, in request-time.
 
-  On the other hand, if you do not want to learn Rego or in any case would like to combine it with declarative and Kubernetes-native authN/authZ spec for your services, Authorino does complement OPA with at least two other methods for expressing authorization policies – i.e. [JSON pattern-matching authorization rules](./docs/architecture.md#json-pattern-matching-authorization-rules-authorizationjson) and [Kubernetes SubjectAccessReview](./docs/architecture.md#kubernetes-subjectaccessreview-authorizationkubernetes), the latter allowing to rely completely on the Kubernetes RBAC.
+  On the other hand, if you do not want to learn Rego or in any case would like to combine it with declarative and Kubernetes-native authN/authZ spec for your services, Authorino does complement OPA with at least two other methods for expressing authorization policies – i.e. [JSON pattern-matching authorization rules](./docs/features.md#json-pattern-matching-authorization-rules-authorizationjson) and [Kubernetes SubjectAccessReview](./docs/features.md#kubernetes-subjectaccessreview-authorizationkubernetes), the latter allowing to rely completely on the Kubernetes RBAC.
 
   You break down, mix and combine these methods and technolgies in as many authorization policies as you want, potentially applying them according to specific conditions. Authorino will trigger the evaluation of concurrent policies in parallel, aborting the context if any of the processes denies access.
 
@@ -350,7 +350,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   Additionally, when enabling the request body passed in the payload to Authorino, parsing of the content should be of concern as well. Authorino provides easy access to attributes of the HTTP request, parsed as part of the [Authorization JSON](./docs/architecture.md#the-authorization-json), however the body of the request is passed as string and should be parsed by the user according to each case.
 
-  Check out Authorino [OPA authorization](./docs/features.md#open-policy-agent-opa-rego-policies-authorizationopa) and the Rego [Encoding](https://www.openpolicyagent.org/docs/latest/policy-reference/#encoding) functions for options to parse serialized JSON, YAML and URL-encoded params. For XML transformation, an external parsing service connected via Authorino's [HTTP GET/GET-by-POST external metadata](#http-getget-by-post-metadatahttp) might be required.
+  Check out Authorino [OPA authorization](./docs/features.md#open-policy-agent-opa-rego-policies-authorizationopa) and the Rego [Encoding](https://www.openpolicyagent.org/docs/latest/policy-reference/#encoding) functions for options to parse serialized JSON, YAML and URL-encoded params. For XML transformation, an external parsing service connected via Authorino's [HTTP GET/GET-by-POST external metadata](./docs/features.md#http-getget-by-post-metadatahttp) might be required.
 </details>
 
 <details>
@@ -384,7 +384,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 <details>
   <summary><strong>Can I use Authorino for rate limiting?</strong></summary>
 
-  You can, but you shouldn't. Check out instead [Limitador](https://github.com/kuadrant/limitador), for simple and efficient global rate limiting. Combine it with Authorino and Authorino's support for [Envoy Dynamic Metadata](./docs/architecture.md#envoy-dynamic-metadata) for authenticated rate limiting.
+  You can, but you shouldn't. Check out instead [Limitador](https://github.com/kuadrant/limitador), for simple and efficient global rate limiting. Combine it with Authorino and Authorino's support for [Envoy Dynamic Metadata](./docs/features.md#envoy-dynamic-metadata) for authenticated rate limiting.
 </details>
 
 ## Benchmarks

@@ -66,7 +66,7 @@ kubectl -n hello-world apply -f https://raw.githubusercontent.com/kuadrant/autho
 # authorino.operator.authorino.kuadrant.io/authorino created
 ```
 
-The command above will deploy Authorino as a separate service (in contrast to as a sidecar of the Talker API and other architectures). For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The command above will deploy Authorino as a separate service (in contrast to as a sidecar of the Talker API and other architectures). For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
 ## 6. Consume the API behind Envoy and Authorino
 

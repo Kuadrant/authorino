@@ -77,13 +77,13 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
 ## 4. Setup Envoy
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
 
-For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
+For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#step-setup-envoy) page. For a simpler and straightforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
 kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
@@ -99,11 +99,11 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 In this example, the Keycloak realm defines a few users and 2 realm roles: 'member' and 'admin'. When users authenticate to the Keycloak server by any of the supported OAuth2/OIDC flows, Keycloak adds to the access token JWT a claim `"realm_access": { "roles": array }` that holds the list of roles assigned to the user. Authorino will verify the JWT on requests to the API and read from that claim to enforce the following RBAC rules:
 
-| Path            | Method           | Role   |
-| --------------- | ---------------- |:------:|
+| Path            | Method           |  Role  |
+|-----------------|------------------|:------:|
 | /resources[/*]  | GET / POST / PUT | member |
 | /resources/{id} | DELETE           | admin  |
-| /admin[/*]      | *                | member |
+| /admin[/*]      | *                | admin  |
 
 Apply the AuthConfig:
 
@@ -176,7 +176,7 @@ Obtain an access token with the Keycloak server for John:
 
 The `AuthConfig` deployed in the previous step is suitable for validating access tokens requested inside the cluster. This is because Keycloak's `iss` claim added to the JWTs matches always the host used to request the token and Authorino will later try to match this host to the host that provides the OpenID Connect configuration.
 
-Obtain an access token from within the cluster for the user John, who is asigned to the 'member' role:
+Obtain an access token from within the cluster for the user John, who is assigned to the 'member' role:
 
 ```sh
 ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' | jq -r .access_token)
@@ -207,7 +207,7 @@ curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.
 
 ### Obtain an access token and consume the API as Jane (member/admin)
 
-Obtain an access token from within the cluster for the user Jane, who is asigned to the 'member' and 'admin' roles:
+Obtain an access token from within the cluster for the user Jane, who is assigned to the 'member' and 'admin' roles:
 
 ```sh
 ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' | jq -r .access_token)

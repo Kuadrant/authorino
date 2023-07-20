@@ -147,7 +147,7 @@ kubectl port-forward deployment/envoy 8000:8000 &
     - **talker-api**: used by Authorino to fetch UMA-protected resource data associated with the Talker API
   - Preloaded resources:
     - `/hello`
-    - `/greetings/1` (owned by user jonh)
+    - `/greetings/1` (owned by user john)
     - `/greetings/2` (owned by user jane)
     - `/goodbye`
   - Realm roles:
