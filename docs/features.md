@@ -222,7 +222,7 @@ The `kid` claim stated in the JWT header must match one of the keys cached by Au
 
 The decoded payload of the validated JWT is appended to the authorization JSON as the resolved identity.
 
-OpenID Connect configurations and linked JSON Web Ket Sets can be configured to be automatically refreshed (pull again from the OpenID Connect Discovery well-known endpoints), by setting the `identity.oidc.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
+OpenID Connect configurations and linked JSON Web Key Sets can be configured to be automatically refreshed (pull again from the OpenID Connect Discovery well-known endpoints), by setting the `identity.oidc.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
 
 For an excellent summary of the underlying concepts and standards that relate OpenID Connect and JSON Object Signing and Encryption (JOSE), see this [article](https://access.redhat.com/blogs/766093/posts/1976593) by Jan Rusnacko. For official specification and RFCs, see [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html), [JSON Web Token (JWT) (RFC7519)](https://datatracker.ietf.org/doc/html/rfc7519), and [JSON Object Signing and Encryption (JOSE)](http://www.iana.org/assignments/jose/jose.xhtml).
 

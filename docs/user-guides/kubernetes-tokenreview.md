@@ -24,7 +24,7 @@ Validate Kubernetes Service Account tokens to authenticate requests to your prot
 ## Requirements
 
 - Kubernetes server
-- Kubernetes user with permission to create `TokenRequest`s (to consume the API from ouside the cluster)
+- Kubernetes user with permission to create `TokenRequest`s (to consume the API from outside the cluster)
 - [yq](https://github.com/mikefarah/yq) (to parse your `~/.kube/config` file to extract user authentication data)
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):

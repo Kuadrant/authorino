@@ -14,7 +14,7 @@
 - [Raw HTTP Authorization interface](#raw-http-authorization-interface)
 - [Caching](#caching)
   - [OpenID Connect and User-Managed Access configs](#openid-connect-and-user-managed-access-configs)
-  - [JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)](#json-web-keys-jwks-and-json-web-ket-sets-jwks)
+  - [JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)](#json-web-keys-jwks-and-json-web-key-sets-jwks)
   - [Revoked access tokens](#revoked-access-tokens)
   - [External metadata](#external-metadata)
   - [Compiled Rego policies](#compiled-rego-policies)
@@ -304,7 +304,7 @@ OpenID Connect and User-Managed Access configurations, discovered usually at rec
 
 Cached individual OpenID Connect configurations discovered by Authorino can be configured to be auto-refreshed, by setting the corresponding `spec.identity.oidc.ttl` field in the AuthConfig (given in seconds, default: `0` – i.e. no cache update).
 
-### JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)
+### JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)
 
 JSON signature verification certificates linked by discovered OpenID Connect configurations, fetched usually at reconciliation-time.
 

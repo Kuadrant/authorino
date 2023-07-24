@@ -199,7 +199,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
       <td><i>Ready</i></td>
     </tr>
     <tr>
-      <td>JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)</td>
+      <td>JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)</td>
       <td><i>Ready</i></td>
     </tr>
     <tr>
@@ -279,7 +279,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   Authorino does not store users, roles, role bindings, access control lists, or any raw authorization data. Authorino handles policies, where even these policies can be stored elsewhere (as opposed to stated inline inside of an Authorino `AuthConfig` CR).
 
-  Authorino evaluates policies for stateless authorization requests. Any additional context is either resolved from the provided payload or static definitions inside the policies. That includes extrating user information from a JWT or client TLS certificate, requesting user metadata from opaque authentication tokens (e.g. API keys) to the trusted sources actually storing that content, obtaining synchronous HTTP metadata from services, etc.
+  Authorino evaluates policies for stateless authorization requests. Any additional context is either resolved from the provided payload or static definitions inside the policies. That includes extracting user information from a JWT or client TLS certificate, requesting user metadata from opaque authentication tokens (e.g. API keys) to the trusted sources actually storing that content, obtaining synchronous HTTP metadata from services, etc.
 
   In the case of authentication with API keys, as well as its derivative to model HTTP Basic Auth, user data are stored in Kubernetes `Secret`s. The secret's keys, annotations and labels are usually the structures used to organize the data that later a policy evaluated in Authorino may require. Strictly, those are not Authorino data structures.
 </details>

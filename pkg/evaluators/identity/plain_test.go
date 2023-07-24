@@ -51,12 +51,12 @@ func TestPlainCallWithInvalidPatttern(t *testing.T) {
 	assert.Check(t, id == nil)
 }
 
-func TestPlainGetCredentailsKeySelector(t *testing.T) {
+func TestPlainGetCredentialsKeySelector(t *testing.T) {
 	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
 	assert.Equal(t, plain.GetCredentialsKeySelector(), "context.request.http.body.@fromstr")
 }
 
-func TestPlainGetCredentailsIn(t *testing.T) {
+func TestPlainGetCredentialsIn(t *testing.T) {
 	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
 	assert.Equal(t, plain.GetCredentialsIn(), "context.request.http.body.@fromstr")
 }

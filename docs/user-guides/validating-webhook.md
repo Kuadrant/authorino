@@ -295,7 +295,7 @@ EOF
 # for: "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
 
-Kuberentes TokenReview:
+Kubernetes TokenReview:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF

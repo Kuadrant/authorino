@@ -39,7 +39,7 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 		// could not get the resource but not because of a 404 Not found (some error must have happened)
 		return ctrl.Result{}, err
 	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, u.LabelSelector) {
-		// could not find the resouce: 404 Not found (resouce must have been deleted)
+		// could not find the resource: 404 Not found (resource must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		// skip status update
 		return ctrl.Result{}, nil
