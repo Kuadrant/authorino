@@ -74,13 +74,13 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
 ## 4. Setup Envoy
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
 
-For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
+For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#step-setup-envoy) page. For a simpler and straightforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
 kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
@@ -137,13 +137,13 @@ spec:
 EOF
 ```
 
-The example above enables caching for the external source of metadata, which in this case, for convinience, is the same upstream API protected by Authorino (i.e. the Talker API), though consumed directly by Authorino, without passing through the proxy. This API generates a `uuid` random hash that it injects in the JSON response. This value is different in every request processed by ythe API.
+The example above enables caching for the external source of metadata, which in this case, for convenience, is the same upstream API protected by Authorino (i.e. the Talker API), though consumed directly by Authorino, without passing through the proxy. This API generates a `uuid` random hash that it injects in the JSON response. This value is different in every request processed by the API.
 
 The example also enables caching of returned OPA virtual documents. `cached-authz` is a trivial Rego policy that always grants access, but generates a timestamp, which Authorino will cache.
 
 In both cases, the path of the HTTP request is used as cache key. I.e., whenever the path repeats, Authorino reuse the values stored previously in each cache table (`cached-metadata` and `cached-authz`), respectively saving a request to the external source of metadata and the evaluation of the OPA policy. Cache entries will expire in both cases after 60 seconds they were stored in the cache.
 
-The cached values will be visible in the response returned by the Talker API in `x-authz-data` header injected by Authorino. Thiis way, we can tell when an existing value in the cache was used and when a new one was generated and stored.
+The cached values will be visible in the response returned by the Talker API in `x-authz-data` header injected by Authorino. This way, we can tell when an existing value in the cache was used and when a new one was generated and stored.
 
 ## 6. Consume the API
 

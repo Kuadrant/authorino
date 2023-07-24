@@ -169,7 +169,7 @@ func TestMTLSRevokeK8sSecretBasedIdentity(t *testing.T) {
 	mtls.RevokeK8sSecretBasedIdentity(context.TODO(), k8s_types.NamespacedName{Namespace: "ns1", Name: "foo"})
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
-	// revoke trusted ca cert ot of scope
+	// revoke trusted ca cert out of scope
 	mtls.RevokeK8sSecretBasedIdentity(context.TODO(), k8s_types.NamespacedName{Namespace: "ns2", Name: "books"})
 	assert.Equal(t, len(mtls.rootCerts), 2)
 }

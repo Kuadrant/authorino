@@ -2,7 +2,7 @@
 
 Authorino provides an interface for raw HTTP external authorization requests. This interface can be used for integrations other than the typical Envoy gRPC protocol, such as (though not limited to) using Authorino as a generic Kubernetes ValidatingWebhook service.
 
-The rules to validate a request to the Kubernetes API – typically a `POST`, `PUT` or `DELETE` request targeting a particular Kubernetes resource or collection –, according to which either the change will be deemed accepted or not, are written in an Authorino `AuthConfig` custom resource. Authentication and authorization are performed by the Kubernetes API server as usual, with auth features of Authorino implementing the aditional validation within the scope of an `AdmissionReview` request.
+The rules to validate a request to the Kubernetes API – typically a `POST`, `PUT` or `DELETE` request targeting a particular Kubernetes resource or collection –, according to which either the change will be deemed accepted or not, are written in an Authorino `AuthConfig` custom resource. Authentication and authorization are performed by the Kubernetes API server as usual, with auth features of Authorino implementing the additional validation within the scope of an `AdmissionReview` request.
 
 This user guide provides an example of using Authorino as a Kubernetes ValidatingWebhook service that validates requests to `CREATE` and `UPDATE` Authorino `AuthConfig` resources. In other words, we will use Authorino as a validator inside the cluster that decides what is a valid AuthConfig for any application which wants to rely on Authorino to protect itself.
 
@@ -17,7 +17,7 @@ This user guide provides an example of using Authorino as a Kubernetes Validatin
   - Authorino API key authentication
 - All metadata pulled from external sources must be cached for precisely 5 minutes (300 seconds)
 
-For convinience, the same instance of Authorino used to enforce the AuthConfig associated with the validating webhook will also be targeted for the sample AuthConfigs created to test the validation. For using different instances of Authorino for the validating webhook and for protecting applications behind a proxy, check out the section about [sharding](./../architecture.md#sharding) in the docs. There is also a [user guide](./sharding.md) on the topic, with concrete examples.
+For convenience, the same instance of Authorino used to enforce the AuthConfig associated with the validating webhook will also be targeted for the sample AuthConfigs created to test the validation. For using different instances of Authorino for the validating webhook and for protecting applications behind a proxy, check out the section about [sharding](./../architecture.md#sharding) in the docs. There is also a [user guide](./sharding.md) on the topic, with concrete examples.
 
 <details>
   <summary>
@@ -109,7 +109,7 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination enabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination enabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
 ## 3. Create the `AuthConfig` and related `ClusterRole`
 
@@ -295,7 +295,7 @@ EOF
 # for: "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
 
-Kuberentes TokenReview:
+Kubernetes TokenReview:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF

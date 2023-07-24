@@ -14,7 +14,7 @@
 - [Raw HTTP Authorization interface](#raw-http-authorization-interface)
 - [Caching](#caching)
   - [OpenID Connect and User-Managed Access configs](#openid-connect-and-user-managed-access-configs)
-  - [JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)](#json-web-keys-jwks-and-json-web-ket-sets-jwks)
+  - [JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)](#json-web-keys-jwks-and-json-web-key-sets-jwks)
   - [Revoked access tokens](#revoked-access-tokens)
   - [External metadata](#external-metadata)
   - [Compiled Rego policies](#compiled-rego-policies)
@@ -27,7 +27,7 @@
 
 ![Architecture](./architecture.gif)
 
-There are a few concepts to understand Authorino's architecture. The main components are: **Authorino**, **Envoy** and the **Upstream** service to be protected. Envoy proxies requests to the the configured **virtual host** upstream service, first contacting with Authorino to decide on authN/authZ.
+There are a few concepts to understand Authorino's architecture. The main components are: **Authorino**, **Envoy** and the **Upstream** service to be protected. Envoy proxies requests to the configured **virtual host** upstream service, first contacting with Authorino to decide on authN/authZ.
 
 The topology can vary from centralized proxy and centralized authorization service, to dedicated sidecars, with the nuances in between. Read more about the topologies in the [Topologies](#topologies) section below.
 
@@ -76,7 +76,7 @@ Apart from that, protected service should only listen on `localhost` and all tra
 
 ## Cluster-wide vs. Namespaced instances
 
-Auhorino instances can run in either **cluster-wide** or **namespaced** mode.
+Authorino instances can run in either **cluster-wide** or **namespaced** mode.
 
 Namespace-scoped instances only watch resources (`AuthConfig`s and `Secret`s) created in a given namespace. This deployment mode does not require admin privileges over the Kubernetes cluster to deploy the instance of the service (given Authorino's CRDs have been installed beforehand, such as when Authorino is installed using the [Authorino Operator](https://github.com/kuadrant-authorino-operator)).
 
@@ -192,7 +192,7 @@ Alternatively to `Attributes.Http.Host`, a `host` entry can be supplied in the `
 
 The `host` context extension is useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup** with lookup strongly dictated by the external authorization client (e.g. Envoy), which often knows about routing and the expected `AuthConfig` to enforce beyond what Authorino can infer strictly based on the host name.
 
-Wildcards can also be used in the host names specified in the `AuthConfig`, resolved by Authorino. E.g. if `*.pets.com` is in `spec.hosts`, Authorino will match the concrete host names `dogs.pets.com`, `cats.pets.com`, etc. In case, of multiple possible matches, Authorino will try the longest match first (in terms of host name labels) and fall back to closest wildcard upwards in the domain tree (if any).
+Wildcards can also be used in the host names specified in the `AuthConfig`, resolved by Authorino. E.g. if `*.pets.com` is in `spec.hosts`, Authorino will match the concrete host names `dogs.pets.com`, `cats.pets.com`, etc. In case, of multiple possible matches, Authorino will try the longest match first (in terms of host name labels) and fall back to the closest wildcard upwards in the domain tree (if any).
 
 When more than one host name is specified in the `AuthConfig`, all of them can be used as key, i.e. all of them can be requested in the authorization request and will be mapped to the same config.
 
@@ -210,11 +210,11 @@ The domain tree above induces the following relation:
 
 <br/>
 
-The host can include the port number (i.e. `hostname:port`) or it can be just the name of the host name. Authorino will first try finding in the index a config associated to `hostname:port`, as supplied in the authorization request; if the index misses an entry for `hostname:port`, Authorino will then remove the `:port` suffix and repeate the lookup using just `hostname` as key. This provides implicit support for multiple port numbers for a same host without having to list all combinations in the `AuthConfig`.
+The host can include the port number (i.e. `hostname:port`) or it can be just the name of the host name. Authorino will first try finding in the index a config associated to `hostname:port`, as supplied in the authorization request; if the index misses an entry for `hostname:port`, Authorino will then remove the `:port` suffix and repeat the lookup using just `hostname` as key. This provides implicit support for multiple port numbers for a same host without having to list all combinations in the `AuthConfig`.
 
 ### Avoiding host name collision
 
-Authorino tries to prevent host name collision between `AuthConfig`s by rejecting to link in the index any `AuthConfig` and host name if the host name is already linked to a different `AuthConfig` in the index. This was intentionally designed to prevent users from surperseding each others' `AuthConfig`s, partially or fully, by just picking the same host names or overlapping host names as others.
+Authorino tries to prevent host name collision between `AuthConfig`s by rejecting to link in the index any `AuthConfig` and host name if the host name is already linked to a different `AuthConfig` in the index. This was intentionally designed to prevent users from superseding each other's `AuthConfig`s, partially or fully, by just picking the same host names or overlapping host names as others.
 
 When wildcards are involved, a host name that matches a host wildcard already linked in the index to another `AuthConfig` will be considered taken, and therefore the newest `AuthConfig` will be rejected to be linked to that host.
 
@@ -222,7 +222,7 @@ When wildcards are involved, a host name that matches a host wildcard already li
 
 On every Auth Pipeline, Authorino builds the **Authorization JSON**, a "working-memory" data structure composed of `context` (information about the request, as supplied by the Envoy proxy to Authorino) and `auth` (objects resolved in phases (i) to (v) of the pipeline). The evaluators of each phase can read from the Authorization JSON and implement dynamic properties and decisions based on its values.
 
-At phase (iii), the authorization evaluators count on an Auhtorization JSON payload that looks like the following:
+At phase (iii), the authorization evaluators count on an Authorization JSON payload that looks like the following:
 
 ```jsonc
 // The authorization JSON combined along Authorino's auth pipeline for each request
@@ -283,7 +283,7 @@ After phase (iii), Authorino appends to the authorization JSON the results of th
 }
 ```
 
-[Festival Wristbands](#festival-wristbands) and [Dynamic JSON](#dynamic-json-response) responses can include dynamic values (custom claims/properties) fetched from the authorization JSON. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). Check out [Dynamic response features](./features.md#dynamic-response-features-response) for details.
+[Festival Wristbands](./features.md#festival-wristband-tokens-responsewristband) and [Dynamic JSON](./features.md#json-injection-responsejson) responses can include dynamic values (custom claims/properties) fetched from the authorization JSON. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). Check out [Dynamic response features](./features.md#dynamic-response-features-response) for details.
 
 For information about reading and fetching data from the Authorization JSON (syntax, functions, etc), check out [JSON paths](./features.md#common-feature-json-paths-valuefromauthjson).
 
@@ -304,7 +304,7 @@ OpenID Connect and User-Managed Access configurations, discovered usually at rec
 
 Cached individual OpenID Connect configurations discovered by Authorino can be configured to be auto-refreshed, by setting the corresponding `spec.identity.oidc.ttl` field in the AuthConfig (given in seconds, default: `0` – i.e. no cache update).
 
-### JSON Web Keys (JWKs) and JSON Web Ket Sets (JWKS)
+### JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)
 
 JSON signature verification certificates linked by discovered OpenID Connect configurations, fetched usually at reconciliation-time.
 
@@ -370,15 +370,15 @@ The following are all valid examples of `AuthConfig` label selector filters:
 
 The table below describes the roles and role bindings defined by the Authorino service:
 
-|                 Role               |     Kind      | Scope(*) |             Description                 |                                                    Permissions                                   |
-| ---------------------------------- | ------------- |:--------:| --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `authorino-manager-role`           | `ClusterRole` | C/N      | Role of the Authorino manager service   | Watch and reconcile `AuthConfig`s and `Secret`s                                                  |
-| `authorino-manager-k8s-auth-role`  | `ClusterRole` | C/N      | Role for the Kubernetes auth features   | Create `TokenReview`s and `SubjectAccessReview`s (Kubernetes auth)                               |
-| `authorino-leader-election-role`   | `Role`        | N        | Leader election role                    | Create/update the `ConfigMap` used to coordinate which replica of Authorino is the leader        |
-| `authorino-authconfig-editor-role` | `ClusterRole` | -        | `AuthConfig` editor                     | R/W `AuthConfig`s; Read `AuthConfig/status`                                                      |
-| `authorino-authconfig-viewer-role` | `ClusterRole` | -        | `AuthConfig` viewer                     | Read `AuthConfig`s and `AuthConfig/status`                                                       |
-| `authorino-proxy-role`             | `ClusterRole` | C/N      | Kube-rbac-proxy-role (sidecar)'s role   | Create `TokenReview`s and `SubjectAccessReview`s to check permissions to the `/metrics` endpoint |
-| `authorino-metrics-reader`         | `ClusterRole` | -        | Metrics reader                          | `GET /metrics`                                                                                   |
+| Role                               | Kind          | Scope(*) | Description                           | Permissions                                                                                      |
+|------------------------------------|---------------|:--------:|---------------------------------------|--------------------------------------------------------------------------------------------------|
+| `authorino-manager-role`           | `ClusterRole` |   C/N    | Role of the Authorino manager service | Watch and reconcile `AuthConfig`s and `Secret`s                                                  |
+| `authorino-manager-k8s-auth-role`  | `ClusterRole` |   C/N    | Role for the Kubernetes auth features | Create `TokenReview`s and `SubjectAccessReview`s (Kubernetes auth)                               |
+| `authorino-leader-election-role`   | `Role`        |    N     | Leader election role                  | Create/update the `ConfigMap` used to coordinate which replica of Authorino is the leader        |
+| `authorino-authconfig-editor-role` | `ClusterRole` |    -     | `AuthConfig` editor                   | R/W `AuthConfig`s; Read `AuthConfig/status`                                                      |
+| `authorino-authconfig-viewer-role` | `ClusterRole` |    -     | `AuthConfig` viewer                   | Read `AuthConfig`s and `AuthConfig/status`                                                       |
+| `authorino-proxy-role`             | `ClusterRole` |   C/N    | Kube-rbac-proxy-role (sidecar)'s role | Create `TokenReview`s and `SubjectAccessReview`s to check permissions to the `/metrics` endpoint |
+| `authorino-metrics-reader`         | `ClusterRole` |    -     | Metrics reader                        | `GET /metrics`                                                                                   |
 
 <small>(*) C - Cluster-wide | N - Authorino namespace | C/N - Cluster-wide or Authorino namespace (depending on the <a href="#cluster-wide-vs-namespaced-instances">deployment mode</a>).</small>
 

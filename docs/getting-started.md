@@ -1,6 +1,6 @@
 # Getting started
 
-This page covers requirements and instructions to deploy Authorino on a Kubernetes cluster, as well as the steps to declare, apply and try out a protection layer of authentication and authorization over your service, clean-up and complete uninstall.
+This page covers requirements and instructions to deploy Authorino on a Kubernetes cluster, as well as the steps to declare, apply and try out a protection layer of authentication and authorization over your service, clean-up and complete uninstallation.
 
 If you prefer learning with an example, check out our [Hello World](./user-guides/hello-world.md).
 
@@ -14,14 +14,14 @@ If you prefer learning with an example, check out our [Hello World](./user-guide
 
 ### Platform requirements
 
-These are the plarform requirements to use Authorino:
+These are the platform requirements to use Authorino:
 
 - [**Kubernetes**](https://kubernetes.io) server (recommended v1.20 or later), with permission to create Kubernetes Custom Resource Definitions (CRDs) (for bootstrapping Authorino and Authorino Operator)
 
   <details>
     <summary>Alternative: K8s distros and platforms</summary>
 
-    Alternatively to upstream Kubernetes, you should be able use any other Kubernetes distribution or Kubernetes Management Platform (KMP) with support for Kubernetes Custom Resources Definitions (CRD) and custom controllers, such as <a href="https://www.openshift.com">Red Hat OpenShift</a>, <a href="https://www.ibm.com/cloud/kubernetes-service">IBM Cloud Kubernetes Service (IKS)</a>, <a href="http://cloud.google.com/kubernetes-engine">Google Kubernetes Engine (GKE)</a>, <a href="https://aws.amazon.com/eks">Amazon Elastic Kubernetes Service (EKS)</a> and <a href="https://azure.microsoft.com/en-us/services/kubernetes-service">Azure Kubernetes Service (AKS)</a>.
+    Alternatively to upstream Kubernetes, you should be able to use any other Kubernetes distribution or Kubernetes Management Platform (KMP) with support for Kubernetes Custom Resources Definitions (CRD) and custom controllers, such as <a href="https://www.openshift.com">Red Hat OpenShift</a>, <a href="https://www.ibm.com/cloud/kubernetes-service">IBM Cloud Kubernetes Service (IKS)</a>, <a href="http://cloud.google.com/kubernetes-engine">Google Kubernetes Engine (GKE)</a>, <a href="https://aws.amazon.com/eks">Amazon Elastic Kubernetes Service (EKS)</a> and <a href="https://azure.microsoft.com/en-us/services/kubernetes-service">Azure Kubernetes Service (AKS)</a>.
   </details>
 
 - [**Envoy**](https://www.envoyproxy.io) proxy (recommended v1.19 or later), to wire up Upstream services (i.e. the services to be protected with Authorino) and external authorization filter (Authorino) for integrations based on the reverse-proxy architecture - [example](https://github.com/kuadrant/authorino-examples#envoy)
@@ -29,7 +29,7 @@ These are the plarform requirements to use Authorino:
   <details>
     <summary>Alternative: Non-reverse-proxy integration</summary>
 
-    Technically, any client that implements Envoy's <a href="https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz">external authorization</a> gRPC protocol should be compatible with Authorino. For integrations based on the reverse-proxy architecture nevertheless, we strongly recommended that you leverage Envoy along side Authorino.
+    Technically, any client that implements Envoy's <a href="https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz">external authorization</a> gRPC protocol should be compatible with Authorino. For integrations based on the reverse-proxy architecture nevertheless, we strongly recommended that you leverage Envoy alongside Authorino.
   </details>
 
 ### Feature-specific requirements
@@ -40,7 +40,7 @@ A few examples are:
 
 - For **Kubernetes authentication** tokens, platform support for the TokenReview and SubjectAccessReview APIs of Kubernetes shall be required. In case you want to be able to requests access tokens for clients running outside the custer, you may also want to check out the requisites for using Kubernetes [TokenRequest API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#tokenrequest-v1-storage-k8s-io) (GA in v1.20).
 
-- For **User-Managed Access (UMA)** resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more tipically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
+- For **User-Managed Access (UMA)** resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more typically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
 
 Check out the [Feature specification](./features.md) page for more feature-specific requirements.
 
@@ -296,7 +296,7 @@ spec:
             - --component-log-level filter:trace,http:debug,router:debug
           ports:
             - name: web
-              containerPort: 8000 # matches the adddress of the listener in the envoy config
+              containerPort: 8000 # matches the address of the listener in the envoy config
           volumeMounts:
             - name: config
               mountPath: /usr/local/etc/envoy
@@ -344,7 +344,7 @@ For examples based on specific use-cases, check out the [User guides](./user-gui
 
 For authentication based on OpenID Connect (OIDC) JSON Web Tokens (JWT), plus one simple JWT claim authorization check, a typical `AuthConfig` custom resource looks like the following:
 
-```yaml
+```sh
 kubectl -n myapp apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta1
 kind: AuthConfig

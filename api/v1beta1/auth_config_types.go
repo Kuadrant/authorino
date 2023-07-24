@@ -419,7 +419,7 @@ type OAuth2ClientAuthentication struct {
 	TokenUrl string `json:"tokenUrl"`
 	// OAuth2 Client ID.
 	ClientId string `json:"clientId"`
-	// Reference to a Kuberentes Secret key that stores that OAuth2 Client Secret.
+	// Reference to a Kubernetes Secret key that stores that OAuth2 Client Secret.
 	ClientSecret SecretKeyReference `json:"clientSecretRef"`
 	// Optional scopes for the client credentials grant, if supported by he OAuth2 server.
 	Scopes []string `json:"scopes,omitempty"`

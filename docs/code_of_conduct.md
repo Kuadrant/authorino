@@ -7,4 +7,4 @@ This document provides community guidelines for a safe, respectful, productive, 
 - When interpreting the words and actions of others, participants should always assume good intentions.
 - Behaviour which can be reasonably considered harassment will not be tolerated.
 
-This Code of Conduct is adapted from the [The Ruby Community Conduct Guideline](https://www.ruby-lang.org/en/conduct/)
+This Code of Conduct is adapted from [The Ruby Community Conduct Guideline](https://www.ruby-lang.org/en/conduct/)

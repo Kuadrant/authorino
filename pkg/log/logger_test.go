@@ -37,7 +37,7 @@ func TestToLogLevel(t *testing.T) {
 	assert.Equal(t, int(ToLogLevel("dpanic")), 3)
 	assert.Equal(t, int(ToLogLevel("panic")), 4)
 	assert.Equal(t, int(ToLogLevel("fatal")), 5)
-	assert.Equal(t, int(ToLogLevel("invalid")), 0) // falls back to default log level (info) without panicing
+	assert.Equal(t, int(ToLogLevel("invalid")), 0) // falls back to default log level (info) without panicking
 }
 
 func TestLogModeToString(t *testing.T) {

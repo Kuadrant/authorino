@@ -897,7 +897,7 @@ spec:
                               description: OAuth2 Client ID.
                               type: string
                             clientSecretRef:
-                              description: Reference to a Kuberentes Secret key that
+                              description: Reference to a Kubernetes Secret key that
                                 stores that OAuth2 Client Secret.
                               properties:
                                 key:
@@ -1848,7 +1848,7 @@ spec:
                               description: OAuth2 Client ID.
                               type: string
                             clientSecretRef:
-                              description: Reference to a Kuberentes Secret key that
+                              description: Reference to a Kubernetes Secret key that
                                 stores that OAuth2 Client Secret.
                               properties:
                                 key:

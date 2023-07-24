@@ -2,13 +2,13 @@
 
 Edge Authentication Architecture (EAA) is a pattern where more than extracting authentication logics and specifics from the application codebase to a proper authN/authZ layer, this is pushed to the edge of your cloud network, without violating the Zero Trust principle nevertheless.
 
-The very definition of "edge" is subject to discussion, but the underlying idea is that clients (e.g. API clients, IoT devices, etc) authenticate with a layer that, before moving traffic to inside the network:
+The very definition of "edge" is subject to discussion, but the underlying idea is that clients (e.g. API clients, IoT devices, etc.) authenticate with a layer that, before moving traffic to inside the network:
 - understands the complexity of all the different methods of authentication supported;
 - sometimes some token normalization is involved;
 - eventually enforces some preliminary authorization policies; and
 - possibly filters data bits that are sensitive to privacy concerns (e.g. to comply with local legislation such as GRPD, CCPA, etc)
 
-As a minimum, EAA allows to simplify authentication between applications and micro-services inside the network, as well as to reduce authorization to domain-specific rules and policies, rather than having to deal all the complexity to support all types of clients in every node.
+As a minimum, EAA allows to simplify authentication between applications and microservices inside the network, as well as to reduce authorization to domain-specific rules and policies, rather than having to deal all the complexity to support all types of clients in every node.
 
 <details>
   <summary>
@@ -18,7 +18,7 @@ As a minimum, EAA allows to simplify authentication between applications and mic
       <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
       <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
-    <ul>
+    </ul>
   </summary>
 
   Festival Wristbands are OpenID Connect ID tokens (signed JWTs) issued by Authorino by the end of the Auth Pipeline, for authorized requests. It can be configured to include claims based on static values and values fetched from the [Authorization JSON](./../architecture.md#the-authorization-json).
@@ -91,7 +91,7 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as oposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#2-deploy-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
 
 ## 5. Setup the Edge
 
@@ -99,7 +99,7 @@ The command above will deploy Authorino as a separate service (as oposed to a si
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up external authorization with the Authorino instance.
 
-For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
+For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#step-setup-envoy) page. For a simpler and straightforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
 kubectl -n edge apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/eaa/envoy-edge-deploy.yaml
@@ -194,7 +194,7 @@ kubectl -n internal apply -f https://raw.githubusercontent.com/kuadrant/authorin
 
 The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
 
-For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#1-setup-envoy) page. For a simpler and straighforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
+For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#step-setup-envoy) page. For a simpler and straightforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
 
 ```sh
 kubectl -n internal apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/eaa/envoy-node-deploy.yaml

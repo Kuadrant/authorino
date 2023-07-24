@@ -53,13 +53,13 @@ func TestObserveHealthy(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func TestObserveUnealthy(t *testing.T) {
+func TestObserveUnhealthy(t *testing.T) {
 	h := NewHandler("foo", Observe(&FakeObservableUnhealthy{}))
 	err := h.HandleReadyzCheck(mockReq("http://localhost:8081/readyz"))
 	assert.ErrorContains(t, err, "unhealthy")
 }
 
-func TestObserveHeathyUnealthy(t *testing.T) {
+func TestObserveHealthyUnhealthy(t *testing.T) {
 	h := NewHandler("foo", Observe(&FakeObservableHealthy{}, &FakeObservableUnhealthy{}))
 	err := h.HandleReadyzCheck(mockReq("http://localhost:8081/readyz"))
 	assert.ErrorContains(t, err, "unhealthy")

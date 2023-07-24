@@ -31,7 +31,7 @@ Bypass identity verification or fall back to anonymous access when credentials f
 Normalize identity claims from trusted sources and reduce complexity in your policies.
 
 - **[Edge Authentication Architecture (EAA)](./user-guides/edge-authentication-architecture-festival-wristbands.md)**<br/>
-Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquitously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal micro-services.
+Exchange satellite (outer-layer) authentication tokens for "Festival Wristbands" accepted ubiquitously at the inside of your network. Normalize from multiple and varied sources of identity and authentication methods in the edge of your architecture; filter privacy data, limit the scope of permissions, and simplify authorization rules to your internal microservices.
 
 - **[Fetching auth metadata from external sources](./user-guides/external-metadata.md)**<br/>
 Get online data from remote HTTP services to enhance authorization rules.

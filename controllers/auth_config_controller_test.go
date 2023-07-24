@@ -188,8 +188,8 @@ func TestAuthConfigNotFound(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, index.NewIndex())
 
-	// Let's try to reconcile a non existing object.
-	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "nonExistant", Namespace: authConfig.Namespace}})
+	// Let's try to reconcile a non-existing object.
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: "nonExistent", Namespace: authConfig.Namespace}})
 
 	assert.NilError(t, err)
 	assert.DeepEqual(t, result, ctrl.Result{}) // Result should be empty
