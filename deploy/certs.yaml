@@ -1,24 +1,45 @@
 apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    authorino-instance: $(AUTHORINO_INSTANCE)
+  name: $(AUTHORINO_INSTANCE)-ca-root
+  namespace: $(NAMESPACE)
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
-    app: authorino
-  name: authorino-ca-cert
+    authorino-instance: $(AUTHORINO_INSTANCE)
+  name: $(AUTHORINO_INSTANCE)-ca-cert
   namespace: $(NAMESPACE)
 spec:
   commonName: '*.$(NAMESPACE).svc'
   isCA: true
   issuerRef:
     kind: Issuer
-    name: authorino-selfsigned-issuer
-  secretName: authorino-ca-cert
+    name: $(AUTHORINO_INSTANCE)-ca-root
+  secretName: $(AUTHORINO_INSTANCE)-ca-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    authorino-instance: $(AUTHORINO_INSTANCE)
+  name: $(AUTHORINO_INSTANCE)-ca
+  namespace: $(NAMESPACE)
+spec:
+  ca:
+    secretName: $(AUTHORINO_INSTANCE)-ca-cert
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
-    app: authorino
-  name: authorino-oidc-server-cert
+    authorino-instance: $(AUTHORINO_INSTANCE)
+  name: $(AUTHORINO_INSTANCE)-oidc-server-cert
   namespace: $(NAMESPACE)
 spec:
   dnsNames:
@@ -27,15 +48,15 @@ spec:
   - $(AUTHORINO_INSTANCE)-authorino-oidc.$(NAMESPACE).svc.cluster.local
   issuerRef:
     kind: Issuer
-    name: authorino-ca-issuer
-  secretName: authorino-oidc-server-cert
+    name: $(AUTHORINO_INSTANCE)-ca
+  secretName: $(AUTHORINO_INSTANCE)-oidc-server-cert
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
-    app: authorino
-  name: authorino-server-cert
+    authorino-instance: $(AUTHORINO_INSTANCE)
+  name: $(AUTHORINO_INSTANCE)-server-cert
   namespace: $(NAMESPACE)
 spec:
   dnsNames:
@@ -44,26 +65,5 @@ spec:
   - $(AUTHORINO_INSTANCE)-authorino-authorization.$(NAMESPACE).svc.cluster.local
   issuerRef:
     kind: Issuer
-    name: authorino-ca-issuer
-  secretName: authorino-server-cert
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  labels:
-    app: authorino
-  name: authorino-ca-issuer
-  namespace: $(NAMESPACE)
-spec:
-  ca:
-    secretName: authorino-ca-cert
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  labels:
-    app: authorino
-  name: authorino-selfsigned-issuer
-  namespace: $(NAMESPACE)
-spec:
-  selfSigned: {}
+    name: $(AUTHORINO_INSTANCE)-ca
+  secretName: $(AUTHORINO_INSTANCE)-server-cert

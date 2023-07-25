@@ -3,9 +3,10 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
-  creationTimestamp: null
   name: authconfigs.authorino.kuadrant.io
 spec:
+  conversion:
+    strategy: None
   group: authorino.kuadrant.io
   names:
     kind: AuthConfig

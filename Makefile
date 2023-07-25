@@ -17,7 +17,7 @@ endif
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 export PATH := $(PROJECT_DIR)/bin:$(PATH)
 
-# Authorino manifests bundle (CRDs, RBAC)
+# Authorino manifests bundle (CRDs, RBAC, Webhook service)
 AUTHORINO_MANIFESTS ?= $(PROJECT_DIR)/install/manifests.yaml
 
 # The Kubernetes namespace where to deploy the Authorino instance
@@ -109,7 +109,7 @@ generate: vendor controller-gen ## Generates types deepcopy code
 	$(MAKE) fmt vet
 
 manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/install
-	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
+	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && $(KUSTOMIZE) build install > $(AUTHORINO_MANIFESTS)
 
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
 	go run -ldflags "-X main.version=$(VERSION)" ./main.go server
@@ -188,7 +188,9 @@ limitador: ## Deploys Limitador from kuadrant/authorino-examples into the Kubern
 
 ##@ Installation
 
-.PHONY: install-operator uninstall-operator install uninstall
+.PHONY: install-operator uninstall-operator install-webhooks uninstall-webhooks install uninstall
+
+AUTHORINO_OPERATOR_NAMESPACE ?= authorino-operator
 
 ifeq (latest,$(OPERATOR_VERSION))
 OPERATOR_BRANCH = main
@@ -197,15 +199,29 @@ OPERATOR_BRANCH = $(OPERATOR_VERSION)
 endif
 install-operator: ## Installs Authorino Operator and corresponding version of the manifests into the Kubernetes cluster configured in ~/.kube/config
 	kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/deploy/manifests.yaml
-	kubectl -n authorino-operator wait --timeout=300s --for=condition=Available deployments --all
+	kubectl -n $(AUTHORINO_OPERATOR_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 
 uninstall-operator: ## Uninstalls Authorino Operator and corresponding version of the manifests from the Kubernetes cluster configured in ~/.kube/config
 	kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/deploy/manifests.yaml
 
-install: manifests ## Installs the current manifests (CRD, RBAC) into the Kubernetes cluster configured in ~/.kube/config
+WEBHOOK_SERVICE_NAMESPACE ?= $(AUTHORINO_OPERATOR_NAMESPACE)
+
+install-webhooks: ## Creates the Authorino webhook service
+	cd install/webhooks && $(KUSTOMIZE) edit set namespace ${WEBHOOK_SERVICE_NAMESPACE}
+	$(KUSTOMIZE) build install/webhooks | kubectl -n $(WEBHOOK_SERVICE_NAMESPACE) apply -f -
+	# rollback kustomize edit
+	cd install/webhooks && $(KUSTOMIZE) edit set namespace authorino-webhooks
+
+uninstall-webhooks: ## Uninstalls the Authorino webhook service
+	cd install/webhooks && $(KUSTOMIZE) edit set namespace ${WEBHOOK_SERVICE_NAMESPACE}
+	$(KUSTOMIZE) build install/webhooks | kubectl -n $(WEBHOOK_SERVICE_NAMESPACE) delete -f -
+	# rollback kustomize edit
+	cd install/webhooks && $(KUSTOMIZE) edit set namespace authorino-webhooks
+
+install: manifests ## Installs the current manifests (CRD, RBAC, Webhook service) into the Kubernetes cluster configured in ~/.kube/config
 	kubectl apply -f $(AUTHORINO_MANIFESTS)
 
-uninstall: manifests ## Uninstalls the current manifests (CRD, RBAC) from the Kubernetes cluster configured in ~/.kube/config
+uninstall: manifests ## Uninstalls the current manifests (CRD, RBAC, Webhook service) from the Kubernetes cluster configured in ~/.kube/config
 	kubectl delete -f $(AUTHORINO_MANIFESTS)
 
 ##@ Deployment
@@ -250,7 +266,7 @@ cluster: kind ## Starts a local Kubernetes cluster using Kind
 local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
 	$(KIND) load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
-local-setup: cluster local-build cert-manager install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
+local-setup: cluster local-build cert-manager install-operator install install-webhooks namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \

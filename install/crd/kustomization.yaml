@@ -5,12 +5,9 @@ resources:
 - authorino.kuadrant.io_authconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
-# patchesStrategicMerge:
-#- patches/webhook_in_authconfigs.yaml
+patchesStrategicMerge:
+- patches/webhook_in_authconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
-
-#- patches/cainjection_in_authconfigs.yaml
-# +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 patchesJson6902:
 - path: patches/oneof_in_authconfigs.yaml
@@ -19,6 +16,3 @@ patchesJson6902:
     version: v1
     kind: CustomResourceDefinition
     name: authconfigs.authorino.kuadrant.io
-
-configurations:
-- kustomizeconfig.yaml
