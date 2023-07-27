@@ -1000,9 +1000,12 @@ func convertStatusFrom(src v1beta1.AuthConfigStatus) AuthConfigStatus {
 }
 
 func convertStatusSummaryTo(src AuthConfigStatusSummary) v1beta1.Summary {
+	hostsReady := make([]string, len(src.HostsReady))
+	copy(hostsReady, src.HostsReady)
+
 	return v1beta1.Summary{
 		Ready:                    src.Ready,
-		HostsReady:               src.HostsReady,
+		HostsReady:               hostsReady,
 		NumHostsReady:            src.NumHostsReady,
 		NumIdentitySources:       src.NumIdentitySources,
 		NumMetadataSources:       src.NumMetadataSources,
@@ -1013,9 +1016,12 @@ func convertStatusSummaryTo(src AuthConfigStatusSummary) v1beta1.Summary {
 }
 
 func convertStatusSummaryFrom(src v1beta1.Summary) AuthConfigStatusSummary {
+	hostsReady := make([]string, len(src.HostsReady))
+	copy(hostsReady, src.HostsReady)
+
 	return AuthConfigStatusSummary{
 		Ready:                    src.Ready,
-		HostsReady:               src.HostsReady,
+		HostsReady:               hostsReady,
 		NumHostsReady:            src.NumHostsReady,
 		NumIdentitySources:       src.NumIdentitySources,
 		NumMetadataSources:       src.NumMetadataSources,

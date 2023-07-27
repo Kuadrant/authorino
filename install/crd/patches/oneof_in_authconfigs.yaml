@@ -101,7 +101,7 @@
         operator: {}
         selector: {}
         value: {}
-      required: [operator, selector, value]
+      required: [operator, selector]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/when/items/oneOf
@@ -113,7 +113,7 @@
         operator: {}
         selector: {}
         value: {}
-      required: [operator, selector, value]
+      required: [operator, selector]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/properties/when/items/oneOf
@@ -125,7 +125,7 @@
         operator: {}
         selector: {}
         value: {}
-      required: [operator, selector, value]
+      required: [operator, selector]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/properties/when/items/oneOf
@@ -137,7 +137,7 @@
         operator: {}
         selector: {}
         value: {}
-      required: [operator, selector, value]
+      required: [operator, selector]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/when/items/oneOf
@@ -149,7 +149,7 @@
         operator: {}
         selector: {}
         value: {}
-      required: [operator, selector, value]
+      required: [operator, selector]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/items/properties/when/items/oneOf
@@ -161,4 +161,4 @@
         operator: {}
         selector: {}
         value: {}
-      required: [operator, selector, value]
+      required: [operator, selector]
