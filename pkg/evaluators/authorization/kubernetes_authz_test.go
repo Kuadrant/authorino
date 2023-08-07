@@ -122,7 +122,7 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 	assert.Equal(t, requestData.NonResourceAttributes.Verb, "get")
 
 	assert.Check(t, !authorized.(bool))
-	assert.ErrorContains(t, err, "Not authorized: some-reason")
+	assert.ErrorContains(t, err, "not authorized: some-reason")
 }
 
 func TestKubernetesAuthzResource_Allowed(t *testing.T) {
@@ -165,7 +165,7 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, !authorized.(bool))
-	assert.ErrorContains(t, err, "Not authorized: some-reason")
+	assert.ErrorContains(t, err, "not authorized: some-reason")
 
 	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
 	requestData := client.GetRequest()

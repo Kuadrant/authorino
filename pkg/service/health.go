@@ -19,12 +19,12 @@ import (
 type HealthService struct{}
 
 // Check performs a health of the gRPC service
-func (self *HealthService) Check(ctx context.Context, in *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
+func (hs *HealthService) Check(ctx context.Context, in *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
 	log.Printf("[HealthService] Check()")
 	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
 }
 
 // Watch is for streaming health-check (not yet implemented)
-func (self *HealthService) Watch(in *healthpb.HealthCheckRequest, srv healthpb.Health_WatchServer) error {
+func (hs *HealthService) Watch(in *healthpb.HealthCheckRequest, srv healthpb.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "Watch is not implemented")
 }

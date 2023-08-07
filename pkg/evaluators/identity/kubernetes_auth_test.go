@@ -145,7 +145,7 @@ func TestKubernetesTokenReviewUnauthenticatedToken(t *testing.T) {
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
-	assert.Error(t, err, "Not authenticated")
+	assert.Error(t, err, "not authenticated")
 }
 
 func TestKubernetesTokenReviewAudiencesMatch(t *testing.T) {
@@ -188,5 +188,5 @@ func TestKubernetesTokenReviewAudiencesUnmatch(t *testing.T) {
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
-	assert.Error(t, err, "Not authenticated")
+	assert.Error(t, err, "not authenticated")
 }

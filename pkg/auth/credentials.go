@@ -26,7 +26,7 @@ const (
 	cookieHeaderNotSetMsg             = "the Cookie header is not set"
 )
 
-var notFoundErr = fmt.Errorf(credentialNotFoundMsg)
+var errNotFound = fmt.Errorf(credentialNotFoundMsg)
 
 // AuthCredentials interface represents the methods needed to fetch credentials from input
 type AuthCredentials interface {
@@ -125,7 +125,7 @@ func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoi
 func getCredFromCustomHeader(headers map[string]string, keyName string) (string, error) {
 	cred, ok := headers[strings.ToLower(keyName)]
 	if !ok {
-		return "", notFoundErr
+		return "", errNotFound
 	}
 	return cred, nil
 }
@@ -134,19 +134,19 @@ func getCredFromAuthHeader(headers map[string]string, keyName string) (string, e
 	authHeader, ok := headers["authorization"]
 
 	if !ok {
-		return "", notFoundErr
+		return "", errNotFound
 	}
 	prefix := keyName + " "
 	if strings.HasPrefix(authHeader, prefix) {
 		return strings.TrimPrefix(authHeader, prefix), nil
 	}
-	return "", notFoundErr
+	return "", errNotFound
 }
 
 func getFromCookieHeader(headers map[string]string, keyName string) (string, error) {
 	header, ok := headers["cookie"]
 	if !ok {
-		return "", notFoundErr
+		return "", errNotFound
 	}
 
 	for _, part := range strings.Split(header, ";") {
@@ -156,7 +156,7 @@ func getFromCookieHeader(headers map[string]string, keyName string) (string, err
 		}
 	}
 
-	return "", notFoundErr
+	return "", errNotFound
 }
 
 func getCredFromQuery(path string, keyName string) (string, error) {
@@ -164,7 +164,7 @@ func getCredFromQuery(path string, keyName string) (string, error) {
 	regex := regexp.MustCompile("([?&]" + keyName + "=)(?P<" + credValue + ">[^&]*)")
 	matches := regex.FindStringSubmatch(path)
 	if len(matches) == 0 {
-		return "", notFoundErr
+		return "", errNotFound
 	}
 	return matches[regex.SubexpIndex(credValue)], nil
 }

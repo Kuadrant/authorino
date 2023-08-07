@@ -105,5 +105,5 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 
 	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
-	assert.Error(t, err, "Missing identity for OIDC issuer http://127.0.0.1:9002. Skipping related UserInfo metadata.")
+	assert.Error(t, err, "missing identity for oidc issuer http://127.0.0.1:9002. skipping related userinfo metadata")
 }

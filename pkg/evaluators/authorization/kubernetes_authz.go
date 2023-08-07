@@ -115,6 +115,6 @@ func parseSubjectAccessReviewResult(subjectAccessReview *kubeAuthz.SubjectAccess
 		if reason == "" {
 			reason = "unknown reason"
 		}
-		return false, fmt.Errorf("Not authorized: %s", reason)
+		return false, fmt.Errorf("not authorized: %s", reason)
 	}
 }

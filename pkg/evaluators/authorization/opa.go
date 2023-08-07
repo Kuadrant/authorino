@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -176,7 +176,7 @@ func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValu
 }
 
 func cleanUpRegoDocument(rego string) string {
-	r, _ := regexp.Compile("(\\s)*package.*[;\\n]+")
+	r, _ := regexp.Compile(`(\s)*package.*[;\n]+`)
 	return r.ReplaceAllString(rego, "")
 }
 
@@ -218,7 +218,7 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
 	} else {
 		defer resp.Body.Close()
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", fmt.Errorf("unable to read response body: %v", err)
 		}
