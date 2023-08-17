@@ -21,7 +21,7 @@ func (p *Plain) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface
 	if object := pattern.ResolveFor(pipeline.GetAuthorizationJSON()); object != nil {
 		return object, nil
 	}
-	return nil, fmt.Errorf("Could not retrieve identity object or null")
+	return nil, fmt.Errorf("could not retrieve identity object or null")
 }
 
 // impl: AuthCredentials

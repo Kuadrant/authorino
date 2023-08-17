@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 	"regexp"
@@ -21,7 +21,7 @@ const (
 	operatorExcl  = "excl"
 	operatorRegex = "matches"
 
-	unsupportedOperatorErrorMsg = "Unsupported operator for JSON authorization"
+	unsupportedOperatorErrorMsg = "unsupported operator for json authorization"
 )
 
 var (
@@ -119,7 +119,7 @@ func (rule *JSONPatternMatchingRule) EvaluateFor(jsonData string) (bool, error) 
 // Pass optionally a pointer to a byte array to get the raw body of the response object written back
 func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {
 	// read response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("unable to read response body: %v", err)
 	}

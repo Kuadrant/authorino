@@ -9,15 +9,15 @@ import (
 )
 
 func TestConstants(t *testing.T) {
-	assert.Check(t, "custom_header" == inCustomHeader)
-	assert.Check(t, "authorization_header" == inAuthHeader)
-	assert.Check(t, "query" == inQuery)
-	assert.Check(t, "credential not found" == credentialNotFoundMsg)
-	assert.Check(t, "the credential was not found in the request header" == credentialNotFoundInHeaderMsg)
-	assert.Check(t, "the credential location is not supported" == credentialLocationNotSupportedMsg)
-	assert.Check(t, "the Authorization header is not set" == authHeaderNotSetMsg)
-	assert.Check(t, "the Cookie header is not set" == cookieHeaderNotSetMsg)
-	assert.Check(t, "Bearer" == defaultKeySelector)
+	assert.Check(t, inCustomHeader == "custom_header")
+	assert.Check(t, inAuthHeader == "authorization_header")
+	assert.Check(t, inQuery == "query")
+	assert.Check(t, credentialNotFoundMsg == "credential not found")
+	assert.Check(t, credentialNotFoundInHeaderMsg == "the credential was not found in the request header")
+	assert.Check(t, credentialLocationNotSupportedMsg == "the credential location is not supported")
+	assert.Check(t, authHeaderNotSetMsg == "the Authorization header is not set")
+	assert.Check(t, cookieHeaderNotSetMsg == "the Cookie header is not set")
+	assert.Check(t, defaultKeySelector == "Bearer")
 }
 
 func TestNewAuthCredential(t *testing.T) {

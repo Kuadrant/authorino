@@ -12,7 +12,6 @@ import (
 	k8score "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -28,7 +27,7 @@ func TestAuthConfigStatusUpdater_Reconcile(t *testing.T) {
 	reconciler := mockStatusUpdaterReconciler(client)
 	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonReconciled, "", []string{"echo-api"})
 
-	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
@@ -47,7 +46,7 @@ func TestAuthConfigStatusUpdater_MissingWatchedAuthConfigLabels(t *testing.T) {
 	client := newTestK8sClient(&authConfig)
 	reconciler := mockStatusUpdaterReconciler(client)
 
-	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
@@ -67,7 +66,7 @@ func TestAuthConfigStatusUpdater_MatchingAuthConfigLabels(t *testing.T) {
 	reconciler := mockStatusUpdaterReconciler(client)
 	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonReconciled, "", []string{"echo-api"})
 
-	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
@@ -86,7 +85,7 @@ func TestAuthConfigStatusUpdater_UnmatchingAuthConfigLabels(t *testing.T) {
 	client := newTestK8sClient(&authConfig)
 	reconciler := mockStatusUpdaterReconciler(client)
 
-	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Equal(t, result, ctrl.Result{})
 	assert.NilError(t, err)
@@ -110,7 +109,7 @@ func TestAuthConfigStatusUpdater_NotReady(t *testing.T) {
 	var authConfigCheck api.AuthConfig
 
 	// try to reconcile once
-	result, err = reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err = reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Check(t, result.Requeue)
 	assert.NilError(t, err)
@@ -120,7 +119,7 @@ func TestAuthConfigStatusUpdater_NotReady(t *testing.T) {
 	assert.Check(t, !authConfigCheck.Status.Ready())
 
 	// try to reconcile again with no change in the status
-	result, err = reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err = reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Check(t, result.Requeue)
 	assert.NilError(t, err)
@@ -140,7 +139,7 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	reconciler := mockStatusUpdaterReconciler(client)
 	reconciler.StatusReport.Set(resourceName.String(), api.StatusReasonHostsNotLinked, "one or more hosts are not linked to the resource", []string{"my-api.com"})
 
-	result, err := reconciler.Reconcile(context.Background(), controllerruntime.Request{NamespacedName: resourceName})
+	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
 	assert.Check(t, result.Requeue)
 	assert.NilError(t, err)

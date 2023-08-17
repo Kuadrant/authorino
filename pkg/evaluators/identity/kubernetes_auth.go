@@ -90,6 +90,6 @@ func parseTokenReviewResult(tokenReview *authv1.TokenReview) (interface{}, error
 	if tokenReviewStatus.Authenticated {
 		return tokenReviewStatus, nil
 	} else {
-		return nil, fmt.Errorf("Not authenticated")
+		return nil, fmt.Errorf("not authenticated")
 	}
 }

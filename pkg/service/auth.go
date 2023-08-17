@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"encoding/pem"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -123,7 +123,7 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if payload, err = ioutil.ReadAll(http.MaxBytesReader(resp, req.Body, a.MaxHttpRequestBodySize)); err != nil {
+	if payload, err = io.ReadAll(http.MaxBytesReader(resp, req.Body, a.MaxHttpRequestBodySize)); err != nil {
 		switch err.Error() {
 		case "http: request body too large":
 			logger.Info(HTTP_MESSAGE_413)

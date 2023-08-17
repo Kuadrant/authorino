@@ -61,7 +61,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 				responseBody, err = wristband.JWKS()
 			default:
 				statusCode = http.StatusNotFound
-				err = fmt.Errorf("Not found")
+				err = fmt.Errorf("not found")
 			}
 
 			var pathMetric string

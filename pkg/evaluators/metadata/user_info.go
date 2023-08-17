@@ -27,7 +27,7 @@ func (userinfo *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx gocontext.C
 	resolvedIdentity, _ := pipeline.GetResolvedIdentity()
 	identityEvaluator, _ := resolvedIdentity.(auth.IdentityConfigEvaluator)
 	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC == nil || resolvedOIDC.Endpoint != oidc.Endpoint {
-		return nil, fmt.Errorf("Missing identity for OIDC issuer %v. Skipping related UserInfo metadata.", oidc.Endpoint)
+		return nil, fmt.Errorf("missing identity for oidc issuer %v. skipping related userinfo metadata", oidc.Endpoint)
 	}
 
 	// get access token from input
