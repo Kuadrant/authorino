@@ -1,21 +1,20 @@
 # The following patch applies the default strategy to convert between versions of the CRD
-# Modify this file to patch the CRD for calling a proper webhook service. E.g.:
-#
-#   spec:
-#     conversion:
-#       strategy: Webhook
-#       webhook:
-#         clientConfig:
-#           service:
-#             namespace: WEBHOOK_SERVICE_NAMESPACE
-#             name: WEBHOOK_SERVICE_NAME
-#             path: /convert
-#         conversionReviewVersions:
-#         - v1
+# The conversion webhook service is managed by the Authorino Operator
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: authconfigs.authorino.kuadrant.io
+  annotations:
+    cert-manager.io/inject-ca-from: ${WEBHOOK_NAMESPACE}/authorino-webhook-server-cert
 spec:
   conversion:
-    strategy: None
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          namespace: ${WEBHOOK_NAMESPACE}
+          name: authorino-webhooks
+          path: /convert
+      conversionReviewVersions:
+      - v1beta1
+      - v1beta2
