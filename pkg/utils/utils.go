@@ -42,6 +42,9 @@ func SliceContains[T comparable](s []T, val T) bool {
 
 // Map applies the given mapper function to each element in the input slice and returns a new slice with the results.
 func Map[T, U any](slice []T, f func(T) U) []U {
+	if slice == nil {
+		return nil
+	}
 	arr := make([]U, len(slice))
 	for i, e := range slice {
 		arr[i] = f(e)

@@ -285,6 +285,9 @@ func convertPtrValueOrSelectorFrom(src *v1beta1.StaticOrDynamicValue) *ValueOrSe
 }
 
 func convertNamedValuesOrSelectorsTo(src NamedValuesOrSelectors) (jsonProperties []v1beta1.JsonProperty) {
+	if src == nil {
+		return nil
+	}
 	for name, valueOrSelector := range src {
 		jsonProperties = append(jsonProperties, v1beta1.JsonProperty{
 			Name:      name,
@@ -296,6 +299,9 @@ func convertNamedValuesOrSelectorsTo(src NamedValuesOrSelectors) (jsonProperties
 }
 
 func convertNamedValuesOrSelectorsFrom(src []v1beta1.JsonProperty) NamedValuesOrSelectors {
+	if src == nil {
+		return nil
+	}
 	namedValuesOrSelectors := NamedValuesOrSelectors{}
 	for _, jsonProperty := range src {
 		namedValuesOrSelectors[jsonProperty.Name] = ValueOrSelector{
@@ -423,12 +429,25 @@ func convertAuthenticationTo(name string, src AuthenticationSpec) *v1beta1.Ident
 }
 
 func convertAuthenticationFrom(src *v1beta1.Identity) (string, AuthenticationSpec) {
+	authentication := AuthenticationSpec{
+		CommonEvaluatorSpec: CommonEvaluatorSpec{
+			Priority:   src.Priority,
+			Metrics:    src.Metrics,
+			Conditions: utils.Map(src.Conditions, convertPatternExpressionOrRefFrom),
+			Cache:      convertEvaluatorCachingFrom(src.Cache),
+		},
+		Credentials: convertCredentialsFrom(src.Credentials),
+	}
+
 	var overrides []v1beta1.JsonProperty
 	for _, extendedProperty := range src.ExtendedProperties {
 		if !extendedProperty.Overwrite {
 			continue
 		}
 		overrides = append(overrides, extendedProperty.JsonProperty)
+	}
+	if len(overrides) > 0 {
+		authentication.Overrides = ExtendedProperties(convertNamedValuesOrSelectorsFrom(overrides))
 	}
 
 	var defaults []v1beta1.JsonProperty
@@ -438,17 +457,8 @@ func convertAuthenticationFrom(src *v1beta1.Identity) (string, AuthenticationSpe
 		}
 		defaults = append(defaults, extendedProperty.JsonProperty)
 	}
-
-	authentication := AuthenticationSpec{
-		CommonEvaluatorSpec: CommonEvaluatorSpec{
-			Priority:   src.Priority,
-			Metrics:    src.Metrics,
-			Conditions: utils.Map(src.Conditions, convertPatternExpressionOrRefFrom),
-			Cache:      convertEvaluatorCachingFrom(src.Cache),
-		},
-		Credentials: convertCredentialsFrom(src.Credentials),
-		Overrides:   ExtendedProperties(convertNamedValuesOrSelectorsFrom(overrides)),
-		Defaults:    ExtendedProperties(convertNamedValuesOrSelectorsFrom(defaults)),
+	if len(defaults) > 0 {
+		authentication.Defaults = ExtendedProperties(convertNamedValuesOrSelectorsFrom(defaults))
 	}
 
 	switch src.GetType() {
@@ -1000,8 +1010,11 @@ func convertStatusFrom(src v1beta1.AuthConfigStatus) AuthConfigStatus {
 }
 
 func convertStatusSummaryTo(src AuthConfigStatusSummary) v1beta1.Summary {
-	hostsReady := make([]string, len(src.HostsReady))
-	copy(hostsReady, src.HostsReady)
+	var hostsReady []string
+	if len(src.HostsReady) > 0 {
+		hostsReady = make([]string, len(src.HostsReady))
+		copy(hostsReady, src.HostsReady)
+	}
 
 	return v1beta1.Summary{
 		Ready:                    src.Ready,
@@ -1016,8 +1029,11 @@ func convertStatusSummaryTo(src AuthConfigStatusSummary) v1beta1.Summary {
 }
 
 func convertStatusSummaryFrom(src v1beta1.Summary) AuthConfigStatusSummary {
-	hostsReady := make([]string, len(src.HostsReady))
-	copy(hostsReady, src.HostsReady)
+	var hostsReady []string
+	if len(src.HostsReady) > 0 {
+		hostsReady = make([]string, len(src.HostsReady))
+		copy(hostsReady, src.HostsReady)
+	}
 
 	return AuthConfigStatusSummary{
 		Ready:                    src.Ready,
