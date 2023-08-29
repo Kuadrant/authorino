@@ -693,8 +693,8 @@ func convertAuthorizationTo(name string, src AuthorizationSpec) *v1beta1.Authori
 			Endpoint:     src.SpiceDB.Endpoint,
 			Insecure:     src.SpiceDB.Insecure,
 			SharedSecret: convertSecretKeyReferenceTo(src.SpiceDB.SharedSecret),
-			Subject:      SpiceDBObjectTo(src.SpiceDB.Subject),
-			Resource:     SpiceDBObjectTo(src.SpiceDB.Resource),
+			Subject:      spiceDBObjectTo(src.SpiceDB.Subject),
+			Resource:     spiceDBObjectTo(src.SpiceDB.Resource),
 			Permission:   convertValueOrSelectorTo(src.SpiceDB.Permission),
 		}
 	}
@@ -734,8 +734,8 @@ func convertAuthorizationFrom(src *v1beta1.Authorization) (string, Authorization
 			Endpoint:     src.Authzed.Endpoint,
 			Insecure:     src.Authzed.Insecure,
 			SharedSecret: convertSecretKeyReferenceFrom(src.Authzed.SharedSecret),
-			Subject:      SpiceDBObjectFrom(src.Authzed.Subject),
-			Resource:     SpiceDBObjectFrom(src.Authzed.Resource),
+			Subject:      spiceDBObjectFrom(src.Authzed.Subject),
+			Resource:     spiceDBObjectFrom(src.Authzed.Resource),
 			Permission:   convertValueOrSelectorFrom(src.Authzed.Permission),
 		}
 	}
@@ -797,7 +797,7 @@ func convertKubernetesSubjectAccessReviewResourceAttributesFrom(src *v1beta1.Aut
 	}
 }
 
-func SpiceDBObjectTo(src *SpiceDBObject) *v1beta1.AuthzedObject {
+func spiceDBObjectTo(src *SpiceDBObject) *v1beta1.AuthzedObject {
 	if src == nil {
 		return nil
 	}
@@ -807,7 +807,7 @@ func SpiceDBObjectTo(src *SpiceDBObject) *v1beta1.AuthzedObject {
 	}
 }
 
-func SpiceDBObjectFrom(src *v1beta1.AuthzedObject) *SpiceDBObject {
+func spiceDBObjectFrom(src *v1beta1.AuthzedObject) *SpiceDBObject {
 	if src == nil {
 		return nil
 	}
