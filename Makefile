@@ -151,15 +151,7 @@ e2e: ## Runs the end-to-end tests on a local environment setup
 
 ##@ Apps
 
-.PHONY: cert-manager user-apps keycloak dex limitador
-
-cert-manager: ## Installs CertManager into the Kubernetes cluster configured in ~/.kube/config
-ifeq (true,$(TLS_ENABLED))
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-	kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
-	kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io/cert-manager-webhook
-	kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
-endif
+.PHONY: user-apps keycloak dex limitador
 
 DEPLOY_KEYCLOAK ?= $(DEPLOY_IDPS)
 DEPLOY_DEX ?= $(DEPLOY_IDPS)
@@ -198,8 +190,8 @@ OPERATOR_BRANCH = main
 else
 OPERATOR_BRANCH = $(OPERATOR_VERSION)
 endif
-install-operator: ## Installs Authorino Operator and corresponding version of the manifests into the Kubernetes cluster configured in ~/.kube/config
-	kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/deploy/manifests.yaml
+install-operator: ## Installs Authorino Operator and dependencies into the Kubernetes cluster configured in ~/.kube/config
+	curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/utils/install.sh | bash -s -- --git-ref $(OPERATOR_BRANCH)
 	kubectl patch deployment/authorino-webhooks -n $(AUTHORINO_OPERATOR_NAMESPACE) -p '{"spec":{"template":{"spec":{"containers":[{"name":"webhooks","image":"$(AUTHORINO_IMAGE)","imagePullPolicy":"IfNotPresent"}]}}}}'
 	kubectl -n $(AUTHORINO_OPERATOR_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 
@@ -261,7 +253,7 @@ cluster: kind ## Starts a local Kubernetes cluster using Kind
 local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
 	$(KIND) load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
-local-setup: cluster local-build cert-manager install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
+local-setup: cluster local-build install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \

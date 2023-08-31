@@ -63,7 +63,7 @@ kubectl -n a12n-server port-forward deployment/a12n-server 8531:8531 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API

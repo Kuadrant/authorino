@@ -59,7 +59,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Create the namespaces

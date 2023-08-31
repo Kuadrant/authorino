@@ -51,7 +51,7 @@ Check out the [Feature specification](./features.md) page for more feature-speci
 The simplest way to install the Authorino Operator is by applying the manifest bundle:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 The above will install the latest build of the Authorino Operator and latest version of the manifests (CRDs and RBAC), which by default points as well to the latest build of Authorino, both based on the `main` branches of each component. To install a stable released version of the Operator and therefore also defaults to its latest compatible stable release of Authorino, replace `main` with another tag of a proper release of the Operator, e.g. 'v0.2.0'.

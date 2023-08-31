@@ -68,7 +68,7 @@ kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorin
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy Authorino
