@@ -41,7 +41,7 @@ When Authorino is triggered by Envoy via the **gRPC** interface, it starts evalu
 
 Apart from static rules, these parameters can include instructions to contact online with external identity verifiers, external sources of **metadata** and policy decision points (**PDPs**).
 
-On every request, Authorino's "working memory" is called [**Authorization JSON**](#the-authorization-json), a data structure that holds information about the context (the HTTP request) and objects from each phase of the auth pipeline: i.e., identity verification (phase i), ad-hoc metadata fetching (phase ii), authorization policy enforcement (phase iii), dynamic response (phase iv), and callbacks (phase v). The evaluators in each of these phases can both read and write from the Authorization JSON for dynamic steps and decisions of authN/authZ.
+On every request, Authorino's "working memory" is called [**Authorization JSON**](#the-authorization-json), a data structure that holds information about the context (the HTTP request) and objects from each phase of the auth pipeline: i.e., authentication verification (phase i), ad-hoc metadata fetching (phase ii), authorization policy enforcement (phase iii), dynamic response (phase iv), and callbacks (phase v). The evaluators in each of these phases can both read and write from the Authorization JSON for dynamic steps and decisions of authN/authZ.
 
 ## Topologies
 
@@ -58,7 +58,7 @@ Each topology above induces different measures for security.
 
 ![Centralized gateway topology](http://www.plantuml.com/plantuml/png/XOynJiKm343tdCBw0rk75aQ4_XyOsBY2rPWc-eaTEGa88Gu26pkduYJyfYf2KCJav5alJzddWbfg32OVFITKZ125PNGgaQ1e9MCIZaUS299Om3oF7fuCWD9OaAT0iFjuVO73xSrktcFolNdUqeP_j65RE_-blR_1DT_BOnDfFlrHlFYfNfvbvodOApZKuaGzor9VR-qXpuNq3iUJ06tj-nFieLjZou2kfcxvxmgiF713mnTIFxdIVI_iYMsDuHC0)
 
-Recommended in the protected services to validate the origin of the traffic. It must have been proxied by Envoy. See Authorino [JSON injection](./features.md#json-injection-responsejson) for an extra validation option using a shared secret passed in HTTP header.
+Recommended in the protected services to validate the origin of the traffic. It must have been proxied by Envoy. See Authorino [JSON injection](./features.md#json-injection-responsesuccessheadersdynamicmetadatajson) for an extra validation option using a shared secret passed in HTTP header.
 
 ### Centralized authorization service
 
@@ -93,62 +93,82 @@ The desired protection for a service is declaratively stated by applying an `Aut
 An `AuthConfig` resource typically looks like the following:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
-  # List of one or more hostname[:port] entries, lookup keys to find this config in request-time
-  # Authorino will try to prevent hostname collision by rejecting a hostname already taken.
+	# The list of public host names of the services protected by this AuthConfig resource.
+	# Authorino uses the host name provided in the payload of external authorization request to lookup for the corresponding AuthConfig to enforce.
+  # Hostname collisions are prevented by rejecting to index a hostname already taken by another AuthConfig.
+  # Format: hostname[:port]
   hosts:
-    - my-api.io # north-south traffic
-    - my-api.ns.svc.cluster.local # east-west traffic
+  - my-api.io:443 # north-south traffic
+  - my-api.ns.svc.cluster.local # east-west traffic
+
+  # Set of stored named patterns to be reused in conditions and pattern-matching authorization rules
+  patterns: {"name" → {selector, operator, value}, …}
+
+  # Top-level conditions for the AuthConfig to be enforced.
+  # If omitted, the AuthConfig will be enforced at all requests.
+  # If present, all conditions must match for the AuthConfig to be enforced; otherwise, Authorino skips the AuthConfig and returns to the auth request with status OK.
+  when: [{selector, operator, value | named pattern ref}, …]
 
   # List of one or more trusted sources of identity:
-  # - Endpoints of issuers of OpenId Connect ID tokens (JWTs)
+  # - Configurations to verify JSON Web Tokens (JWTs) issued by an OpenID Connect (OIDC) server
   # - Endpoints for OAuth 2.0 token introspection
   # - Attributes for the Kubernetes `TokenReview` API
   # - Label selectors for API keys (stored in Kubernetes `Secret`s)
-  # - mTLS trusted certificate issuers
-  # - HMAC secrets
-  identity: […]
+  # - Label selectors trusted x509 issuer certificates (stored in Kubernetes `Secret`s)
+  # - Selectors for plain identity objects supplied in the payload of the authorization request
+  # - Anonymous access configs
+  authentication: {"name" → {…}, …}
 
   # List of sources of external metadata for the authorization (optional):
   # - Endpoints for HTTP GET or GET-by-POST requests
-  # - OIDC UserInfo endpoints (associated with an OIDC token issuer)
+  # - OIDC UserInfo endpoints (associated with an OIDC token issuer specified in the authentication configs)
   # - User-Managed Access (UMA) resource registries
-  metadata: […]
+  metadata: {"name" → {…}, …}
 
   # List of authorization policies to be enforced (optional):
-  # - JSON pattern-matching rules (e.g. `context.request.http.path eq '/pets'`)
+  # - Pattern-matching rules (e.g. `context.request.http.path eq '/pets'`)
   # - Open Policy Agent (OPA) inline or external Rego policies
   # - Attributes for the Kubernetes `SubjectAccessReview` API
-  authorization: […]
+  # – Attributes for authorization with an external SpiceDB server
+  authorization: {"name" → {…}, …}
 
-  # List of dynamic response elements, to inject post-external authorization data into the request (optional):
-  # - JSON objects
-  # - Festival Wristbands (signed JWTs issued by Authorino)
-  # - Envoy Dynamic Metadata
-  response: […]
+  # Customization to the response to the external authorization request (optional)
+  response:
+    # List of dynamic response elements into the request on success authoization (optional):
+    # - Plain text
+    # - JSON objects
+    # - Festival Wristbands (signed JWTs issued by Authorino)
+    success:
+      # List of HTTP headers to inject into the request post-authorization (optional):
+      headers: {"name" → {…}, …}
 
-  # List of callback targets:
-  # - Endpoints for HTTP requests
-  callbacks: […]
+      # List of Envoy Dynamic Metadata to inject into the request post-authorization (optional):
+      dynamicMetadata: {"name" → {…}, …}
 
-# Custom HTTP status code, message and headers to replace the default `401 Unauthorized` and `403 Forbidden` (optional)
-  denyWith:
+    # Custom HTTP status code, message and headers to replace the default `401 Unauthorized` response (optional)
     unauthenticated:
       code: 302
       message: Redirecting to login
       headers:
-        - name: Location
+        "Location":
           value: https://my-app.io/login
-    unauthorized: {…}
+
+    # Custom HTTP status code, message and headers to replace the default `and `403 Forbidden` response (optional)
+    unauthorized: {code, message, headers, body}
+
+  # List of callback targets:
+  # - Endpoints for HTTP requests
+  callbacks: {"name" → {…}, …}
 ```
 
-Check out the [OAS](/install/crd/authorino.kuadrant.io_authconfigs.yaml) of the `AuthConfig` CRD for a formal specification of the options for `identity` verification, external `metadata` fetching, `authorization` policies, and dynamic `response`, as well as any other host protection capability implemented by Authorino.
+Check out the [OAS](/install/crd/authorino.kuadrant.io_authconfigs.yaml) of the `AuthConfig` CRD for a formal specification of the options for `authentication` verification, external `metadata` fetching, `authorization` policies, and dynamic `response`, as well as any other host protection capability implemented by Authorino.
 
-You can also read the specification from the CLI using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command. The Authorino CRD is required to have been installed in Kubernetes cluster. E.g. `kubectl explain authconfigs.spec.identity.extendedProperties`.
+You can also read the specification from the CLI using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command. The Authorino CRD is required to have been installed in Kubernetes cluster. E.g. `kubectl explain authconfigs.spec.authentication.overrides`.
 
 A complete description of supported features and corresponding configuration options within an `AuthConfig` CR can be found in the [Features](./features.md) page.
 
@@ -164,9 +184,9 @@ The above means that all replicas of an Authorino instance should be able to rec
 
 Among the multiple replicas of an instance, Authorino elects one replica to be leader. The leader is responsible for updating the status of reconciled `AuthConfig`s. If the leader eventually becomes unavailable, the instance will automatically elect another replica take its place as the new leader.
 
-The status of an `AuthConfig` tells whether the resource is "ready" (i.e. indexed). It also includes summary information regarding the numbers of identity configs, metadata configs, authorization configs and response configs within the spec, as well as whether [Festival Wristband](./features.md#festival-wristband-tokens-responsewristband) tokens are being issued by the Authorino instance as by spec.
+The status of an `AuthConfig` tells whether the resource is "ready" (i.e. indexed). It also includes summary information regarding the numbers of authentication configs, metadata configs, authorization configs and response configs within the spec, as well as whether [Festival Wristband](./features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband) tokens are being issued by the Authorino instance as by spec.
 
-Apart from watching events related to `AuthConfig` custom resources, Authorino also watches events related to Kubernetes `Secret`s, as part of Authorino's [API key authentication](./features.md#api-key-identityapikey) feature. `Secret` resources that store API keys are linked to their corresponding `AuthConfig`s in the index. Whenever the Authorino instance detects a change in the set of API key `Secret`s linked to an `AuthConfig`s, the instance reconciles the index.
+Apart from watching events related to `AuthConfig` custom resources, Authorino also watches events related to Kubernetes `Secret`s, as part of Authorino's [API key authentication](./features.md#api-key-authenticationapikey) feature. `Secret` resources that store API keys are linked to their corresponding `AuthConfig`s in the index. Whenever the Authorino instance detects a change in the set of API key `Secret`s linked to an `AuthConfig`s, the instance reconciles the index.
 
 Authorino only watches events related to `Secret`s whose `metadata.labels` match the label selector `--secret-label-selector` of the Authorino instance. The default values of the label selector for Kubernetes `Secret`s representing Authorino API keys is `authorino.kuadrant.io/managed-by=authorino`.
 
@@ -176,13 +196,13 @@ Authorino only watches events related to `Secret`s whose `metadata.labels` match
 
 In each request to the protected API, Authorino triggers the so-called "Auth Pipeline", a set of configured *evaluators* that are organized in a 5-phase pipeline:
 
-- **(i) Identity phase:** at least one source of identity (i.e., one identity evaluator) must resolve the supplied credential in the request into a valid identity or Authorino will otherwise reject the request as unauthenticated (401 HTTP response status).
+- **(i) Authentication phase:** at least one source of identity (i.e., one authentication config) must resolve the supplied credential in the request into a valid identity or Authorino will otherwise reject the request as unauthenticated (401 HTTP response status).
 - **(ii) Metadata phase:** optional fetching of additional data from external sources, to add up to context and identity information, and used in authorization policies, dynamic responses and callback requests (phases iii to v).
 - **(iii) Authorization phase:** all unskipped policies must evaluate to a positive result ("authorized"), or Authorino will otherwise reject the request as unauthorized (403 HTTP response code).
 - **(iv) Response phase** – Authorino builds all user-defined response items (dynamic JSON objects and/or _Festival Wristband_ OIDC tokens), which are supplied back to the external authorization client within added HTTP headers or as Envoy Dynamic Metadata
 - **(v) Callbacks phase** – Authorino sends callbacks to specified HTTP endpoints.
 
-Each phase is sequential to the other, from (i) to (v), while the evaluators within each phase are triggered concurrently or as prioritized. The **Identity** phase (i) is the only one required to list at least one evaluator (i.e. one identity source or more); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
+Each phase is sequential to the other, from (i) to (v), while the evaluators within each phase are triggered concurrently or as prioritized. The **Authentication** phase (i) is the only one required to list at least one evaluator (i.e. 1+ authentication configs); **Metadata**, **Authorization** and **Response** phases can have any number of evaluators (including zero, and even be omitted in this case).
 
 ## Host lookup
 
@@ -283,9 +303,9 @@ After phase (iii), Authorino appends to the authorization JSON the results of th
 }
 ```
 
-[Festival Wristbands](./features.md#festival-wristband-tokens-responsewristband) and [Dynamic JSON](./features.md#json-injection-responsejson) responses can include dynamic values (custom claims/properties) fetched from the authorization JSON. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). Check out [Dynamic response features](./features.md#dynamic-response-features-response) for details.
+[Festival Wristbands](./features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband) and [Dynamic JSON](./features.md#json-injection-responsesuccessheadersdynamicmetadatajson) responses can include dynamic values (custom claims/properties) fetched from the authorization JSON. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). Check out [Custom response features](./features.md#custom-response-features-response) for details.
 
-For information about reading and fetching data from the Authorization JSON (syntax, functions, etc), check out [JSON paths](./features.md#common-feature-json-paths-valuefromauthjson).
+For information about reading and fetching data from the Authorization JSON (syntax, functions, etc), check out [JSON paths](./features.md#common-feature-json-paths-selector).
 
 ## Raw HTTP Authorization interface
 
@@ -302,7 +322,7 @@ In the raw HTTP interface, the host used to [lookup](#host-lookup) for an `AuthC
 
 OpenID Connect and User-Managed Access configurations, discovered usually at reconciliation-time from well-known discovery endpoints.
 
-Cached individual OpenID Connect configurations discovered by Authorino can be configured to be auto-refreshed, by setting the corresponding `spec.identity.oidc.ttl` field in the AuthConfig (given in seconds, default: `0` – i.e. no cache update).
+Cached individual OpenID Connect configurations discovered by Authorino can be configured to be auto-refreshed, by setting the corresponding `spec.authentication.jwt.ttl` field in the AuthConfig (given in seconds, default: `0` – i.e. no cache update).
 
 ### JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)
 
