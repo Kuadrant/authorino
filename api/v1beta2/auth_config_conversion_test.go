@@ -59,7 +59,7 @@ func TestConvertFrom(t *testing.T) {
 
 func authConfig() *AuthConfig {
 	authConfig := &AuthConfig{}
-	_ = json.Unmarshal([]byte(`
+	err := json.Unmarshal([]byte(`
 	{
 		"metadata": {
 			"name": "auth-config"
@@ -441,14 +441,29 @@ func authConfig() *AuthConfig {
 					"value": "true"
 				}
 			]
+		},
+		"status": {
+			"summary": {
+				"ready": false,
+				"hostsReady": [],
+				"numHostsReady": "",
+				"numIdentitySources": 0,
+				"numMetadataSources": 0,
+				"numAuthorizationPolicies": 0,
+				"numResponseItems": 0,
+				"festivalWristbandEnabled": false
+			}
 		}
 	}`), &authConfig)
+	if err != nil {
+		panic(err)
+	}
 	return authConfig
 }
 
 func hubAuthConfig() *v1beta1.AuthConfig {
 	authConfig := &v1beta1.AuthConfig{}
-	_ = json.Unmarshal([]byte(`
+	err := json.Unmarshal([]byte(`
 	{
 		"metadata": {
 			"name": "auth-config"
@@ -963,7 +978,22 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 					"value": "true"
 				}
 			]
+		},
+		"status": {
+			"summary": {
+				"ready": false,
+				"hostsReady": [],
+				"numHostsReady": "",
+				"numIdentitySources": 0,
+				"numMetadataSources": 0,
+				"numAuthorizationPolicies": 0,
+				"numResponseItems": 0,
+				"festivalWristbandEnabled": false
+			}
 		}
 	}`), &authConfig)
+	if err != nil {
+		panic(err)
+	}
 	return authConfig
 }

@@ -1010,11 +1010,8 @@ func convertStatusFrom(src v1beta1.AuthConfigStatus) AuthConfigStatus {
 }
 
 func convertStatusSummaryTo(src AuthConfigStatusSummary) v1beta1.Summary {
-	var hostsReady []string
-	if len(src.HostsReady) > 0 {
-		hostsReady = make([]string, len(src.HostsReady))
-		copy(hostsReady, src.HostsReady)
-	}
+	hostsReady := make([]string, len(src.HostsReady))
+	copy(hostsReady, src.HostsReady)
 
 	return v1beta1.Summary{
 		Ready:                    src.Ready,
@@ -1029,11 +1026,8 @@ func convertStatusSummaryTo(src AuthConfigStatusSummary) v1beta1.Summary {
 }
 
 func convertStatusSummaryFrom(src v1beta1.Summary) AuthConfigStatusSummary {
-	var hostsReady []string
-	if len(src.HostsReady) > 0 {
-		hostsReady = make([]string, len(src.HostsReady))
-		copy(hostsReady, src.HostsReady)
-	}
+	hostsReady := make([]string, len(src.HostsReady))
+	copy(hostsReady, src.HostsReady)
 
 	return AuthConfigStatusSummary{
 		Ready:                    src.Ready,
