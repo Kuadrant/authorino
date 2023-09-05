@@ -2067,6 +2067,8 @@ spec:
                       description: The name of key used in the wrapped response (name
                         of the HTTP header or property of the Envoy Dynamic Metadata
                         JSON). If omitted, it will be set to the name of the configuration.
+                        [DEPRECATED] Starting in v1beta2, use the name of the response
+                        config instead.
                       type: string
                     wristband:
                       properties:
