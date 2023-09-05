@@ -711,7 +711,7 @@ spec:
       headers:
         "x-wristband":
           wristband:
-            issuer: https://authorino-oidc.default.svc:8083/my-namespace/my-api-protection/my-wristband
+            issuer: https://authorino-oidc.default.svc:8083/my-namespace/my-api-protection/x-wristband
             customClaims:
               "aud":
                 value: internal
