@@ -337,11 +337,6 @@ type ApiKeyAuthenticationSpec struct {
 
 // Settings to fetch the JSON Web Key Set (JWKS) for the JWT authentication.
 type JwtAuthenticationSpec struct {
-	// URL of the JSON Web Ket Set (JWKS) endpoint.
-	// Use this if the issuer of the JWT tokens is not an OIDC provider or does not implement OIDC Discovery.
-	// +optional
-	JwksUrl string `json:"jwksUrl,omitempty"`
-
 	// URL of the issuer of the JWT.
 	// If `jwksUrl` is omitted, Authorino will append the path to the OpenID Connect Well-Known Discovery endpoint
 	// (i.e. "/.well-known/openid-configuration") to this URL, to discover the OIDC configuration where to obtain

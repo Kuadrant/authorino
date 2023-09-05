@@ -2735,11 +2735,6 @@ spec:
                             with the value of  the "iss" (issuer) claim of the discovered
                             OpenID Connect configuration.
                           type: string
-                        jwksUrl:
-                          description: URL of the JSON Web Ket Set (JWKS) endpoint.
-                            Use this if the issuer of the JWT tokens is not an OIDC
-                            provider or does not implement OIDC Discovery.
-                          type: string
                         ttl:
                           description: Decides how long to wait before refreshing
                             the JWKS (in seconds). If omitted, Authorino will never
