@@ -3270,10 +3270,6 @@ spec:
                                 type: object
                               description: Custom headers in the HTTP request.
                               type: object
-                            insecure:
-                              description: Insecure HTTP connection (i.e. disables
-                                TLS verification)
-                              type: boolean
                             method:
                               default: GET
                               description: 'HTTP verb used in the request to the service.
@@ -3762,10 +3758,6 @@ spec:
                             type: object
                           description: Custom headers in the HTTP request.
                           type: object
-                        insecure:
-                          description: Insecure HTTP connection (i.e. disables TLS
-                            verification)
-                          type: boolean
                         method:
                           default: GET
                           description: 'HTTP verb used in the request to the service.
@@ -4080,10 +4072,6 @@ spec:
                             type: object
                           description: Custom headers in the HTTP request.
                           type: object
-                        insecure:
-                          description: Insecure HTTP connection (i.e. disables TLS
-                            verification)
-                          type: boolean
                         method:
                           default: GET
                           description: 'HTTP verb used in the request to the service.

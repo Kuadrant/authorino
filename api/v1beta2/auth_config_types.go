@@ -470,9 +470,6 @@ type HttpEndpointSpec struct {
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
 	// +optional
 	Credentials Credentials `json:"credentials,omitempty"`
-
-	// Insecure HTTP connection (i.e. disables TLS verification)
-	Insecure bool `json:"insecure,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=GET;POST;PUT;PATCH;DELETE;HEAD;OPTIONS;CONNECT;TRACE
