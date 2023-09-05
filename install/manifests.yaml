@@ -4653,10 +4653,6 @@ spec:
                                   description: Static value
                                   x-kubernetes-preserve-unknown-fields: true
                               type: object
-                            prefix:
-                              description: Prefix of the value to be added to the
-                                HTTP header
-                              type: string
                             priority:
                               default: 0
                               description: Priority group of the config. All configs

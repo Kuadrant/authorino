@@ -694,9 +694,6 @@ type WrappedSuccessResponseSpec struct {
 }
 
 type HeaderSuccessResponseSpec struct {
-	// Prefix of the value to be added to the HTTP header
-	Prefix string `json:"prefix,omitempty"`
-
 	SuccessResponseSpec `json:",omitempty"`
 }
 
