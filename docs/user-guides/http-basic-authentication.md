@@ -86,33 +86,33 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: http-basic-auth
-    apiKey:
-      selector:
-        matchLabels:
-          group: users
-    credentials:
-      in: authorization_header
-      keySelector: Basic
+  authentication:
+    "http-basic-auth":
+      apiKey:
+        selector:
+          matchLabels:
+            group: users
+      credentials:
+        authorizationHeader:
+          prefix: Basic
   authorization:
-  - name: acl
-    when:
-    - selector: context.request.http.path
-      operator: eq
-      value: /bye
-    json:
-      rules:
-      - selector: context.request.http.headers.authorization.@extract:{"pos":1}|@base64:decode|@extract:{"sep":":"}
+    "acl":
+      when:
+      - selector: context.request.http.path
         operator: eq
-        value: john
+        value: /bye
+      patternMatching:
+        patterns:
+        - selector: context.request.http.headers.authorization.@extract:{"pos":1}|@base64:decode|@extract:{"sep":":"}
+          operator: eq
+          value: john
 EOF
 ```
 

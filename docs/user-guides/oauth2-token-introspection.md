@@ -144,36 +144,36 @@ Create the config:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak
-    oauth2:
-      tokenIntrospectionUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
-      tokenTypeHint: requesting_party_token
-      credentialsRef:
-        name: oauth2-token-introspection-credentials-keycloak
-  - name: a12n-server
-    oauth2:
-      tokenIntrospectionUrl: http://a12n-server.a12n-server.svc.cluster.local:8531/introspect
-      credentialsRef:
-        name: oauth2-token-introspection-credentials-a12n-server
+  authentication:
+    "keycloak":
+      oauth2Introspection:
+        endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
+        tokenTypeHint: requesting_party_token
+        credentialsRef:
+          name: oauth2-token-introspection-credentials-keycloak
+    "a12n-server":
+      oauth2Introspection:
+        endpoint: http://a12n-server.a12n-server.svc.cluster.local:8531/introspect
+        credentialsRef:
+          name: oauth2-token-introspection-credentials-a12n-server
   authorization:
-  - name: can-read
-    when:
-    - selector: auth.identity.privileges
-      operator: neq
-      value: ""
-    json:
-      rules:
-      - selector: auth.identity.privileges.talker-api
-        operator: incl
-        value: read
+    "can-read":
+      when:
+      - selector: auth.identity.privileges
+        operator: neq
+        value: ""
+      patternMatching:
+        patterns:
+        - selector: auth.identity.privileges.talker-api
+          operator: incl
+          value: read
 EOF
 ```
 

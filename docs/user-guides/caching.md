@@ -96,44 +96,45 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: anonymous
-    anonymous: {}
+  authentication:
+    "anonymous":
+      anonymous: {}
   metadata:
-  - name: cached-metadata
-    http:
-      endpoint: http://talker-api.default.svc.cluster.local:3000/metadata/{context.request.http.path}
-      method: GET
-    cache:
-      key:
-        valueFrom: { authJSON: context.request.http.path }
-      ttl: 60
+    "cached-metadata":
+      http:
+        url: http://talker-api.default.svc.cluster.local:3000/metadata/{context.request.http.path}
+      cache:
+        key:
+          selector: context.request.http.path
+        ttl: 60
   authorization:
-  - name: cached-authz
-    opa:
-      inlineRego: |
-        now = time.now_ns()
-        allow = true
-      allValues: true
-    cache:
-      key:
-        valueFrom: { authJSON: context.request.http.path }
-      ttl: 60
+    "cached-authz":
+      opa:
+        rego: |
+          now = time.now_ns()
+          allow = true
+        allValues: true
+      cache:
+        key:
+          selector: context.request.http.path
+        ttl: 60
   response:
-  - name: x-authz-data
-    json:
-      properties:
-      - name: cached-metadata
-        valueFrom: { authJSON: auth.metadata.cached-metadata.uuid }
-      - name: cached-authz
-        valueFrom: { authJSON: auth.authorization.cached-authz.now }
+    success:
+      headers:
+        "x-authz-data":
+          json:
+            properties:
+              "cached-metadata":
+                selector: auth.metadata.cached-metadata.uuid
+              "cached-authz":
+                selector: auth.authorization.cached-authz.now
 EOF
 ```
 

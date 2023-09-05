@@ -109,7 +109,7 @@ Apply the AuthConfig:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -117,54 +117,54 @@ spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
 
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
 
   patterns:
-    member-role:
+    "member-role":
     - selector: auth.identity.realm_access.roles
       operator: incl
       value: member
-    admin-role:
+    "admin-role":
     - selector: auth.identity.realm_access.roles
       operator: incl
       value: admin
 
   authorization:
-  # RBAC rule: 'member' role required for requests to /resources[/*]
-  - name: rbac-resources-api
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/resources(/.*)?$
-    json:
-      rules:
-      - patternRef: member-role
+    # RBAC rule: 'member' role required for requests to /resources[/*]
+    "rbac-resources-api":
+      when:
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/resources(/.*)?$
+      patternMatching:
+        patterns:
+        - patternRef: member-role
 
-  # RBAC rule: 'admin' role required for DELETE requests to /resources/{id}
-  - name: rbac-delete-resource
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/resources/\d+$
-    - selector: context.request.http.method
-      operator: eq
-      value: DELETE
-    json:
-      rules:
-      - patternRef: admin-role
+    # RBAC rule: 'admin' role required for DELETE requests to /resources/{id}
+    "rbac-delete-resource":
+      when:
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/resources/\d+$
+      - selector: context.request.http.method
+        operator: eq
+        value: DELETE
+      patternMatching:
+        patterns:
+        - patternRef: admin-role
 
-  # RBAC rule: 'admin' role required for requests to /admin[/*]
-  - name: rbac-admin-api
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/admin(/.*)?$
-    json:
-      rules:
-      - patternRef: admin-role
+    # RBAC rule: 'admin' role required for requests to /admin[/*]
+    "rbac-admin-api":
+      when:
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/admin(/.*)?$
+      patternMatching:
+        patterns:
+        - patternRef: admin-role
 EOF
 ```
 

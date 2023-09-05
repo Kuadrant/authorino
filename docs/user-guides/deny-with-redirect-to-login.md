@@ -85,37 +85,36 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection
 spec:
   hosts:
   - matrix-quotes-authorino.127.0.0.1.nip.io
-  identity:
-  - name: browser-users
-    apiKey:
-      selector:
-        matchLabels:
-          group: users
-    credentials:
-      in: cookie
-      keySelector: TOKEN
-  - name: http-basic-auth
-    apiKey:
-      selector:
-        matchLabels:
-          group: users
-    credentials:
-      in: authorization_header
-      keySelector: Basic
-  denyWith:
+  authentication:
+    "browser-users":
+      apiKey:
+        selector:
+          matchLabels:
+            group: users
+      credentials:
+        cookie:
+          name: TOKEN
+    "http-basic-auth":
+      apiKey:
+        selector:
+          matchLabels:
+            group: users
+      credentials:
+        authorizationHeader:
+          prefix: Basic
+  response:
     unauthenticated:
       code: 302
       headers:
-      - name: Location
-        valueFrom:
-          authJSON: http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}
+        "Location":
+          selector: http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}
 EOF
 ```
 
@@ -198,27 +197,26 @@ kubectl set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/aut
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection
 spec:
   hosts:
   - matrix-quotes-authorino.127.0.0.1.nip.io
-  identity:
-  - name: idp-users
-    oidc:
-      endpoint: http://keycloak:8080/auth/realms/kuadrant
-    credentials:
-      in: cookie
-      keySelector: TOKEN
-  denyWith:
+  authentication:
+    "idp-users":
+      jwt:
+        issuerUrl: http://keycloak:8080/auth/realms/kuadrant
+      credentials:
+        cookie:
+          name: TOKEN
+  response:
     unauthenticated:
       code: 302
       headers:
-      - name: Location
-        valueFrom:
-          authJSON: http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code
+        "Location":
+          selector: http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code
 EOF
 ```
 

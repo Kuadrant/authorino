@@ -88,7 +88,7 @@ The `AuthConfig` below sets all Kubernetes service accounts as trusted users of 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -96,15 +96,15 @@ spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
   - envoy.default.svc.cluster.local
-  identity:
-  - name: service-accounts
-    kubernetes:
-      audiences: ["https://kubernetes.default.svc.cluster.local"]
+  authentication:
+    "service-accounts":
+      kubernetesTokenReview:
+        audiences: ["https://kubernetes.default.svc.cluster.local"]
   authorization:
-  - name: k8s-rbac
-    kubernetes:
-      user:
-        valueFrom: { authJSON: auth.identity.user.username }
+    "k8s-rbac":
+      kubernetesSubjectAccessReview:
+        user:
+          selector: auth.identity.user.username
 EOF
 ```
 

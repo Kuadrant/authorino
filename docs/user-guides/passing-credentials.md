@@ -92,51 +92,51 @@ In this example, `member` users can authenticate supplying the API key in any of
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: members-authorization-header
-    apiKey:
-      selector:
-        matchLabels:
-          group: members
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY # instead of the default prefix 'Bearer'
-  - name: members-custom-header
-    apiKey:
-      selector:
-        matchLabels:
-          group: members
-    credentials:
-      in: custom_header
-      keySelector: X-API-Key
-  - name: members-query-string-param
-    apiKey:
-      selector:
-        matchLabels:
-          group: members
-    credentials:
-      in: query
-      keySelector: api_key
-  - name: members-cookie
-    apiKey:
-      selector:
-        matchLabels:
-          group: members
-    credentials:
-      in: cookie
-      keySelector: APIKEY
-  - name: admins
-    apiKey:
-      selector:
-        matchLabels:
-          group: admins
+  authentication:
+    "members-authorization-header":
+      apiKey:
+        selector:
+          matchLabels:
+            group: members
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY # instead of the default prefix 'Bearer'
+    "members-custom-header":
+      apiKey:
+        selector:
+          matchLabels:
+            group: members
+      credentials:
+        customHeader:
+          name: X-API-Key
+    "members-query-string-param":
+      apiKey:
+        selector:
+          matchLabels:
+            group: members
+      credentials:
+        queryString:
+          name: api_key
+    "members-cookie":
+      apiKey:
+        selector:
+          matchLabels:
+            group: members
+      credentials:
+        cookie:
+          name: APIKEY
+    "admins":
+      apiKey:
+        selector:
+          matchLabels:
+            group: admins
 EOF
 ```
 

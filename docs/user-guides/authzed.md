@@ -220,45 +220,42 @@ Create the AuthConfig:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: blog-users
-    apiKey:
-      selector:
-        matchLabels:
-          app: talker-api
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "blog-users":
+      apiKey:
+        selector:
+          matchLabels:
+            app: talker-api
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   authorization:
-  - name: authzed
-    authzed:
-      endpoint: spicedb.spicedb.svc.cluster.local:50051
-      insecure: true
-      sharedSecretRef:
-        name: spicedb
-        key: grpc-preshared-key
-      subject:
-        kind:
-          value: blog/user
-        name:
-          valueFrom:
-            authJSON: auth.identity.metadata.annotations.username
-      resource:
-        kind:
-          value: blog/post
-        name:
-          valueFrom:
-            authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
-      permission:
-        valueFrom:
-          authJSON: context.request.http.method.@replace:{"old":"GET","new":"read"}.@replace:{"old":"POST","new":"write"}
+    "authzed-spicedb":
+      spicedb:
+        endpoint: spicedb.spicedb.svc.cluster.local:50051
+        insecure: true
+        sharedSecretRef:
+          name: spicedb
+          key: grpc-preshared-key
+        subject:
+          kind:
+            value: blog/user
+          name:
+            selector: auth.identity.metadata.annotations.username
+        resource:
+          kind:
+            value: blog/post
+          name:
+            selector: context.request.http.path.@extract:{"sep":"/","pos":2}
+        permission:
+          selector: context.request.http.method.@replace:{"old":"GET","new":"read"}.@replace:{"old":"POST","new":"write"}
 EOF
 ```
 

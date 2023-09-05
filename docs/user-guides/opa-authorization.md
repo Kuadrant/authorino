@@ -92,31 +92,31 @@ _Optional._ Set [`use_remote_address: true`](https://www.envoyproxy.io/docs/envo
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   authorization:
-  - name: read-only-outside
-    opa:
-      inlineRego: |
-        ips := split(input.context.request.http.headers["x-forwarded-for"], ",")
-        trusted_network { regex.match(`192\.168\.1\.\d+`, ips[0]) }
+    "read-only-outside":
+      opa:
+        rego: |
+          ips := split(input.context.request.http.headers["x-forwarded-for"], ",")
+          trusted_network { regex.match(`192\.168\.1\.\d+`, ips[0]) }
 
-        allow { trusted_network }
-        allow { not trusted_network; input.context.request.http.method == "GET" }
+          allow { trusted_network }
+          allow { not trusted_network; input.context.request.http.method == "GET" }
 EOF
 ```
 

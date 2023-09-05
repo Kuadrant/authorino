@@ -296,43 +296,42 @@ kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-examples/m
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: jwt
-    plain:
-      authJSON: context.metadata_context.filter_metadata.envoy\.filters\.http\.jwt_authn|verified_jwt
+  authentication:
+    "jwt":
+      plain:
+        selector: context.metadata_context.filter_metadata.envoy\.filters\.http\.jwt_authn|verified_jwt
   metadata:
-  - name: geoinfo
-    http:
-      endpoint: http://ip-location.default.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
-      method: GET
-      headers:
-      - name: Accept
-        value: application/json
-    cache:
-      key:
-        valueFrom: { authJSON: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\":\",\"}" }
+    "geoinfo":
+      http:
+        url: http://ip-location.default.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
+        headers:
+          "Accept":
+            value: application/json
+      cache:
+        key:
+          selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\":\",\"}"
   authorization:
-  - name: geofence
-    when:
-    - selector: auth.identity.realm_access.roles
-      operator: excl
-      value: admin
-    json:
-      rules:
-      - selector: auth.metadata.geoinfo.country_iso_code
-        operator: eq
-        value: "GB"
-  denyWith:
+    "geofence":
+      when:
+      - selector: auth.identity.realm_access.roles
+        operator: excl
+        value: admin
+      patternMatching:
+        patterns:
+        - selector: auth.metadata.geoinfo.country_iso_code
+          operator: eq
+          value: "GB"
+  response:
     unauthorized:
       message:
-        valueFrom: { authJSON: "The requested resource is not available in {auth.metadata.geoinfo.country_name}" }
+        selector: "The requested resource is not available in {auth.metadata.geoinfo.country_name}"
 EOF
 ```
 

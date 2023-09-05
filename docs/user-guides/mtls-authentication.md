@@ -292,26 +292,26 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: mtls
-    mtls:
-      selector:
-        matchLabels:
-          app: talker-api
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: talker-api
   authorization:
-  - name: acme
-    json:
-      rules:
-      - selector: auth.identity.Organization
-        operator: incl
-        value: ACME Inc.
+    "acme":
+      patternMatching:
+        patterns:
+        - selector: auth.identity.Organization
+          operator: incl
+          value: ACME Inc.
 EOF
 ```
 

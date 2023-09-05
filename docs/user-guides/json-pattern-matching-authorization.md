@@ -105,28 +105,28 @@ The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.or
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   authorization:
-  - name: email-verified-only
-    when:
-    - selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\": \",\"}"
-      operator: matches
-      value: 192\\.168\\.1\\.\\d+
-    json:
-      rules:
-      - selector: auth.identity.email_verified
-        operator: eq
-        value: "true"
+    "email-verified-only":
+      when:
+      - selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\": \",\"}"
+        operator: matches
+        value: 192\\.168\\.1\\.\\d+
+      patternMatching:
+        patterns:
+        - selector: auth.identity.email_verified
+          operator: eq
+          value: "true"
 EOF
 ```
 

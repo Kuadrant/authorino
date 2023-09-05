@@ -100,28 +100,28 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   metadata:
-  - name: userinfo
-    userInfo:
-      identitySource: keycloak-kuadrant-realm
+    "userinfo":
+      userInfo:
+        identitySource: keycloak-kuadrant-realm
   authorization:
-  - name: active-tokens-only
-    json:
-      rules:
-      - selector: "auth.metadata.userinfo.email" # user email expected from the userinfo instead of the jwt
-        operator: neq
-        value: ""
+    "active-tokens-only":
+      patternMatching:
+        patterns:
+        - selector: "auth.metadata.userinfo.email" # user email expected from the userinfo instead of the jwt
+          operator: neq
+          value: ""
 EOF
 ```
 

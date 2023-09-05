@@ -91,41 +91,40 @@ The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.or
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   metadata:
-    - name: geo
+    "geo":
       http:
-        endpoint: http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode
-        method: GET
+        url: http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode
         headers:
-        - name: Accept
-          value: application/json
+          "Accept":
+            value: application/json
   authorization:
-  - name: geofence
-    opa:
-      inlineRego: |
-        import input.context.request.http
+    "geofence":
+      opa:
+        rego: |
+          import input.context.request.http
 
-        allow {
-          http.method = "GET"
-          split(http.path, "/") = [_, requested_country, _]
-          lower(requested_country) == lower(object.get(input.auth.metadata.geo, "countryCode", ""))
-        }
+          allow {
+            http.method = "GET"
+            split(http.path, "/") = [_, requested_country, _]
+            lower(requested_country) == lower(object.get(input.auth.metadata.geo, "countryCode", ""))
+          }
 EOF
 ```
 

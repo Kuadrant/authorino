@@ -89,34 +89,34 @@ The following defines a JSON object to be injected as an added HTTP header into 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   response:
-  - name: x-ext-auth-data
-    json:
-      properties:
-      - name: authorized
-        value: true
-      - name: request-time
-        valueFrom:
-          authJSON: context.request.time.seconds
-      - name: greeting-message
-        valueFrom:
-          authJSON: Hello, {auth.identity.metadata.annotations.auth-data\/name}!
+    success:
+      headers:
+        "x-ext-auth-data":
+          json:
+            properties:
+              "authorized":
+                value: true
+              "request-time":
+                selector: context.request.time.seconds
+              "greeting-message":
+                selector: Hello, {auth.identity.metadata.annotations.auth-data\/name}!
 EOF
 ```
 

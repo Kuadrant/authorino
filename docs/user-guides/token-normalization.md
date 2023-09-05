@@ -105,43 +105,42 @@ Without normalizing identity claims from these two different sources, the policy
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
-    extendedProperties:
-    - name: roles
-      valueFrom:
-        authJSON: auth.identity.realm_access.roles
-  - name: api-key-friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
-    extendedProperties:
-    - name: roles
-      value: ["admin"]
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+      overrides:
+        "roles":
+          selector: auth.identity.realm_access.roles
+    "api-key-friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
+      defaults:
+        "roles":
+          value: ["admin"]
   authorization:
-  - name: only-admins-can-delete
-    when:
-    - selector: context.request.http.method
-      operator: eq
-      value: DELETE
-    json:
-      rules:
-      - selector: auth.identity.roles
-        operator: incl
-        value: admin
+    "only-admins-can-delete":
+      when:
+      - selector: context.request.http.method
+        operator: eq
+        value: DELETE
+      patternMatching:
+        patterns:
+        - selector: auth.identity.roles
+          operator: incl
+          value: admin
 EOF
 ```
 

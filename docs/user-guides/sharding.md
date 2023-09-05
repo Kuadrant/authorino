@@ -98,7 +98,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: auth-config-1
@@ -107,13 +107,13 @@ metadata:
 spec:
   hosts:
   - my-host.staging.io
-  identity:
-  - name: api-key
-    apiKey:
-      selector:
-        matchLabels:
-          authorino/api-key: "true"
-          authorino/environment: staging
+  authentication:
+    "api-key":
+      apiKey:
+        selector:
+          matchLabels:
+            authorino/api-key: "true"
+            authorino/environment: staging
 EOF
 ```
 
@@ -149,7 +149,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: auth-config-2
@@ -158,13 +158,13 @@ metadata:
 spec:
   hosts:
   - my-host.io
-  identity:
-  - name: api-key
-    apiKey:
-      selector:
-        matchLabels:
-          authorino/api-key: "true"
-          authorino/environment: production
+  authentication:
+    "api-key":
+      apiKey:
+        selector:
+          matchLabels:
+            authorino/api-key: "true"
+            authorino/environment: production
 EOF
 ```
 
