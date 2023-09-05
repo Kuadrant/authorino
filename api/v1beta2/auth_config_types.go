@@ -701,6 +701,10 @@ type HeaderSuccessResponseSpec struct {
 type SuccessResponseSpec struct {
 	CommonEvaluatorSpec    `json:""`
 	AuthResponseMethodSpec `json:""`
+
+	// The key used to add the custom response item (name of the HTTP header or root property of the Dynamic Metadata object).
+	// If omitted, it will be set to the name of the response config.
+	Key string `json:"key,omitempty"`
 }
 
 func (s *SuccessResponseSpec) GetMethod() AuthResponseMethod {

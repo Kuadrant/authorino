@@ -835,7 +835,7 @@ func convertSuccessResponseTo(name string, src SuccessResponseSpec, wrapper stri
 		Conditions: utils.Map(src.Conditions, convertPatternExpressionOrRefTo),
 		Cache:      convertEvaluatorCachingTo(src.Cache),
 		Wrapper:    v1beta1.Response_Wrapper(wrapper),
-		WrapperKey: name,
+		WrapperKey: src.Key,
 	}
 
 	switch src.GetMethod() {
@@ -878,6 +878,7 @@ func convertSuccessResponseFrom(src *v1beta1.Response) (string, SuccessResponseS
 			Conditions: utils.Map(src.Conditions, convertPatternExpressionOrRefFrom),
 			Cache:      convertEvaluatorCachingFrom(src.Cache),
 		},
+		Key: src.WrapperKey,
 	}
 
 	switch src.GetType() {

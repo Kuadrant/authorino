@@ -574,30 +574,36 @@ Successful authorization custom responses can be set based on any of the support
 
 Set custom responses as HTTP headers injected in the request post-successful authorization by specifying one of the supported methods under `response.success.headers`.
 
+The name of the response config (default) or the value of the `key` option (if provided) will used as the name of the header.
+
 #### Envoy Dynamic Metadata
 
 Authorino custom response methods can also be used to propagate [Envoy Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). To do so, set one of the supported methods under `response.success.dynamicMetadata`.
 
-A custom response exported as Envoy Dynamic Metadata can be configured in the Envoy route or virtual host configuration, to be passed. E.g., for reading metadata emitted by the authorization service in the following scheme: `{ "auth-data": { "api-key-ns": string, "api-key-name": string } }` for a rate limiting:
+The name of the response config (default) or the value of the `key` option (if provided) will used as the name of the root property of the dynamic metadata content.
+
+A custom response exported as Envoy Dynamic Metadata can be set in the Envoy route or virtual host configuration as input to a consecutive filter in the filter chain.
+
+E.g., to read metadata emitted by the authorization service with scheme `{ "auth-data": { "api-key-ns": string, "api-key-name": string } }`, as input in a rate limit configuration placed in the filter chain after the external authorization, the Envoy config may look like the following:
 
 ```yaml
-# Envoy config snippet to inject `user_namespace` and `username` rate limit descriptors from metadata returned by Authorino
+# Envoy config snippet to inject `user_namespace` and `username` rate limit descriptors from metadata emitted by Authorino
 rate_limits:
 - actions:
-    - metadata:
-        metadata_key:
-          key: "envoy.filters.http.ext_authz"
-          path:
-          - key: auth-data
-          - key: api-key-ns
-        descriptor_key: user_namespace
-    - metadata:
-        metadata_key:
-          key: "envoy.filters.http.ext_authz"
-          path:
-          - key: auth-data
-          - key: api-key-name
-        descriptor_key: username
+  - metadata:
+      metadata_key:
+        key: "envoy.filters.http.ext_authz"
+        path:
+        - key: auth-data # root of the dynamic metadata object, as declared in a custom response config of the AuthConfig (name or key)
+        - key: api-key-ns
+      descriptor_key: user_namespace
+  - metadata:
+      metadata_key:
+        key: "envoy.filters.http.ext_authz"
+        path:
+        - key: auth-data # root of the dynamic metadata object, as declared in a custom response config of the AuthConfig (name or key)
+        - key: api-key-name
+      descriptor_key: username
 ```
 
 #### Custom denial status ([`response.unauthenticated`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#DenyWithSpec) and [`response.unauthorized`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#DenyWithSpec))

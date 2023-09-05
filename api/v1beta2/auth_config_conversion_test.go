@@ -367,13 +367,15 @@ func authConfig() *AuthConfig {
 				"success": {
 					"dynamicMetadata": {
 						"username": {
+							"key": "",
 							"plain": {
 								"selector": "auth.identity.username"
 							}
 						}
 					},
 					"headers": {
-						"festivalWristband": {
+						"festival-wristband": {
+							"key": "x-wristband-token",
 							"wristband": {
 								"customClaims": {
 									"scope": {
@@ -386,7 +388,7 @@ func authConfig() *AuthConfig {
 										"selector": "auth.identity.username"
 									}
 								},
-								"issuer": "https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/wristband",
+								"issuer": "https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/festival-wristband",
 								"signingKeyRefs": [
 									{
 										"algorithm": "ES256",
@@ -409,9 +411,11 @@ func authConfig() *AuthConfig {
 										"selector": "auth.identity.username"
 									}
 								}
-							}
+							},
+							"key": ""
 						},
 						"x-auth-service": {
+							"key": "",
 							"plain": {
 								"value": "Authorino"
 							}
@@ -883,10 +887,10 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 			"response": [
 				{
 					"metrics": false,
-					"name": "festivalWristband",
+					"name": "festival-wristband",
 					"priority": 0,
 					"wrapper": "httpHeader",
-					"wrapperKey": "festivalWristband",
+					"wrapperKey": "x-wristband-token",
 					"wristband": {
 						"customClaims": [
 							{
@@ -908,7 +912,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 								}
 							}
 						],
-						"issuer": "https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/wristband",
+						"issuer": "https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/festival-wristband",
 						"signingKeyRefs": [
 							{
 								"algorithm": "ES256",
@@ -928,7 +932,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 					},
 					"priority": 0,
 					"wrapper": "envoyDynamicMetadata",
-					"wrapperKey": "username"
+					"wrapperKey": ""
 				},
 				{
 					"json": {
@@ -957,7 +961,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 					"name": "x-auth-data",
 					"priority": 0,
 					"wrapper": "httpHeader",
-					"wrapperKey": "x-auth-data"
+					"wrapperKey": ""
 				},
 				{
 					"metrics": false,
@@ -968,7 +972,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 					},
 					"priority": 0,
 					"wrapper": "httpHeader",
-					"wrapperKey": "x-auth-service"
+					"wrapperKey": ""
 				}
 			],
 			"when": [

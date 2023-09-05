@@ -599,7 +599,6 @@ type Response struct {
 	Wrapper Response_Wrapper `json:"wrapper,omitempty"`
 	// The name of key used in the wrapped response (name of the HTTP header or property of the Envoy Dynamic Metadata JSON).
 	// If omitted, it will be set to the name of the configuration.
-	// [DEPRECATED] Starting in v1beta2, use the name of the response config instead.
 	WrapperKey string `json:"wrapperKey,omitempty"`
 
 	Wristband *Response_Wristband   `json:"wristband,omitempty"`
