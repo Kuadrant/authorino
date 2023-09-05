@@ -298,8 +298,7 @@ type Prefixed struct {
 }
 
 type CustomHeader struct {
-	Named    `json:""`
-	Prefixed `json:""`
+	Named `json:""`
 }
 
 type ExtendedProperties NamedValuesOrSelectors

@@ -2454,8 +2454,6 @@ spec:
                           properties:
                             name:
                               type: string
-                            prefix:
-                              type: string
                           required:
                           - name
                           type: object
@@ -2981,8 +2979,6 @@ spec:
                                   properties:
                                     name:
                                       type: string
-                                    prefix:
-                                      type: string
                                   required:
                                   - name
                                   type: object
@@ -3452,8 +3448,6 @@ spec:
                               properties:
                                 name:
                                   type: string
-                                prefix:
-                                  type: string
                               required:
                               - name
                               type: object
@@ -3758,8 +3752,6 @@ spec:
                             customHeader:
                               properties:
                                 name:
-                                  type: string
-                                prefix:
                                   type: string
                               required:
                               - name
