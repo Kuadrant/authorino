@@ -1,9 +1,12 @@
 package v1beta2
 
 import (
+	"fmt"
+
 	"github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/utils"
 
+	"github.com/tidwall/gjson"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
@@ -252,7 +255,7 @@ func convertEvaluatorCachingFrom(src *v1beta1.EvaluatorCaching) *EvaluatorCachin
 
 func convertValueOrSelectorTo(src ValueOrSelector) v1beta1.StaticOrDynamicValue {
 	return v1beta1.StaticOrDynamicValue{
-		Value:     string(src.Value.Raw),
+		Value:     gjson.ParseBytes(src.Value.Raw).String(),
 		ValueFrom: convertSelectorTo(src),
 	}
 }
@@ -260,7 +263,7 @@ func convertValueOrSelectorTo(src ValueOrSelector) v1beta1.StaticOrDynamicValue 
 func convertValueOrSelectorFrom(src v1beta1.StaticOrDynamicValue) ValueOrSelector {
 	value := k8sruntime.RawExtension{}
 	if src.ValueFrom.AuthJSON == "" {
-		value.Raw = []byte(src.Value)
+		value.Raw = []byte(fmt.Sprintf(`"%s"`, src.Value))
 	}
 	return ValueOrSelector{
 		Value:    value,

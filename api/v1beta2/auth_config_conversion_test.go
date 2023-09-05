@@ -510,7 +510,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 						},
 						"resource": {
 							"kind": {
-								"value": "\"blog/post\"",
+								"value": "blog/post",
 								"valueFrom": {}
 							},
 							"name": {
@@ -525,7 +525,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 						},
 						"subject": {
 							"kind": {
-								"value": "\"blog/user\"",
+								"value": "blog/user",
 								"valueFrom": {}
 							},
 							"name": {
@@ -637,7 +637,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 			"denyWith": {
 				"unauthenticated": {
 					"message": {
-						"value": "\"Authentication failed\"",
+						"value": "Authentication failed",
 						"valueFrom": {}
 					}
 				},
@@ -651,7 +651,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 						}
 					],
 					"message": {
-						"value": "\"Access denied\"",
+						"value": "Access denied",
 						"valueFrom": {}
 					}
 				}
@@ -967,7 +967,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 					"metrics": false,
 					"name": "x-auth-service",
 					"plain": {
-						"value": "\"Authorino\"",
+						"value": "Authorino",
 						"valueFrom": {}
 					},
 					"priority": 0,
