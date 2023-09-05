@@ -12,10 +12,10 @@ All requests to the Talker API will be authenticated in Envoy. However, requests
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#plain-identityplain">Plain</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#plain-authenticationplain">Plain</a></li>
       <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
-      <li>Dynamic response → <a href="./../features.md#extra-custom-denial-status-denywith">Custom denial status</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
+      <li>Dynamic response → <a href="./../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized">Custom denial status</a></li>
     </ul>
   </summary>
 

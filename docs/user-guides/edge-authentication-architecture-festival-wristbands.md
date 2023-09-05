@@ -14,10 +14,10 @@ As a minimum, EAA allows to simplify authentication between applications and mic
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Dynamic response → <a href="./../features.md#festival-wristband-tokens-responsewristband">Festival Wristband tokens</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Dynamic response → <a href="./../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband">Festival Wristband tokens</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides">Identity extension</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
     </ul>
   </summary>
 

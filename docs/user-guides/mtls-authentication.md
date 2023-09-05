@@ -6,8 +6,8 @@ Verify client X.509 certificates against trusted root CAs stored in Kubernetes `
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#mutual-transport-layer-security-mtls-authentication-identitymtls">mTLS</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#x509-client-certificate-authentication-authenticationx509">X.509 client certificate authentication</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 

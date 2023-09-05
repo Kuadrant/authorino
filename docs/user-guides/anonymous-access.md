@@ -6,7 +6,7 @@ Bypass identity verification or fall back to anonymous access when credentials f
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-identityanonymous">Anonymous access</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-authenticationanonymous">Anonymous access</a></li>
     </ul>
   </summary>
 
@@ -96,7 +96,7 @@ The example above enables anonymous access (i.e. removes authentication), withou
 
 For more sophisticated use cases of anonymous access with Authorino, consider combining this feature with other identity sources in the `AuthConfig` while playing with the [priorities](./../features.md#common-feature-priorities) of each source, as well as combination with `when` [conditions](./../features.md#common-feature-conditions-when), and/or adding authorization policies that either cover authentication or address anonymous access with proper rules (e.g. enforcing read-only access).
 
-Check out the docs for the [Anonymous access](./../features.md#anonymous-access-identityanonymous) feature for an example of an `AuthConfig` that falls back to anonymous access when a priority OIDC/JWT-based authentication fails, and enforces a read-only policy in such cases.
+Check out the docs for the [Anonymous access](./../features.md#anonymous-access-authenticationanonymous) feature for an example of an `AuthConfig` that falls back to anonymous access when a priority OIDC/JWT-based authentication fails, and enforces a read-only policy in such cases.
 
 ## 6. Consume the API
 

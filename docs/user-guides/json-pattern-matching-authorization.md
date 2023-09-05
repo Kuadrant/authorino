@@ -6,8 +6,8 @@ Write simple authorization rules based on JSON patterns matched against Authorin
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
     </ul>
   </summary>
 
@@ -130,7 +130,7 @@ spec:
 EOF
 ```
 
-Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#json-pattern-matching-authorization-rules-authorizationjson) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
+Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#pattern-matching-authorization-authorizationpatternmatching) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## 6. Obtain an access token and consume the API
 

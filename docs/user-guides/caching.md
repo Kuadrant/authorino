@@ -20,10 +20,10 @@ Cases where one will **NOT** want to enable caching, due to relatively cheap com
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Common feature → <a href="./../features.md#common-feature-caching-cache">Caching</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-identityanonymous">Anonymous access</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-authenticationanonymous">Anonymous access</a></li>
       <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
       <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-      <li>Dynamic response → <a href="./../features.md#json-injection-responsejson">JSON injection</a></li>
+      <li>Dynamic response → <a href="./../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
     </ul>
   </summary>
 

@@ -6,7 +6,7 @@ Validate Kubernetes Service Account tokens to authenticate requests to your prot
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
     </ul>
   </summary>
 

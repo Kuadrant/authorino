@@ -6,8 +6,8 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes">Kubernetes SubjectAccessReview</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>
+      <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview">Kubernetes SubjectAccessReview</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
     </ul>
   </summary>
 
@@ -108,7 +108,7 @@ spec:
 EOF
 ```
 
-Check out the [spec](./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes) for the Authorino Kubernetes SubjectAccessReview authorization feature, for resource attributes permission checks where SubjectAccessReviews issued by Authorino are modeled in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb).
+Check out the [spec](./../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview) for the Authorino Kubernetes SubjectAccessReview authorization feature, for resource attributes permission checks where SubjectAccessReviews issued by Authorino are modeled in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb).
 
 ## 6. Create roles associated with endpoints of the API
 

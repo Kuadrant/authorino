@@ -7,8 +7,8 @@ Provide Envoy with dynamic metadata about the external authorization process to 
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Dynamic response → Response wrappers → <a href="./../features.md#envoy-dynamic-metadata">Envoy Dynamic Metadata</a></li>
-      <li>Dynamic response → <a href="./../features.md#json-injection-responsejson">JSON injection</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Dynamic response → <a href="./../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 
@@ -125,7 +125,7 @@ EOF
 
 An annotation `auth-data/username` will be read from the Kubernetes `Secret`s storing valid API keys and passed as dynamic metadata `{ "ext_auth_data": { "username": «annotations.auth-data/username» } }`.
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
 
 ## 7. Create a couple of API keys
 

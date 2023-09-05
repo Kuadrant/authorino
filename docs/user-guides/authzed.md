@@ -6,8 +6,8 @@ Permission requests sent to a Google Zanzibar-based [Authzed/SpiceDB](https://au
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Authorization → <a href="./../features.md#authzedspicedb-authorizationauthzed">Authzed/SpiceDB</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Authorization → <a href="./../features.md#spicedb-authorizationspicedb">SpiceDB</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 </details>

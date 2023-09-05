@@ -6,8 +6,8 @@ Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#oauth-20-introspection-identityoauth2">OAuth 2.0 introspection</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#oauth-20-introspection-authenticationoauth2introspection">OAuth 2.0 introspection</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 
