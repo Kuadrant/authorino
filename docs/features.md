@@ -448,9 +448,9 @@ spec:
 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs.
 
-Policies can be either declared in-line in Rego language (`inlineRego`) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time (`externalRegistry`).
+Policies can be either declared in-line in Rego language (`inlineRego`) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time (`externalPolicy`).
 
-Policies pulled from external registries can be configured to be automatically refreshed (pulled again from the external registry), by setting the `authorization.opa.externalRegistry.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
+Policies pulled from external registries can be configured to be automatically refreshed (pulled again from the external registry), by setting the `authorization.opa.externalPolicy.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
 
 Authorino's built-in OPA module precompiles the policies during reconciliation of the AuthConfig and caches the precompiled policies for fast evaluation in runtime, where they receive the Authorization JSON as input.
 
@@ -1020,7 +1020,7 @@ spec:
   authorization:
     "complex-policy":
       opa:
-        externalRegistry:
+        externalPolicy:
           url: http://my-policy-registry
       cache:
         key:
