@@ -561,7 +561,10 @@ type OpaAuthorizationSpec struct {
 	// The Rego document must NOT include the "package" declaration in line 1.
 	Rego string `json:"rego,omitempty"`
 
-	// External registry of OPA policies.
+	// Settings for fetching the OPA policy from an external registry.
+	// Use it alternatively to 'inlineRego'.
+	// For the configurations of the HTTP request, the following options are not implemented: 'method', 'body', 'bodyParameters',
+	// 'contentType', 'headers', 'oauth2'. Use it only with: 'url', 'sharedSecret', 'credentials'.
 	External *ExternalOpaPolicy `json:"externalPolicy,omitempty"`
 
 	// Returns the value of all Rego rules in the virtual document. Values can be read in subsequent evaluators/phases of the Auth Pipeline.

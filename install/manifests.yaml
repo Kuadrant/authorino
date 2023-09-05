@@ -3159,7 +3159,12 @@ spec:
                             precompile) and at runtime.
                           type: boolean
                         externalPolicy:
-                          description: External registry of OPA policies.
+                          description: 'Settings for fetching the OPA policy from
+                            an external registry. Use it alternatively to ''inlineRego''.
+                            For the configurations of the HTTP request, the following
+                            options are not implemented: ''method'', ''body'', ''bodyParameters'',
+                            ''contentType'', ''headers'', ''oauth2''. Use it only
+                            with: ''url'', ''sharedSecret'', ''credentials''.'
                           properties:
                             body:
                               description: Raw body of the HTTP request. Supersedes
