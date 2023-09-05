@@ -448,7 +448,7 @@ spec:
 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs.
 
-Policies can be either declared in-line in Rego language (`inlineRego`) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time (`externalPolicy`).
+Policies can be either declared in-line in Rego language (`rego`) or as an HTTP endpoint where Authorino will fetch the source code of the policy in reconciliation-time (`externalPolicy`).
 
 Policies pulled from external registries can be configured to be automatically refreshed (pulled again from the external registry), by setting the `authorization.opa.externalPolicy.ttl` field (given in seconds, default: `0` – i.e. auto-refresh disabled).
 
@@ -846,7 +846,7 @@ spec:
     "more-expensive-policy": # no point in evaluating this one if it's not an allowed endpoint
       priority: 1
       opa:
-        inlineRego: |
+        rego: |
           allow { true }
   response:
     success:
@@ -952,7 +952,7 @@ spec:
       when:
       - patternRef: a-pet
       opa:
-        inlineRego: |
+        rego: |
           allow { input.metadata["pets-info"].ownerid == input.auth.identity.userid }
 ```
 

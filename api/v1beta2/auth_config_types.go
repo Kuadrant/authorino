@@ -562,7 +562,7 @@ type OpaAuthorizationSpec struct {
 	Rego string `json:"rego,omitempty"`
 
 	// Settings for fetching the OPA policy from an external registry.
-	// Use it alternatively to 'inlineRego'.
+	// Use it alternatively to 'rego'.
 	// For the configurations of the HTTP request, the following options are not implemented: 'method', 'body', 'bodyParameters',
 	// 'contentType', 'headers', 'oauth2'. Use it only with: 'url', 'sharedSecret', 'credentials'.
 	External *ExternalOpaPolicy `json:"externalPolicy,omitempty"`
