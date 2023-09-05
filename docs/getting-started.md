@@ -346,25 +346,25 @@ For authentication based on OpenID Connect (OIDC) JSON Web Tokens (JWT), plus on
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
   hosts: # any hosts that resolve to the envoy service and envoy routing config where the external authorization filter is enabled
-    - my-api.io # north-south traffic through a Kubernetes `Ingress` or OpenShift `Route`
-    - my-api.myapp.svc.cluster.local # east-west traffic (between applications within the cluster)
-  identity:
-    - name: idp-users
-      oidc:
-        endpoint: https://my-idp.com/auth/realm
+  - my-api.io # north-south traffic through a Kubernetes `Ingress` or OpenShift `Route`
+  - my-api.myapp.svc.cluster.local # east-west traffic (between applications within the cluster)
+  authentication:
+    "idp-users":
+      jwt:
+        issuerUrl: https://my-idp.com/auth/realm
   authorization:
-    - name: check-claim
-      json:
-        rules:
-          - selector: auth.identity.group
-            operator: eq
-            value: allowed-users
+    "check-claim":
+      patternMatching:
+        patterns:
+        - selector: auth.identity.group
+          operator: eq
+          value: allowed-users
 EOF
 ```
 
