@@ -15,6 +15,7 @@ jobs:
       matrix:
         go-version: [1.19.x]
         platform: [ubuntu-latest]
+        authconfig_version: [v1beta1, v1beta2]
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
@@ -34,5 +35,6 @@ jobs:
       - name: Run make e2e
         env:
           OPERATOR_VERSION: ${{ github.event.inputs.operatorVersion }}
+          AUTHCONFIG_VERSION: ${{ matrix.authconfig_version }}
         run: |
           make e2e

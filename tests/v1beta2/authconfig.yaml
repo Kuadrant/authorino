@@ -1,0 +1,308 @@
+apiVersion: authorino.kuadrant.io/v1beta2
+kind: AuthConfig
+metadata:
+  name: e2e-test
+spec:
+  hosts:
+  - talker-api-authorino.127.0.0.1.nip.io
+
+  patterns:
+    admin-path:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/admin(/.*)?$
+    resource-path:
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/greetings/\d+$
+
+  authentication:
+    k8s-auth:
+      kubernetesTokenReview:
+        audiences:
+        - https://kubernetes.default.svc.cluster.local
+      defaults:
+        kubernetes-rbac:
+          value: true
+        username:
+          selector: auth.identity.user.username
+          value: null
+    api-key:
+      apiKey:
+        selector:
+          matchLabels:
+            app: talker-api
+      credentials:
+        customHeader:
+          name: X-API-KEY
+      defaults:
+        kubernetes-rbac:
+          value: true
+        username:
+          selector: auth.identity.metadata.annotations.username
+    keycloak:
+      jwt:
+        issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+        ttl: 60
+      defaults:
+        jwt-rbac:
+          value: true
+        roles:
+          selector: auth.identity.realm_access.roles
+        username:
+          selector: auth.identity.preferred_username
+    oauth2-introspection:
+      oauth2Introspection:
+        credentialsRef:
+          name: oauth2-token-introspection-credentials-keycloak
+        endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
+        tokenTypeHint: requesting_party_token
+      credentials:
+        authorizationHeader:
+          prefix: Opaque
+      defaults:
+        jwt-rbac:
+          value: true
+        roles:
+          selector: auth.identity.realm_access.roles
+        username:
+          selector: auth.identity.preferred_username
+      cache:
+        key:
+          selector: context.request.http.headers.authorization
+    anonymous:
+      anonymous: {}
+      priority: 1
+      when:
+      - selector: context.request.http.method
+        operator: eq
+        value: GET
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/$
+      defaults:
+        username:
+          value: global
+
+  metadata:
+    geo-info:
+      http:
+        credentials: {}
+        headers:
+          Accept:
+            value: application/json
+        method: GET
+        url: http://ip-location.authorino.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
+      cache:
+        key:
+          selector: context.request.http.headers.x-forwarded-for.@extract:{"sep":","}
+    user-info:
+      userInfo:
+        identitySource: keycloak
+      cache:
+        key:
+          selector: context.request.http.headers.authorization
+    resource-info:
+      when:
+      - patternRef: resource-path
+      uma:
+        credentialsRef:
+          name: talker-api-uma-credentials
+        endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+      cache:
+        key:
+          selector: context.request.http.path
+
+  authorization:
+    allowed-methods:
+      opa:
+        externalPolicy:
+          url: https://raw.githubusercontent.com/guicassolato/authorino-opa/main/allowed-methods.rego
+          ttl: 300
+    geofence:
+      opa:
+        allValues: true
+        rego: |
+          country = object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
+          allow {
+            allowed_countries := ["ES", "FR", "IT"]
+            allowed_countries[_] == country
+          }
+    admin-kubernetes-rbac:
+      when:
+      - patternRef: admin-path
+      - selector: auth.identity.kubernetes-rbac
+        operator: eq
+        value: 'true'
+      kubernetesSubjectAccessReview:
+        user:
+          selector: auth.identity.username
+    admin-jwt-rbac:
+      when:
+      - patternRef: admin-path
+      - selector: auth.identity.jwt-rbac
+        operator: eq
+        value: 'true'
+      patternMatching:
+        patterns:
+        - selector: auth.identity.roles
+          operator: incl
+          value: admin
+    resource-owner:
+      when:
+      - patternRef: resource-path
+      opa:
+        rego: |
+          allow {
+            resource_attrs := object.get(input.auth.metadata, "resource-info", [])[0]
+            resource_owner := object.get(object.get(resource_attrs, "owner", {}), "id", "")
+            resource_owner == input.auth.identity.sub
+          }
+    timestamp:
+      opa:
+        rego: |
+          now = time.now_ns() / 1000000000
+          allow = true
+        allValues: true
+      priority: 1
+
+  response:
+    unauthenticated:
+      message:
+        value: Authentication failed
+    unauthorized:
+      message:
+        value: Access denied
+    success:
+      headers:
+        x-auth-service:
+          plain:
+            value: Authorino
+        x-username:
+          plain:
+            selector: auth.identity.username
+        x-auth-data:
+          json:
+            properties:
+              username:
+                selector: auth.identity.username
+              geo:
+                selector: auth.metadata.geo-info
+              timestamp:
+                selector: auth.authorization.timestamp.now
+        wristband:
+          wristband:
+            issuer: https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/wristband
+            tokenDuration: 300
+            customClaims:
+              username:
+                selector: auth.identity.username
+              uri:
+                selector: context.request.http.path
+              scope:
+                selector: context.request.http.method.@case:lower
+            signingKeyRefs:
+            - name: wristband-signing-key
+              algorithm: ES256
+          when:
+          - selector: auth.identity.anonymous
+            operator: neq
+            value: 'true'
+      dynamicMetadata:
+        rate-limit-data:
+          json:
+            properties:
+              username:
+                selector: auth.identity.username
+          key: ext_auth_data
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth2-token-introspection-credentials-keycloak
+stringData:
+  clientID: talker-api
+  clientSecret: 523b92b6-625d-4e1e-a313-77e7a8ae4e88
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: talker-api-uma-credentials
+stringData:
+  clientID: talker-api
+  clientSecret: 523b92b6-625d-4e1e-a313-77e7a8ae4e88
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wristband-signing-key
+stringData:
+  key.pem: |
+    -----BEGIN EC PRIVATE KEY-----
+    MHcCAQEEIDHvuf81gVlWGo0hmXGTAnA/HVxGuH8vOc7/8jewcVvqoAoGCCqGSM49
+    AwEHoUQDQgAETJf5NLVKplSYp95TOfhVPqvxvEibRyjrUZwwtpDuQZxJKDysoGwn
+    cnUvHIu23SgW+Ee9lxSmZGhO4eTdQeKxMA==
+    -----END EC PRIVATE KEY-----
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bob-api-key
+  labels:
+    authorino.kuadrant.io/managed-by: authorino
+    app: talker-api
+  annotations:
+    username: bob
+stringData:
+  api_key: ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alice-api-key
+  labels:
+    authorino.kuadrant.io/managed-by: authorino
+    app: talker-api
+  annotations:
+    username: alice
+stringData:
+  api_key: pR2zLorYFIYOE4LLiQAWMPIRei1YgRBy
+type: Opaque
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-1-sa
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-2-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: talker-api-admin
+rules:
+- nonResourceURLs: ["/admin*"]
+  verbs: ["get", "post"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: talker-api-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: talker-api-admin
+subjects:
+- kind: User
+  name: bob
+  namespace: bob
+- kind: ServiceAccount
+  name: app-1-sa
+  namespace: authorino
