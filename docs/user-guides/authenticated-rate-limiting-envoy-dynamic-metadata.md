@@ -117,8 +117,8 @@ spec:
         "rate-limit":
           json:
             properties:
-            - name: username
-              selector: auth.identity.metadata.annotations.auth-data\/username
+              "username":
+                selector: auth.identity.metadata.annotations.auth-data\/username
           key: ext_auth_data # how this bit of dynamic metadata from the ext authz service is named in the Envoy config
 EOF
 ```
