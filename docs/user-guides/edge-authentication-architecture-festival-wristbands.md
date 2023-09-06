@@ -218,7 +218,7 @@ spec:
   authentication:
     "edge-authenticated":
       jwt:
-        issuerEndpoint: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/edge/edge-auth/wristband
+        issuerUrl: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/edge/edge-auth/wristband
 EOF
 ```
 
