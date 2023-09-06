@@ -159,7 +159,7 @@ func (dst *AuthConfig) ConvertFrom(srcRaw conversion.Hub) error {
 	}
 
 	for _, responseSrc := range src.Spec.Response {
-		if responseSrc.Wrapper != "httpHeader" {
+		if responseSrc.Wrapper != "httpHeader" && responseSrc.Wrapper != "" {
 			continue
 		}
 		if dst.Spec.Response.Success.Headers == nil {
