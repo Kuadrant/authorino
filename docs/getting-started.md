@@ -56,6 +56,8 @@ curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/util
 
 The above will install the latest build of the Authorino Operator and latest version of the manifests (CRDs and RBAC), which by default points as well to the latest build of Authorino, both based on the `main` branches of each component. To install a stable released version of the Operator and therefore also defaults to its latest compatible stable release of Authorino, replace `main` with another tag of a proper release of the Operator, e.g. 'v0.2.0'.
 
+This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
+
 Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://github.com/kuadrant/authorino-operator#installing-via-olm).
 
 ### Step: Request an Authorino instance
@@ -72,12 +74,7 @@ The instructions here are for centralized gateway or centralized authorization s
   kubectl create namespace authorino
   ```
 
-  Deploy [cert-manager](https://github.com/jetstack/cert-manager) <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace or cert-manager is installed and running in the cluster)</small>:
-  ```sh
-  kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-  ```
-
-  Create the TLS certificates <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
+  Create the TLS certificates <small>(requires [cert-manager](https://github.com/jetstack/cert-manager); skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
   ```sh
   curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/authorino/g" | kubectl -n authorino apply -f -
   ```
@@ -138,12 +135,7 @@ The instructions here are for centralized gateway or centralized authorization s
   kubectl create namespace myapp
   ```
 
-  Deploy [cert-manager](https://github.com/jetstack/cert-manager) <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace or cert-manager is installed and running in the cluster)</small>:
-  ```sh
-  kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-  ```
-
-  Create the TLS certificates <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
+  Create the TLS certificates <small>(requires [cert-manager](https://github.com/jetstack/cert-manager); skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
   ```sh
   curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/myapp/g" | kubectl -n myapp apply -f -
   ```

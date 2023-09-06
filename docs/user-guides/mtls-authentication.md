@@ -23,7 +23,6 @@ Verify client X.509 certificates against trusted root CAs stored in Kubernetes `
 ## Requirements
 
 - Kubernetes server
-- [cert-manager](https://github.com/jetstack/cert-manager)
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
@@ -31,17 +30,13 @@ Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.
 kind create cluster --name authorino-tutorial
 ```
 
-Install cert-manager in the cluster:
-
-```sh
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-```
-
 ## 1. Install the Authorino Operator
 
 ```sh
 curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
+
+This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
 
 ## 2. Deploy Authorino
 
@@ -388,32 +383,6 @@ curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api-authorino.
 
 ## Cleanup
 
-If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:
-
 ```sh
 kind delete cluster --name authorino-tutorial
-```
-
-Otherwise, delete the resources created in each step:
-
-```sh
-kubectl delete authconfig/talker-api-protection
-kubectl delete authorino/authorino
-kubectl delete ingress/service
-kubectl delete configmap/service
-kubectl delete configmap/deployment
-kubectl delete configmap/envoy
-kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
-```
-
-To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
-
-```sh
-kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
-```
-
-To uninstall the cert-manager, run:
-
-```sh
-kubectl delete -f kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
 ```

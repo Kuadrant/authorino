@@ -43,19 +43,12 @@ For convenience, the same instance of Authorino used to enforce the AuthConfig a
 ## Requirements
 
 - Kubernetes server
-- [cert-manager](https://github.com/jetstack/cert-manager)
 - Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
 
 Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
 
 ```sh
 kind create cluster --name authorino-tutorial
-```
-
-Install cert-manager:
-
-```sh
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
 ```
 
 Deploy a Keycloak server preloaded with all the realm settings required for this guide:
@@ -70,6 +63,8 @@ kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorin
 ```sh
 curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
+
+This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
 
 ## 2. Deploy Authorino
 

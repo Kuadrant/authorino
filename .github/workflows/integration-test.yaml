@@ -31,12 +31,6 @@ jobs:
         run: go install sigs.k8s.io/kind@v0.20.0
       - name: Create kind cluster
         run: kind create cluster --name authorino-smoke-tests
-      - name: Install cert-manager
-        run: |
-          kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-          kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
-          kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io/cert-manager-webhook
-          kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
       - name: Install Authorino Operator
         run: |
           curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
