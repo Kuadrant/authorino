@@ -552,7 +552,7 @@ Otherwise, delete the resources created in each step:
 ```sh
 kubectl delete namespace myapp
 kubectl delete namespace authorino
-kubectl delete namespace clusterrole/authorino-apikey
+kubectl delete clusterrole authorino-apikey
 kubectl delete namespace keycloak
 ```
 
