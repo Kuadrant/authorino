@@ -310,7 +310,7 @@ spec:
   metadata:
     "geoinfo":
       http:
-        url: http://ip-location.default.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
+        url: 'http://ip-location.default.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}'
         headers:
           "Accept":
             value: application/json

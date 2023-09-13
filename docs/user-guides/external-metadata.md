@@ -110,7 +110,7 @@ spec:
   metadata:
     "geo":
       http:
-        url: http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode
+        url: 'http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode'
         headers:
           "Accept":
             value: application/json

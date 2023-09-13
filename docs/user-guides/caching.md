@@ -109,7 +109,7 @@ spec:
   metadata:
     "cached-metadata":
       http:
-        url: http://talker-api.default.svc.cluster.local:3000/metadata/{context.request.http.path}
+        url: "http://talker-api.default.svc.cluster.local:3000/metadata/{context.request.http.path}"
       cache:
         key:
           selector: context.request.http.path

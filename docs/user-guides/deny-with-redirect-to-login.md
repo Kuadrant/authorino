@@ -114,7 +114,7 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}
+          selector: "http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}"
 EOF
 ```
 
@@ -216,7 +216,7 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code
+          selector: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code"
 EOF
 ```
 
