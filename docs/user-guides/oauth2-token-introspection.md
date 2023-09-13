@@ -289,7 +289,7 @@ kubectl delete authorino/authorino
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 kubectl delete namespace keycloak
-kubectl delete namespace a12-server
+kubectl delete namespace a12n-server
 ```
 
 To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:
