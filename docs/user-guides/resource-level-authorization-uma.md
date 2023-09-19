@@ -7,7 +7,7 @@ Fetch resource metadata relevant for your authorization policies from Keycloak a
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>External auth metadata → <a href="./../features.md#user-managed-access-uma-resource-registry-metadatauma">User-Managed Access (UMA) resource registry</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
       <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
     </ul>
   </summary>
@@ -47,7 +47,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -119,70 +119,63 @@ Create the config:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-apiVersion: authorino.kuadrant.io/v1beta1
-kind: AuthConfig
-metadata:
-  name: talker-api-protection
-spec:
-  hosts:
-  - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   metadata:
-  - name: resource-data
-    uma:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
-      credentialsRef:
-        name: talker-api-uma-credentials
+    "resource-data":
+      uma:
+        endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+        credentialsRef:
+          name: talker-api-uma-credentials
   authorization:
-  - name: owned-resources
-    opa:
-      inlineRego: |
-        COLLECTIONS = ["greetings"]
+    "owned-resources":
+      opa:
+        rego: |
+          COLLECTIONS = ["greetings"]
 
-        http_request = input.context.request.http
-        http_method = http_request.method
-        requested_path_sections = split(trim_left(trim_right(http_request.path, "/"), "/"), "/")
+          http_request = input.context.request.http
+          http_method = http_request.method
+          requested_path_sections = split(trim_left(trim_right(http_request.path, "/"), "/"), "/")
 
-        get { http_method == "GET" }
-        post { http_method == "POST" }
-        put { http_method == "PUT" }
-        delete { http_method == "DELETE" }
+          get { http_method == "GET" }
+          post { http_method == "POST" }
+          put { http_method == "PUT" }
+          delete { http_method == "DELETE" }
 
-        valid_collection { COLLECTIONS[_] == requested_path_sections[0] }
+          valid_collection { COLLECTIONS[_] == requested_path_sections[0] }
 
-        collection_endpoint {
-          valid_collection
-          count(requested_path_sections) == 1
-        }
+          collection_endpoint {
+            valid_collection
+            count(requested_path_sections) == 1
+          }
 
-        resource_endpoint {
-          valid_collection
-          some resource_id
-          requested_path_sections[1] = resource_id
-        }
+          resource_endpoint {
+            valid_collection
+            some resource_id
+            requested_path_sections[1] = resource_id
+          }
 
-        identity_owns_the_resource {
-          identity := input.auth.identity
-          resource_attrs := object.get(input.auth.metadata, "resource-data", [])[0]
-          resource_owner := object.get(object.get(resource_attrs, "owner", {}), "id", "")
-          resource_owner == identity.sub
-        }
+          identity_owns_the_resource {
+            identity := input.auth.identity
+            resource_attrs := object.get(input.auth.metadata, "resource-data", [])[0]
+            resource_owner := object.get(object.get(resource_attrs, "owner", {}), "id", "")
+            resource_owner == identity.sub
+          }
 
-        allow { get;    collection_endpoint }
-        allow { post;   collection_endpoint }
-        allow { get;    resource_endpoint; identity_owns_the_resource }
-        allow { put;    resource_endpoint; identity_owns_the_resource }
-        allow { delete; resource_endpoint; identity_owns_the_resource }
+          allow { get;    collection_endpoint }
+          allow { post;   collection_endpoint }
+          allow { get;    resource_endpoint; identity_owns_the_resource }
+          allow { put;    resource_endpoint; identity_owns_the_resource }
+          allow { delete; resource_endpoint; identity_owns_the_resource }
 EOF
 ```
 

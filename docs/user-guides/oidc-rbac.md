@@ -8,8 +8,8 @@ In this user guide, you will learn via example how to implement a simple Role-Ba
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 
@@ -48,7 +48,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -109,7 +109,7 @@ Apply the AuthConfig:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -117,54 +117,54 @@ spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
 
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
 
   patterns:
-    member-role:
+    "member-role":
     - selector: auth.identity.realm_access.roles
       operator: incl
       value: member
-    admin-role:
+    "admin-role":
     - selector: auth.identity.realm_access.roles
       operator: incl
       value: admin
 
   authorization:
-  # RBAC rule: 'member' role required for requests to /resources[/*]
-  - name: rbac-resources-api
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/resources(/.*)?$
-    json:
-      rules:
-      - patternRef: member-role
+    # RBAC rule: 'member' role required for requests to /resources[/*]
+    "rbac-resources-api":
+      when:
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/resources(/.*)?$
+      patternMatching:
+        patterns:
+        - patternRef: member-role
 
-  # RBAC rule: 'admin' role required for DELETE requests to /resources/{id}
-  - name: rbac-delete-resource
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/resources/\d+$
-    - selector: context.request.http.method
-      operator: eq
-      value: DELETE
-    json:
-      rules:
-      - patternRef: admin-role
+    # RBAC rule: 'admin' role required for DELETE requests to /resources/{id}
+    "rbac-delete-resource":
+      when:
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/resources/\d+$
+      - selector: context.request.http.method
+        operator: eq
+        value: DELETE
+      patternMatching:
+        patterns:
+        - patternRef: admin-role
 
-  # RBAC rule: 'admin' role required for requests to /admin[/*]
-  - name: rbac-admin-api
-    when:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/admin(/.*)?$
-    json:
-      rules:
-      - patternRef: admin-role
+    # RBAC rule: 'admin' role required for requests to /admin[/*]
+    "rbac-admin-api":
+      when:
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/admin(/.*)?$
+      patternMatching:
+        patterns:
+        - patternRef: admin-role
 EOF
 ```
 

@@ -6,7 +6,7 @@ Validate Kubernetes Service Account tokens to authenticate requests to your prot
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
     </ul>
   </summary>
 
@@ -36,7 +36,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -87,7 +87,7 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -95,11 +95,11 @@ spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
   - envoy.default.svc.cluster.local
-  identity:
-  - name: authorized-service-accounts
-    kubernetes:
-      audiences:
-      - talker-api
+  authentication:
+    "authorized-service-accounts":
+      kubernetesTokenReview:
+        audiences:
+        - talker-api
 EOF
 ```
 

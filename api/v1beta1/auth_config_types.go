@@ -774,6 +774,7 @@ func (s *AuthConfigStatus) Ready() bool {
 // AuthConfig is the schema for Authorino's AuthConfig API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.summary.ready`,description="Ready for all hosts"
 // +kubebuilder:printcolumn:name="Hosts",type=string,JSONPath=`.status.summary.numHostsReady`,description="Number of hosts ready"
 // +kubebuilder:printcolumn:name="Authentication",type=integer,JSONPath=`.status.summary.numIdentitySources`,description="Number of trusted identity sources",priority=2

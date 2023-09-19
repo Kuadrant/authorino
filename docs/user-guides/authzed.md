@@ -6,8 +6,8 @@ Permission requests sent to a Google Zanzibar-based [Authzed/SpiceDB](https://au
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Authorization → <a href="./../features.md#authzedspicedb-authorizationauthzed">Authzed/SpiceDB</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Authorization → <a href="./../features.md#spicedb-authorizationspicedb">SpiceDB</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 </details>
@@ -27,7 +27,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -220,45 +220,42 @@ Create the AuthConfig:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: blog-users
-    apiKey:
-      selector:
-        matchLabels:
-          app: talker-api
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "blog-users":
+      apiKey:
+        selector:
+          matchLabels:
+            app: talker-api
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   authorization:
-  - name: authzed
-    authzed:
-      endpoint: spicedb.spicedb.svc.cluster.local:50051
-      insecure: true
-      sharedSecretRef:
-        name: spicedb
-        key: grpc-preshared-key
-      subject:
-        kind:
-          value: blog/user
-        name:
-          valueFrom:
-            authJSON: auth.identity.metadata.annotations.username
-      resource:
-        kind:
-          value: blog/post
-        name:
-          valueFrom:
-            authJSON: context.request.http.path.@extract:{"sep":"/","pos":2}
-      permission:
-        valueFrom:
-          authJSON: context.request.http.method.@replace:{"old":"GET","new":"read"}.@replace:{"old":"POST","new":"write"}
+    "authzed-spicedb":
+      spicedb:
+        endpoint: spicedb.spicedb.svc.cluster.local:50051
+        insecure: true
+        sharedSecretRef:
+          name: spicedb
+          key: grpc-preshared-key
+        subject:
+          kind:
+            value: blog/user
+          name:
+            selector: auth.identity.metadata.annotations.username
+        resource:
+          kind:
+            value: blog/post
+          name:
+            selector: context.request.http.path.@extract:{"sep":"/","pos":2}
+        permission:
+          selector: context.request.http.method.@replace:{"old":"GET","new":"read"}.@replace:{"old":"POST","new":"write"}
 EOF
 ```
 

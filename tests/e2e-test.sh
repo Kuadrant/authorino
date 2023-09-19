@@ -8,8 +8,9 @@ for cmd in realpath kubectl curl jq base64; do
 done
 
 namespace=${NAMESPACE:-"authorino"}
-authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/authconfig.yaml"}
-authconfig_invalid=${AUTHCONFIG_INVALID:-"$(dirname $(realpath $0))/authconfig-invalid.yaml"}
+authconfig_version=${AUTHCONFIG_VERSION:-"v1beta2"}
+authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/${authconfig_version}/authconfig.yaml"}
+authconfig_invalid=${AUTHCONFIG_INVALID:-"$(dirname $(realpath $0))/${authconfig_version}/authconfig-invalid.yaml"}
 verbose=${VERBOSE}
 timeout=${TIMEOUT:-"600"}
 

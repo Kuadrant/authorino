@@ -6,9 +6,9 @@ Customize response status code and headers on failed requests to redirect users 
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Dynamic response → <a href="./../features.md#extra-custom-denial-status-denywith">Custom denial status</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Dynamic response → <a href="./../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized">Custom denial status</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
     </ul>
   </summary>
 
@@ -34,7 +34,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Matrix Quotes web application
@@ -85,41 +85,40 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection
 spec:
   hosts:
   - matrix-quotes-authorino.127.0.0.1.nip.io
-  identity:
-  - name: browser-users
-    apiKey:
-      selector:
-        matchLabels:
-          group: users
-    credentials:
-      in: cookie
-      keySelector: TOKEN
-  - name: http-basic-auth
-    apiKey:
-      selector:
-        matchLabels:
-          group: users
-    credentials:
-      in: authorization_header
-      keySelector: Basic
-  denyWith:
+  authentication:
+    "browser-users":
+      apiKey:
+        selector:
+          matchLabels:
+            group: users
+      credentials:
+        cookie:
+          name: TOKEN
+    "http-basic-auth":
+      apiKey:
+        selector:
+          matchLabels:
+            group: users
+      credentials:
+        authorizationHeader:
+          prefix: Basic
+  response:
     unauthenticated:
       code: 302
       headers:
-      - name: Location
-        valueFrom:
-          authJSON: http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}
+        "Location":
+          selector: "http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}"
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
 
 ## 6. Create an API key
 
@@ -198,27 +197,26 @@ kubectl set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/aut
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection
 spec:
   hosts:
   - matrix-quotes-authorino.127.0.0.1.nip.io
-  identity:
-  - name: idp-users
-    oidc:
-      endpoint: http://keycloak:8080/auth/realms/kuadrant
-    credentials:
-      in: cookie
-      keySelector: TOKEN
-  denyWith:
+  authentication:
+    "idp-users":
+      jwt:
+        issuerUrl: http://keycloak:8080/auth/realms/kuadrant
+      credentials:
+        cookie:
+          name: TOKEN
+  response:
     unauthenticated:
       code: 302
       headers:
-      - name: Location
-        valueFrom:
-          authJSON: http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code
+        "Location":
+          selector: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes-authorino.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code"
 EOF
 ```
 

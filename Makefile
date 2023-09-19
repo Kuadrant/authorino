@@ -109,7 +109,8 @@ generate: vendor controller-gen ## Generates types deepcopy code
 	$(MAKE) fmt vet
 
 manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/install
-	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && kustomize build install > $(AUTHORINO_MANIFESTS)
+	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && $(KUSTOMIZE) build install > $(AUTHORINO_MANIFESTS)
+	$(MAKE) patch-webhook
 
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
 	go run -ldflags "-X main.version=$(VERSION)" ./main.go server
@@ -143,22 +144,15 @@ report-benchmarks:
 cover: ## Shows test coverage
 	go tool cover -html=cover.out
 
+AUTHCONFIG_VERSION ?= v1beta2
 VERBOSE ?= 0
 e2e: ## Runs the end-to-end tests on a local environment setup
 	$(MAKE) local-setup NAMESPACE=authorino KIND_CLUSTER_NAME=authorino-e2e AUTHORINO_IMAGE=$(AUTHORINO_IMAGE) TLS_ENABLED=$(TLS_ENABLED) OPERATOR_BRANCH=$(OPERATOR_BRANCH) AUTHORINO_MANIFESTS=$(AUTHORINO_MANIFESTS) AUTHORINO_INSTANCE=$(AUTHORINO_INSTANCE) ENVOY_OVERLAY=$(ENVOY_OVERLAY) DEPLOY_KEYCLOAK=1 FF=1
-	NAMESPACE=authorino VERBOSE=$(VERBOSE) ./tests/e2e-test.sh
+	NAMESPACE=authorino AUTHCONFIG_VERSION=$(AUTHCONFIG_VERSION) VERBOSE=$(VERBOSE) ./tests/e2e-test.sh
 
 ##@ Apps
 
-.PHONY: cert-manager user-apps keycloak dex limitador
-
-cert-manager: ## Installs CertManager into the Kubernetes cluster configured in ~/.kube/config
-ifeq (true,$(TLS_ENABLED))
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-	kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
-	kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io/cert-manager-webhook
-	kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
-endif
+.PHONY: user-apps keycloak dex limitador
 
 DEPLOY_KEYCLOAK ?= $(DEPLOY_IDPS)
 DEPLOY_DEX ?= $(DEPLOY_IDPS)
@@ -188,16 +182,19 @@ limitador: ## Deploys Limitador from kuadrant/authorino-examples into the Kubern
 
 ##@ Installation
 
-.PHONY: install-operator uninstall-operator install uninstall
+.PHONY: install-operator uninstall-operator install uninstall patch-webhook
+
+AUTHORINO_OPERATOR_NAMESPACE ?= authorino-operator
 
 ifeq (latest,$(OPERATOR_VERSION))
 OPERATOR_BRANCH = main
 else
 OPERATOR_BRANCH = $(OPERATOR_VERSION)
 endif
-install-operator: ## Installs Authorino Operator and corresponding version of the manifests into the Kubernetes cluster configured in ~/.kube/config
-	kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/deploy/manifests.yaml
-	kubectl -n authorino-operator wait --timeout=300s --for=condition=Available deployments --all
+install-operator: ## Installs Authorino Operator and dependencies into the Kubernetes cluster configured in ~/.kube/config
+	curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/utils/install.sh | bash -s -- --git-ref $(OPERATOR_BRANCH)
+	kubectl patch deployment/authorino-webhooks -n $(AUTHORINO_OPERATOR_NAMESPACE) -p '{"spec":{"template":{"spec":{"containers":[{"name":"webhooks","image":"$(AUTHORINO_IMAGE)","imagePullPolicy":"IfNotPresent"}]}}}}'
+	kubectl -n $(AUTHORINO_OPERATOR_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 
 uninstall-operator: ## Uninstalls Authorino Operator and corresponding version of the manifests from the Kubernetes cluster configured in ~/.kube/config
 	kubectl delete -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/config/deploy/manifests.yaml
@@ -207,6 +204,13 @@ install: manifests ## Installs the current manifests (CRD, RBAC) into the Kubern
 
 uninstall: manifests ## Uninstalls the current manifests (CRD, RBAC) from the Kubernetes cluster configured in ~/.kube/config
 	kubectl delete -f $(AUTHORINO_MANIFESTS)
+
+patch-webhook: export WEBHOOK_NAMESPACE=$(AUTHORINO_OPERATOR_NAMESPACE)
+patch-webhook:
+	envsubst \
+			< $(AUTHORINO_MANIFESTS) \
+			> $(AUTHORINO_MANIFESTS).tmp && \
+	mv $(AUTHORINO_MANIFESTS).tmp $(AUTHORINO_MANIFESTS)
 
 ##@ Deployment
 
@@ -250,7 +254,7 @@ cluster: kind ## Starts a local Kubernetes cluster using Kind
 local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
 	$(KIND) load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
-local-setup: cluster local-build cert-manager install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
+local-setup: cluster local-build install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \

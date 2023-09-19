@@ -90,10 +90,10 @@ make test
 
 The following command will:
 - Start a local Kubernetes cluster (using Kind)
+- Install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster
 - Install the [Authorino Operator](https://github.com/kuadrant/authorino-operator) and Authorino CRDs
 - Build an image of Authorino based on the current branch
 - Push the freshly built image to the cluster's registry
-- Install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster
 - Generate TLS certificates for the Authorino service
 - Deploy an instance of Authorino
 - Deploy the example application [**Talker API**](https://github.com/kuadrant/authorino-examples#talker-api), a simple HTTP API that echoes back whatever it gets in the request

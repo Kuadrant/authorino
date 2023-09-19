@@ -51,10 +51,12 @@ Check out the [Feature specification](./features.md) page for more feature-speci
 The simplest way to install the Authorino Operator is by applying the manifest bundle:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 The above will install the latest build of the Authorino Operator and latest version of the manifests (CRDs and RBAC), which by default points as well to the latest build of Authorino, both based on the `main` branches of each component. To install a stable released version of the Operator and therefore also defaults to its latest compatible stable release of Authorino, replace `main` with another tag of a proper release of the Operator, e.g. 'v0.2.0'.
+
+This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
 
 Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://github.com/kuadrant/authorino-operator#installing-via-olm).
 
@@ -72,12 +74,7 @@ The instructions here are for centralized gateway or centralized authorization s
   kubectl create namespace authorino
   ```
 
-  Deploy [cert-manager](https://github.com/jetstack/cert-manager) <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace or cert-manager is installed and running in the cluster)</small>:
-  ```sh
-  kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-  ```
-
-  Create the TLS certificates <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
+  Create the TLS certificates <small>(requires [cert-manager](https://github.com/jetstack/cert-manager); skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
   ```sh
   curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/authorino/g" | kubectl -n authorino apply -f -
   ```
@@ -138,12 +135,7 @@ The instructions here are for centralized gateway or centralized authorization s
   kubectl create namespace myapp
   ```
 
-  Deploy [cert-manager](https://github.com/jetstack/cert-manager) <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace or cert-manager is installed and running in the cluster)</small>:
-  ```sh
-  kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-  ```
-
-  Create the TLS certificates <small>(skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
+  Create the TLS certificates <small>(requires [cert-manager](https://github.com/jetstack/cert-manager); skip if you already have certificates and certificate keys created and stored in Kubernetes `Secret`s in the namespace)</small>:
   ```sh
   curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/myapp/g" | kubectl -n myapp apply -f -
   ```
@@ -346,25 +338,25 @@ For authentication based on OpenID Connect (OIDC) JSON Web Tokens (JWT), plus on
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: my-api-protection
 spec:
   hosts: # any hosts that resolve to the envoy service and envoy routing config where the external authorization filter is enabled
-    - my-api.io # north-south traffic through a Kubernetes `Ingress` or OpenShift `Route`
-    - my-api.myapp.svc.cluster.local # east-west traffic (between applications within the cluster)
-  identity:
-    - name: idp-users
-      oidc:
-        endpoint: https://my-idp.com/auth/realm
+  - my-api.io # north-south traffic through a Kubernetes `Ingress` or OpenShift `Route`
+  - my-api.myapp.svc.cluster.local # east-west traffic (between applications within the cluster)
+  authentication:
+    "idp-users":
+      jwt:
+        issuerUrl: https://my-idp.com/auth/realm
   authorization:
-    - name: check-claim
-      json:
-        rules:
-          - selector: auth.identity.group
-            operator: eq
-            value: allowed-users
+    "check-claim":
+      patternMatching:
+        patterns:
+        - selector: auth.identity.group
+          operator: eq
+          value: allowed-users
 EOF
 ```
 

@@ -6,8 +6,8 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes">Kubernetes SubjectAccessReview</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-identitykubernetes">Kubernetes TokenReview</a></li>
+      <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview">Kubernetes SubjectAccessReview</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
     </ul>
   </summary>
 
@@ -35,7 +35,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -88,7 +88,7 @@ The `AuthConfig` below sets all Kubernetes service accounts as trusted users of 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
@@ -96,19 +96,19 @@ spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
   - envoy.default.svc.cluster.local
-  identity:
-  - name: service-accounts
-    kubernetes:
-      audiences: ["https://kubernetes.default.svc.cluster.local"]
+  authentication:
+    "service-accounts":
+      kubernetesTokenReview:
+        audiences: ["https://kubernetes.default.svc.cluster.local"]
   authorization:
-  - name: k8s-rbac
-    kubernetes:
-      user:
-        valueFrom: { authJSON: auth.identity.user.username }
+    "k8s-rbac":
+      kubernetesSubjectAccessReview:
+        user:
+          selector: auth.identity.user.username
 EOF
 ```
 
-Check out the [spec](./../features.md#kubernetes-subjectaccessreview-authorizationkubernetes) for the Authorino Kubernetes SubjectAccessReview authorization feature, for resource attributes permission checks where SubjectAccessReviews issued by Authorino are modeled in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb).
+Check out the [spec](./../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview) for the Authorino Kubernetes SubjectAccessReview authorization feature, for resource attributes permission checks where SubjectAccessReviews issued by Authorino are modeled in terms of common attributes of operations on Kubernetes resources (namespace, API group, kind, name, subresource, verb).
 
 ## 6. Create roles associated with endpoints of the API
 

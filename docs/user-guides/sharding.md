@@ -11,7 +11,7 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li><a href="./../architecture.md#sharding">Sharding</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 
@@ -35,7 +35,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy a couple instances of Authorino
@@ -98,7 +98,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: auth-config-1
@@ -107,13 +107,13 @@ metadata:
 spec:
   hosts:
   - my-host.staging.io
-  identity:
-  - name: api-key
-    apiKey:
-      selector:
-        matchLabels:
-          authorino/api-key: "true"
-          authorino/environment: staging
+  authentication:
+    "api-key":
+      apiKey:
+        selector:
+          matchLabels:
+            authorino/api-key: "true"
+            authorino/environment: staging
 EOF
 ```
 
@@ -149,7 +149,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: auth-config-2
@@ -158,13 +158,13 @@ metadata:
 spec:
   hosts:
   - my-host.io
-  identity:
-  - name: api-key
-    apiKey:
-      selector:
-        matchLabels:
-          authorino/api-key: "true"
-          authorino/environment: production
+  authentication:
+    "api-key":
+      apiKey:
+        selector:
+          matchLabels:
+            authorino/api-key: "true"
+            authorino/environment: production
 EOF
 ```
 

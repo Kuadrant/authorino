@@ -6,8 +6,8 @@ Turn Authorino API key `Secret`s settings into HTTP basic auth.
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
-        <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
+        <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 
@@ -35,7 +35,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -86,39 +86,39 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: http-basic-auth
-    apiKey:
-      selector:
-        matchLabels:
-          group: users
-    credentials:
-      in: authorization_header
-      keySelector: Basic
+  authentication:
+    "http-basic-auth":
+      apiKey:
+        selector:
+          matchLabels:
+            group: users
+      credentials:
+        authorizationHeader:
+          prefix: Basic
   authorization:
-  - name: acl
-    when:
-    - selector: context.request.http.path
-      operator: eq
-      value: /bye
-    json:
-      rules:
-      - selector: context.request.http.headers.authorization.@extract:{"pos":1}|@base64:decode|@extract:{"sep":":"}
+    "acl":
+      when:
+      - selector: context.request.http.path
         operator: eq
-        value: john
+        value: /bye
+      patternMatching:
+        patterns:
+        - selector: context.request.http.headers.authorization.@extract:{"pos":1}|@base64:decode|@extract:{"sep":":"}
+          operator: eq
+          value: john
 EOF
 ```
 
 The config specifies an Access Control List (ACL), by which only the user `john` is authorized to consume the `/bye` endpoint of the API.
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifiers `@extract` and `@case` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifiers `@extract` and `@case` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## 6. Create user credentials
 

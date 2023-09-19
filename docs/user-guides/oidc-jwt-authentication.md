@@ -6,7 +6,7 @@ Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; le
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
     </ul>
   </summary>
 
@@ -47,7 +47,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -98,17 +98,17 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
 EOF
 ```
 

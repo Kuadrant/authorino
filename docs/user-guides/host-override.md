@@ -47,7 +47,7 @@ virtual_hosts:
 Create the AuthConfig for the **Pets API**:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: dogs-api-protection
@@ -55,13 +55,13 @@ spec:
   hosts:
   - dogs.pets.com
 
-  identity: [...]
+  authentication: [...]
 ```
 
 Create the AuthConfig for the **Cats API**:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: cats-api-protection
@@ -69,7 +69,7 @@ spec:
   hosts:
   - cats.pets.com
 
-  identity: [...]
+  authentication: [...]
 ```
 
 Notice that the host subdomains `dogs.pets.com` and `cats.pets.com` are not really requested by the API consumers. Rather, users send requests to `pets.com/dogs` and `pets.com/cats`. When routing those requests, Envoy makes sure to inject the corresponding context extensions that will induce the right lookup in Authorino.
@@ -104,7 +104,7 @@ The `host` context extension used above is any key that matches one of the hosts
 Create the AuthConfig for the **Pets API**:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: pets-api-protection
@@ -112,7 +112,7 @@ spec:
   hosts:
   - pets.com
 
-  identity: [...]
+  authentication: [...]
 ```
 
 Notice that requests to `dogs.pets.com` and to `cats.pets.com` are all routed by Envoy to the same API, with same external authorization configuration. in all the cases, Authorino will lookup for the indexed AuthConfig associated with `pets.com`. The same is valid for a request sent, e.g., to `birds.pets.com`.

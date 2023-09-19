@@ -6,8 +6,8 @@ Write simple authorization rules based on JSON patterns matched against Authorin
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
     </ul>
   </summary>
 
@@ -48,7 +48,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -105,32 +105,32 @@ The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.or
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   authorization:
-  - name: email-verified-only
-    when:
-    - selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\": \",\"}"
-      operator: matches
-      value: 192\\.168\\.1\\.\\d+
-    json:
-      rules:
-      - selector: auth.identity.email_verified
-        operator: eq
-        value: "true"
+    "email-verified-only":
+      when:
+      - selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\": \",\"}"
+        operator: matches
+        value: 192\\.168\\.1\\.\\d+
+      patternMatching:
+        patterns:
+        - selector: auth.identity.email_verified
+          operator: eq
+          value: "true"
 EOF
 ```
 
-Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#json-pattern-matching-authorization-rules-authorizationjson) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
+Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](./../features.md#pattern-matching-authorization-authorizationpatternmatching) feature, as well the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](./../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## 6. Obtain an access token and consume the API
 

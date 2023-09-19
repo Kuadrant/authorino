@@ -20,10 +20,10 @@ Cases where one will **NOT** want to enable caching, due to relatively cheap com
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Common feature → <a href="./../features.md#common-feature-caching-cache">Caching</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-identityanonymous">Anonymous access</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-authenticationanonymous">Anonymous access</a></li>
       <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
       <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-      <li>Dynamic response → <a href="./../features.md#json-injection-responsejson">JSON injection</a></li>
+      <li>Dynamic response → <a href="./../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
     </ul>
   </summary>
 
@@ -45,7 +45,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -96,44 +96,45 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: anonymous
-    anonymous: {}
+  authentication:
+    "anonymous":
+      anonymous: {}
   metadata:
-  - name: cached-metadata
-    http:
-      endpoint: http://talker-api.default.svc.cluster.local:3000/metadata/{context.request.http.path}
-      method: GET
-    cache:
-      key:
-        valueFrom: { authJSON: context.request.http.path }
-      ttl: 60
+    "cached-metadata":
+      http:
+        url: "http://talker-api.default.svc.cluster.local:3000/metadata/{context.request.http.path}"
+      cache:
+        key:
+          selector: context.request.http.path
+        ttl: 60
   authorization:
-  - name: cached-authz
-    opa:
-      inlineRego: |
-        now = time.now_ns()
-        allow = true
-      allValues: true
-    cache:
-      key:
-        valueFrom: { authJSON: context.request.http.path }
-      ttl: 60
+    "cached-authz":
+      opa:
+        rego: |
+          now = time.now_ns()
+          allow = true
+        allValues: true
+      cache:
+        key:
+          selector: context.request.http.path
+        ttl: 60
   response:
-  - name: x-authz-data
-    json:
-      properties:
-      - name: cached-metadata
-        valueFrom: { authJSON: auth.metadata.cached-metadata.uuid }
-      - name: cached-authz
-        valueFrom: { authJSON: auth.authorization.cached-authz.now }
+    success:
+      headers:
+        "x-authz-data":
+          json:
+            properties:
+              "cached-metadata":
+                selector: auth.metadata.cached-metadata.uuid
+              "cached-authz":
+                selector: auth.authorization.cached-authz.now
 EOF
 ```
 

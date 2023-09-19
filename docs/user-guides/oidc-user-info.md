@@ -7,8 +7,8 @@ Fetch user info for OpenID Connect ID tokens in request-time for extra metadata 
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>External auth metadata → <a href="./../features.md#oidc-userinfo-metadatauserinfo">OIDC UserInfo</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 
@@ -49,7 +49,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -100,28 +100,28 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   metadata:
-  - name: userinfo
-    userInfo:
-      identitySource: keycloak-kuadrant-realm
+    "userinfo":
+      userInfo:
+        identitySource: keycloak-kuadrant-realm
   authorization:
-  - name: active-tokens-only
-    json:
-      rules:
-      - selector: "auth.metadata.userinfo.email" # user email expected from the userinfo instead of the jwt
-        operator: neq
-        value: ""
+    "active-tokens-only":
+      patternMatching:
+        patterns:
+        - selector: "auth.metadata.userinfo.email" # user email expected from the userinfo instead of the jwt
+          operator: neq
+          value: ""
 EOF
 ```
 

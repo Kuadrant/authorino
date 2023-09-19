@@ -7,7 +7,7 @@ Get online data from remote HTTP services to enhance authorization rules.
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
       <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
     </ul>
   </summary>
@@ -36,7 +36,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -91,45 +91,44 @@ The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.or
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   metadata:
-    - name: geo
+    "geo":
       http:
-        endpoint: http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode
-        method: GET
+        url: 'http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode'
         headers:
-        - name: Accept
-          value: application/json
+          "Accept":
+            value: application/json
   authorization:
-  - name: geofence
-    opa:
-      inlineRego: |
-        import input.context.request.http
+    "geofence":
+      opa:
+        rego: |
+          import input.context.request.http
 
-        allow {
-          http.method = "GET"
-          split(http.path, "/") = [_, requested_country, _]
-          lower(requested_country) == lower(object.get(input.auth.metadata.geo, "countryCode", ""))
-        }
+          allow {
+            http.method = "GET"
+            split(http.path, "/") = [_, requested_country, _]
+            lower(requested_country) == lower(object.get(input.auth.metadata.geo, "countryCode", ""))
+          }
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the `@extract` string modifier.
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json), including the description of the `@extract` string modifier.
 
 ## 6. Create an API key
 

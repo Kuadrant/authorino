@@ -56,7 +56,7 @@ curl http://talker-api-authorino.127.0.0.1.nip.io:8000/hello -i
 ### Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ### Deploy Authorino

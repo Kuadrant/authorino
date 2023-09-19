@@ -7,7 +7,7 @@ Leverage the power of Open Policy Agent (OPA) policies, evaluated against Author
     <strong>Authorino features in this guide:</strong>
     <ul>
       <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 
@@ -35,7 +35,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -92,31 +92,31 @@ _Optional._ Set [`use_remote_address: true`](https://www.envoyproxy.io/docs/envo
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   authorization:
-  - name: read-only-outside
-    opa:
-      inlineRego: |
-        ips := split(input.context.request.http.headers["x-forwarded-for"], ",")
-        trusted_network { regex.match(`192\.168\.1\.\d+`, ips[0]) }
+    "read-only-outside":
+      opa:
+        rego: |
+          ips := split(input.context.request.http.headers["x-forwarded-for"], ",")
+          trusted_network { net.cidr_contains("192.168.1.1/24", ips[0]) }
 
-        allow { trusted_network }
-        allow { not trusted_network; input.context.request.http.method == "GET" }
+          allow { trusted_network }
+          allow { not trusted_network; input.context.request.http.method == "GET" }
 EOF
 ```
 

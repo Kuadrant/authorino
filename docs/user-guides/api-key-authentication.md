@@ -6,7 +6,7 @@ Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with y
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 
@@ -32,7 +32,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -83,22 +83,22 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
 EOF
 ```
 

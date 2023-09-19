@@ -6,8 +6,8 @@ Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#oauth-20-introspection-identityoauth2">OAuth 2.0 introspection</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#oauth-20-introspection-authenticationoauth2introspection">OAuth 2.0 introspection</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 
@@ -63,7 +63,7 @@ kubectl -n a12n-server port-forward deployment/a12n-server 8531:8531 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -144,36 +144,36 @@ Create the config:
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak
-    oauth2:
-      tokenIntrospectionUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
-      tokenTypeHint: requesting_party_token
-      credentialsRef:
-        name: oauth2-token-introspection-credentials-keycloak
-  - name: a12n-server
-    oauth2:
-      tokenIntrospectionUrl: http://a12n-server.a12n-server.svc.cluster.local:8531/introspect
-      credentialsRef:
-        name: oauth2-token-introspection-credentials-a12n-server
+  authentication:
+    "keycloak":
+      oauth2Introspection:
+        endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
+        tokenTypeHint: requesting_party_token
+        credentialsRef:
+          name: oauth2-token-introspection-credentials-keycloak
+    "a12n-server":
+      oauth2Introspection:
+        endpoint: http://a12n-server.a12n-server.svc.cluster.local:8531/introspect
+        credentialsRef:
+          name: oauth2-token-introspection-credentials-a12n-server
   authorization:
-  - name: can-read
-    when:
-    - selector: auth.identity.privileges
-      operator: neq
-      value: ""
-    json:
-      rules:
-      - selector: auth.identity.privileges.talker-api
-        operator: incl
-        value: read
+    "can-read":
+      when:
+      - selector: auth.identity.privileges
+        operator: neq
+        value: ""
+      patternMatching:
+        patterns:
+        - selector: auth.identity.privileges.talker-api
+          operator: incl
+          value: read
 EOF
 ```
 
@@ -289,7 +289,7 @@ kubectl delete authorino/authorino
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
 kubectl delete namespace keycloak
-kubectl delete namespace a12-server
+kubectl delete namespace a12n-server
 ```
 
 To uninstall the Authorino Operator and manifests (CRDs, RBAC, etc), run:

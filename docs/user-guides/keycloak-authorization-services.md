@@ -8,7 +8,7 @@ This user guide is an example of how to use Authorino as an adapter to Keycloak 
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
       <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
     </ul>
   </summary>
@@ -46,7 +46,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -107,50 +107,52 @@ Whenever an RPT with proper permissions is obtained by Authorino, the RPT is sup
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
   authorization:
-  - name: uma
-    opa:
-      inlineRego: |
-        pat := http.send({"url":"http://talker-api:523b92b6-625d-4e1e-a313-77e7a8ae4e88@keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token","method": "post","headers":{"Content-Type":"application/x-www-form-urlencoded"},"raw_body":"grant_type=client_credentials"}).body.access_token
-        resource_id := http.send({"url":concat("",["http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/authz/protection/resource_set?uri=",input.context.request.http.path]),"method":"get","headers":{"Authorization":concat(" ",["Bearer ",pat])}}).body[0]
-        scope := lower(input.context.request.http.method)
-        access_token := trim_prefix(input.context.request.http.headers.authorization, "Bearer ")
+    "uma":
+      opa:
+        rego: |
+          pat := http.send({"url":"http://talker-api:523b92b6-625d-4e1e-a313-77e7a8ae4e88@keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token","method": "post","headers":{"Content-Type":"application/x-www-form-urlencoded"},"raw_body":"grant_type=client_credentials"}).body.access_token
+          resource_id := http.send({"url":concat("",["http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/authz/protection/resource_set?uri=",input.context.request.http.path]),"method":"get","headers":{"Authorization":concat(" ",["Bearer ",pat])}}).body[0]
+          scope := lower(input.context.request.http.method)
+          access_token := trim_prefix(input.context.request.http.headers.authorization, "Bearer ")
 
-        default rpt = ""
-        rpt = access_token { object.get(input.auth.identity, "authorization", {}).permissions }
-        else = rpt_str {
-          ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat(" ",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
-          rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat(" ",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
-        }
+          default rpt = ""
+          rpt = access_token { object.get(input.auth.identity, "authorization", {}).permissions }
+          else = rpt_str {
+            ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat(" ",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
+            rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat(" ",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
+          }
 
-        allow {
-          permissions := object.get(io.jwt.decode(rpt)[1], "authorization", { "permissions": [] }).permissions
-          permissions[i]
-          permissions[i].rsid = resource_id
-          permissions[i].scopes[_] = scope
-        }
-      allValues: true
+          allow {
+            permissions := object.get(io.jwt.decode(rpt)[1], "authorization", { "permissions": [] }).permissions
+            permissions[i]
+            permissions[i].rsid = resource_id
+            permissions[i].scopes[_] = scope
+          }
+        allValues: true
   response:
-  - name: x-keycloak
-    when:
-    - selector: auth.identity.authorization.permissions
-      operator: eq
-      value: ""
-    json:
-      properties:
-      - name: rpt
-        valueFrom: { authJSON: auth.authorization.uma.rpt }
+    success:
+      headers:
+        "x-keycloak":
+          when:
+          - selector: auth.identity.authorization.permissions
+            operator: eq
+            value: ""
+          json:
+            properties:
+              "rpt":
+                selector: auth.authorization.uma.rpt
 EOF
 ```
 

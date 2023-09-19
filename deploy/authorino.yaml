@@ -26,7 +26,7 @@ spec:
     tls:
       enabled: $(TLS_ENABLED)
       certSecretRef:
-        name: authorino-server-cert # Kubernetes secret must contain `tls.crt` and `tls.key` entries
+        name: $(AUTHORINO_INSTANCE)-server-cert # Kubernetes secret must contain `tls.crt` and `tls.key` entries
     timeout: 0 # (in ms) - set to '0' to disable timeout of the ext-authz request controlled internally
 
   oidcServer:
@@ -34,7 +34,7 @@ spec:
     tls:
       enabled: $(TLS_ENABLED)
       certSecretRef:
-        name: authorino-oidc-server-cert # Kubernetes secret must contain `tls.crt` and `tls.key` entries
+        name: $(AUTHORINO_INSTANCE)-oidc-server-cert # Kubernetes secret must contain `tls.crt` and `tls.key` entries
 
   ## Uncomment to customize settings of the metrics server
   # metrics:

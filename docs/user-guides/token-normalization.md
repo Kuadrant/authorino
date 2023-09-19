@@ -6,16 +6,16 @@ The most typical use-case for token normalization involves accepting tokens issu
 
 This user guide focuses on the aspect of mutation of the identity claims resolved from an authentication token, to a certain data format and/or by extending them, so that required attributes can thereafter be trusted to be present among the claims, in a desired form. For such, Authorino allows to extend resolved identity objects with custom attributes (custom claims) of either static values or with values fetched from the [Authorization JSON](./../architecture.md#the-authorization-json).
 
-For not only normalizing the identity claims for purpose of writing simpler authorization checks and policies, but also getting Authorino to issue a new token in a normalized format, check the [Festival Wristband tokens](./../features.md#festival-wristband-tokens-responsewristband) feature.
+For not only normalizing the identity claims for purpose of writing simpler authorization checks and policies, but also getting Authorino to issue a new token in a normalized format, check the [Festival Wristband tokens](./../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband) feature.
 
 <details>
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
-      <li>Authorization → <a href="./../features.md#json-pattern-matching-authorization-rules-authorizationjson">JSON pattern-matching authorization rules</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides">Identity extension</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
+      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
     </ul>
   </summary>
 
@@ -48,7 +48,7 @@ kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorin
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -105,43 +105,42 @@ Without normalizing identity claims from these two different sources, the policy
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: keycloak-kuadrant-realm
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
-    extendedProperties:
-    - name: roles
-      valueFrom:
-        authJSON: auth.identity.realm_access.roles
-  - name: api-key-friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
-    extendedProperties:
-    - name: roles
-      value: ["admin"]
+  authentication:
+    "keycloak-kuadrant-realm":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+      overrides:
+        "roles":
+          selector: auth.identity.realm_access.roles
+    "api-key-friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
+      defaults:
+        "roles":
+          value: ["admin"]
   authorization:
-  - name: only-admins-can-delete
-    when:
-    - selector: context.request.http.method
-      operator: eq
-      value: DELETE
-    json:
-      rules:
-      - selector: auth.identity.roles
-        operator: incl
-        value: admin
+    "only-admins-can-delete":
+      when:
+      - selector: context.request.http.method
+        operator: eq
+        value: DELETE
+      patternMatching:
+        patterns:
+        - selector: auth.identity.roles
+          operator: incl
+          value: admin
 EOF
 ```
 

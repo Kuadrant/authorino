@@ -31,15 +31,9 @@ jobs:
         run: go install sigs.k8s.io/kind@v0.20.0
       - name: Create kind cluster
         run: kind create cluster --name authorino-smoke-tests
-      - name: Install cert-manager
-        run: |
-          kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
-          kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook
-          kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io/cert-manager-webhook
-          kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
       - name: Install Authorino Operator
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+          curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
           kubectl -n authorino-operator wait --timeout=300s --for=condition=Available deployments --all
       - name: Create the namespace
         run: |
@@ -79,7 +73,7 @@ jobs:
       - name: Run e2e tests
         env:
           NAMESPACE: authorino
-          AUTHCONFIG: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/authconfig.yaml
-          AUTHCONFIG_INVALID: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/authconfig-invalid.yaml
+          AUTHCONFIG: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/v1beta2/authconfig.yaml
+          AUTHCONFIG_INVALID: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/v1beta2/authconfig-invalid.yaml
         run: |
           curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/e2e-test.sh | bash

@@ -6,8 +6,8 @@ Inject HTTP headers with serialized JSON content.
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Dynamic response → <a href="./../features.md#json-injection-responsejson">JSON injection</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
+      <li>Dynamic response → <a href="./../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 
@@ -33,7 +33,7 @@ kind create cluster --name authorino-tutorial
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Deploy the Talker API
@@ -89,38 +89,38 @@ The following defines a JSON object to be injected as an added HTTP header into 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: friends
-    apiKey:
-      selector:
-        matchLabels:
-          group: friends
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
+  authentication:
+    "friends":
+      apiKey:
+        selector:
+          matchLabels:
+            group: friends
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
   response:
-  - name: x-ext-auth-data
-    json:
-      properties:
-      - name: authorized
-        value: true
-      - name: request-time
-        valueFrom:
-          authJSON: context.request.time.seconds
-      - name: greeting-message
-        valueFrom:
-          authJSON: Hello, {auth.identity.metadata.annotations.auth-data\/name}!
+    success:
+      headers:
+        "x-ext-auth-data":
+          json:
+            properties:
+              "authorized":
+                value: true
+              "request-time":
+                selector: context.request.time.seconds
+              "greeting-message":
+                selector: Hello, {auth.identity.metadata.annotations.auth-data\/name}!
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-valuefromauthjson) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
+Check out the docs for information about the common feature [JSON paths](./../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](./../architecture.md#the-authorization-json).
 
 ## 6. Create an API key
 

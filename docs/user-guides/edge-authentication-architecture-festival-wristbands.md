@@ -14,10 +14,10 @@ As a minimum, EAA allows to simplify authentication between applications and mic
   <summary>
     <strong>Authorino features in this guide:</strong>
     <ul>
-      <li>Dynamic response → <a href="./../features.md#festival-wristband-tokens-responsewristband">Festival Wristband tokens</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-extendedproperties">Identity extension</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-identityapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc">OpenID Connect (OIDC) JWT/JOSE verification and validation</a></li>
+      <li>Dynamic response → <a href="./../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband">Festival Wristband tokens</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides">Identity extension</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
+      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
     </ul>
   </summary>
 
@@ -59,7 +59,7 @@ kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
 ## 1. Install the Authorino Operator
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/config/deploy/manifests.yaml
+curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
 ## 2. Create the namespaces
@@ -136,47 +136,45 @@ Create the config:
 
 ```sh
 kubectl -n edge apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: edge-auth
 spec:
   hosts:
   - edge-authorino.127.0.0.1.nip.io
-  identity:
-  - name: api-clients
-    apiKey:
-      selector:
-        matchLabels:
-          authorino.kuadrant.io/managed-by: authorino
-      allNamespaces: true
-    credentials:
-      in: authorization_header
-      keySelector: APIKEY
-    extendedProperties:
-    - name: username
-      valueFrom:
-        authJSON: auth.identity.metadata.annotations.authorino\.kuadrant\.io/username
-  - name: idp-users
-    oidc:
-      endpoint: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
-    extendedProperties:
-    - name: username
-      valueFrom:
-        authJSON: auth.identity.preferred_username
+  authentication:
+    "api-clients":
+      apiKey:
+        selector:
+          matchLabels:
+            authorino.kuadrant.io/managed-by: authorino
+        allNamespaces: true
+      credentials:
+        authorizationHeader:
+          prefix: APIKEY
+      overrides:
+        "username":
+          selector: auth.identity.metadata.annotations.authorino\.kuadrant\.io/username
+    "idp-users":
+      jwt:
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+      defaults:
+        "username":
+          selector: auth.identity.preferred_username
   response:
-  - name: wristband
-    wrapper: envoyDynamicMetadata
-    wristband:
-      issuer: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/edge/edge-auth/wristband
-      customClaims:
-      - name: username
-        valueFrom:
-          authJSON: auth.identity.username
-      tokenDuration: 300
-      signingKeyRefs:
-        - name: wristband-signing-key
-          algorithm: ES256
+    success:
+      dynamicMetadata:
+        "wristband":
+          wristband:
+            issuer: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/edge/edge-auth/wristband
+            customClaims:
+              "username":
+                selector: auth.identity.username
+            tokenDuration: 300
+            signingKeyRefs:
+            - name: wristband-signing-key
+              algorithm: ES256
 EOF
 ```
 
@@ -210,17 +208,17 @@ kubectl -n internal port-forward deployment/envoy 8000:8000 &
 
 ```sh
 kubectl -n internal apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta1
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: talker-api-protection
 spec:
   hosts:
   - talker-api-authorino.127.0.0.1.nip.io
-  identity:
-  - name: edge-authenticated
-    oidc:
-      endpoint: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/edge/edge-auth/wristband
+  authentication:
+    "edge-authenticated":
+      jwt:
+        issuerUrl: http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/edge/edge-auth/wristband
 EOF
 ```
 
