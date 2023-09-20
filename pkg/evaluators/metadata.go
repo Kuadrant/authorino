@@ -6,7 +6,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators/metadata"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -17,10 +17,10 @@ const (
 )
 
 type MetadataConfig struct {
-	Name       string                         `yaml:"name"`
-	Priority   int                            `yaml:"priority"`
-	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
-	Metrics    bool                           `yaml:"metrics"`
+	Name       string             `yaml:"name"`
+	Priority   int                `yaml:"priority"`
+	Conditions jsonexp.Expression `yaml:"conditions"`
+	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
 
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
@@ -102,7 +102,7 @@ func (config *MetadataConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *MetadataConfig) GetConditions() []json.JSONPatternMatchingRule {
+func (config *MetadataConfig) GetConditions() jsonexp.Expression {
 	return config.Conditions
 }
 

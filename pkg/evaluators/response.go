@@ -7,6 +7,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators/response"
 	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -21,7 +22,7 @@ const (
 	DEFAULT_WRAPPER = HTTP_HEADER_WRAPPER
 )
 
-func NewResponseConfig(name string, priority int, conditions []json.JSONPatternMatchingRule, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
+func NewResponseConfig(name string, priority int, conditions jsonexp.Expression, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
 	responseConfig := ResponseConfig{
 		Name:       name,
 		Priority:   priority,
@@ -43,12 +44,12 @@ func NewResponseConfig(name string, priority int, conditions []json.JSONPatternM
 }
 
 type ResponseConfig struct {
-	Name       string                         `yaml:"name"`
-	Priority   int                            `yaml:"priority"`
-	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
-	Wrapper    string                         `yaml:"wrapper"`
-	WrapperKey string                         `yaml:"wrapperKey"`
-	Metrics    bool                           `yaml:"metrics"`
+	Name       string             `yaml:"name"`
+	Priority   int                `yaml:"priority"`
+	Conditions jsonexp.Expression `yaml:"conditions"`
+	Wrapper    string             `yaml:"wrapper"`
+	WrapperKey string             `yaml:"wrapperKey"`
+	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
 
 	Wristband   auth.WristbandIssuer  `yaml:"wristband,omitempty"`
@@ -130,7 +131,7 @@ func (config *ResponseConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *ResponseConfig) GetConditions() []json.JSONPatternMatchingRule {
+func (config *ResponseConfig) GetConditions() jsonexp.Expression {
 	return config.Conditions
 }
 

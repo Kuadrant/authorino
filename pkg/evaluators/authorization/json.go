@@ -5,23 +5,23 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 )
 
 type JSONPatternMatching struct {
-	Rules []json.JSONPatternMatchingRule
+	Rules jsonexp.Expression
 }
 
-func (jsonAuth *JSONPatternMatching) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	authJSON := pipeline.GetAuthorizationJSON()
-
-	for _, rule := range jsonAuth.Rules {
-		if authorized, err := rule.EvaluateFor(authJSON); err != nil {
-			return false, err
-		} else if !authorized {
-			return false, fmt.Errorf(unauthorizedErrorMsg)
-		}
+func (j *JSONPatternMatching) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+	if j.Rules == nil {
+		return true, nil
 	}
-
+	authorized, err := j.Rules.Matches(pipeline.GetAuthorizationJSON())
+	if err != nil {
+		return false, err
+	}
+	if !authorized {
+		return false, fmt.Errorf(unauthorizedErrorMsg)
+	}
 	return true, nil
 }

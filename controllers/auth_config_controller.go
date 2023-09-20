@@ -31,6 +31,7 @@ import (
 	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"
 	"github.com/kuadrant/authorino/pkg/utils"
@@ -181,7 +182,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		translatedIdentity := &evaluators.IdentityConfig{
 			Name:               identity.Name,
 			Priority:           identity.Priority,
-			Conditions:         buildJSONPatternExpressions(authConfig, identity.Conditions),
+			Conditions:         buildJSONExpression(authConfig, identity.Conditions, jsonexp.All),
 			ExtendedProperties: extendedProperties,
 			Metrics:            identity.Metrics,
 		}
@@ -276,7 +277,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		translatedMetadata := &evaluators.MetadataConfig{
 			Name:       metadata.Name,
 			Priority:   metadata.Priority,
-			Conditions: buildJSONPatternExpressions(authConfig, metadata.Conditions),
+			Conditions: buildJSONExpression(authConfig, metadata.Conditions, jsonexp.All),
 			Metrics:    metadata.Metrics,
 		}
 
@@ -344,7 +345,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		translatedAuthorization := &evaluators.AuthorizationConfig{
 			Name:       authorization.Name,
 			Priority:   authorization.Priority,
-			Conditions: buildJSONPatternExpressions(authConfig, authorization.Conditions),
+			Conditions: buildJSONExpression(authConfig, authorization.Conditions, jsonexp.All),
 			Metrics:    authorization.Metrics,
 		}
 
@@ -394,7 +395,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		// json
 		case api.AuthorizationJSONPatternMatching:
 			translatedAuthorization.JSON = &authorization_evaluators.JSONPatternMatching{
-				Rules: buildJSONPatternExpressions(authConfig, authorization.JSON.Rules),
+				Rules: buildJSONExpression(authConfig, authorization.JSON.Rules, jsonexp.All),
 			}
 
 		case api.AuthorizationKubernetesAuthz:
@@ -456,7 +457,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		translatedResponse := evaluators.NewResponseConfig(
 			response.Name,
 			response.Priority,
-			buildJSONPatternExpressions(authConfig, response.Conditions),
+			buildJSONExpression(authConfig, response.Conditions, jsonexp.All),
 			string(response.Wrapper),
 			response.WrapperKey,
 			response.Metrics,
@@ -560,7 +561,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		translatedCallback := &evaluators.CallbackConfig{
 			Name:       callback.Name,
 			Priority:   callback.Priority,
-			Conditions: buildJSONPatternExpressions(authConfig, callback.Conditions),
+			Conditions: buildJSONExpression(authConfig, callback.Conditions, jsonexp.All),
 			Metrics:    callback.Metrics,
 		}
 
@@ -581,7 +582,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	translatedAuthConfig := &evaluators.AuthConfig{
-		Conditions:           buildJSONPatternExpressions(authConfig, authConfig.Spec.Conditions),
+		Conditions:           buildJSONExpression(authConfig, authConfig.Spec.Conditions, jsonexp.All),
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
@@ -790,28 +791,53 @@ func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name 
 	return nil, fmt.Errorf("missing identity config %v", name)
 }
 
-func buildJSONPatternExpressions(authConfig *api.AuthConfig, patterns []api.JSONPattern) []json.JSONPatternMatchingRule {
-	expressions := []json.JSONPatternMatchingRule{}
-
+func buildJSONExpression(authConfig *api.AuthConfig, patterns []api.JSONPattern, op func(...jsonexp.Expression) jsonexp.Expression) jsonexp.Expression {
+	var expression []jsonexp.Expression
 	for _, pattern := range patterns {
-		expressionsToAdd := api.JSONPatternExpressions{}
-
-		if expressionsByRef, found := authConfig.Spec.Patterns[pattern.JSONPatternName]; found {
-			expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
-		} else {
-			expressionsToAdd = append(expressionsToAdd, pattern.JSONPatternExpression)
+		// patterns or refs
+		expression = append(expression, buildJSONExpressionPatterns(authConfig, pattern)...)
+		// all
+		if len(pattern.All) > 0 {
+			p := make([]api.JSONPattern, len(pattern.All))
+			for i, ptn := range pattern.All {
+				p[i] = ptn.JSONPattern
+			}
+			expression = append(expression, buildJSONExpression(authConfig, p, jsonexp.All))
 		}
-
-		for _, expression := range expressionsToAdd {
-			expressions = append(expressions, json.JSONPatternMatchingRule{
-				Selector: expression.Selector,
-				Operator: string(expression.Operator),
-				Value:    expression.Value,
-			})
+		// any
+		if len(pattern.Any) > 0 {
+			p := make([]api.JSONPattern, len(pattern.Any))
+			for i, ptn := range pattern.Any {
+				p[i] = ptn.JSONPattern
+			}
+			expression = append(expression, buildJSONExpression(authConfig, p, jsonexp.Any))
 		}
 	}
+	return op(expression...)
+}
 
+func buildJSONExpressionPatterns(authConfig *api.AuthConfig, pattern api.JSONPattern) []jsonexp.Expression {
+	expressionsToAdd := api.JSONPatternExpressions{}
+
+	if expressionsByRef, found := authConfig.Spec.Patterns[pattern.JSONPatternName]; found {
+		expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
+	} else if pattern.JSONPatternExpression.Operator != "" {
+		expressionsToAdd = append(expressionsToAdd, pattern.JSONPatternExpression)
+	}
+
+	expressions := make([]jsonexp.Expression, len(expressionsToAdd))
+	for i, expression := range expressionsToAdd {
+		expressions[i] = buildJSONExpressionPattern(expression)
+	}
 	return expressions
+}
+
+func buildJSONExpressionPattern(expression api.JSONPatternExpression) jsonexp.Expression {
+	return jsonexp.Pattern{
+		Selector: expression.Selector,
+		Operator: jsonexp.OperatorFromString(string(expression.Operator)),
+		Value:    expression.Value,
+	}
 }
 
 func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.DenyWithValues {

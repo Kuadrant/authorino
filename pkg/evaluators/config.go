@@ -7,6 +7,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 
 	multierror "github.com/hashicorp/go-multierror"
 )
@@ -14,7 +15,7 @@ import (
 // AuthConfig holds the static configuration to be evaluated in the auth pipeline
 type AuthConfig struct {
 	Labels     map[string]string
-	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
+	Conditions jsonexp.Expression `yaml:"conditions"`
 
 	IdentityConfigs      []auth.AuthConfigEvaluator `yaml:"identity,omitempty"`
 	MetadataConfigs      []auth.AuthConfigEvaluator `yaml:"metadata,omitempty"`

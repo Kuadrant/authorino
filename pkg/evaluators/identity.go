@@ -7,7 +7,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	v1 "k8s.io/api/core/v1"
@@ -27,10 +27,10 @@ const (
 )
 
 type IdentityConfig struct {
-	Name       string                         `yaml:"name"`
-	Priority   int                            `yaml:"priority"`
-	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
-	Metrics    bool                           `yaml:"metrics"`
+	Name       string             `yaml:"name"`
+	Priority   int                `yaml:"priority"`
+	Conditions jsonexp.Expression `yaml:"conditions"`
+	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
 
 	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
@@ -143,7 +143,7 @@ func (config *IdentityConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *IdentityConfig) GetConditions() []json.JSONPatternMatchingRule {
+func (config *IdentityConfig) GetConditions() jsonexp.Expression {
 	return config.Conditions
 }
 

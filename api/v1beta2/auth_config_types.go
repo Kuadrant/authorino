@@ -169,6 +169,16 @@ type PatternExpressionOperator string
 type PatternExpressionOrRef struct {
 	PatternExpression `json:",omitempty"`
 	PatternRef        `json:",omitempty"`
+
+	// A list of pattern expressions to be evaluated as a logical AND.
+	All []UnstructuredPatternExpressionOrRef `json:"all,omitempty"`
+	// A list of pattern expressions to be evaluated as a logical OR.
+	Any []UnstructuredPatternExpressionOrRef `json:"any,omitempty"`
+}
+
+type UnstructuredPatternExpressionOrRef struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	PatternExpressionOrRef `json:",omitempty"`
 }
 
 type PatternRef struct {
