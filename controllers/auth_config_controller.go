@@ -99,6 +99,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		r.Index.Delete(resourceId)
 		r.StatusReport.Clear(resourceId)
 		reportReconciled = false
+		logger.Info("resource de-indexed")
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the index
