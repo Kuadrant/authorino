@@ -84,11 +84,11 @@ func (p Pattern) Matches(json string) (bool, error) {
 		return true, nil
 
 	case RegexOperator:
-		if re, err := regexp.Compile(expectedValue); err != nil {
+		re, err := regexp.Compile(expectedValue)
+		if err != nil {
 			return false, err
-		} else {
-			return re.MatchString(obtainedValue.String()), nil
 		}
+		return re.MatchString(obtainedValue.String()), nil
 
 	default:
 		return false, fmt.Errorf("unsupported operator for json authorization")
