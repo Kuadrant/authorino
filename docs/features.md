@@ -874,30 +874,100 @@ For the `AuthConfig` above,
 
 ## Common feature: Conditions (`when`)
 
-_Conditions_, named `when` in the AuthConfig API, are sets of expressions (JSON patterns) that, whenever included, must evaluate to true against the [Authorization JSON](./architecture.md#the-authorization-json), so the scope where the expressions are defined is enforced. If any of the expressions in the set of conditions for a given scope does not match, Authorino will skip that scope in the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time).
+_Conditions_, named `when` in the AuthConfig API, are logical expressions, composed of patterns and logical operator AND and OR, that can be used to condition the evaluation of a particular auth rule within an AuthConfig, as well as of the AuthConfig altogether ("top-level conditions").
 
-The scope for a set of `when` conditions can be the entire `AuthConfig` ("top-level conditions") or a particular evaluator of any phase of the auth pipeline.
+The patterns are evaluated against the [Authorization JSON](./architecture.md#the-authorization-json), where each pattern is a tuple composed of:
+- `selector`: a [JSON path](#common-feature-json-paths-selector) to fetch a value from the Authorization JSON
+- `operator`: one of: `eq` (_equals_); `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for when the value fetched from the Authorization JSON is expected to be an array; `matches`, for regular expressions
+- `value`: a static string value to compare the value selected from the Authorization JSON with.
 
-Each expression is a tuple composed of:
-- a `selector`, to fetch from the Authorization JSON – see [Common feature: JSON paths](#common-feature-json-paths-selector) for details about syntax;
-- an `operator` – `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions;
-- a fixed comparable `value`
+An expression contains one or more patterns and they must either all evaluate to true ("AND" operator, declared by grouping the patterns within an `all` block) or at least one of the patterns must be true ("OR" operator, when grouped within an `any` block.) Patterns not explicitly grouped are AND'ed by default.
 
-Literal expressions and references to expression sets (`patterns`, defined at the upper level of the `AuthConfig` spec) can be listed, mixed and combined in `when` conditions sets.
+To avoid repetitions when listing patterns, any set of literal `{ pattern, operator, value }` tuples can be stored at the top-level of the AuthConfig spec, indexed by name, and later referred within an expression by including a `patternRef` in the block of conditions.
 
-_Conditions_ can be used, e.g.,:
+**Examples of `when` conditions**
 
-i) to skip an entire `AuthConfig` based on the context:
+i) to skip an entire `AuthConfig` based on the context (AND operator assumed by default):
 
 ```yaml
 spec:
-  when: # no authn/authz required on requests to /status
+  when: # auth enforced only on requests to POST /resources/*
+  - selector: context.request.http.method
+    operator: eq
+    value: POST
   - selector: context.request.http.path
-    operator: neq
-    value: /status
+    operator: matches
+    value: ^/resources/.*
 ```
 
-ii) to skip parts of an `AuthConfig` (i.e. a specific evaluator):
+ii) equivalent to the above with explicit AND operator (i.e., `all` block):
+
+```yaml
+spec:
+  when: # auth enforced only on requests to POST /resources/*
+  - all:
+    - selector: context.request.http.method
+      operator: eq
+      value: POST
+    - selector: context.request.http.path
+      operator: matches
+      value: ^/resources/.*
+```
+
+iii) OR condition (i.e., `any` block):
+
+```yaml
+spec:
+  when: # auth enforced only on requests with HTTP method equals to POST or PUT
+  - any:
+    - selector: context.request.http.method
+      operator: eq
+      value: POST
+    - selector: context.request.http.method
+      operator: eq
+      value: PUT
+```
+
+iv) complex expression with nested operations:
+
+```yaml
+spec:
+  when: # auth enforced only on requests to POST /resources/* or PUT /resources/*
+  - any:
+    - all:
+      - selector: context.request.http.method
+        operator: eq
+        value: POST
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/resources/.*
+    - all:
+      - selector: context.request.http.method
+        operator: eq
+        value: PUT
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/resources/.*
+```
+
+v) more concise equivalent of the above (with implicit AND operator at the top level):
+
+```yaml
+spec:
+  when: # auth enforced only on requests to /resources/* path with method equals to POST or PUT
+  - selector: context.request.http.path
+    operator: matches
+    value: ^/resources/.*
+  - any:
+    - selector: context.request.http.method
+      operator: eq
+      value: POST
+    - selector: context.request.http.method
+      operator: eq
+      value: PUT
+```
+
+vi) to skip part of an AuthConfig (i.e., a specific auth rule):
 
 ```yaml
 spec:
@@ -911,26 +981,46 @@ spec:
         value: OPTIONS
 ```
 
-iii) to enforce a particular evaluator only in certain contexts (really the same as the above, though to a different use case):
+vii) skipping part of an AuthConfig will not affect other auth rules:
 
 ```yaml
 spec:
   authentication:
     "authn-meth-1":
-      apiKey: {…} # this authn method only valid for POST requests to /foo[/*]
+      apiKey: {…} # this auth rule only triggers for POST requests to /foo[/*]
       when:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/foo(/.*)?$
       - selector: context.request.http.method
         operator: eq
         value: POST
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/foo(/.*)?$
 
-    "authn-meth-2":
+    "authn-meth-2": # this auth rule triggerred regardless
       jwt: {…}
 ```
 
-iv) to avoid repetition while defining patterns for conditions:
+viii) concrete use-case: evaluating only the necessary identity checks based on the user's indication of the preferred authentication method (prefix of the value supplied in the HTTP `Authorization` request header):
+
+```yaml
+spec:
+  authentication:
+    "jwt":
+      when:
+      - selector: context.request.http.headers.authorization
+        operator: matches
+        value: JWT .+
+      jwt: {…}
+
+    "api-key":
+      when:
+      - selector: context.request.http.headers.authorization
+        operator: matches
+        value: APIKEY .+
+      apiKey: {…}
+```
+
+ix) to avoid repetition while defining patterns for conditions:
 
 ```yaml
 spec:
@@ -956,47 +1046,61 @@ spec:
           allow { input.metadata["pets-info"].ownerid == input.auth.identity.userid }
 ```
 
-v) mixing and combining literal expressions and refs:
+x) combining literals and refs – concrete case: authentication required for selected operations:
 
 ```yaml
 spec:
   patterns:
-    foo:
+    api-base-path:
     - selector: context.request.http.path
-      operator: eq
-      value: /foo
+      operator: matches
+      value: ^/api/.*
 
-  when: # unauthenticated access to /foo always granted
-  - patternRef: foo
-  - selector: context.request.http.headers.authorization
-    operator: eq
-    value: ""
+    authenticated-user:
+    - selector: auth.identity.anonymous
+      operator: neq
+      value: "true"
 
-  authorization:
-    "my-policy-1":
-      when: # authenticated access to /foo controlled by policy
-      - patternRef: foo
-      patternMatching: {…}
-```
-
-vi) to avoid evaluating unnecessary identity checks when the user can indicate the preferred authentication method (again the pattern of skipping based upon the context):
-
-```yaml
-spec:
   authentication:
-    "jwt":
+    api-users: # tries to authenticate all requests to path /api/*
       when:
-      - selector: context.request.http.headers.authorization
-        operator: matches
-        value: JWT .+
+      - patternRef: api-base-path
       jwt: {…}
 
-    "api-key":
+    others: # defaults to anonymous access when authentication fails or not /api/* path
+      anonymous: {}
+      priority: 1
+
+  authorization:
+    api-write-access-requires-authentication: # POST/PUT/DELETE requests to /api/* path cannot be anonymous
       when:
-      - selector: context.request.http.headers.authorization
-        operator: matches
-        value: APIKEY .+
-      apiKey: {…}
+      - all:
+        - patternRef: api-base-path
+        - any:
+          - selector: context.request.http.method
+            operator: eq
+            value: POST
+          - selector: context.request.http.method
+            operator: eq
+            value: PUT
+          - selector: context.request.http.method
+            operator: eq
+            value: DELETE
+      opa:
+        patternMathing:
+          rules:
+          - patternRef: authenticated-user
+
+  response: # bonus: export user data if available
+    success:
+      dynamicMetadata:
+        "user-data":
+          when:
+          - patternRef: authenticated-user
+          json:
+            properties:
+              jwt-claims:
+                selector: auth.identity
 ```
 
 ## Common feature: Caching (`cache`)
