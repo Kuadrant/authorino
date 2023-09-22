@@ -201,11 +201,11 @@ kubectl -n myapp label authconfig/auth-config-2 disabled=true
 # authconfig.authorino.kuadrant.io/auth-config-2 labeled
 ```
 
-Verify in the logs that only the `authorino-production` instance adds the resources to the index:
+Verify in the logs that the `authorino-production` instance removes the authconfig from the index:
 
 ```sh
 kubectl logs $(kubectl get pods -l authorino-resource=authorino-production -o name)
-# {"level":"info","ts":1638383515.6428752,"logger":"authorino.controller-runtime.manager.controller.authconfig","msg":"resource reconciled","authconfig":"myapp/auth-config-2"}
+# {"level":"info","ts":1638383515.6428752,"logger":"authorino.controller-runtime.manager.controller.authconfig","msg":"resource de-indexed","authconfig":"myapp/auth-config-2"}
 ```
 
 ## Cleanup
