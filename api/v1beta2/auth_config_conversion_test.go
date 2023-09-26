@@ -428,7 +428,13 @@ func authConfig() *AuthConfig {
 					}
 				},
 				"unauthorized": {
+					"body": {
+						"value": "{\n  \"kind\": \"Error\",\n  \"id\": \"403\",\n  \"href\": \"/forbidden\",\n  \"code\": \"FORBIDDEN-403\",\n  \"reason\": \"Forbidden\"\n}\n"
+					},
 					"headers": {
+						"content-type": {
+							"value": "application/json"
+						},
 						"random": {
 							"selector": "auth.authorization.deny20percent"
 						}
@@ -642,7 +648,15 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 					}
 				},
 				"unauthorized": {
+					"body": {
+						"value": "{\n  \"kind\": \"Error\",\n  \"id\": \"403\",\n  \"href\": \"/forbidden\",\n  \"code\": \"FORBIDDEN-403\",\n  \"reason\": \"Forbidden\"\n}\n"
+					},
 					"headers": [
+						{
+							"name": "content-type",
+							"value": "application/json",
+							"valueFrom": {}
+						},
 						{
 							"name": "random",
 							"valueFrom": {
