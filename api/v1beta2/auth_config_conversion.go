@@ -1,7 +1,7 @@
 package v1beta2
 
 import (
-	"fmt"
+	"encoding/json"
 
 	"github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/pkg/utils"
@@ -289,7 +289,10 @@ func convertValueOrSelectorTo(src ValueOrSelector) v1beta1.StaticOrDynamicValue 
 func convertValueOrSelectorFrom(src v1beta1.StaticOrDynamicValue) ValueOrSelector {
 	value := k8sruntime.RawExtension{}
 	if src.ValueFrom.AuthJSON == "" {
-		value.Raw = []byte(fmt.Sprintf(`"%s"`, src.Value))
+		jsonString, err := json.Marshal(src.Value)
+		if err == nil {
+			value.Raw = jsonString
+		}
 	}
 	return ValueOrSelector{
 		Value:    value,
@@ -313,10 +316,11 @@ func convertPtrValueOrSelectorFrom(src *v1beta1.StaticOrDynamicValue) *ValueOrSe
 	return &v
 }
 
-func convertNamedValuesOrSelectorsTo(src NamedValuesOrSelectors) (jsonProperties []v1beta1.JsonProperty) {
+func convertNamedValuesOrSelectorsTo(src NamedValuesOrSelectors) []v1beta1.JsonProperty {
 	if src == nil {
 		return nil
 	}
+	jsonProperties := make([]v1beta1.JsonProperty, 0, len(src))
 	for name, valueOrSelector := range src {
 		jsonProperties = append(jsonProperties, v1beta1.JsonProperty{
 			Name:      name,
@@ -324,7 +328,7 @@ func convertNamedValuesOrSelectorsTo(src NamedValuesOrSelectors) (jsonProperties
 			ValueFrom: convertSelectorTo(valueOrSelector),
 		})
 	}
-	return
+	return jsonProperties
 }
 
 func convertNamedValuesOrSelectorsFrom(src []v1beta1.JsonProperty) NamedValuesOrSelectors {
@@ -333,8 +337,12 @@ func convertNamedValuesOrSelectorsFrom(src []v1beta1.JsonProperty) NamedValuesOr
 	}
 	namedValuesOrSelectors := NamedValuesOrSelectors{}
 	for _, jsonProperty := range src {
+		value := k8sruntime.RawExtension{}
+		if jsonProperty.ValueFrom.AuthJSON == "" {
+			value.Raw = jsonProperty.Value.Raw
+		}
 		namedValuesOrSelectors[jsonProperty.Name] = ValueOrSelector{
-			Value:    jsonProperty.Value,
+			Value:    value,
 			Selector: jsonProperty.ValueFrom.AuthJSON,
 		}
 	}
