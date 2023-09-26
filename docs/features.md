@@ -1087,7 +1087,7 @@ spec:
             operator: eq
             value: DELETE
       opa:
-        patternMathing:
+        patternMatching:
           rules:
           - patternRef: authenticated-user
 
