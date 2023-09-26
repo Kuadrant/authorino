@@ -10,6 +10,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 
@@ -374,14 +375,14 @@ func (pipeline *AuthPipeline) executeCallbacks() {
 	}
 }
 
-func (pipeline *AuthPipeline) evaluateConditions(conditions []json.JSONPatternMatchingRule) error {
-	authJSON := pipeline.GetAuthorizationJSON()
-	for _, condition := range conditions {
-		if match, err := condition.EvaluateFor(authJSON); err != nil {
-			return err
-		} else if !match {
-			return fmt.Errorf("unmatching conditions for config")
-		}
+func (pipeline *AuthPipeline) evaluateConditions(conditions jsonexp.Expression) error {
+	if conditions == nil {
+		return nil
+	}
+	if match, err := conditions.Matches(pipeline.GetAuthorizationJSON()); err != nil {
+		return err
+	} else if !match {
+		return fmt.Errorf("unmatching conditions for config")
 	}
 	return nil
 }

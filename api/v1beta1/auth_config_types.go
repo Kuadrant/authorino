@@ -150,6 +150,16 @@ type AuthConfigSpec struct {
 type JSONPattern struct {
 	JSONPatternRef        `json:",omitempty"`
 	JSONPatternExpression `json:",omitempty"`
+
+	// A list of pattern expressions to be evaluated as a logical AND.
+	All []UnstructuredJSONPattern `json:"all,omitempty"`
+	// A list of pattern expressions to be evaluated as a logical OR.
+	Any []UnstructuredJSONPattern `json:"any,omitempty"`
+}
+
+type UnstructuredJSONPattern struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	JSONPattern `json:",omitempty"`
 }
 
 type JSONPatternRef struct {

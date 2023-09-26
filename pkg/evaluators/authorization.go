@@ -6,7 +6,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 )
 
@@ -18,10 +18,10 @@ const (
 )
 
 type AuthorizationConfig struct {
-	Name       string                         `yaml:"name"`
-	Priority   int                            `yaml:"priority"`
-	Conditions []json.JSONPatternMatchingRule `yaml:"conditions"`
-	Metrics    bool                           `yaml:"metrics"`
+	Name       string             `yaml:"name"`
+	Priority   int                `yaml:"priority"`
+	Conditions jsonexp.Expression `yaml:"conditions"`
+	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
 
 	OPA             *authorization.OPA                 `yaml:"opa,omitempty"`
@@ -108,7 +108,7 @@ func (config *AuthorizationConfig) GetPriority() int {
 
 // impl:ConditionalEvaluator
 
-func (config *AuthorizationConfig) GetConditions() []json.JSONPatternMatchingRule {
+func (config *AuthorizationConfig) GetConditions() jsonexp.Expression {
 	return config.Conditions
 }
 

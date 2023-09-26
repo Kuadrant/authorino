@@ -216,21 +216,47 @@ func convertPatternExpressionFrom(src v1beta1.JSONPatternExpression) PatternExpr
 }
 
 func convertPatternExpressionOrRefTo(src PatternExpressionOrRef) v1beta1.JSONPattern {
-	return v1beta1.JSONPattern{
+	pattern := v1beta1.JSONPattern{
 		JSONPatternExpression: convertPatternExpressionTo(src.PatternExpression),
 		JSONPatternRef: v1beta1.JSONPatternRef{
 			JSONPatternName: src.PatternRef.Name,
 		},
 	}
+	if len(src.All) > 0 {
+		pattern.All = make([]v1beta1.UnstructuredJSONPattern, len(src.All))
+		for i, p := range src.All {
+			pattern.All[i] = v1beta1.UnstructuredJSONPattern{JSONPattern: convertPatternExpressionOrRefTo(p.PatternExpressionOrRef)}
+		}
+	}
+	if len(src.Any) > 0 {
+		pattern.Any = make([]v1beta1.UnstructuredJSONPattern, len(src.Any))
+		for i, p := range src.Any {
+			pattern.Any[i] = v1beta1.UnstructuredJSONPattern{JSONPattern: convertPatternExpressionOrRefTo(p.PatternExpressionOrRef)}
+		}
+	}
+	return pattern
 }
 
 func convertPatternExpressionOrRefFrom(src v1beta1.JSONPattern) PatternExpressionOrRef {
-	return PatternExpressionOrRef{
+	pattern := PatternExpressionOrRef{
 		PatternExpression: convertPatternExpressionFrom(src.JSONPatternExpression),
 		PatternRef: PatternRef{
 			Name: src.JSONPatternRef.JSONPatternName,
 		},
 	}
+	if len(src.All) > 0 {
+		pattern.All = make([]UnstructuredPatternExpressionOrRef, len(src.All))
+		for i, p := range src.All {
+			pattern.All[i] = UnstructuredPatternExpressionOrRef{convertPatternExpressionOrRefFrom(p.JSONPattern)}
+		}
+	}
+	if len(src.Any) > 0 {
+		pattern.Any = make([]UnstructuredPatternExpressionOrRef, len(src.Any))
+		for i, p := range src.Any {
+			pattern.Any[i] = UnstructuredPatternExpressionOrRef{convertPatternExpressionOrRefFrom(p.JSONPattern)}
+		}
+	}
+	return pattern
 }
 
 func convertEvaluatorCachingTo(src *EvaluatorCaching) *v1beta1.EvaluatorCaching {

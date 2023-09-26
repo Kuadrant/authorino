@@ -296,6 +296,20 @@ spec:
                             for the request to be authorized.
                           items:
                             properties:
+                              all:
+                                description: A list of pattern expressions to be evaluated
+                                  as a logical AND.
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                                type: array
+                              any:
+                                description: A list of pattern expressions to be evaluated
+                                  as a logical OR.
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                                type: array
                               operator:
                                 description: 'The binary operator to be applied to
                                   the content fetched from the authorization JSON,
@@ -643,6 +657,20 @@ spec:
                         enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -926,6 +954,20 @@ spec:
                         be attempted; otherwise, the callback will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -1473,6 +1515,20 @@ spec:
                         enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -1829,6 +1885,20 @@ spec:
                         applied; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -2024,6 +2094,20 @@ spec:
                         config to be enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -2156,6 +2240,20 @@ spec:
                   OK.
                 items:
                   properties:
+                    all:
+                      description: A list of pattern expressions to be evaluated as
+                        a logical AND.
+                      items:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      type: array
+                    any:
+                      description: A list of pattern expressions to be evaluated as
+                        a logical OR.
+                      items:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      type: array
                     operator:
                       description: 'The binary operator to be applied to the content
                         fetched from the authorization JSON, for comparison with "value".
@@ -2606,6 +2704,20 @@ spec:
                         enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -3128,6 +3240,20 @@ spec:
                         patterns:
                           items:
                             properties:
+                              all:
+                                description: A list of pattern expressions to be evaluated
+                                  as a logical AND.
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                                type: array
+                              any:
+                                description: A list of pattern expressions to be evaluated
+                                  as a logical OR.
+                                items:
+                                  type: object
+                                  x-kubernetes-preserve-unknown-fields: true
+                                type: array
                               operator:
                                 description: 'The binary operator to be applied to
                                   the content fetched from the authorization JSON,
@@ -3300,6 +3426,20 @@ spec:
                         enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -3591,6 +3731,20 @@ spec:
                         enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -3926,6 +4080,20 @@ spec:
                         enforced; otherwise, the config will be skipped.
                       items:
                         properties:
+                          all:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical AND.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
+                          any:
+                            description: A list of pattern expressions to be evaluated
+                              as a logical OR.
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
+                            type: array
                           operator:
                             description: 'The binary operator to be applied to the
                               content fetched from the authorization JSON, for comparison
@@ -4114,6 +4282,20 @@ spec:
                                 will be skipped.
                               items:
                                 properties:
+                                  all:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical AND.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                  any:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical OR.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
                                   operator:
                                     description: 'The binary operator to be applied
                                       to the content fetched from the authorization
@@ -4330,6 +4512,20 @@ spec:
                                 will be skipped.
                               items:
                                 properties:
+                                  all:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical AND.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                  any:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical OR.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
                                   operator:
                                     description: 'The binary operator to be applied
                                       to the content fetched from the authorization
@@ -4585,6 +4781,20 @@ spec:
                   request with status OK.
                 items:
                   properties:
+                    all:
+                      description: A list of pattern expressions to be evaluated as
+                        a logical AND.
+                      items:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      type: array
+                    any:
+                      description: A list of pattern expressions to be evaluated as
+                        a logical OR.
+                      items:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      type: array
                     operator:
                       description: 'The binary operator to be applied to the content
                         fetched from the authorization JSON, for comparison with "value".
