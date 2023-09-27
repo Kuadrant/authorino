@@ -2474,6 +2474,14 @@ spec:
                     required:
                     - operator
                     - selector
+                  - properties:
+                      all: {}
+                    required:
+                    - all
+                  - properties:
+                      any: {}
+                    required:
+                    - any
                   properties:
                     all:
                       description: A list of pattern expressions to be evaluated as
