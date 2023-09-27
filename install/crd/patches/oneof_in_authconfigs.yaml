@@ -121,6 +121,12 @@
         selector: {}
         value: {}
       required: [operator, selector]
+    - properties:
+        all: {}
+      required: [all]
+    - properties:
+        any: {}
+      required: [any]
 
 - op: add
   path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/properties/when/items/oneOf
