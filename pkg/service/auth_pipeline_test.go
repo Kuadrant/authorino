@@ -316,7 +316,8 @@ func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
 	}, &requestMock)
 
 	requestJSON, _ := gojson.Marshal(requestMock.GetAttributes())
-	expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"authorization":{},"identity":null,"metadata":{},"response":{}}}`, requestJSON)
+	expectedWellKnownAttributes := `"request":{"host":"my-api","method":"GET","path":"/operation","url_path":"/operation","headers":{"authorization":"Bearer n3ex87bye9238ry8"}},"source":{"address":"\u003cnil\u003e"},"destination":{"address":"\u003cnil\u003e"}`
+	expectedJSON := fmt.Sprintf(`{"context":%s,"auth":{"authorization":{},"identity":null,"metadata":{},"response":{}},%s}`, requestJSON, expectedWellKnownAttributes)
 	assert.Equal(t, pipeline.GetAuthorizationJSON(), expectedJSON)
 }
 

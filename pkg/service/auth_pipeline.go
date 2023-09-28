@@ -533,8 +533,9 @@ func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
 }
 
 type authorizationJSON struct {
-	Context  *envoy_auth.AttributeContext `json:"context"`
-	AuthData map[string]interface{}       `json:"auth"`
+	Context              *envoy_auth.AttributeContext `json:"context"`
+	AuthData             map[string]interface{}       `json:"auth"`
+	*WellKnownAttributes `json:""`
 }
 
 func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
@@ -574,8 +575,9 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	}
 
 	authJSON, _ := gojson.Marshal(&authorizationJSON{
-		Context:  pipeline.GetRequest().Attributes,
-		AuthData: authData,
+		Context:             pipeline.GetRequest().Attributes,
+		AuthData:            authData,
+		WellKnownAttributes: NewWellKnownAttributes(pipeline.GetRequest().Attributes),
 	})
 
 	return string(authJSON)
