@@ -17,10 +17,13 @@ limitations under the License.
 package service
 
 import (
+	"net/url"
+	"reflect"
+	"strings"
+
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoyauth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"net/url"
 )
 
 type WellKnownAttributes struct {
@@ -32,6 +35,8 @@ type WellKnownAttributes struct {
 	Source *SourceAttributes `json:"source,omitempty"`
 	// Destination attributes
 	Destination *DestinationAttributes `json:"destination,omitempty"`
+	// Auth attributes
+	Auth *AuthAttributes `json:"auth,omitempty"`
 }
 
 type RequestAttributes struct {
@@ -121,12 +126,13 @@ type AuthAttributes struct {
 }
 
 // NewWellKnownAttributes creates a new WellKnownAttributes object from an envoyauth.AttributeContext
-func NewWellKnownAttributes(attributes *envoyauth.AttributeContext) *WellKnownAttributes {
+func NewWellKnownAttributes(attributes *envoyauth.AttributeContext, authData map[string]any) *WellKnownAttributes {
 	return &WellKnownAttributes{
 		Metadata:    attributes.MetadataContext,
 		Request:     newRequestAttributes(attributes),
 		Source:      newSourceAttributes(attributes),
 		Destination: newDestinationAttributes(attributes),
+		Auth:        newAuthAttributes(authData),
 	}
 }
 
@@ -177,4 +183,18 @@ func newDestinationAttributes(attributes *envoyauth.AttributeContext) *Destinati
 		Labels:    destination.GetLabels(),
 		Principal: destination.GetPrincipal(),
 	}
+}
+
+func newAuthAttributes(authData map[string]interface{}) *AuthAttributes {
+	authAttributes := &AuthAttributes{}
+	authAttributesValue := reflect.ValueOf(authAttributes).Elem()
+	for key, value := range authData {
+		fieldValue := authAttributesValue.FieldByName(strings.ToUpper(key[:1]) + key[1:])
+		if fieldValue.IsValid() && fieldValue.CanSet() {
+			if value != nil {
+				fieldValue.Set(reflect.ValueOf(value))
+			}
+		}
+	}
+	return authAttributes
 }
