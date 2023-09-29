@@ -58,12 +58,13 @@ const (
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	Logger        logr.Logger
-	Scheme        *runtime.Scheme
-	Index         index.Index
-	StatusReport  *StatusReportMap
-	LabelSelector labels.Selector
-	Namespace     string
+	Logger                      logr.Logger
+	Scheme                      *runtime.Scheme
+	Index                       index.Index
+	AllowSupersedingHostSubsets bool
+	StatusReport                *StatusReportMap
+	LabelSelector               labels.Selector
+	Namespace                   string
 
 	indexBootstrap sync.Mutex
 }
@@ -608,7 +609,7 @@ func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace
 
 	for _, host := range hosts {
 		// check for host name collision between resources
-		if indexedResourceId, found := r.Index.FindId(host); found && indexedResourceId != resourceId {
+		if r.hostTaken(host, resourceId) {
 			looseHosts = append(looseHosts, host)
 			logger.Info("host already taken", "host", host)
 			continue
@@ -623,6 +624,15 @@ func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace
 	}
 
 	return
+}
+
+func (r *AuthConfigReconciler) hostTaken(host, resourceId string) bool {
+	indexedResourceId, found := r.Index.FindId(host)
+	return found && indexedResourceId != resourceId && !r.supersedeHostSubset(host, indexedResourceId)
+}
+
+func (r *AuthConfigReconciler) supersedeHostSubset(host, supersetResourceId string) bool {
+	return r.AllowSupersedingHostSubsets && !utils.SliceContains(r.Index.FindKeys(supersetResourceId), host)
 }
 
 func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {

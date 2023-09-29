@@ -238,6 +238,8 @@ Authorino tries to prevent host name collision between `AuthConfig`s by rejectin
 
 When wildcards are involved, a host name that matches a host wildcard already linked in the index to another `AuthConfig` will be considered taken, and therefore the newest `AuthConfig` will be rejected to be linked to that host.
 
+This behavior can be disabled to allow `AuthConfig`s to partially supersede each others' host names (limited to strict host subsets), by supplying the `--allow-superseding-host-subsets` command-line flag when running the Authorino instance.
+
 ## The Authorization JSON
 
 On every Auth Pipeline, Authorino builds the **Authorization JSON**, a "working-memory" data structure composed of `context` (information about the request, as supplied by the Envoy proxy to Authorino) and `auth` (objects resolved in phases (i) to (v) of the pipeline). The evaluators of each phase can read from the Authorization JSON and implement dynamic properties and decisions based on its values.

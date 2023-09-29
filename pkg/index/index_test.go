@@ -13,34 +13,28 @@ import (
 
 // TestAuthConfigTree tests operations to build and modify the following index tree:
 //
-//	                 ┌───┐
-//	       ┌─────────┤ . ├──────────┐
-//	       │         └───┘          │
-//	       │                        │
-//	       │                        │
-//	    ┌──┴─┐                   ┌──┴──┐
-//	┌───┤ io ├───┐           ┌───┤ com ├───┐
-//	│   └────┘   │           │   └─────┘   │
-//	│            │           │             │
-//	│            │           │             │
-//	│            │           │             │
-//
-// ┌─┴─┐       ┌──┴──┐    ┌───┴──┐      ┌───┴──┐
-// │ * │       │ nip │    │ pets │    ┌─┤ acme ├─┐
-// └───┘       └──┬──┘    └───┬──┘    │ └──────┘ │
-//
-//	▲            │           │       │          │
-//	│            │           │       │          │
-//	│            │           │       │          │
-//	│      ┌─────┴──────┐  ┌─┴─┐  ┌──┴──┐     ┌─┴─┐
-//
-// auth-1   │ talker-api │  │ * │  │ api │     │ * │
-//
-//	└────────────┘  └───┘  └─────┘     └───┘
-//	      ▲           ▲       ▲          ▲
-//	      │           │       │          │
-//	      │           │       │          │
-//	      └───auth-2──┘     auth-3     auth-4
+//	                   ┌───┐
+//	         ┌─────────┤ . ├────────┐
+//	         │         └───┘        │
+//	         │                      │
+//	         │                      │
+//	      ┌──┴─┐                 ┌──┴──┐
+//	  ┌───┤ io ├──┐          ┌───┤ com ├───┐
+//	  │   └────┘  │          │   └─────┘   │
+//	  │           │          │             │
+//	  │           │          │             │
+//	┌─┴─┐      ┌──┴──┐    ┌──┴───┐     ┌───┴──┐
+//	│ * │      │ nip │    │ pets │   ┌─┤ acme ├─┐
+//	└───┘      └──┬──┘    └──┬───┘   │ └──────┘ │
+//	  ▲           │          │       │          │
+//	  │           │          │       │          │
+//	  │    ┌──────┴─────┐  ┌─┴─┐  ┌──┴──┐     ┌─┴─┐
+//	auth-1 │ talker-api │  │ * │  │ api │     │ * │
+//	       └────────────┘  └───┘  └─────┘     └───┘
+//	              ▲          ▲       ▲          ▲
+//	              │          │       │          │
+//	              │          │       │          │
+//	              └──auth-2──┘     auth-3     auth-4
 func TestAuthConfigTree(t *testing.T) {
 	c := newAuthConfigTree()
 
@@ -50,7 +44,13 @@ func TestAuthConfigTree(t *testing.T) {
 	authConfig4 := buildTestAuthConfig()
 
 	// Build the index
+	// Set the more generic host first
 	if err := c.Set("auth-1", "*.io", authConfig1, false); err != nil {
+		t.Error(err)
+	}
+
+	// ...and then the more specific one
+	if err := c.Set("auth-2", "talker-api.nip.io", authConfig2, false); err != nil {
 		t.Error(err)
 	}
 
@@ -58,14 +58,12 @@ func TestAuthConfigTree(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err := c.Set("auth-2", "talker-api.nip.io", authConfig2, false); err != nil {
-		t.Error(err)
-	}
-
+	// Set the more specific host first
 	if err := c.Set("auth-3", "api.acme.com", authConfig3, false); err != nil {
 		t.Error(err)
 	}
 
+	// ...and then the more generic one
 	if err := c.Set("auth-4", "*.acme.com", authConfig4, false); err != nil {
 		t.Error(err)
 	}
@@ -130,7 +128,7 @@ func TestAuthConfigTree(t *testing.T) {
 	assert.Check(t, config == nil)
 
 	config = c.Get("talker-api.nip.io")
-	assert.DeepEqual(t, *config, authConfig1) // because `*.io -> auth-1` is still in the tree
+	assert.DeepEqual(t, *config, authConfig1) // because `*.io <- auth-1` is still in the tree
 
 	config = c.Get("api.acme.com")
 	assert.DeepEqual(t, *config, authConfig3)
@@ -138,7 +136,7 @@ func TestAuthConfigTree(t *testing.T) {
 	c.Delete("auth-3")
 
 	config = c.Get("api.acme.com")
-	assert.DeepEqual(t, *config, authConfig4) // because `*.acme.com -> auth-4` is still in the tree
+	assert.DeepEqual(t, *config, authConfig4) // because `*.acme.com <- auth-4` is still in the tree
 }
 
 type bogusIdentity struct{}
