@@ -104,6 +104,7 @@ type authServerOptions struct {
 	watchNamespace                 string
 	watchedAuthConfigLabelSelector string
 	watchedSecretLabelSelector     string
+	allowSupersedingHostSubsets    bool
 	timeout                        int
 	extAuthGRPCPort                int
 	extAuthHTTPPort                int
@@ -165,6 +166,7 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&opts.watchNamespace, "watch-namespace", utils.EnvVar("WATCH_NAMESPACE", ""), "Kubernetes namespace to watch")
 	cmd.PersistentFlags().StringVar(&opts.watchedAuthConfigLabelSelector, "auth-config-label-selector", utils.EnvVar("AUTH_CONFIG_LABEL_SELECTOR", ""), "Kubernetes label selector to filter AuthConfig resources to watch")
 	cmd.PersistentFlags().StringVar(&opts.watchedSecretLabelSelector, "secret-label-selector", utils.EnvVar("SECRET_LABEL_SELECTOR", "authorino.kuadrant.io/managed-by=authorino"), "Kubernetes label selector to filter Secret resources to watch")
+	cmd.PersistentFlags().BoolVar(&opts.allowSupersedingHostSubsets, "allow-superseding-host-subsets", false, "Enable AuthConfigs to supersede strict host subsets of supersets already taken")
 	cmd.PersistentFlags().IntVar(&opts.timeout, "timeout", utils.EnvVar("TIMEOUT", 0), "Server timeout - in milliseconds")
 	cmd.PersistentFlags().IntVar(&opts.extAuthGRPCPort, "ext-auth-grpc-port", utils.EnvVar("EXT_AUTH_GRPC_PORT", 50051), "Port number of authorization server - gRPC interface")
 	cmd.PersistentFlags().IntVar(&opts.extAuthHTTPPort, "ext-auth-http-port", utils.EnvVar("EXT_AUTH_HTTP_PORT", 5001), "Port number of authorization server - raw HTTP interface")
@@ -256,13 +258,14 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 
 	// sets up the authconfig reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
-		Client:        mgr.GetClient(),
-		Index:         index,
-		StatusReport:  statusReport,
-		Logger:        controllerLogger.WithName("authconfig"),
-		Scheme:        mgr.GetScheme(),
-		LabelSelector: controllers.ToLabelSelector(opts.watchedAuthConfigLabelSelector),
-		Namespace:     opts.watchNamespace,
+		Client:                      mgr.GetClient(),
+		Index:                       index,
+		AllowSupersedingHostSubsets: opts.allowSupersedingHostSubsets,
+		StatusReport:                statusReport,
+		Logger:                      controllerLogger.WithName("authconfig"),
+		Scheme:                      mgr.GetScheme(),
+		LabelSelector:               controllers.ToLabelSelector(opts.watchedAuthConfigLabelSelector),
+		Namespace:                   opts.watchNamespace,
 	}
 	if err = authConfigReconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "failed to setup controller", "controller", "authconfig")

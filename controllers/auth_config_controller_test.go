@@ -230,7 +230,7 @@ func TestTranslateAuthConfig(t *testing.T) {
 	// TODO
 }
 
-func TestPreventHostCollision(t *testing.T) {
+func TestPreventHostCollisionExactMatches(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()
 	indexMock := mock_index.NewMockIndex(mockController)
@@ -242,14 +242,62 @@ func TestPreventHostCollision(t *testing.T) {
 	client := newTestK8sClient(&authConfig, &secret)
 	reconciler := newTestAuthConfigReconciler(client, indexMock)
 
-	indexMock.EXPECT().Empty().Return(false)
-	indexMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()
-	indexMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)
-	indexMock.EXPECT().FindId("other.io").Return("", false)
-	indexMock.EXPECT().FindId("yet-another.io").Return(fmt.Sprintf("%s/other-auth-config-same-ns", authConfig.Namespace), true)
-	indexMock.EXPECT().Set(authConfigName.String(), "other.io", gomock.Any(), true)
+	indexMock.EXPECT().Empty().Return(false)                                                                              // simulate index not empty, so it skips bootstraping
+	indexMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes()                                    // simulate no prexisting hosts linked to the authconfig to be reconciled
+	indexMock.EXPECT().FindId("echo-api").Return("other-namespace/other-auth-config-with-same-host", true)                // simulate other existing authconfig with conflicting host, in a different namespace
+	indexMock.EXPECT().FindId("other.io").Return(fmt.Sprintf("%s/other-auth-config-same-ns", authConfig.Namespace), true) // simulate other existing authconfig with conflicting host, in the same namespace
+	indexMock.EXPECT().FindId("yet-another.io").Return("", false)                                                         // simulate no other existing authconfig with conflicting host
+
+	indexMock.EXPECT().Set(authConfigName.String(), "yet-another.io", gomock.Any(), true) // expect only the new host to be indexed
 
 	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+}
+
+func TestPreventHostCollisionAllowSupersedingHostSubsets(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+	indexMock := mock_index.NewMockIndex(mockController)
+
+	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Spec.Hosts = []string{"echo-api.io"}
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, indexMock)
+
+	indexMock.EXPECT().Empty().Return(false).AnyTimes()                                // simulate index not empty, so it skips bootstraping
+	indexMock.EXPECT().FindKeys(authConfigName.String()).Return([]string{}).AnyTimes() // simulate no prexisting hosts linked to the authconfig to be reconciled
+
+	// allow superseding host subsets = false
+	indexMock.EXPECT().FindId("echo-api.io").Return("other/other", true) // simulate other existing authconfig with conflicting host
+
+	result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+
+	// allow superseding host subsets = true, conflicting host found and the new one is NOT a strict subset of the one found
+	reconciler.AllowSupersedingHostSubsets = true
+	indexMock.EXPECT().FindId("echo-api.io").Return("other/other-1", true)       // simulate other existing authconfig with conflicting host
+	indexMock.EXPECT().FindKeys("other/other-1").Return([]string{"echo-api.io"}) // simulate identical host found linked to other authconfig (i.e. not a strict subset)
+
+	result, err = reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
+
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+
+	// allow superseding host subsets = true, conflicting host found but the new one is a strict subset of the one found
+	reconciler.AllowSupersedingHostSubsets = true
+	indexMock.EXPECT().FindId("echo-api.io").Return("other/other-2", true) // simulate other existing authconfig with conflicting host
+	indexMock.EXPECT().FindKeys("other/other-2").Return([]string{"*.io"})  // simulate superset host found linked to other authconfig
+
+	indexMock.EXPECT().Set(authConfigName.String(), "echo-api.io", gomock.Any(), true) // expect only the new host to be indexed
+
+	result, err = reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: authConfigName})
 
 	assert.DeepEqual(t, result, ctrl.Result{})
 	assert.NilError(t, err)
