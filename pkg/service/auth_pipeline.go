@@ -533,6 +533,7 @@ func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
 }
 
 type authorizationJSON struct {
+	// Deprecated: Use WellKnownAttributes instead.
 	Context              *envoy_auth.AttributeContext `json:"context"`
 	*WellKnownAttributes `json:""`
 }
