@@ -574,12 +574,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 		authData["callbacks"] = callbacks
 	}
 
-	authJSON, _ := gojson.Marshal(&authorizationJSON{
-		Context:             pipeline.GetRequest().Attributes,
-		WellKnownAttributes: NewWellKnownAttributes(pipeline.GetRequest().Attributes, authData),
-	})
-
-	return string(authJSON)
+	return NewAuthorizationJSON(pipeline.GetRequest(), authData)
 }
 
 func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, denyWith *evaluators.DenyWithValues) auth.AuthResult {
@@ -609,4 +604,12 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 	}
 
 	return authResult
+}
+
+func NewAuthorizationJSON(request *envoy_auth.CheckRequest, authPipeline map[string]any) string {
+	authJSON, _ := gojson.Marshal(&authorizationJSON{
+		Context:             request.Attributes,
+		WellKnownAttributes: NewWellKnownAttributes(request.Attributes, authPipeline),
+	})
+	return string(authJSON)
 }

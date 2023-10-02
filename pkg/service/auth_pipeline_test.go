@@ -577,3 +577,18 @@ func BenchmarkAuthPipeline(b *testing.B) {
 	assert.DeepEqual(b, r.Message, "")
 	assert.DeepEqual(b, r.Code, rpc.OK)
 }
+
+func TestNewAuthorizationJSON(t *testing.T) {
+	request := &envoy_auth.CheckRequest{}
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
+
+	authPipeline := map[string]any{
+		"identity": "leeloo",
+		"authorization": map[string]any{
+			"credential": "multipass",
+		},
+	}
+	expectedAuthJSON := `{"context":{"request":{"http":{"method":"GET","headers":{"authorization":"Bearer n3ex87bye9238ry8"},"path":"/operation","host":"my-api"}}},"request":{"host":"my-api","method":"GET","path":"/operation","url_path":"/operation","headers":{"authorization":"Bearer n3ex87bye9238ry8"}},"source":{"address":"\u003cnil\u003e"},"destination":{"address":"\u003cnil\u003e"},"auth":{"identity":"leeloo","authorization":{"credential":"multipass"}}}`
+
+	assert.Equal(t, expectedAuthJSON, NewAuthorizationJSON(request, authPipeline))
+}
