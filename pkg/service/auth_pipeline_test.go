@@ -316,9 +316,10 @@ func TestAuthPipelineGetAuthorizationJSON(t *testing.T) {
 	}, &requestMock)
 
 	requestJSON, _ := gojson.Marshal(requestMock.GetAttributes())
-	expectedWellKnownAttributes := `"request":{"host":"my-api","method":"GET","path":"/operation","url_path":"/operation","headers":{"authorization":"Bearer n3ex87bye9238ry8"}},"source":{"address":"\u003cnil\u003e"},"destination":{"address":"\u003cnil\u003e"},"auth":{}`
+	expectedWellKnownAttributes := `"request":{"host":"my-api","method":"GET","path":"/operation","url_path":"/operation","headers":{"authorization":"Bearer n3ex87bye9238ry8"}},"source":{},"destination":{},"auth":{}`
 	expectedJSON := fmt.Sprintf(`{"context":%s,%s}`, requestJSON, expectedWellKnownAttributes)
-	assert.Equal(t, pipeline.GetAuthorizationJSON(), expectedJSON)
+
+	assert.Equal(t, expectedJSON, pipeline.GetAuthorizationJSON())
 }
 
 func TestEvaluateWithCustomDenyOptions(t *testing.T) {
@@ -588,7 +589,7 @@ func TestNewAuthorizationJSON(t *testing.T) {
 			"credential": "multipass",
 		},
 	}
-	expectedAuthJSON := `{"context":{"request":{"http":{"method":"GET","headers":{"authorization":"Bearer n3ex87bye9238ry8"},"path":"/operation","host":"my-api"}}},"request":{"host":"my-api","method":"GET","path":"/operation","url_path":"/operation","headers":{"authorization":"Bearer n3ex87bye9238ry8"}},"source":{"address":"\u003cnil\u003e"},"destination":{"address":"\u003cnil\u003e"},"auth":{"identity":"leeloo","authorization":{"credential":"multipass"}}}`
+	expectedAuthJSON := `{"context":{"request":{"http":{"method":"GET","headers":{"authorization":"Bearer n3ex87bye9238ry8"},"path":"/operation","host":"my-api"}}},"request":{"host":"my-api","method":"GET","path":"/operation","url_path":"/operation","headers":{"authorization":"Bearer n3ex87bye9238ry8"}},"source":{},"destination":{},"auth":{"identity":"leeloo","authorization":{"credential":"multipass"}}}`
 
 	assert.Equal(t, expectedAuthJSON, NewAuthorizationJSON(request, authPipeline))
 }
