@@ -534,8 +534,9 @@ func (pipeline *AuthPipeline) GetResolvedIdentity() (interface{}, interface{}) {
 }
 
 type authorizationJSON struct {
-	Context  *envoy_auth.AttributeContext `json:"context"`
-	AuthData map[string]interface{}       `json:"auth"`
+	// Deprecated: Use WellKnownAttributes instead.
+	Context              *envoy_auth.AttributeContext `json:"context"`
+	*WellKnownAttributes `json:""`
 }
 
 func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
@@ -574,12 +575,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 		authData["callbacks"] = callbacks
 	}
 
-	authJSON, _ := gojson.Marshal(&authorizationJSON{
-		Context:  pipeline.GetRequest().Attributes,
-		AuthData: authData,
-	})
-
-	return string(authJSON)
+	return NewAuthorizationJSON(pipeline.GetRequest(), authData)
 }
 
 func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, denyWith *evaluators.DenyWithValues) auth.AuthResult {
@@ -609,4 +605,12 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 	}
 
 	return authResult
+}
+
+func NewAuthorizationJSON(request *envoy_auth.CheckRequest, authPipeline map[string]any) string {
+	authJSON, _ := gojson.Marshal(&authorizationJSON{
+		Context:             request.Attributes,
+		WellKnownAttributes: NewWellKnownAttributes(request.Attributes, authPipeline),
+	})
+	return string(authJSON)
 }
