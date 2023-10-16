@@ -41,6 +41,12 @@ func TestConvertTo(t *testing.T) {
 	sort.Slice(converted.Spec.Callbacks, func(i, j int) bool {
 		return converted.Spec.Callbacks[i].Name < converted.Spec.Callbacks[j].Name
 	})
+	sort.Slice(converted.Spec.DenyWith.Unauthenticated.Headers, func(i, j int) bool {
+		return converted.Spec.DenyWith.Unauthenticated.Headers[i].Name < converted.Spec.DenyWith.Unauthenticated.Headers[j].Name
+	})
+	sort.Slice(converted.Spec.DenyWith.Unauthorized.Headers, func(i, j int) bool {
+		return converted.Spec.DenyWith.Unauthorized.Headers[i].Name < converted.Spec.DenyWith.Unauthorized.Headers[j].Name
+	})
 
 	expected := hubAuthConfig()
 	if !reflect.DeepEqual(expected, converted) {
