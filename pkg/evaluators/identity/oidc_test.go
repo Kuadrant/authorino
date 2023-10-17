@@ -111,12 +111,12 @@ func TestOidcProviderRefresh(t *testing.T) {
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
-	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 1, context.TODO())
+	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 3, context.TODO())
 	defer evaluator.Clean(context.Background())
 
 	assert.Check(t, evaluator.refresher != nil)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 	assert.Equal(t, 2, count)
 	assert.Equal(t, fmt.Sprintf("http://%v/auth?count=2", oidcServerHost), evaluator.provider.Endpoint().AuthURL)
 }
