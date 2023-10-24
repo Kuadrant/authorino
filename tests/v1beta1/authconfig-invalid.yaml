@@ -4,7 +4,7 @@ metadata:
   name: e2e-test-invalid
 spec:
   hosts:
-  - talker-api-authorino.127.0.0.1.nip.io
+  - talker-api.127.0.0.1.nip.io
 
   identity:
   - name: multiple-identity-methods

@@ -14,7 +14,7 @@ authconfig_invalid=${AUTHCONFIG_INVALID:-"$(dirname $(realpath $0))/${authconfig
 verbose=${VERBOSE}
 timeout=${TIMEOUT:-"600"}
 
-HOSTNAME="talker-api-authorino.127.0.0.1.nip.io"
+HOSTNAME="talker-api.127.0.0.1.nip.io"
 IP_IN="109.69.200.56" # IT
 IP_OUT="79.123.45.67" # GB
 

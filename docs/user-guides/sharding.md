@@ -6,39 +6,54 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
 - multiple environments (e.g. staging, production) inside of a same cluster/namespace;
 - providing managed instances of Authorino that all watch CRs cluster-wide, yet dedicated to organizations allowed to create and operate their own `AuthConfig`s across multiple namespaces.
 
+<table>
+  <tbody>
+    <tr>
+      <td>
+        <b>⚠️ <i>Important:</i></b>
+        This feature may not be available to users of Authorino via <a href="https://kuadrant.io">Kuadrant</a>.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 <details>
   <summary>
-    <strong>Authorino features in this guide:</strong>
+    <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
-      <li><a href="./../architecture.md#sharding">Sharding</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
+      <li><a href="../architecture.md#sharding">Sharding</a></li>
+      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
 
-  Check out as well the user guide about [Authentication with API keys](./api-key-authentication.md).
+  Check out as well the user guide about [Authentication with API keys](api-key-authentication.md).
 
-  For further details about Authorino features in general, check the [docs](./../features.md).
+  For further details about Authorino features in general, check the [docs](../features.md).
 </details>
 
 <br/>
 
 ## Requirements
 
-- Kubernetes server
+- Kubernetes server with permissions to install cluster-scoped resources (operator, CRDs and RBAC)
 
-Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
+If you do not own a Kubernetes server already and just want to try out the steps in this guide, you can create a local containerized cluster by executing the command below. In this case, the main requirement is having [Kind](https://kind.sigs.k8s.io) installed, with either [Docker](https://www.docker.com/) or [Podman](https://podman.io/).
 
 ```sh
 kind create cluster --name authorino-tutorial
 ```
 
-## 1. Install the Authorino Operator
+<br/>
+
+## ❶ Install the Authorino Operator (cluster admin required)
+
+The following command will install the [Authorino Operator](http://github.com/kuadrant/authorino-operator) in the Kubernetes cluster. The operator manages instances of the Authorino authorization service.
 
 ```sh
 curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
-## 2. Deploy a couple instances of Authorino
+## ❷ Deploy instances of Authorino
 
 Deploy an instance of Authorino dedicated to `AuthConfig`s and API key `Secrets` labeled with `authorino/environment=staging`:
 
@@ -82,15 +97,18 @@ spec:
 EOF
 ```
 
-The commands above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+The commands above will both request instances of Authorino that watch for `AuthConfig` resources cluster-wide[^1], with TLS disabled[^2].
 
-## 3. Create a namespace for user resources
+[^1]: `cluster-wide` reconciliation mode. See [Cluster-wide vs. Namespaced instances](../architecture.md#cluster-wide-vs-namespaced-instances).
+[^2]: For other variants and deployment options, check out [Getting Started](../getting-started.md#step-request-an-authorino-instance), as well as the [`Authorino`](https://github.com/kuadrant/authorino-operator#the-authorino-custom-resource-definition-crd) CRD specification.
+
+## ❸ Create a namespace for user resources
 
 ```sh
 kubectl create namespace myapp
 ```
 
-## 4. Create `AuthConfig`s and API key `Secret`s for both instances
+## ❹ Create `AuthConfig`s and API key `Secret`s for both instances
 
 ### Create resources for `authorino-staging`
 
@@ -194,7 +212,7 @@ kubectl logs $(kubectl get pods -l authorino-resource=authorino-production -o na
 # {"level":"info","ts":1638383460.3515081,"logger":"authorino.controller-runtime.manager.controller.secret","msg":"resource reconciled","secret":"myapp/api-key-2"}
 ```
 
-## 9. Remove a resource from scope
+## ❺ Remove a resource from scope
 
 ```sh
 kubectl -n myapp label authconfig/auth-config-2 disabled=true

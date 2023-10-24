@@ -10,54 +10,73 @@ All requests to the Talker API will be authenticated in Envoy. However, requests
 
 <details>
   <summary>
-    <strong>Authorino features in this guide:</strong>
+    <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#plain-authenticationplain">Plain</a></li>
-      <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Authorization → <a href="./../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-      <li>Dynamic response → <a href="./../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized">Custom denial status</a></li>
+      <li>Identity verification & authentication → <a href="../features.md#plain-authenticationplain">Plain</a></li>
+      <li>External auth metadata → <a href="../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
+      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
+      <li>Dynamic response → <a href="../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized">Custom denial status</a></li>
     </ul>
   </summary>
 
-  For further details about Authorino features in general, check the [docs](./../features.md).
+  For further details about Authorino features in general, check the [docs](../features.md).
 </details>
 
 <br/>
 
 ## Requirements
 
-- Kubernetes server
-- Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
+- Kubernetes server with permissions to install cluster-scoped resources (operator, CRDs and RBAC)
+- Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
 - [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
-Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
+If you do not own a Kubernetes server already and just want to try out the steps in this guide, you can create a local containerized cluster by executing the command below. In this case, the main requirement is having [Kind](https://kind.sigs.k8s.io) installed, with either [Docker](https://www.docker.com/) or [Podman](https://podman.io/).
 
 ```sh
 kind create cluster --name authorino-tutorial
 ```
 
-Deploy a Keycloak server preloaded with all the realm settings required for this guide:
+Deploy the identity provider and authentication server by executing the command below. For the examples in this guide, we are going to use a Keycloak server preloaded with all required realm settings.
 
 ```sh
 kubectl create namespace keycloak
 kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
 ```
 
-## 1. Install the Authorino Operator
+<br/>
+
+The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
+
+<table>
+  <thead>
+    <tr>
+      <th>Using Kuadrant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❻.</p>
+        <p>At step ❻, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
+        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<br/>
+
+## ❶ Install the Authorino Operator (cluster admin required)
+
+The following command will install the [Authorino Operator](http://github.com/kuadrant/authorino-operator) in the Kubernetes cluster. The operator manages instances of the Authorino authorization service.
 
 ```sh
 curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
-## 2. Deploy the Talker API
+## ❷ Deploy Authorino
 
-The **Talker API** is just an echo API, included in the Authorino examples. We will use it in this guide as the service to be protected with Authorino.
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
-```
-
-## 3. Deploy Authorino
+The following command will request an instance of Authorino as a separate service[^1] that watches for `AuthConfig` resources in the `default` namespace[^2], with TLS disabled[^3].
 
 ```sh
 kubectl apply -f -<<EOF
@@ -75,13 +94,23 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+[^1]: In contrast to a dedicated sidecar of the protected service and other architectures. Check out __Architecture > [Topologies](../architecture.md#topologies)__ for all options.
+[^2]: `namespaced` reconciliation mode. See [Cluster-wide vs. Namespaced instances](../architecture.md#cluster-wide-vs-namespaced-instances).
+[^3]: For other variants and deployment options, check out [Getting Started](../getting-started.md#step-request-an-authorino-instance), as well as the [`Authorino`](https://github.com/kuadrant/authorino-operator#the-authorino-custom-resource-definition-crd) CRD specification.
 
-## 4. Setup Envoy
+## ❸ Deploy the Talker API
 
-The command below creates the Envoy configuration and deploys the Envoy proxy wire up the Talker API and external authorization with Authorino.
+The **Talker API** is a simple HTTP service that echoes back in the response whatever it gets in the request. We will use it in this guide as the sample service to be protected by Authorino.
 
-For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#step-setup-envoy) page. For a simpler and straightforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
+```sh
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+```
+
+## ❹ Setup Envoy
+
+The following command deploys the [Envoy](https://envoyproxy.io/) proxy and configuration to wire up the Talker API behind the reverse-proxy, with external authorization enabled with the Authorino instance.[^4]
+
+[^4]: For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](../getting-started.md#step-setup-envoy) page. If you are running your ingress gateway in Kubernetes and wants to avoid setting up and configuring your proxy manually, check out [Kuadrant](https://kuadrant.io).
 
 ```sh
 kubectl apply -f -<<EOF
@@ -267,7 +296,7 @@ metadata:
   name: ingress-wildcard-host
 spec:
   rules:
-  - host: talker-api-authorino.127.0.0.1.nip.io
+  - host: talker-api.127.0.0.1.nip.io
     http:
       paths:
       - backend:
@@ -280,19 +309,35 @@ spec:
 EOF
 ```
 
-For convenience, an `Ingress` resource is defined with host name `talker-api-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:
+The command above creates an `Ingress` with host name `talker-api.127.0.0.1.nip.io`. If you are using a local Kubernetes cluster created with Kind, forward requests from your local port 8000 to the Envoy service running inside the cluster:
 
 ```sh
-kubectl port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 ```
 
-## 5. Deploy the IP Location service
+## ❺ Deploy the IP Location service
+
+The **IP Location service** is a simple service that resolves an IPv4 address into geo location info.
 
 ```sh
 kubectl apply -f https://raw.githubusercontent.com/Kuadrant/authorino-examples/main/ip-location/ip-location-deploy.yaml
 ```
 
-## 6. Create the `AuthConfig`
+## ❻ Create an `AuthConfig`
+
+Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced:
+
+<table>
+  <tbody>
+    <tr>
+      <td>
+        <b><i>Kuadrant users –</i></b>
+        Remember to create an <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
+        For more, see <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ```sh
 kubectl apply -f -<<EOF
@@ -302,7 +347,7 @@ metadata:
   name: talker-api-protection
 spec:
   hosts:
-  - talker-api-authorino.127.0.0.1.nip.io
+  - talker-api.127.0.0.1.nip.io
   authentication:
     "jwt":
       plain:
@@ -335,7 +380,7 @@ spec:
 EOF
 ```
 
-## 7. Obtain a token and consume the API
+## ❼ Obtain a token and consume the API
 
 ### Obtain an access token and consume the API as John (member)
 
@@ -356,7 +401,7 @@ As John, consume the API inside the area where the policy applies:
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H 'X-Forwarded-For: 79.123.45.67' \
-     http://talker-api-authorino.127.0.0.1.nip.io:8000 -i
+     http://talker-api.127.0.0.1.nip.io:8000 -i
 # HTTP/1.1 200 OK
 ```
 
@@ -365,7 +410,7 @@ As John, consume the API outside the area where the policy applies:
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H 'X-Forwarded-For: 109.69.200.56' \
-     http://talker-api-authorino.127.0.0.1.nip.io:8000 -i
+     http://talker-api.127.0.0.1.nip.io:8000 -i
 # HTTP/1.1 403 Forbidden
 # x-ext-auth-reason: The requested resource is not available in Italy
 ```
@@ -375,7 +420,7 @@ As John, consume a path of the API that will cause Envoy to skip external author
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H 'X-Forwarded-For: 109.69.200.56' \
-     http://talker-api-authorino.127.0.0.1.nip.io:8000/global -i
+     http://talker-api.127.0.0.1.nip.io:8000/global -i
 # HTTP/1.1 200 OK
 ```
 
@@ -392,7 +437,7 @@ As Jane, consume the API inside the area where the policy applies:
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H 'X-Forwarded-For: 79.123.45.67' \
-     http://talker-api-authorino.127.0.0.1.nip.io:8000 -i
+     http://talker-api.127.0.0.1.nip.io:8000 -i
 # HTTP/1.1 200 OK
 ```
 
@@ -401,7 +446,7 @@ As Jane, consume the API outside the area where the policy applies:
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H 'X-Forwarded-For: 109.69.200.56' \
-     http://talker-api-authorino.127.0.0.1.nip.io:8000 -i
+     http://talker-api.127.0.0.1.nip.io:8000 -i
 # HTTP/1.1 200 OK
 ```
 
@@ -410,7 +455,7 @@ As Jane, consume a path of the API that will cause Envoy to skip external author
 ```sh
 curl -H "Authorization: Bearer $ACCESS_TOKEN" \
      -H 'X-Forwarded-For: 109.69.200.56' \
-     http://talker-api-authorino.127.0.0.1.nip.io:8000/global -i
+     http://talker-api.127.0.0.1.nip.io:8000/global -i
 # HTTP/1.1 200 OK
 ```
 
@@ -426,12 +471,12 @@ Otherwise, delete the resources created in each step:
 
 ```sh
 kubectl delete authconfig/talker-api-protection
-kubectl delete authorino/authorino
 kubectl delete ingress/ingress-wildcard-host
 kubectl delete service/envoy
 kubectl delete deployment/envoy
 kubectl delete configmap/envoy
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+kubectl delete authorino/authorino
 kubectl delete namespace keycloak
 ```
 
