@@ -236,7 +236,7 @@ kubectl -n internal apply -f https://raw.githubusercontent.com/kuadrant/authorin
 The command above creates an `Ingress` with host name `talker-api.127.0.0.1.nip.io`. If you are using a local Kubernetes cluster created with Kind, forward requests from your local port 8000 to the Envoy service running inside the cluster:
 
 ```sh
-kubectl port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
+kubectl -n internal port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 ```
 
 ### Create the `AuthConfig`
