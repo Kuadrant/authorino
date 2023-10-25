@@ -259,7 +259,7 @@ kubectl run greeter --attach --rm --restart=Never -q --image=quay.io/kuadrant/au
   "apiVersion": "v1",
   "spec": {
     "containers": [{
-      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["run"],
+      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
       "args":["--endpoint=http://envoy.default.svc.cluster.local:8000/hi","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
@@ -278,7 +278,7 @@ kubectl run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/au
   "apiVersion": "v1",
   "spec": {
     "containers": [{
-      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["run"],
+      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
       "args":["--endpoint=http://envoy.default.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
@@ -297,7 +297,7 @@ kubectl run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/au
   "apiVersion": "v1",
   "spec": {
     "containers": [{
-      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["run"],
+      "name": "api-consumer", "image": "quay.io/kuadrant/authorino-examples:api-consumer", "command": ["./run"],
       "args":["--endpoint=http://envoy.default.svc.cluster.local:8000/say/blah","--method=POST","--interval=0","--token-path=/var/run/secrets/tokens/api-token"],
       "volumeMounts": [{"mountPath": "/var/run/secrets/tokens","name": "access-token"}]
     }],
