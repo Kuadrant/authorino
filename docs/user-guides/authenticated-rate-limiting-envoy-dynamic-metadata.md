@@ -215,7 +215,7 @@ EOF
 As John:
 
 ```sh
-curl -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://talker-api.127.0.0.1.nip.io:8000/hello
+curl -H 'Authorization: APIKEY ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx' http://talker-api.127.0.0.1.nip.io:8000/hello -i
 # HTTP/1.1 200 OK
 ```
 
@@ -224,7 +224,7 @@ Repeat the request a few more times within the 60-second time window, until the 
 While the API is still limited to John, send requests as Jane:
 
 ```sh
-curl -H 'Authorization: APIKEY 7BNaTmYGItSzXiwQLNHu82+x52p1XHgY' http://talker-api.127.0.0.1.nip.io:8000/hello
+curl -H 'Authorization: APIKEY 7BNaTmYGItSzXiwQLNHu82+x52p1XHgY' http://talker-api.127.0.0.1.nip.io:8000/hello -i
 # HTTP/1.1 200 OK
 ```
 
