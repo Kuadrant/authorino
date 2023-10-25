@@ -112,12 +112,7 @@ kubectl port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 
 ## ❺ Create an `AuthConfig`
 
-Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced.
-
-The following defines a JSON object to be injected as an added HTTP header into the request, named after the response config `x-ext-auth-data`. The object includes 3 properties:
-1. a static value `authorized: true`;
-2. a dynamic value `request-time`, from Envoy-supplied contextual data present in the Authorization JSON; and
-3. a greeting message `geeting-message` that interpolates a dynamic value read from an annotation of the Kubernetes `Secret` resource that represents the API key used to authenticate into a static string.
+Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced:
 
 <table>
   <tbody>
@@ -162,7 +157,7 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: "http://matrix-quotes.127.0.0.1.nip.io:8000/login.html?redirect_to={context.request.http.path}"
+          selector: "http://matrix-quotes.127.0.0.1.nip.io:8000/login.html?redirect_to={request.path}"
 EOF
 ```
 
@@ -264,7 +259,7 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes.127.0.0.1.nip.io:8000/auth?redirect_to={context.request.http.path}&scope=openid&response_type=code"
+          selector: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes.127.0.0.1.nip.io:8000/auth?redirect_to={request.path}&scope=openid&response_type=code"
 EOF
 ```
 
