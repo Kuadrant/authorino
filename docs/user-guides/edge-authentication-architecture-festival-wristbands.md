@@ -195,7 +195,7 @@ spec:
           selector: auth.identity.metadata.annotations.authorino\.kuadrant\.io/username
     "idp-users":
       jwt:
-        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant
       defaults:
         "username":
           selector: auth.identity.preferred_username
@@ -340,7 +340,7 @@ The `AuthConfig` deployed in the previous step is suitable for validating access
 Obtain an access token from within the cluster for the user Jane, whose e-mail has been verified:
 
 ```sh
-ACCESS_TOKEN=$(kubectl -n edge run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' | jq -r .access_token)
+ACCESS_TOKEN=$(kubectl -n edge run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' -d 'scope=openid' | jq -r .access_token)
 ```
 
 If your Keycloak server is reachable from outside the cluster, feel free to obtain the token directly. Make sure the host name set in the OIDC issuer endpoint in the `AuthConfig` matches the one used to obtain the token and is as well reachable from within the cluster.
@@ -360,7 +360,7 @@ jwt decode $ACCESS_TOKEN
 #   "family_name": "Smith",
 #   "given_name": "Jane",
 #   "iat": 1638451920,
-#   "iss": "http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant",
+#   "iss": "http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant",
 #   "jti": "699f6e49-dea4-4f29-ae2a-929a3a18c94b",
 #   "name": "Jane Smith",
 #   "preferred_username": "jane",

@@ -344,7 +344,7 @@ func authConfig() *AuthConfig {
 						"credentialsRef": {
 							"name": "talker-api-uma-credentials"
 						},
-						"endpoint": "http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant"
+						"endpoint": "http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant"
 					},
 					"when": [
 						{
@@ -879,7 +879,7 @@ func hubAuthConfig() *v1beta1.AuthConfig {
 						"credentialsRef": {
 							"name": "talker-api-uma-credentials"
 						},
-						"endpoint": "http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant"
+						"endpoint": "http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant"
 					},
 					"when": [
 						{

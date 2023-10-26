@@ -224,16 +224,16 @@ kubectl port-forward deployment/keycloak 8080:8080 2>&1 >/dev/null &
 Create a client:
 
 ```sh
-curl -H "Authorization: Bearer $(curl http://keycloak:8080/auth/realms/master/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=admin-cli' -d 'username=admin' -d 'password=p' | jq -r .access_token)" \
+curl -H "Authorization: Bearer $(curl http://keycloak:8080/realms/master/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=admin-cli' -d 'username=admin' -d 'password=p' | jq -r .access_token)" \
      -H 'Content-type: application/json' \
      -d '{ "name": "matrix-quotes", "clientId": "matrix-quotes", "publicClient": true, "redirectUris": ["http://matrix-quotes.127.0.0.1.nip.io:8000/auth*"], "enabled": true }' \
-     http://keycloak:8080/auth/admin/realms/kuadrant/clients
+     http://keycloak:8080/admin/realms/kuadrant/clients
 ```
 
 ### Reconfigure the Matrix Quotes app to use Keycloak's login page
 
 ```sh
-kubectl set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/auth/realms/kuadrant CLIENT_ID=matrix-quotes
+kubectl set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/realms/kuadrant CLIENT_ID=matrix-quotes
 ```
 
 ### Apply the changes to the `AuthConfig`
@@ -250,7 +250,7 @@ spec:
   authentication:
     "idp-users":
       jwt:
-        issuerUrl: http://keycloak:8080/auth/realms/kuadrant
+        issuerUrl: http://keycloak:8080/realms/kuadrant
       credentials:
         cookie:
           name: TOKEN
@@ -259,7 +259,7 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: "http://keycloak:8080/auth/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes.127.0.0.1.nip.io:8000/auth?redirect_to={request.path}&scope=openid&response_type=code"
+          selector: "http://keycloak:8080/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes.127.0.0.1.nip.io:8000/auth?redirect_to={request.path}&scope=openid&response_type=code"
 EOF
 ```
 

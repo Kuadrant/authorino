@@ -138,7 +138,7 @@ function send_oidc_requests {
   local passwd=$1; shift
   local access_token=""
   while [ "$access_token" == "" ]; do
-    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl:8.1.1 -- http://keycloak.$namespace.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
+    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl:8.1.1 -- http://keycloak.$namespace.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
     sleep 1
   done
   local requests="$@"
@@ -152,7 +152,7 @@ function send_oauth_opaque_requests {
   local passwd=$1; shift
   local access_token=""
   while [ "$access_token" == "" ]; do
-    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl:8.1.1 -- http://keycloak.$namespace.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
+    access_token=$(kubectl -n $namespace run token-$(hexdump -n 4 -e '4/4 "%0x"' /dev/urandom) --attach --rm --restart=Never -q --image=curlimages/curl:8.1.1 -- http://keycloak.$namespace.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d "username=$user" -d "password=$passwd" 2>/dev/null | jq -r .access_token)
     sleep 1
   done
   local requests="$@"
@@ -175,10 +175,10 @@ kubectl -n $namespace port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 envoy_pid=$!
 
 # waiting for keycloak to be ready is hard
-wait_until "keycloak ready" "Admin console listening" "kubectl -n $namespace logs $(kubectl -n $namespace get pods -l app=keycloak -o name) --tail 1"
+wait_until "keycloak ready" "Listening on: http://0.0.0.0:8080" "kubectl -n $namespace logs $(kubectl -n $namespace get pods -l app=keycloak -o name)"
 kubectl -n $namespace port-forward deployment/keycloak 8080:8080 2>&1 >/dev/null &
 keycloak_pid=$!
-wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --max-time 2 http://localhost:8080/auth/realms/kuadrant/.well-known/openid-configuration"
+wait_until "oidc config ready" "^200$" "curl -o /dev/null -s -w %{http_code} --max-time 2 http://localhost:8080/realms/kuadrant/.well-known/openid-configuration"
 
 # authconfig - invalid
 printf "testing invalid authconfig "
