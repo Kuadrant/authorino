@@ -6,67 +6,79 @@ The rules to validate a request to the Kubernetes API – typically a `POST`, `P
 
 This user guide provides an example of using Authorino as a Kubernetes ValidatingWebhook service that validates requests to `CREATE` and `UPDATE` Authorino `AuthConfig` resources. In other words, we will use Authorino as a validator inside the cluster that decides what is a valid AuthConfig for any application which wants to rely on Authorino to protect itself.
 
-**The AuthConfig to validate other AuthConfigs will enforce the following rules:**
-- Authorino features that cannot be used by any application in their security schemes:
-  - Anonymous Access
-  - Plain identity object extracted from context
-  - Kubernetes authentication (TokenReview)
-  - Kubernetes authorization (SubjectAccessReview)
-  - Festival Wristband tokens
-- Authorino features that require a RoleBinding to a specific ClusterRole in the 'authorino' namespace, to be used in a AuthConfig:
-  - Authorino API key authentication
-- All metadata pulled from external sources must be cached for precisely 5 minutes (300 seconds)
-
-For convenience, the same instance of Authorino used to enforce the AuthConfig associated with the validating webhook will also be targeted for the sample AuthConfigs created to test the validation. For using different instances of Authorino for the validating webhook and for protecting applications behind a proxy, check out the section about [sharding](./../architecture.md#sharding) in the docs. There is also a [user guide](./sharding.md) on the topic, with concrete examples.
-
 <details>
   <summary>
-    <strong>Authorino features in this guide:</strong>
+    <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#plain-authenticationplain">Plain</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#api-key-authenticationapikey">API key</a></li>
-      <li>External auth metadata → <a href="./../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Authorization → <a href="./../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview">Kubernetes SubjectAccessReview</a></li>
-      <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-      <li>Dynamic response → <a href="./../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband">Festival Wristband tokens</a></li>
-      <li>Common feature → <a href="./../features.md#common-feature-conditions-when">Conditions</a></li>
-      <li>Common feature → <a href="./../features.md#common-feature-priorities">Priorities</a></li>
+      <li>Identity verification & authentication → <a href="../features.md#plain-authenticationplain">Plain</a></li>
+      <li>Identity verification & authentication → <a href="../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
+      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
+      <li>External auth metadata → <a href="../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
+      <li>Authorization → <a href="../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview">Kubernetes SubjectAccessReview</a></li>
+      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
+      <li>Dynamic response → <a href="../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband">Festival Wristband tokens</a></li>
+      <li>Common feature → <a href="../features.md#common-feature-conditions-when">Conditions</a></li>
+      <li>Common feature → <a href="../features.md#common-feature-priorities">Priorities</a></li>
     </ul>
   </summary>
 
-  For further details about Authorino features in general, check the [docs](./../features.md).
+  For further details about Authorino features in general, check the [docs](../features.md).
 </details>
 
 <br/>
 
 ## Requirements
 
-- Kubernetes server
-- Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
+- Kubernetes server with permissions to install cluster-scoped resources (operator, CRDs and RBAC)
+- Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
 
-Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
+If you do not own a Kubernetes server already and just want to try out the steps in this guide, you can create a local containerized cluster by executing the command below. In this case, the main requirement is having [Kind](https://kind.sigs.k8s.io) installed, with either [Docker](https://www.docker.com/) or [Podman](https://podman.io/).
 
 ```sh
 kind create cluster --name authorino-tutorial
 ```
 
-Deploy a Keycloak server preloaded with all the realm settings required for this guide:
+Deploy the identity provider and authentication server. For the examples in this guide, we are going to use a Keycloak server preloaded with all required realm settings.
+
+The Keycloak server is only needed for trying out validating AuthConfig resources that use the authentication server.
 
 ```sh
 kubectl create namespace keycloak
 kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
 ```
 
-## 1. Install the Authorino Operator
+<br/>
+
+The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
+
+<table>
+  <thead>
+    <tr>
+      <th>Using Kuadrant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> you may already have Authorino installed and running. In this case, skip straight to step ❸.</p>
+        <p>At step ❺, alternatively to creating an <code>AuthConfig</code> custom resource, you may create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
+        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<br/>
+
+## ❶ Install the Authorino Operator (cluster admin required)
+
+The following command will install the [Authorino Operator](http://github.com/kuadrant/authorino-operator) in the Kubernetes cluster. The operator manages instances of the Authorino authorization service.
 
 ```sh
 curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
-This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
-
-## 2. Deploy Authorino
+## ❷ Deploy Authorino
 
 Create the namespace:
 
@@ -81,6 +93,8 @@ curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs
 ```
 
 Create the Authorino instance:
+
+The following command will request an instance of Authorino as a separate service[^1] that watches for `AuthConfig` resources cluster-wide[^2], with TLS enabled[^3].
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
@@ -104,11 +118,26 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `cluster-wide` reconciliation mode, and with TLS termination enabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+[^1]: In contrast to a dedicated sidecar of the protected service and other architectures. Check out __Architecture > [Topologies](../architecture.md#topologies)__ for all options.
+[^2]: `cluster-wide` reconciliation mode. See [Cluster-wide vs. Namespaced instances](../architecture.md#cluster-wide-vs-namespaced-instances).
+[^3]: For other variants and deployment options, check out [Getting Started](../getting-started.md#step-request-an-authorino-instance), as well as the [`Authorino`](https://github.com/kuadrant/authorino-operator#the-authorino-custom-resource-definition-crd) CRD specification.
 
-## 3. Create the `AuthConfig` and related `ClusterRole`
+For convenience, the same instance of Authorino pointed as the validating webhook will also be targeted for the sample AuthConfigs created to test the validation. For using different instances of Authorino for the validating webhook and for protecting applications behind a proxy, check out the section about [sharding](../architecture.md#sharding) in the docs. There is also a [user guide](sharding.md) on the topic, with concrete examples.
 
-Create the `AuthConfig`:
+## ❸ Create the `AuthConfig` and related `ClusterRole`
+
+Create the `AuthConfig` with the auth rules to validate other AuthConfig resources applied to the cluster.
+
+The AuthConfig to validate other AuthConfigs will enforce the following rules:
+- Authorino features that cannot be used by any application in their security schemes:
+  - Anonymous Access
+  - Plain identity object extracted from context
+  - Kubernetes authentication (TokenReview)
+  - Kubernetes authorization (SubjectAccessReview)
+  - Festival Wristband tokens
+- Authorino features that require a RoleBinding to a specific ClusterRole in the 'authorino' namespace, to be used in a AuthConfig:
+  - Authorino API key authentication
+- All metadata pulled from external sources must be cached for precisely 5 minutes (300 seconds)
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
@@ -191,7 +220,7 @@ rules:
 EOF
 ```
 
-## 4. Create the `ValidatingWebhookConfiguration`
+## ❹ Create the `ValidatingWebhookConfiguration`
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
@@ -220,7 +249,7 @@ webhooks:
 EOF
 ```
 
-## 5. Try it out
+## ❺ Try it out
 
 Create a namespace:
 
@@ -229,6 +258,18 @@ kubectl create namespace myapp
 ```
 
 ### With a valid `AuthConfig`
+
+<table>
+  <tbody>
+    <tr>
+      <td>
+        <b><i>Kuadrant users –</i></b>
+        For this and other example AuthConfigs below, if you create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead, the output of the commands shall differ. The requested AuthPolicy may be initially accepted, but its state will turn ready or not ready depending on whether the corresponding AuthConfig requested by Kuadrant is accepted or rejected, according to the validating webhook rules. Check the state of the resources to confirm.
+        For more, see <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ```sh
 kubectl -n myapp apply -f -<<EOF

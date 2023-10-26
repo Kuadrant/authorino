@@ -4,61 +4,74 @@ Fetch resource metadata relevant for your authorization policies from Keycloak a
 
 <details>
   <summary>
-    <strong>Authorino features in this guide:</strong>
+    <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
-      <li>External auth metadata → <a href="./../features.md#user-managed-access-uma-resource-registry-metadatauma">User-Managed Access (UMA) resource registry</a></li>
-      <li>Identity verification & authentication → <a href="./../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-      <li>Authorization → <a href="./../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
+      <li>External auth metadata → <a href="../features.md#user-managed-access-uma-resource-registry-metadatauma">User-Managed Access (UMA) resource registry</a></li>
+      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
+      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
     </ul>
   </summary>
 
-  Check out as well the user guides about [OpenID Connect Discovery and authentication with JWTs](./oidc-jwt-authentication.md) and [Open Policy Agent (OPA) Rego policies](./opa-authorization.md).
+  Check out as well the user guides about [OpenID Connect Discovery and authentication with JWTs](oidc-jwt-authentication.md) and [Open Policy Agent (OPA) Rego policies](opa-authorization.md).
 
-  For further details about Authorino features in general, check the [docs](./../features.md).
+  For further details about Authorino features in general, check the [docs](../features.md).
 </details>
 
 <br/>
 
 ## Requirements
 
-- Kubernetes server
-- Auth server / Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
+- Kubernetes server with permissions to install cluster-scoped resources (operator, CRDs and RBAC)
+- Identity Provider (IdP) that implements OpenID Connect authentication and OpenID Connect Discovery (e.g. [Keycloak](https://www.keycloak.org))
 - [jq](https://stedolan.github.io/jq), to extract parts of JSON responses
 
-Create a containerized Kubernetes server locally using [Kind](https://kind.sigs.k8s.io):
+If you do not own a Kubernetes server already and just want to try out the steps in this guide, you can create a local containerized cluster by executing the command below. In this case, the main requirement is having [Kind](https://kind.sigs.k8s.io) installed, with either [Docker](https://www.docker.com/) or [Podman](https://podman.io/).
 
 ```sh
 kind create cluster --name authorino-tutorial
 ```
 
-Deploy a Keycloak server preloaded with all the realm settings required for this guide:
+Deploy the identity provider and authentication server by executing the command below. For the examples in this guide, we are going to use a Keycloak server preloaded with all required realm settings.
 
 ```sh
 kubectl create namespace keycloak
 kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/keycloak/keycloak-deploy.yaml
 ```
 
-Forward local requests to the instance of Keycloak running in the cluster:
+<br/>
 
-```sh
-kubectl -n keycloak port-forward deployment/keycloak 8080:8080 &
-```
+The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
 
-## 1. Install the Authorino Operator
+<table>
+  <thead>
+    <tr>
+      <th>Using Kuadrant</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❺.</p>
+        <p>At step ❺, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
+        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<br/>
+
+## ❶ Install the Authorino Operator (cluster admin required)
+
+The following command will install the [Authorino Operator](http://github.com/kuadrant/authorino-operator) in the Kubernetes cluster. The operator manages instances of the Authorino authorization service.
 
 ```sh
 curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
 ```
 
-## 2. Deploy the Talker API
+## ❷ Deploy Authorino
 
-The **Talker API** is just an echo API, included in the Authorino examples. We will use it in this guide as the service to be protected with Authorino.
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
-```
-
-## 3. Deploy Authorino
+The following command will request an instance of Authorino as a separate service[^1] that watches for `AuthConfig` resources in the `default` namespace[^2], with TLS disabled[^3].
 
 ```sh
 kubectl apply -f -<<EOF
@@ -76,31 +89,55 @@ spec:
 EOF
 ```
 
-The command above will deploy Authorino as a separate service (as opposed to a sidecar of the protected API and other architectures), in `namespaced` reconciliation mode, and with TLS termination disabled. For other variants and deployment options, check out the [Getting Started](./../getting-started.md#step-request-an-authorino-instance) section of the docs, the [Architecture](./../architecture.md#topologies) page, and the spec for the [`Authorino`](https://github.com/Kuadrant/authorino-operator/blob/main/config/crd/bases/operator.authorino.kuadrant.io_authorinos.yaml) CRD in the Authorino Operator repo.
+[^1]: In contrast to a dedicated sidecar of the protected service and other architectures. Check out __Architecture > [Topologies](../architecture.md#topologies)__ for all options.
+[^2]: `namespaced` reconciliation mode. See [Cluster-wide vs. Namespaced instances](../architecture.md#cluster-wide-vs-namespaced-instances).
+[^3]: For other variants and deployment options, check out [Getting Started](../getting-started.md#step-request-an-authorino-instance), as well as the [`Authorino`](https://github.com/kuadrant/authorino-operator#the-authorino-custom-resource-definition-crd) CRD specification.
 
-## 4. Setup Envoy
+## ❸ Deploy the Talker API
 
-The following bundle from the Authorino examples (manifest referred in the command below) is to apply Envoy configuration and deploy Envoy proxy, that wire up the Talker API behind the reverse-proxy and external authorization with the Authorino instance.
+The **Talker API** is a simple HTTP service that echoes back in the response whatever it gets in the request. We will use it in this guide as the sample service to be protected by Authorino.
 
-For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](./../getting-started.md#step-setup-envoy) page. For a simpler and straightforward way to manage an API, without having to manually install or configure Envoy and Authorino, check out [Kuadrant](https://github.com/kuadrant).
+```sh
+kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+```
+
+## ❹ Setup Envoy
+
+The following bundle from the Authorino examples deploys the [Envoy](https://envoyproxy.io/) proxy and configuration to wire up the Talker API behind the reverse-proxy, with external authorization enabled with the Authorino instance.[^4]
+
+[^4]: For details and instructions to setup Envoy manually, see _Protect a service > Setup Envoy_ in the [Getting Started](../getting-started.md#step-setup-envoy) page. If you are running your ingress gateway in Kubernetes and wants to avoid setting up and configuring your proxy manually, check out [Kuadrant](https://kuadrant.io).
 
 ```sh
 kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 ```
 
-The bundle also creates an `Ingress` with host name `talker-api-authorino.127.0.0.1.nip.io`, but if you are using a local Kubernetes cluster created with Kind, you need to forward requests on port 8000 to inside the cluster in order to actually reach the Envoy service:
+The command above creates an `Ingress` with host name `talker-api.127.0.0.1.nip.io`. If you are using a local Kubernetes cluster created with Kind, forward requests from your local port 8000 to the Envoy service running inside the cluster:
 
 ```sh
-kubectl port-forward deployment/envoy 8000:8000 &
+kubectl port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 ```
 
-## 5. Create the `AuthConfig`
+## ❺ Create an `AuthConfig`
 
-This user guide's implementation for resource-level authorization leverages part of Keycloak's User-Managed Access (UMA) support. Authorino will fetch resource attributes stored in a Keycloak resource server client.
+Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced:
+
+This example of resource-level authorization leverages part of Keycloak's User-Managed Access (UMA) support. Authorino will fetch resource attributes stored in a Keycloak resource server client.
 
 The Keycloak server also provides the identities. The `sub` claim of the Keycloak-issued ID tokens must match the owner of the requested resource, identified by the URI of the request.
 
-Create a required secret, used by Authorino to start the authentication with the UMA registry.
+<table>
+  <tbody>
+    <tr>
+      <td>
+        <b><i>Kuadrant users –</i></b>
+        Remember to create an <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
+        For more, see <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Create a required secret that will be used by Authorino to initiate the authentication with the UMA registry.
 
 ```sh
 kubectl apply -f -<<EOF
@@ -125,7 +162,7 @@ metadata:
   name: talker-api-protection
 spec:
   hosts:
-  - talker-api-authorino.127.0.0.1.nip.io
+  - talker-api.127.0.0.1.nip.io
   authentication:
     "keycloak-kuadrant-realm":
       jwt:
@@ -181,8 +218,7 @@ EOF
 
 The OPA policy `owned-resource` above enforces that all users can send GET and POST requests to `/greetings`, while only resource owners can send GET, PUT and DELETE requests to `/greetings/{resource-id}`.
 
-
-## 6. Obtain access tokens with the Keycloak server and consume the API
+## ❻ Obtain access tokens with the Keycloak server and consume the API
 
 ### Obtain an access token as John and consume the API
 
@@ -196,21 +232,21 @@ Obtain an access token from within the cluster:
 ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' | jq -r .access_token)
 ```
 
-If otherwise your Keycloak server is reachable from outside the cluster, feel free to obtain the token directly. Make sure the host name set in the OIDC issuer endpoint in the `AuthConfig` matches the one used to obtain the token and is as well reachable from within the cluster.
+If your Keycloak server is reachable from outside the cluster, feel free to obtain the token directly. Make sure the host name set in the OIDC issuer endpoint in the `AuthConfig` matches the one used to obtain the token and is as well reachable from within the cluster.
 
 As John, send requests to the API:
 
 ```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io:8000/greetings
 # HTTP/1.1 200 OK
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io:8000/greetings/1
 # HTTP/1.1 200 OK
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1
+curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api.127.0.0.1.nip.io:8000/greetings/1
 # HTTP/1.1 200 OK
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/2 -i
+curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api.127.0.0.1.nip.io:8000/greetings/2 -i
 # HTTP/1.1 403 Forbidden
 ```
 
@@ -225,16 +261,16 @@ ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlim
 As Jane, send requests to the API:
 
 ```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io:8000/greetings
 # HTTP/1.1 200 OK
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1 -i
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io:8000/greetings/1 -i
 # HTTP/1.1 403 Forbidden
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1 -i
+curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api.127.0.0.1.nip.io:8000/greetings/1 -i
 # HTTP/1.1 403 Forbidden
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/2
+curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api.127.0.0.1.nip.io:8000/greetings/2
 # HTTP/1.1 200 OK
 ```
 
@@ -249,16 +285,16 @@ ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlim
 As Jane, send requests to the API:
 
 ```sh
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io:8000/greetings
 # HTTP/1.1 200 OK
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1 -i
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io:8000/greetings/1 -i
 # HTTP/1.1 403 Forbidden
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/1 -i
+curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api.127.0.0.1.nip.io:8000/greetings/1 -i
 # HTTP/1.1 403 Forbidden
 
-curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api-authorino.127.0.0.1.nip.io:8000/greetings/2 -i
+curl -H "Authorization: Bearer $ACCESS_TOKEN" -X DELETE http://talker-api.127.0.0.1.nip.io:8000/greetings/2 -i
 # HTTP/1.1 403 Forbidden
 ```
 
@@ -275,9 +311,9 @@ Otherwise, delete the resources created in each step:
 ```sh
 kubectl delete authconfig/talker-api-protection
 kubectl delete secret/talker-api-uma-credentials
-kubectl delete authorino/authorino
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/envoy/envoy-notls-deploy.yaml
 kubectl delete -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/talker-api/talker-api-deploy.yaml
+kubectl delete authorino/authorino
 kubectl delete namespace keycloak
 ```
 
