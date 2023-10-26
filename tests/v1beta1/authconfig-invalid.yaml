@@ -13,7 +13,7 @@ spec:
         matchLabels:
           app: talker-api
     oidc:
-      endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+      endpoint: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
 
   metadata:
   - name: multiple-metadata-methods

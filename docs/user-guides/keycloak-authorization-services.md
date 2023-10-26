@@ -160,21 +160,21 @@ spec:
   authentication:
     "keycloak-kuadrant-realm":
       jwt:
-        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+        issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant
   authorization:
     "uma":
       opa:
         rego: |
-          pat := http.send({"url":"http://talker-api:523b92b6-625d-4e1e-a313-77e7a8ae4e88@keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token","method": "post","headers":{"Content-Type":"application/x-www-form-urlencoded"},"raw_body":"grant_type=client_credentials"}).body.access_token
-          resource_id := http.send({"url":concat("",["http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/authz/protection/resource_set?uri=",input.context.request.http.path]),"method":"get","headers":{"Authorization":concat(" ",["Bearer ",pat])}}).body[0]
+          pat := http.send({"url":"http://talker-api:523b92b6-625d-4e1e-a313-77e7a8ae4e88@keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method": "post","headers":{"Content-Type":"application/x-www-form-urlencoded"},"raw_body":"grant_type=client_credentials"}).body.access_token
+          resource_id := http.send({"url":concat("",["http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/resource_set?uri=",input.context.request.http.path]),"method":"get","headers":{"Authorization":concat(" ",["Bearer ",pat])}}).body[0]
           scope := lower(input.context.request.http.method)
           access_token := trim_prefix(input.context.request.http.headers.authorization, "Bearer ")
 
           default rpt = ""
           rpt = access_token { object.get(input.auth.identity, "authorization", {}).permissions }
           else = rpt_str {
-            ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat(" ",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
-            rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat(" ",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
+            ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat(" ",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
+            rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat(" ",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
           }
 
           allow {
@@ -206,7 +206,7 @@ The `AuthConfig` deployed in the previous step is suitable for validating access
 Obtain an access token from within the cluster for user Jane:
 
 ```sh
-ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' | jq -r .access_token)
+ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' -d 'scope=openid' | jq -r .access_token)
 ```
 
 If your Keycloak server is reachable from outside the cluster, feel free to obtain the token directly. Make sure the host name set in the OIDC issuer endpoint in the `AuthConfig` matches the one used to obtain the token and is as well reachable from within the cluster.
@@ -220,7 +220,12 @@ curl -H "Authorization: Bearer $ACCESS_TOKEN" http://talker-api.127.0.0.1.nip.io
 # HTTP/1.1 403 Forbidden
 ```
 
-As John, log in to http://localhost:8080/auth/realms/kuadrant/account in the web browser (username: `john` / password: `p`), and grant access to the resource `greeting-1` for Jane. A pending permission request by Jane shall exist in the list of John's _Resources_.
+As John, log in to http://localhost:8080/realms/kuadrant/account in the web browser (username: `john` / password: `p`), and grant access to the resource `greeting-1` for Jane. A pending permission request by Jane shall exist in the list of John's _Resources_.
+
+![Keycloak Authorization Services](images/keycloak-authorization-services-1.png)
+![Keycloak Authorization Services - pending request](images/keycloak-authorization-services-2.png)
+![Keycloak Authorization Services - approve](images/keycloak-authorization-services-3.png)
+
 
 As Jane, try to consume the protected resource `/greetings/1` again:
 

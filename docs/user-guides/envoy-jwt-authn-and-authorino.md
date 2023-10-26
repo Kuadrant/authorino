@@ -195,10 +195,10 @@ data:
                   "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
                   providers:
                     keycloak:
-                      issuer: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant
+                      issuer: http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant
                       remote_jwks:
                         http_uri:
-                          uri: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/certs
+                          uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/certs
                           cluster: keycloak
                           timeout: 5s
                         cache_duration:
@@ -391,7 +391,7 @@ The `AuthConfig` deployed in the previous step is suitable for validating access
 Obtain an access token from within the cluster for the user John, a non-admin (member) user:
 
 ```sh
-ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' | jq -r .access_token)
+ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=john' -d 'password=p' -d 'scope=openid' | jq -r .access_token)
 ```
 
 If your Keycloak server is reachable from outside the cluster, feel free to obtain the token directly. Make sure the host name set in the OIDC issuer endpoint in the `AuthConfig` matches the one used to obtain the token and is as well reachable from within the cluster.
@@ -429,7 +429,7 @@ curl -H "Authorization: Bearer $ACCESS_TOKEN" \
 Obtain an access token with the Keycloak server for Jane, an admin user:
 
 ```sh
-ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' | jq -r .access_token)
+ACCESS_TOKEN=$(kubectl run token --attach --rm --restart=Never -q --image=curlimages/curl -- http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token -s -d 'grant_type=password' -d 'client_id=demo' -d 'username=jane' -d 'password=p' -d 'scope=openid' | jq -r .access_token)
 ```
 
 As Jane, consume the API inside the area where the policy applies:

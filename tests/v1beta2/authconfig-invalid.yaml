@@ -13,7 +13,7 @@ spec:
           matchLabels:
             app: talker-api
       jwt:
-        issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+        issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
 
   metadata:
     multiple-metadata-methods:

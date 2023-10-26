@@ -42,7 +42,7 @@ spec:
           selector: auth.identity.metadata.annotations.username
     keycloak:
       jwt:
-        issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+        issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
         ttl: 60
       defaults:
         jwt-rbac:
@@ -55,7 +55,7 @@ spec:
       oauth2Introspection:
         credentialsRef:
           name: oauth2-token-introspection-credentials-keycloak
-        endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant/protocol/openid-connect/token/introspect
+        endpoint: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token/introspect
         tokenTypeHint: requesting_party_token
       credentials:
         authorizationHeader:
@@ -108,7 +108,7 @@ spec:
       uma:
         credentialsRef:
           name: talker-api-uma-credentials
-        endpoint: http://keycloak.authorino.svc.cluster.local:8080/auth/realms/kuadrant
+        endpoint: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
       cache:
         key:
           selector: context.request.http.path
