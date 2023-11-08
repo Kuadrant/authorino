@@ -1,21 +1,5 @@
 # Developer's Guide
 
-- [Technology stack for developers](#technology-stack-for-developers)
-- [Workflow](#workflow)
-  - [Check the issues](#check-the-issues)
-  - [Clone the repo and setup the local environment](#clone-the-repo-and-setup-the-local-environment)
-  - [Make your changes](#make-your-changes)
-  - [Run the tests](#run-the-tests)
-  - [Try locally](#try-locally)
-    - [Build, deploy and try Authorino in a local cluster](#build-deploy-and-try-authorino-in-a-local-cluster)
-    - [Additional tools (for specific use-cases)](#additional-tools-for-specific-use-cases)
-    - [Re-build and rollout latest](#re-build-and-rollout-latest)
-    - [Clean-up](#clean-up)
-  - [Sign your commits](#sign-your-commits)
-- [Logging policy](#logging-policy)
-- [Additional resources](#additional-resources)
-- [Reach out](#reach-out)
-
 ## Technology stack for developers
 
 Minimum requirements to contribute to Authorino are:
