@@ -1,6 +1,7 @@
 # User guide: Reducing the operational space
 
 By default, Authorino will watch events related to all `AuthConfig` custom resources in the reconciliation space (namespace or entire cluster). Instances can be configured though to only watch a subset of the resources, thus allowing such as:
+
 - to reduce noise and lower memory usage inside instances meant for restricted scope (e.g. Authorino deployed as a dedicated sidecar to protect only one host);
 - sharding auth config data across multiple instances;
 - multiple environments (e.g. staging, production) inside of a same cluster/namespace;
