@@ -139,7 +139,7 @@ func newTestK8sClient(initObjs ...runtime.Object) client.WithWatch {
 	scheme := runtime.NewScheme()
 	_ = api.AddToScheme(scheme)
 	_ = v1.AddToScheme(scheme)
-	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjs...).Build()
+	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjs...).WithStatusSubresource(&api.AuthConfig{}).Build()
 }
 
 func newTestAuthConfigReconciler(client client.WithWatch, i index.Index) *AuthConfigReconciler {

@@ -28,7 +28,7 @@ func mockAuthPipeline(ctrl *gomock.Controller) (pipelineMock *mock_auth.MockAuth
 
 type flawedAPIkeyK8sClient struct{}
 
-func (k *flawedAPIkeyK8sClient) Get(_ context.Context, _ k8s_client.ObjectKey, _ k8s_client.Object) error {
+func (k *flawedAPIkeyK8sClient) Get(_ context.Context, _ k8s_client.ObjectKey, _ k8s_client.Object, _ ...k8s_client.GetOption) error {
 	return nil
 }
 
