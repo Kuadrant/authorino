@@ -82,7 +82,7 @@ Under the hood, Authorino is based on Kubernetes [Custom Resource Definitions](h
 9. If authorized, Envoy triggers other HTTP filters in the chain (if any), pre-injecting eventual dynamic metadata returned by Authorino, and ultimately redirects the request to the _Upstream_
 10. The _Upstream_ serves the requested resource to the consumer
 
-<details>
+<details markdown="1">
   <summary>More</summary>
 
   The [Architecture](./docs/architecture.md) section of the docs covers details of protecting your APIs with Envoy and Authorino, including information about topology (centralized gateway, centralized authorization service or sidecars), deployment modes (cluster-wide reconciliation vs. namespaced instances), an specification of Authorino's [`AuthConfig`](./docs/architecture.md#the-authorino-authconfig-custom-resource-definition-crd) Custom Resource Definition (CRD) and more.
@@ -229,7 +229,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
 ## FAQ
 
-<details>
+<details markdown="1">
   <summary><strong>Do I need to deploy Envoy?</strong></summary>
 
   Authorino is built from the ground up to work well with Envoy. It is strongly recommended that you leverage Envoy along side Authorino. That said, it is possible to use Authorino without Envoy.
@@ -243,7 +243,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   Check out [Kuadrant](https://github.com/kuadrant/kuadrant-controller) for easy-to-use Envoy and Authorino deployment & configuration for API management use-cases, using Kubernetes Custom Resources.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Is Authorino an Identity Provider (IdP)?</strong></summary>
 
   No, Authorino is not an Identity Provider (IdP). Neither it is an auth server of any kind, such as an OAuth2 server, an OpenID Connect (OIDC) server, a Single Sign On (SSO) server.
@@ -254,7 +254,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 </details>
 
 
-<details>
+<details markdown="1">
   <summary><strong>How does Authorino compare to Keycloak?</strong></summary>
 
   Keycloak is a proper auth server and identity provider (IdP). It offers a huge set of features for managing identities, identity sources with multiple user federation options, and a platform for authentication and authorization services.
@@ -266,7 +266,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   You can also use Keycloak for storing auth-relevant resource metadata. These can be fetched by Authorino in request-time, to be combined into your authorization policies. See Keycloak Authorization Services and User-Managed Access (UMA) support, as well as Authorino [UMA external metadata](./docs/features.md#user-managed-access-uma-resource-registry-metadatauma) counter-part.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Why doesn't Authorino handle OAuth flows?</strong></summary>
 
   It has to do with trust. OAuth grants are supposed to be negotiated directly between whoever owns the long-lived credentials in one hand (user, service accounts), and the trustworthy auth server that receives those credentials – ideally with minimum number of hops in the middle – and exchanges them for short-lived access tokens, on the other end.
@@ -274,7 +274,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   There are use-cases for Authorino running in the edge (e.g. Edge Authentication Architecture and token normalization), but in most cases Authorino should be seen as a last-mile component that provides decoupled identity verification and authorization policy enforcement to protected services in request-time. In this sense, the OAuth grant is a pre-flight exchange that happens once and as direct and safe as possible, whereas auth enforcement is kept lightweight and efficient.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Where does Authorino store users and roles?</strong></summary>
 
   Authorino does not store users, roles, role bindings, access control lists, or any raw authorization data. Authorino handles policies, where even these policies can be stored elsewhere (as opposed to stated inline inside of an Authorino `AuthConfig` CR).
@@ -284,7 +284,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   In the case of authentication with API keys, as well as its derivative to model HTTP Basic Auth, user data are stored in Kubernetes `Secret`s. The secret's keys, annotations and labels are usually the structures used to organize the data that later a policy evaluated in Authorino may require. Strictly, those are not Authorino data structures.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Can't I just use Envoy JWT Authentication and RBAC filters?</strong></summary>
 
   Envoy's [JWT Authentication](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/jwt_authn/v3/config.proto.html) works pretty much similar to Authorino's [JOSE/JWT verification and validation for OpenID Connect](./docs/features.md#jwt-verification-authenticationjwt). In both cases, the JSON Web Key Sets (JWKS) to verify the JWTs are auto-loaded and cached to be used in request-time. Moreover, you can configure for details such as where to extract the JWT from the HTTP request (header, param or cookie) and do some cool tricks regarding how dynamic metadata based on JWT claims can be injected to consecutive filters in the chain.
@@ -296,7 +296,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   In summary, Envoy's JWT Authentication and Envoy RBAC filter are excellent solutions for simple use-cases where JWTs from one single issuer is the only authentication method you are planning to support and limited to no authorization rules suffice. On the other hand, if you need to integrate more identity sources, different types of authentication, authorization policies, etc, you might to consider Authorino.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Should I use Authorino if I already have Istio configured?</strong></summary>
 
   Istio is a great solution for managing service meshes. It delivers an excellent platform with an interesting layer of abstraction on top of Envoy proxy's virtual omnipresence within the mesh.
@@ -322,7 +322,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   The good news is that, if you have Istio configured, then you have Envoy and the whole platform for wiring Authorino up if you want to. 😉
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Do I have to learn OPA/Rego language to use Authorino?</strong></summary>
 
   No, you do not. However, if you are comfortable with [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) from Open Policy Agent (OPA), there are some quite interesting things you can do in Authorino, just as you would in any OPA server or OPA plugin, but leveraging Authorino's [built-in OPA module](./docs/features.md#open-policy-agent-opa-rego-policies-authorizationopa) instead. Authorino's OPA module is compiled as part of Authorino's code directly from the Golang packages, and imposes no extra latency to the evaluation of your authorization policies. Even the policies themselves are pre-compiled in reconciliation-time, for fast evaluation afterwards, in request-time.
@@ -334,7 +334,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   Authorino also packages well-established industry standards and protocols for identity verification (JOSE/JWT validation, OAuth token introspection, Kubernetes TokenReview) and ad-hoc request-time metadata fetching (OIDC userinfo, User-Managed Access (UMA)), and corresponding layers of caching, without which such functionalities would have to be implemented by code.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Can I use Authorino to protect non-REST APIs?</strong></summary>
 
   Yes, you can. In principle, the API format (REST, gRPC, GraphQL, etc) should not matter for the authN/authZ enforcer. There are a couple points to consider though.
@@ -353,13 +353,13 @@ For a detailed description of the features above, refer to the [Features](./docs
   Check out Authorino [OPA authorization](./docs/features.md#open-policy-agent-opa-rego-policies-authorizationopa) and the Rego [Encoding](https://www.openpolicyagent.org/docs/latest/policy-reference/#encoding) functions for options to parse serialized JSON, YAML and URL-encoded params. For XML transformation, an external parsing service connected via Authorino's [HTTP GET/GET-by-POST external metadata](./docs/features.md#http-getget-by-post-metadatahttp) might be required.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Can I run Authorino other than on Kubernetes?</strong></summary>
 
   As of today, no, you cannot, or at least it wouldn't suit production requirements.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Do I have to be admin of the cluster to install Authorino?</strong></summary>
 
   To install the Authorino Custom Resource Definition (CRD) and to define cluster roles required by the Authorino service, admin privilege to the Kubernetes cluster is required. This step happens only once per cluster and is usually equivalent to installing the [Authorino Operator](https://github.com/kuadrant/authorino-operator).
@@ -367,7 +367,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   Thereafter, deploying instances of the Authorino service and applying `AuthConfig` custom resources to a namespace depend on the permissions set by the cluster administrator – either directly by editing the bindings in the cluster's RBAC, or via options of the operator. In most cases, developers will be granted permissions to create and manage `AuthConfig`s, and sometimes to deploy their own instances of Authorino.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Is it OK to store AuthN/AuthZ configs as Kubernetes objects?</strong></summary>
 
   Authorino's API checks all the bullets to be [aggregated to the Kubernetes cluster APIs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#should-i-add-a-custom-resource-to-my-kubernetes-cluster), and therefore using Custom Resource Definition (CRD) and the [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator) has always been an easy design decision.
@@ -381,7 +381,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   In other words, there are lots of benefits of using Kubernetes custom resources and custom controllers, and unless you are planning on bursting your server with more services than it can keep record, it is totally 👍 to store your AuthN/AuthZ configs as cluster API objects.
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Can I use Authorino for rate limiting?</strong></summary>
 
   You can, but you shouldn't. Check out instead [Limitador](https://github.com/kuadrant/limitador), for simple and efficient global rate limiting. Combine it with Authorino and Authorino's support for [Envoy Dynamic Metadata](./docs/features.md#envoy-dynamic-metadata) for authenticated rate limiting.

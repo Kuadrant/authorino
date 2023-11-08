@@ -30,7 +30,7 @@ The following tools can be installed as part of the development workflow:
   - [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html): for building custom types and manifests
   - [Kustomize](https://kustomize.io/): for assembling flavoured manifests and installing/deploying
   - [setup-envtest](https://v0-19-x.sdk.operatorframework.io/docs/golang/references/env-test-setup): for running the tests – extra tools installed to `./testbin`
-  - [benchstat]https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
+  - [benchstat](https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
   - [mockgen](https://github.com/golang/mock/mockgen): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
   - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
 
@@ -113,7 +113,7 @@ Once the deployment is ready, you can forward the requests on port 8000 to the E
 kubectl port-forward deployment/envoy 8000:8000 &
 ```
 
-<details>
+<details markdown="1">
   <summary>Pro tips</summary>
 
   1. Change the default workload namespace by supplying the `NAMESPACE` argument to your `make local-setup` and other deployment, apps and local cluster related targets. If the namespace does not exist, it will be created.
@@ -125,7 +125,7 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
 #### Additional tools (for specific use-cases)
 
-<details>
+<details markdown="1">
   <summary><strong>Limitador</strong></summary>
 
   To deploy [Limitador](https://github.com/kuadrant/limitador) – pre-configured in Envoy for rate-limiting the Talker API to 5 hits per minute per `user_id` when available in the cluster workload –, run:
@@ -135,10 +135,11 @@ kubectl port-forward deployment/envoy 8000:8000 &
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Keycloak</strong></summary>
 
-  Authorino examples include a bundle of [Keycloak](https://www.keycloak.org) preloaded with the following realm setup:<br/>
+  Authorino examples include a bundle of [Keycloak](https://www.keycloak.org) preloaded with the following realm setup:
+
   - Admin console: http://localhost:8080/auth/admin (admin/p)
   - Preloaded realm: **kuadrant**
   - Preloaded clients:
@@ -171,10 +172,11 @@ kubectl port-forward deployment/envoy 8000:8000 &
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>Dex</strong></summary>
 
-  Authorino examples include a bundle of [Dex](https://dexidp.io) preloaded with the following setup:<br/>
+  Authorino examples include a bundle of [Dex](https://dexidp.io) preloaded with the following setup:
+
   - Preloaded clients:<br/>
     - **demo**: to which API consumers delegate access and therefore the one which access tokens are issued to (Client secret: aaf88e0e-d41d-4325-a068-57c4b0d61d8e)
   - Preloaded users:<br/>
@@ -193,10 +195,11 @@ kubectl port-forward deployment/envoy 8000:8000 &
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary><strong>a12n-server</strong></summary>
 
-  Authorino examples include a bundle of [**a12n-server**](https://github.com/curveball/a12n-server) and corresponding MySQL database, preloaded with the following setup:<br/>
+  Authorino examples include a bundle of [**a12n-server**](https://github.com/curveball/a12n-server) and corresponding MySQL database, preloaded with the following setup:
+
   - Admin console: http://a12n-server:8531 (admin/123456)
   - Preloaded clients:<br/>
     - **service-account-1**: to obtain access tokens via `client_credentials` OAuth2 grant type, to consume the Talker API (Client secret: DbgXROi3uhWYCxNUq_U1ZXjGfLHOIM8X3C2bJLpeEdE); includes metadata privilege: `{ "talker-api": ["read"] }` that can be used to write authorization policies

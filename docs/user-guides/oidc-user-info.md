@@ -2,7 +2,7 @@
 
 Fetch user info for OpenID Connect ID tokens in request-time for extra metadata for your policies and online verification of token validity.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

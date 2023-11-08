@@ -2,7 +2,7 @@
 
 Turn Authorino API key `Secret`s settings into HTTP basic auth.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

@@ -6,7 +6,7 @@ The rules to validate a request to the Kubernetes API – typically a `POST`, `P
 
 This user guide provides an example of using Authorino as a Kubernetes ValidatingWebhook service that validates requests to `CREATE` and `UPDATE` Authorino `AuthConfig` resources. In other words, we will use Authorino as a validator inside the cluster that decides what is a valid AuthConfig for any application which wants to rely on Authorino to protect itself.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

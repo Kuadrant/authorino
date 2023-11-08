@@ -8,7 +8,7 @@ This user guide focuses on the aspect of mutation of the identity claims resolve
 
 For not only normalizing the identity claims for purpose of writing simpler authorization checks and policies, but also getting Authorino to issue a new token in a normalized format, check the [Festival Wristband tokens](../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband) feature.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

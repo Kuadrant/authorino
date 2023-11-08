@@ -2,7 +2,7 @@
 
 Write simple authorization rules based on JSON patterns matched against Authorino's Authorization JSON; check contextual information of the request, validate JWT claims, cross metadata fetched from external sources, etc.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

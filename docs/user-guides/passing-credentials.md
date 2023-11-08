@@ -2,7 +2,7 @@
 
 Customize where credentials are supplied in the request by each trusted source of identity.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

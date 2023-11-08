@@ -2,7 +2,7 @@
 
 Verify client X.509 certificates against trusted root CAs stored in Kubernetes `Secret`s to authenticate access to APIs protected with Authorino.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

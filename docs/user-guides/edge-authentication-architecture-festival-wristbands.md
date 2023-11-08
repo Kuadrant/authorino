@@ -10,7 +10,7 @@ The very definition of "edge" is subject to discussion, but the underlying idea 
 
 As a minimum, EAA allows to simplify authentication between applications and microservices inside the network, as well as to reduce authorization to domain-specific rules and policies, rather than having to deal all the complexity to support all types of clients in every node.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

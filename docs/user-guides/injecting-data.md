@@ -2,7 +2,7 @@
 
 Inject HTTP headers with serialized JSON content.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

@@ -15,7 +15,7 @@ Cases where one will **NOT** want to enable caching, due to relatively cheap com
 - Dynamic JSON responses
 - Anonymous access
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
