@@ -19,12 +19,14 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
 </table>
 
 <details markdown="1">
-  <summary>
+  <summary markdown="1">
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
-      <li><a href="../architecture.md#sharding">Sharding</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
+      <li>[Sharding](../architecture.md#sharding)</li>
+      <li>Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)</li>
     </ul>
+
+
   </summary>
 
   Check out as well the user guide about [Authentication with API keys](api-key-authentication.md).
