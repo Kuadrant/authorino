@@ -1,7 +1,5 @@
 # User guide: Hello World
 
-<br/>
-
 ## Requirements
 
 - Kubernetes server with permissions to install cluster-scoped resources (operator, CRDs and RBAC)
@@ -11,8 +9,6 @@ If you do not own a Kubernetes server already and just want to try out the steps
 ```sh
 kind create cluster --name authorino-tutorial
 ```
-
-<br/>
 
 The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
 
@@ -32,8 +28,6 @@ The next steps walk you through installing Authorino, deploying and configuring 
     </tr>
   </tbody>
 </table>
-
-<br/>
 
 ## ❶ Create the namespace
 
@@ -145,6 +139,7 @@ curl http://talker-api.127.0.0.1.nip.io:8000/hello -i
 Check out other [user guides](../user-guides.md) for several use-cases of authentication and authorization, and the instructions to implement them using Authorino.
 
 A few examples of available ser guides:
+
 - [Authentication with API keys](api-key-authentication.md)
 - [Authentication with JWTs and OpenID Connect Discovery](oidc-jwt-authentication.md)
 - [Authentication with Kubernetes tokens (TokenReview API)](kubernetes-tokenreview.md)
