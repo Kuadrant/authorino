@@ -1,27 +1,4 @@
 # Architecture
-- [Overview](#overview)
-- [Topologies](#topologies)
-  - [Centralized gateway](#centralized-gateway)
-  - [Centralized authorization service](#centralized-authorization-service)
-  - [Sidecars](#sidecars)
-- [Cluster-wide vs. Namespaced instances](#cluster-wide-vs-namespaced-instances)
-- [The Authorino `AuthConfig` Custom Resource Definition (CRD)](#the-authorino-authconfig-custom-resource-definition-crd)
-- [Resource reconciliation and status update](#resource-reconciliation-and-status-update)
-- [The "Auth Pipeline" (_aka:_ enforcing protection in request-time)](#the-auth-pipeline-aka-enforcing-protection-in-request-time)
-- [Host lookup](#host-lookup)
-  - [Avoiding host name collision](#avoiding-host-name-collision)
-- [The Authorization JSON](#the-authorization-json)
-- [Raw HTTP Authorization interface](#raw-http-authorization-interface)
-- [Caching](#caching)
-  - [OpenID Connect and User-Managed Access configs](#openid-connect-and-user-managed-access-configs)
-  - [JSON Web Keys (JWKs) and JSON Web Key Sets (JWKS)](#json-web-keys-jwks-and-json-web-key-sets-jwks)
-  - [Revoked access tokens](#revoked-access-tokens)
-  - [External metadata](#external-metadata)
-  - [Compiled Rego policies](#compiled-rego-policies)
-  - [Repeated requests](#repeated-requests)
-- [Sharding](#sharding)
-- [RBAC](#rbac)
-- [Observability](#observability)
 
 ## Overview
 
@@ -48,6 +25,7 @@ On every request, Authorino's "working memory" is called [**Authorization JSON**
 Typically, upstream APIs are deployed to the same Kubernetes cluster and namespace where the Envoy proxy and Authorino is running (although not necessarily). Whatever is the case, Envoy must be proxying to the upstream API (see Envoy's [HTTP route components](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto) and virtual hosts) and pointing to Authorino in the external authorization filter.
 
 This can be achieved with different topologies:
+
 - Envoy can be a [centralized gateway](#centralized-gateway) with one dedicated instance of Authorino, proxying to one or more upstream services
 - Envoy can be deployed as a sidecar of each protected service, but still contacting from a [centralized Authorino authorization service](#centralized-authorization-service)
 - Both Envoy and Authorino deployed as [sidecars](#sidecars) of the protected service, restricting all communication between them to localhost
@@ -78,7 +56,7 @@ Apart from that, protected service should only listen on `localhost` and all tra
 
 Authorino instances can run in either **cluster-wide** or **namespaced** mode.
 
-Namespace-scoped instances only watch resources (`AuthConfig`s and `Secret`s) created in a given namespace. This deployment mode does not require admin privileges over the Kubernetes cluster to deploy the instance of the service (given Authorino's CRDs have been installed beforehand, such as when Authorino is installed using the [Authorino Operator](https://github.com/kuadrant-authorino-operator)).
+Namespace-scoped instances only watch resources (`AuthConfig`s and `Secret`s) created in a given namespace. This deployment mode does not require admin privileges over the Kubernetes cluster to deploy the instance of the service (given Authorino's CRDs have been installed beforehand, such as when Authorino is installed using the [Authorino Operator](https://github.com/kuadrant/authorino-operator)).
 
 Cluster-wide deployment mode, in contraposition, deploys instances of Authorino that watch resources across the entire cluster, consolidating all resources into a multi-namespace index of auth configs. Admin privileges over the Kubernetes cluster is required to deploy Authorino in cluster-wide mode.
 
@@ -221,6 +199,7 @@ When more than one host name is specified in the `AuthConfig`, all of them can b
 ![Domain tree](http://www.plantuml.com/plantuml/png/RP71ReCm38RlVWhKuoGcjN2U-YPLb6MTDS0e9E-_v8zgNC4fyVU5nFo-Ryd5bEU9Ol39BSyfT9VFI-UsBeeaijZB355MYzUGDl2wiU93wQE-OfNpSu2jcpUnil97AOxtmU0-wrWWMOuVi1oUNtY5Agl5oKr_8VQl7bg9BiXpzEWlfrylomy_-oiELN0zqpVLjpCzg1xEzAXw92g1TtrU-pQI6YXA3AB6iLSQTaEOo2lAXX2uPcWOiPX7M8ndePAKxlTSW90Y4O80-DB8yVUDsJGjrev1XqPr_82ZXJXw3yjtdgT_)
 
 The domain tree above induces the following relation:
+
 - `foo.nip.io` → `authconfig-1` (matches `*.io`)
 - `talker-api.nip.io` → `authconfig-2` (matches `talker-api.nip.io`)
 - `dogs.pets.com` → `authconfig-2` (matches `*.pets.com`)
@@ -312,6 +291,7 @@ For information about reading and fetching data from the Authorization JSON (syn
 ## Raw HTTP Authorization interface
 
 Besides providing the gRPC authorization interface – that implements the Envoy gRPC authorization server –, Authorino also provides another interface for **raw HTTP authorization**. This second interface responds to `GET` and `POST` HTTP requests sent to `:5001/check`, and is suitable for other forms of integration, such as:
+
 - using Authorino as Kubernetes ValidatingWebhook service ([example](./user-guides/validating-webhook.md));
 - other HTTP proxies and API gateways;
 - old versions of Envoy incompatible with the latest version of gRPC external authorization protocol (Authorino is based on v3.19.1 of Envoy external authorization API)
@@ -373,6 +353,7 @@ By default, Authorino instances will watch `AuthConfig` CRs in the entire space 
 The benefits of limiting the space of reconciliation of an Authorino instance include avoiding unnecessary caching and workload in instances that do not receive corresponding traffic (according to your routing settings) and preventing leaders of multiple instances (sets of replicas) to compete on resource status updates (see [Resource reconciliation and status update](#resource-reconciliation-and-status-update) for details).
 
 Use-cases for sharding of `AuthConfig`s:
+
 - Horizontal load balancing of traffic of authorization requests
 - Supporting for managed centralized instances of Authorino to API owners who create and maintain their own `AuthConfig`s within their own user namespaces.
 
