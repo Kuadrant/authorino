@@ -38,6 +38,9 @@ import (
 	"github.com/kuadrant/authorino/pkg/service"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/go-logr/logr"
@@ -237,13 +240,13 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 
 	baseManagerOptions := ctrl.Options{
 		Scheme:                 scheme,
-		Port:                   opts.webhookServicePort,
-		MetricsBindAddress:     opts.metricsAddr,
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: opts.webhookServicePort}),
+		Metrics:                metricsserver.Options{BindAddress: opts.metricsAddr},
 		HealthProbeBindAddress: opts.healthProbeAddr,
 		LeaderElection:         false,
 	}
 	if opts.watchNamespace != "" {
-		baseManagerOptions.Namespace = opts.watchNamespace
+		baseManagerOptions.Cache.DefaultNamespaces = map[string]cache.Config{opts.watchNamespace: {}}
 	}
 
 	// sets up the reconciliation manager
@@ -305,7 +308,7 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	// sets up the status update manager
 	leaderElectionId := sha256.Sum256([]byte(opts.watchedAuthConfigLabelSelector))
 	statusUpdaterOptions := baseManagerOptions
-	statusUpdaterOptions.MetricsBindAddress = "0"     // disabled so it does not clash with the reconciliation manager
+	statusUpdaterOptions.Metrics.BindAddress = "0"    // disabled so it does not clash with the reconciliation manager
 	statusUpdaterOptions.HealthProbeBindAddress = "0" // disabled so it does not clash with the reconciliation manager
 	statusUpdaterOptions.LeaderElection = opts.enableLeaderElection
 	statusUpdaterOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
@@ -341,11 +344,11 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 	// sets up the webhook manager
 	mgr, err := setupManager(ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     opts.metricsAddr,
+		Metrics:                metricsserver.Options{BindAddress: opts.metricsAddr},
 		HealthProbeBindAddress: opts.healthProbeAddr,
 		LeaderElection:         true,
 		LeaderElectionID:       fmt.Sprintf("670aa2de.%s", leaderElectionIDSuffix),
-		Port:                   opts.port,
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: opts.port}),
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup webhook manager")
@@ -418,10 +421,8 @@ func setupManager(options ctrl.Options) (ctrl.Manager, error) {
 		return nil, err
 	}
 
-	if options.MetricsBindAddress != "0" {
-		if err := mgr.AddMetricsExtraHandler("/server-metrics", promhttp.Handler()); err != nil {
-			return nil, err
-		}
+	if options.Metrics.BindAddress != "0" {
+		options.Metrics.ExtraHandlers = map[string]http.Handler{"/server-metrics": promhttp.Handler()}
 	}
 
 	if options.HealthProbeBindAddress != "0" {
