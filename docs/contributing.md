@@ -14,14 +14,14 @@ The following tools can be installed as part of the development workflow:
 - _Installed with `go install` to the `$PROJECT_DIR/bin` directory:_
     - [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html): for building custom types and manifests
     - [Kustomize](https://kustomize.io/): for assembling flavoured manifests and installing/deploying
-    - [setup-envtest](https://v0-19-x.sdk.operatorframework.io/docs/golang/references/env-test-setup): for running the tests – extra tools installed to `./testbin`
+    - [setup-envtest](https://book.kubebuilder.io/reference/envtest.html): for running the tests – extra tools installed to `./testbin`
     - [benchstat](https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
-    - [mockgen](https://github.com/golang/mock/mockgen): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
+    - [mockgen](https://github.com/golang/mock): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
     - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
 
 - _Other recommended tools to have installed:_
     - [jq](https://stedolan.github.io/jq/)
-    - [yq](http://mikefarah.github.io/yq/)
+    - [yq](https://mikefarah.github.io/yq/)
     - [gnu-sed](https://www.gnu.org/software/sed/)
 
 ## Workflow
