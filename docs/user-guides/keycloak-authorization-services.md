@@ -4,7 +4,7 @@ Keycloak provides a powerful set of tools (REST endpoints and administrative UIs
 
 This user guide is an example of how to use Authorino as an adapter to Keycloak Authorization Services while still relying on the reverse-proxy integration pattern, thus not involving importing an authorization library nor rebuilding the application's code.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

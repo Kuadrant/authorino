@@ -2,7 +2,7 @@
 
 Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and token validation in request-time.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

@@ -2,7 +2,7 @@
 
 Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with your protected hosts.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

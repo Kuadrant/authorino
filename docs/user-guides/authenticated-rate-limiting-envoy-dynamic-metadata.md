@@ -2,7 +2,7 @@
 
 Provide Envoy with dynamic metadata about the external authorization process to be injected into the rate limiting filter.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

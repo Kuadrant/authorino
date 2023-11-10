@@ -4,7 +4,7 @@ Combine OpenID Connect (OIDC) authentication and Role-Based Access Control (RBAC
 
 In this user guide, you will learn via example how to implement a simple Role-Based Access Control (RBAC) system to protect endpoints of an API, with roles assigned to users of an Identity Provider (Keycloak) and carried within the access tokens as JSON Web Token (JWT) claims. Users authenticate with the IdP via OAuth2/OIDC flow and get their access tokens verified and validated by Authorino on every request. Moreover, Authorino reads the role bindings of the user and enforces the proper RBAC rules based upon the context.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

@@ -17,7 +17,7 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
   </tbody>
 </table>
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

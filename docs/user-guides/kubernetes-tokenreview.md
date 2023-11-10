@@ -2,7 +2,7 @@
 
 Validate Kubernetes Service Account tokens to authenticate requests to your protected hosts.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

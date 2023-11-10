@@ -2,7 +2,7 @@
 
 Customize response status code and headers on failed requests to redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

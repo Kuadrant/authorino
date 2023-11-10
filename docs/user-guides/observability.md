@@ -232,7 +232,7 @@ The [Authorino Operator](https://github.com/kuadrant/authorino-operator) creates
 
 <sup>2</sup> Opt-in metrics: <code>auth_server_evaluator_*</code> metrics require <code>authconfig.spec.(identity|metadata|authorization|response).metrics: true</code> (default: <code>false</code>). This can be enforced for the entire instance (all AuthConfigs and evaluators), by setting the <code>--deep-metrics-enabled</code> command-line flag in the Authorino deployment.
 
-<details>
+<details markdown="1">
   <summary><b>Example of metrics exported at the <code>/metrics</code> endpoint</b></summary>
 
   ```ini
@@ -651,7 +651,7 @@ The [Authorino Operator](https://github.com/kuadrant/authorino-operator) creates
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary><b>Example of metrics exported at the <code>/server-metrics</code> endpoint</b></summary>
 
   ```ini
@@ -1233,7 +1233,7 @@ Some log messages printed by Authorino and corresponding extra values included:
 
 The examples below are all with `--log-level=debug` and `--log-mode=production`.
 
-<details>
+<details markdown="1">
   <summary>Booting up the service</summary>
 
   ```jsonc
@@ -1260,7 +1260,7 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary>Reconciling an AuthConfig and 2 related API key secrets</summary>
 
   ```jsonc
@@ -1282,7 +1282,7 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary>Enforcing an AuthConfig with authentication based on Kubernetes tokens:</summary>
 
   <br/>
@@ -1316,7 +1316,7 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary>Enforcing an AuthConfig with authentication based on API keys</summary>
 
   <br/>
@@ -1349,7 +1349,7 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary>Enforcing an AuthConfig with authentication based on API keys (invalid API key)</summary>
 
   <br/>
@@ -1371,7 +1371,7 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
   ```
 </details>
 
-<details>
+<details markdown="1">
   <summary>Deleting an AuthConfig and 2 related API key secrets</summary>
 
 
@@ -1382,7 +1382,7 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
 </details>
 
 
-<details>
+<details markdown="1">
   <summary>Shutting down the service</summary>
 
   ```jsonc

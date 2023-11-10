@@ -2,7 +2,7 @@
 
 Manage permissions in the Kubernetes RBAC and let Authorino to check them in request-time with the authorization system of the cluster.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
@@ -309,7 +309,7 @@ kubectl run speaker --attach --rm --restart=Never -q --image=quay.io/kuadrant/au
 # 403
 ```
 
-<details>
+<details markdown="1">
   <summary>Extra: consume the API as service account <code>api-consumer-2</code> from <i>outside</i> the cluster</summary>
 
   <br/>

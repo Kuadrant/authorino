@@ -2,7 +2,7 @@
 
 Bypass identity verification or fall back to anonymous access when credentials fail to validate
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

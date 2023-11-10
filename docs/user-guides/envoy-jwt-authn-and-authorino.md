@@ -8,7 +8,7 @@ The policy defines a geo-fence by which only requests originated in Great Britai
 
 All requests to the Talker API will be authenticated in Envoy. However, requests to `/global` will **not** trigger the external authorization.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>

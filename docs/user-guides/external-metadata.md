@@ -2,7 +2,7 @@
 
 Get online data from remote HTTP services to enhance authorization rules.
 
-<details>
+<details markdown="1">
   <summary>
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
