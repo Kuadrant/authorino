@@ -9,6 +9,7 @@ This is particularly useful for configuration bits whose evaluation is significa
 - Caching of complex Rego policies that involve sending requests to external services
 
 Cases where one will **NOT** want to enable caching, due to relatively cheap compared to accessing and managing the cache:
+
 - Validation of OIDC/JWT access tokens
 - OPA/Rego policies that do not involve external requests
 - JSON pattern-matching authorization
