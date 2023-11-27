@@ -127,7 +127,7 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
   Authorino examples include a bundle of [Keycloak](https://www.keycloak.org) preloaded with the following realm setup:
 
-  - Admin console: [http://localhost:8080/auth/admin](http://localhost:8080/auth/admin)  (admin/p)
+  - Admin console: [http://localhost:8080/admin](http://localhost:8080/admin)  (admin/p)
   - Preloaded realm: **kuadrant**
   - Preloaded clients:
     - **demo**: to which API consumers delegate access and therefore the one which access tokens are issued to
