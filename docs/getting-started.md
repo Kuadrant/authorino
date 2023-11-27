@@ -4,12 +4,6 @@ This page covers requirements and instructions to deploy Authorino on a Kubernet
 
 If you prefer learning with an example, check out our [Hello World](./user-guides/hello-world.md).
 
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Protect a service](#protect-a-service)
-- [Clean-up](#clean-up)
-- [Next steps](#next-steps)
-
 ## Requirements
 
 ### Platform requirements
@@ -18,19 +12,19 @@ These are the platform requirements to use Authorino:
 
 - [**Kubernetes**](https://kubernetes.io) server (recommended v1.20 or later), with permission to create Kubernetes Custom Resource Definitions (CRDs) (for bootstrapping Authorino and Authorino Operator)
 
-  <details markdown="1">
+    <details markdown="1">
     <summary>Alternative: K8s distros and platforms</summary>
 
     Alternatively to upstream Kubernetes, you should be able to use any other Kubernetes distribution or Kubernetes Management Platform (KMP) with support for Kubernetes Custom Resources Definitions (CRD) and custom controllers, such as <a href="https://www.openshift.com">Red Hat OpenShift</a>, <a href="https://www.ibm.com/cloud/kubernetes-service">IBM Cloud Kubernetes Service (IKS)</a>, <a href="http://cloud.google.com/kubernetes-engine">Google Kubernetes Engine (GKE)</a>, <a href="https://aws.amazon.com/eks">Amazon Elastic Kubernetes Service (EKS)</a> and <a href="https://azure.microsoft.com/en-us/services/kubernetes-service">Azure Kubernetes Service (AKS)</a>.
-  </details>
+    </details>
 
 - [**Envoy**](https://www.envoyproxy.io) proxy (recommended v1.19 or later), to wire up Upstream services (i.e. the services to be protected with Authorino) and external authorization filter (Authorino) for integrations based on the reverse-proxy architecture - [example](https://github.com/kuadrant/authorino-examples#envoy)
 
-  <details markdown="1">
+    <details markdown="1">
     <summary>Alternative: Non-reverse-proxy integration</summary>
 
     Technically, any client that implements Envoy's <a href="https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz">external authorization</a> gRPC protocol should be compatible with Authorino. For integrations based on the reverse-proxy architecture nevertheless, we strongly recommended that you leverage Envoy alongside Authorino.
-  </details>
+    </details>
 
 ### Feature-specific requirements
 
@@ -38,7 +32,7 @@ A few examples are:
 
 - For **OpenID Connect**, make sure you have access to an identity provider (IdP) and an authority that can issue ID tokens (JWTs). Check out [Keycloak](https://www.keycloak.org) which can solve both and connect to external identity sources and user federation like LDAP.
 
-- For **Kubernetes authentication** tokens, platform support for the TokenReview and SubjectAccessReview APIs of Kubernetes shall be required. In case you want to be able to requests access tokens for clients running outside the custer, you may also want to check out the requisites for using Kubernetes [TokenRequest API](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#tokenrequest-v1-storage-k8s-io) (GA in v1.20).
+- For **Kubernetes authentication** tokens, platform support for the TokenReview and SubjectAccessReview APIs of Kubernetes shall be required. In case you want to be able to requests access tokens for clients running outside the custer, you may also want to check out the requisites for using Kubernetes [TokenRequest API](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-request-v1/) (GA in v1.20).
 
 - For **User-Managed Access (UMA)** resource data, you will need a UMA-compliant server running as well. This can be an implementation of the UMA protocol by each upstream API itself or (more typically) an external server that knows about the resources. Again, Keycloak can be a good fit here as well. Just keep in mind that, whatever resource server you choose, changing-state actions commanded in the upstream APIs or other parties will have to be reflected in the resource server. Authorino will not do that for you.
 
@@ -58,7 +52,7 @@ The above will install the latest build of the Authorino Operator and latest ver
 
 This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
 
-Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://github.com/kuadrant/authorino-operator#installing-via-olm).
+Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://docs.kuadrant.io/authorino-operator/#installing-via-olm).
 
 ### Step: Request an Authorino instance
 
@@ -196,6 +190,7 @@ The most typical integration to protect services with Authorino is by putting th
 To do that, make sure you have your **upstream service deployed and running**, usually in the same Kubernetes server where you installed Authorino. Then, setup an [Envoy](https://www.envoyproxy.io) proxy and create an Authorino `AuthConfig` for your service.
 
 Authorino exposes 2 interfaces to serve the authorization requests:
+
 - a gRPC interface that implements Envoy's [External Authorization protocol](https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/ext_authz);
 - a raw HTTP authorization interface, suitable for using Authorino with Kubernetes ValidatingWebhook, for Envoy external authorization via HTTP, and other integrations (e.g. other proxies).
 
@@ -256,7 +251,7 @@ static_resources:
               filename: /etc/ssl/certs/authorino-ca-cert.crt
 ```
 
-For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://github.com/kuadrant/limitador), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
+For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://docs.kuadrant.io/limitador/), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
 
 After creating the `ConfigMap` with the Envoy configuration, create an Envoy `Deployment` and `Service`. E.g.:
 

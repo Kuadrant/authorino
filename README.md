@@ -11,17 +11,6 @@ Authorino is not about inventing anything new. It's about making the best things
 [![End-to-end Tests](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml)
 [![Smoke Tests](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml)
 
-## Table of contents
-
-- [Getting started](#getting-started)
-- [Use-cases](#use-cases)
-- [How it works](#how-it-works)
-- [List of features](#list-of-features)
-- [Documentation](./docs/README.md)
-- [FAQ](#faq)
-- [Benchmarks](#benchmarks)
-- [Contributing](#contributing)
-
 ## Getting started
 
 1. Deploy with the [Authorino Operator](https://github.com/kuadrant/authorino-operator)
@@ -240,7 +229,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   The only attribute of the authorization request that is strictly required is the host name. (See [Host lookup](./docs/architecture.md#host-lookup) for more information.) The other attributes, such as method, path, headers, etc, might as well be required, depending on each `AuthConfig`. In the case of the gRPC [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) method, the host is supplied in `Attributes.Request.Http.Host` and alternatively in `Attributes.ContextExtensions["host"]`. For raw HTTP authorization requests, the host must be supplied in `Host` HTTP header.
 
-  Check out [Kuadrant](https://github.com/kuadrant/kuadrant-controller) for easy-to-use Envoy and Authorino deployment & configuration for API management use-cases, using Kubernetes Custom Resources.
+  Check out [Kuadrant](https://docs.kuadrant.io/kuadrant-operator) for easy-to-use Envoy and Authorino deployment & configuration for API management use-cases, using Kubernetes Custom Resources.
 </details>
 
 <details markdown="1">
@@ -303,7 +292,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   There are lots of similarities, but also complementarity between Authorino and Istio and [Istio Authorization](https://istio.io/latest/docs/concepts/security/#authorization) in special.
 
-  Istio provides a simple way to enable features that are, in many cases, features of Envoy, such as authorization based on JWTs, authorization based on attributes of the request, and activation of external authorization services, without having to deal with complex Envoy config files. See [Kuadrant](https://github.com/kuadrant/kuadrant-controller) for a similar approach, nonetheless leveraging features of Istio as well.
+  Istio provides a simple way to enable features that are, in many cases, features of Envoy, such as authorization based on JWTs, authorization based on attributes of the request, and activation of external authorization services, without having to deal with complex Envoy config files. See [Kuadrant](https://doc.kuadrant.io/kuadrant-operator) for a similar approach, nonetheless leveraging features of Istio as well.
 
   Authorino is an Envoy-compatible external authorization service. One can use Authorino with or without Istio.
 
@@ -312,6 +301,7 @@ For a detailed description of the features above, refer to the [Features](./docs
   Authorino also provides built-in OPA authorization, several other methods of authentication and identity verification (e.g. Kubernetes token validation, API key-based authentication, OAuth token introspection, OIDC-discoverable JWT verification, etc), and features like fetching of external metadata (HTTP services, OIDC userinfo, UMA resource data), token normalization, wristband tokens and dynamic responses. These all can be used independently or combined, in a simple and straightforward Kubernetes-native fashion.
 
   In summary, one might value Authorino when looking for a policy enforcer that offers:
+
   1. multiple supported methods and protocols for rather hybrid authentication, encompassing future and legacy auth needs;
   2. broader expressiveness and more functionalities for the authorization rules;
   3. authentication and authorization in one single declarative manifest;
@@ -362,7 +352,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 <details markdown="1">
   <summary><strong>Do I have to be admin of the cluster to install Authorino?</strong></summary>
 
-  To install the Authorino Custom Resource Definition (CRD) and to define cluster roles required by the Authorino service, admin privilege to the Kubernetes cluster is required. This step happens only once per cluster and is usually equivalent to installing the [Authorino Operator](https://github.com/kuadrant/authorino-operator).
+  To install the Authorino Custom Resource Definition (CRD) and to define cluster roles required by the Authorino service, admin privilege to the Kubernetes cluster is required. This step happens only once per cluster and is usually equivalent to installing the [Authorino Operator](https://docs.kuadrant.io/authorino-operator).
 
   Thereafter, deploying instances of the Authorino service and applying `AuthConfig` custom resources to a namespace depend on the permissions set by the cluster administrator – either directly by editing the bindings in the cluster's RBAC, or via options of the operator. In most cases, developers will be granted permissions to create and manage `AuthConfig`s, and sometimes to deploy their own instances of Authorino.
 </details>
@@ -390,6 +380,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 ## Benchmarks
 
 **Configuration of the tests (Authorino features):**
+
 | Performance test           | Identity  | Metadata      | Authorization                                          | Response |
 |----------------------------|:---------:|:-------------:|:------------------------------------------------------:|:--------:|
 | `ReconcileAuthConfig`      | OIDC/JWT  | UserInfo, UMA | OPA<br/><sup>(inline Rego)</sup>                       | -        |

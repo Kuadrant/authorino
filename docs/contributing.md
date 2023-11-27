@@ -1,24 +1,9 @@
 # Developer's Guide
 
-- [Technology stack for developers](#technology-stack-for-developers)
-- [Workflow](#workflow)
-  - [Check the issues](#check-the-issues)
-  - [Clone the repo and setup the local environment](#clone-the-repo-and-setup-the-local-environment)
-  - [Make your changes](#make-your-changes)
-  - [Run the tests](#run-the-tests)
-  - [Try locally](#try-locally)
-    - [Build, deploy and try Authorino in a local cluster](#build-deploy-and-try-authorino-in-a-local-cluster)
-    - [Additional tools (for specific use-cases)](#additional-tools-for-specific-use-cases)
-    - [Re-build and rollout latest](#re-build-and-rollout-latest)
-    - [Clean-up](#clean-up)
-  - [Sign your commits](#sign-your-commits)
-- [Logging policy](#logging-policy)
-- [Additional resources](#additional-resources)
-- [Reach out](#reach-out)
-
 ## Technology stack for developers
 
 Minimum requirements to contribute to Authorino are:
+
 - [Golang v1.20+](https://golang.org)
 - [Docker](https://docker.com)
 
@@ -27,17 +12,17 @@ Authorino's code was originally bundled using the [Operator SDK](https://sdk.ope
 The following tools can be installed as part of the development workflow:
 
 - _Installed with `go install` to the `$PROJECT_DIR/bin` directory:_
-  - [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html): for building custom types and manifests
-  - [Kustomize](https://kustomize.io/): for assembling flavoured manifests and installing/deploying
-  - [setup-envtest](https://v0-19-x.sdk.operatorframework.io/docs/golang/references/env-test-setup): for running the tests – extra tools installed to `./testbin`
-  - [benchstat](https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
-  - [mockgen](https://github.com/golang/mock/mockgen): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
-  - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
+    - [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html): for building custom types and manifests
+    - [Kustomize](https://kustomize.io/): for assembling flavoured manifests and installing/deploying
+    - [setup-envtest](https://book.kubebuilder.io/reference/envtest.html): for running the tests – extra tools installed to `./testbin`
+    - [benchstat](https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
+    - [mockgen](https://github.com/golang/mock): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
+    - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
 
 - _Other recommended tools to have installed:_
-  - [jq](https://stedolan.github.io/jq/)
-  - [yq](http://mikefarah.github.io/yq/)
-  - [gnu-sed](https://www.gnu.org/software/sed/)
+    - [jq](https://stedolan.github.io/jq/)
+    - [yq](https://mikefarah.github.io/yq/)
+    - [gnu-sed](https://www.gnu.org/software/sed/)
 
 ## Workflow
 
@@ -71,6 +56,7 @@ make help
 ### Make your changes
 
 Good changes...
+
 - follow the [Golang conventions](https://golang.org/doc/effective_go)
 - have proper test coverage
 - address corresponding updates to the [docs](./)
@@ -89,6 +75,7 @@ make test
 #### Build, deploy and try Authorino in a local cluster
 
 The following command will:
+
 - Start a local Kubernetes cluster (using Kind)
 - Install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster
 - Install the [Authorino Operator](https://github.com/kuadrant/authorino-operator) and Authorino CRDs
@@ -140,7 +127,7 @@ kubectl port-forward deployment/envoy 8000:8000 &
 
   Authorino examples include a bundle of [Keycloak](https://www.keycloak.org) preloaded with the following realm setup:
 
-  - Admin console: http://localhost:8080/auth/admin (admin/p)
+  - Admin console: [http://localhost:8080/admin](http://localhost:8080/admin)  (admin/p)
   - Preloaded realm: **kuadrant**
   - Preloaded clients:
     - **demo**: to which API consumers delegate access and therefore the one which access tokens are issued to
@@ -247,6 +234,7 @@ All commits to be accepted to Authorino's code are required to be signed. Refer 
 ## Logging policy
 
 A few guidelines for adding logging messages in your code:
+
 1. Make sure you understand Authorino's [Logging](./user-guides/observability.md#logging) architecture and policy regarding log levels, log modes, tracing IDs, etc.
 2. Respect controller-runtime's [Logging Guidelines](https://github.com/kubernetes-sigs/controller-runtime/blob/master/TMP-LOGGING.md).
 3. Do not add sensitive data to your `info` log messages; instead, redact all sensitive data in your log messages or use `debug` log level by mutating the logger with `V(1)` before outputting the message.

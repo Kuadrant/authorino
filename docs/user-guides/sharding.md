@@ -1,6 +1,7 @@
 # User guide: Reducing the operational space
 
 By default, Authorino will watch events related to all `AuthConfig` custom resources in the reconciliation space (namespace or entire cluster). Instances can be configured though to only watch a subset of the resources, thus allowing such as:
+
 - to reduce noise and lower memory usage inside instances meant for restricted scope (e.g. Authorino deployed as a dedicated sidecar to protect only one host);
 - sharding auth config data across multiple instances;
 - multiple environments (e.g. staging, production) inside of a same cluster/namespace;
@@ -18,14 +19,13 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
 </table>
 
 <details markdown="1">
-  <summary>
+  <summary markdown="1">
     <strong>Authorino capabilities featured in this guide:</strong>
     <ul>
-      <li><a href="../architecture.md#sharding">Sharding</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
+      <li><a href="https://docs.kuadrant.io/authorino/docs/architecture#sharding">Sharding</a></li>
+      <li>Identity verification & authentication → <a href="https://docs.kuadrant.io/authorino/docs/features#api-key-authenticationapikey">API key</a></li>
     </ul>
   </summary>
-
   Check out as well the user guide about [Authentication with API keys](api-key-authentication.md).
 
   For further details about Authorino features in general, check the [docs](../features.md).

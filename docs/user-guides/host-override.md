@@ -18,6 +18,7 @@ Overriding the host attribute of the HTTP request can be useful to support use c
 <br/>
 
 In this guide:
+
 - [Example of host override for path prefix-based lookup](#example-of-host-override-for-path-prefix-based-lookup)
 - [Example of host override for wildcard subdomain lookup](#example-of-host-override-for-wildcard-subdomain-lookup)
 
@@ -26,6 +27,7 @@ In this guide:
 ## Example of host override for path prefix-based lookup
 
 In this use case, 2 different APIs (i.e. **Dogs API** and **Cats API**) are served under the same base domain, and differentiated by the path prefix:
+
 - `pets.com/dogs` →  Dogs API
 - `pets.com/cats` →  Cats API
 
@@ -91,6 +93,7 @@ Notice that the host subdomains `dogs.pets.com` and `cats.pets.com` are not real
 ## Example of host override for wildcard subdomain lookup
 
 In this use case, a single **Pets API** serves requests for any subdomain that matches `*.pets.com`, e.g.:
+
 - `dogs.pets.com` →  Pets API
 - `cats.pets.com` →  Pets API
 

@@ -1,46 +1,5 @@
 # Features
 
-- [Overview](#overview)
-- [Common feature: JSON paths (`selector`)](#common-feature-json-paths-selector)
-  - [Syntax](#syntax)
-  - [String modifiers](#string-modifiers)
-  - [Interpolation](#interpolation)
-- [Identity verification \& authentication features (`authentication`)](#identity-verification--authentication-features-authentication)
-  - [API key (`authentication.apiKey`)](#api-key-authenticationapikey)
-  - [Kubernetes TokenReview (`authentication.kubernetesTokenReview`)](#kubernetes-tokenreview-authenticationkubernetestokenreview)
-  - [JWT verification (`authentication.jwt`)](#jwt-verification-authenticationjwt)
-  - [OAuth 2.0 introspection (`authentication.oauth2Introspection`)](#oauth-20-introspection-authenticationoauth2introspection)
-  - [X.509 client certificate authentication (`authentication.x509`)](#x509-client-certificate-authentication-authenticationx509)
-  - [Plain (`authentication.plain`)](#plain-authenticationplain)
-  - [Anonymous access (`authentication.anonymous`)](#anonymous-access-authenticationanonymous)
-  - [Festival Wristband authentication](#festival-wristband-authentication)
-  - [_Extra:_ Auth credentials (`authentication.credentials`)](#extra-auth-credentials-authenticationcredentials)
-  - [_Extra:_ Identity extension (`authentication.defaults` and `authentication.overrides`)](#extra-identity-extension-authenticationdefaults-and-authenticationoverrides)
-- [External auth metadata features (`metadata`)](#external-auth-metadata-features-metadata)
-  - [HTTP GET/GET-by-POST (`metadata.http`)](#http-getget-by-post-metadatahttp)
-  - [OIDC UserInfo (`metadata.userInfo`)](#oidc-userinfo-metadatauserinfo)
-  - [User-Managed Access (UMA) resource registry (`metadata.uma`)](#user-managed-access-uma-resource-registry-metadatauma)
-- [Authorization features (`authorization`)](#authorization-features-authorization)
-  - [Pattern-matching authorization (`authorization.patternMatching`)](#pattern-matching-authorization-authorizationpatternmatching)
-  - [Open Policy Agent (OPA) Rego policies (`authorization.opa`)](#open-policy-agent-opa-rego-policies-authorizationopa)
-  - [Kubernetes SubjectAccessReview (`authorization.kubernetesSubjectAccessReview`)](#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview)
-  - [SpiceDB (`authorization.spicedb`)](#spicedb-authorizationspicedb)
-- [Custom response features (`response`)](#custom-response-features-response)
-  - [Custom response forms: successful authorization vs custom denial status](#custom-response-forms-successful-authorization-vs-custom-denial-status)
-    - [Added HTTP headers](#added-http-headers)
-    - [Envoy Dynamic Metadata](#envoy-dynamic-metadata)
-    - [Custom denial status (`response.unauthenticated` and `response.unauthorized`)](#custom-denial-status-responseunauthenticated-and-responseunauthorized)
-  - [Custom response methods](#custom-response-methods)
-    - [Plain text (`response.success.<headers|dynamicMetadata>.plain`)](#plain-text-responsesuccessheadersdynamicmetadataplain)
-    - [JSON injection (`response.success.<headers|dynamicMetadata>.json`)](#json-injection-responsesuccessheadersdynamicmetadatajson)
-    - [Festival Wristband tokens (`response.success.<headers|dynamicMetadata>.wristband`)](#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband)
-- [Callbacks (`callbacks`)](#callbacks-callbacks)
-  - [HTTP endpoints (`callbacks.http`)](#http-endpoints-callbackshttp)
-- [Common feature: Priorities](#common-feature-priorities)
-- [Common feature: Conditions (`when`)](#common-feature-conditions-when)
-- [Common feature: Caching (`cache`)](#common-feature-caching-cache)
-- [Common feature: Metrics (`metrics`)](#common-feature-metrics-metrics)
-
 ## Overview
 
 We call _features_ of Authorino the different things one can do to enforce identity verification & authentication and authorization on requests to protected services. These can be a specific identity verification method based on a supported authentication protocol, or a method to fetch additional auth metadata in request-time, etc.
@@ -49,7 +8,7 @@ Most features of Authorino relate to the different phases of the [Auth Pipeline]
 
 At a deeper level, a _feature_ can also be an additional functionality within a bigger feature, usually applicable to the whole class the bigger feature belongs to. For instance, the configuration of how [auth credentials](#extra-auth-credentials-authenticationcredentials) expected to be carried in the request, which is broadly available for any identity verification method. Other examples are: [_Identity extension_](#extra-identity-extension-authenticationdefaults-and-authenticationoverrides) and [Priorities](#common-feature-priorities).
 
-A full specification of all features of Authorino that can be configured in an `AuthConfig` can be found in the official [spec](../install/crd/authorino.kuadrant.io_authconfigs.yaml) of the custom resource definition.
+A full specification of all features of Authorino that can be configured in an `AuthConfig` can be found in the official [spec](https://github.com/Kuadrant/authorino/blob/main/install/crd/authorino.kuadrant.io_authconfigs.yaml) of the custom resource definition.
 
 You can also learn about Authorino features by using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command in a Kubernetes cluster where the Authorino CRD has been installed. E.g. `kubectl explain authconfigs.spec.authentication.credentials`.
 
