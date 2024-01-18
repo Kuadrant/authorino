@@ -1,10 +1,5 @@
-## Authorino Code of Conduct v1.0
+## Code of Conduct
 
-This document provides community guidelines for a safe, respectful, productive, and collaborative place for any person who is willing to contribute to Authorino.
+Autorino follows the [**Kuadrant Community Code of Conduct**](https://github.com/Kuadrant/governance/blob/main/CODE_OF_CONDUCT.md), which is based on the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/main/code-of-conduct.md).
 
-- Participants will be tolerant of opposing views.
-- Participants must ensure that their language and actions are free of personal attacks and disparaging personal remarks.
-- When interpreting the words and actions of others, participants should always assume good intentions.
-- Behaviour which can be reasonably considered harassment will not be tolerated.
-
-This Code of Conduct is adapted from [The Ruby Community Conduct Guideline](https://www.ruby-lang.org/en/conduct/)
+Please refer to [this](https://github.com/Kuadrant/governance/blob/main/CODE_OF_CONDUCT.md) page for a description of the standards and values we stand for in our relationship with the community.
