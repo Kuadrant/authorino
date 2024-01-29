@@ -14,7 +14,7 @@ Customize response status code and headers on failed requests to redirect users 
 
   Authorino's default response status codes, messages and headers for unauthenticated (`401`) and unauthorized (`403`) requests can be customized with static values and values fetched from the [Authorization JSON](../architecture.md#the-authorization-json).
 
-  Check out as well the user guides about [HTTP "Basic" Authentication (RFC 7235)](user-guides/http-basic-authentication.md) and [OpenID Connect Discovery and authentication with JWTs](oidc-jwt-authentication.md).
+  Check out as well the user guides about [HTTP "Basic" Authentication (RFC 7235)](http-basic-authentication.md) and [OpenID Connect Discovery and authentication with JWTs](oidc-jwt-authentication.md).
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
