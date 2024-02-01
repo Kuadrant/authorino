@@ -59,7 +59,7 @@ Good changes...
 
 - follow the [Golang conventions](https://golang.org/doc/effective_go)
 - have proper test coverage
-- address corresponding updates to the [docs](./)
+- address corresponding updates to the [docs](./README.md)
 - help us fix wherever we failed to do the above 😜
 
 ### Run the tests

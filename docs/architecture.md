@@ -144,7 +144,7 @@ spec:
   callbacks: {"name" → {…}, …}
 ```
 
-Check out the [OAS](/install/crd/authorino.kuadrant.io_authconfigs.yaml) of the `AuthConfig` CRD for a formal specification of the options for `authentication` verification, external `metadata` fetching, `authorization` policies, and dynamic `response`, as well as any other host protection capability implemented by Authorino.
+Check out the [OAS](../install/crd/authorino.kuadrant.io_authconfigs.yaml) of the `AuthConfig` CRD for a formal specification of the options for `authentication` verification, external `metadata` fetching, `authorization` policies, and dynamic `response`, as well as any other host protection capability implemented by Authorino.
 
 You can also read the specification from the CLI using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command. The Authorino CRD is required to have been installed in Kubernetes cluster. E.g. `kubectl explain authconfigs.spec.authentication.overrides`.
 
