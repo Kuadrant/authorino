@@ -28,6 +28,7 @@ release notes and then write the change notes highlighting all the new features,
 ## Notes on Authorino’s automated builds
 
 * PRs merged to the main branch of Authorino cause a new image to be built (GH Action) and pushed automatically to
-quay.io/kuadrant/authorino:<git-ref> – the quay.io/kuadrant/authorino:latest tag is also moved to match the latest <git-ref>.
+`quay.io/kuadrant/authorino:<git-ref>` – the `quay.io/kuadrant/authorino:latest` tag is also moved to match the latest
+`<git-ref>`.
 * Authorino repo owns the manifests required by the operand: AuthConfig CRD + role definitions. A copy of these is merged
-into a single deployment file host in the [Authorino Operator repository](https://github.com/Kuadrant/authorino-operator).
+into a single deployment file in the [Authorino Operator repository](https://github.com/Kuadrant/authorino-operator).
