@@ -8,9 +8,7 @@ To release a version “v0.X.Y” of Authorino in GitHub and Quay.io, follow the
 
 ```shell
 git checkout <git-ref>
-git checkout -b release-v0.X.Y
 ```
-This will create a new branch `release-v0.X.Y` from the commit you want to release.
 
 2. Create a new tag and named release `v0.X.Y`. Push the tag to GitHub.
 
