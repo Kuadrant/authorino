@@ -38,7 +38,7 @@ func init() {
 	// generate ca certs
 	for _, name := range []string{"pets", "cars", "books"} {
 		testCerts[name] = make(map[string][]byte)
-		testCerts[name]["tls.crt"], testCerts[name]["tls.key"] = issueCertificate(pkix.Name{CommonName: name}, nil, 1)
+		testCerts[name]["tls.crt"], testCerts[name]["tls.key"] = issueCertificate(pkix.Name{CommonName: name}, nil, 1, []x509.ExtKeyUsage{})
 	}
 
 	// store the ca certs in k8s secrets
@@ -49,33 +49,44 @@ func init() {
 
 	// generate client certs
 	for name, data := range map[string]struct {
-		subject pkix.Name
-		caName  string
-		days    int
+		subject     pkix.Name
+		caName      string
+		days        int
+		extKeyUsage []x509.ExtKeyUsage
 	}{
 		"john": {
-			subject: pkix.Name{CommonName: "john", Country: []string{"UK"}, Locality: []string{"London"}},
-			caName:  "pets",
-			days:    1,
+			subject:     pkix.Name{CommonName: "john", Country: []string{"UK"}, Locality: []string{"London"}},
+			caName:      "pets",
+			days:        1,
+			extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		},
 		"bob": {
-			subject: pkix.Name{CommonName: "bob", Country: []string{"US"}, Locality: []string{"Boston"}},
-			caName:  "pets",
-			days:    -1,
+			subject:     pkix.Name{CommonName: "bob", Country: []string{"US"}, Locality: []string{"Boston"}},
+			caName:      "pets",
+			days:        -1,
+			extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		},
 		"aisha": {
-			subject: pkix.Name{CommonName: "aisha", Country: []string{"PK"}, Locality: []string{"Islamabad"}, Organization: []string{"ACME Inc."}, OrganizationalUnit: []string{"Engineering"}},
-			caName:  "cars",
-			days:    1,
+			subject:     pkix.Name{CommonName: "aisha", Country: []string{"PK"}, Locality: []string{"Islamabad"}, Organization: []string{"ACME Inc."}, OrganizationalUnit: []string{"Engineering"}},
+			caName:      "cars",
+			days:        1,
+			extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		},
 		"niko": {
-			subject: pkix.Name{CommonName: "niko", Country: []string{"JP"}, Locality: []string{"Osaka"}},
-			caName:  "books",
-			days:    1,
+			subject:     pkix.Name{CommonName: "niko", Country: []string{"JP"}, Locality: []string{"Osaka"}},
+			caName:      "books",
+			days:        1,
+			extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		},
+		"tony": {
+			subject:     pkix.Name{CommonName: "tony", Country: []string{"IT"}, Locality: []string{"Rome"}},
+			caName:      "pets",
+			days:        1,
+			extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		},
 	} {
 		testCerts[name] = make(map[string][]byte)
-		testCerts[name]["tls.crt"], testCerts[name]["tls.key"] = issueCertificate(data.subject, testCerts[data.caName], data.days)
+		testCerts[name]["tls.crt"], testCerts[name]["tls.key"] = issueCertificate(data.subject, testCerts[data.caName], data.days, data.extKeyUsage)
 	}
 }
 
@@ -291,7 +302,28 @@ func TestCallExpiredClientCert(t *testing.T) {
 	assert.ErrorContains(t, err, "certificate has expired or is not yet valid")
 }
 
-func issueCertificate(subject pkix.Name, ca map[string][]byte, days int) ([]byte, []byte) {
+func TestExtendedKeyUsageMismatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// tony (ca: pets / extKeyUsage: server auth)
+	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
+		Attributes: &envoy_auth.AttributeContext{
+			Source: &envoy_auth.AttributeContext_Peer{
+				Certificate: url.QueryEscape(string(testCerts["tony"]["tls.crt"])),
+			},
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "certificate specifies an incompatible key usage")
+}
+
+func issueCertificate(subject pkix.Name, ca map[string][]byte, days int, extKeyUsage []x509.ExtKeyUsage) ([]byte, []byte) {
 	serialNumber, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	isCA := ca == nil
 	cert := &x509.Certificate{
@@ -300,6 +332,8 @@ func issueCertificate(subject pkix.Name, ca map[string][]byte, days int) ([]byte
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(0, 0, days),
 		IsCA:                  isCA,
+		ExtKeyUsage:           extKeyUsage,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: isCA,
 	}
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -308,6 +342,7 @@ func issueCertificate(subject pkix.Name, ca map[string][]byte, days int) ([]byte
 	if !isCA {
 		parent = decodeCertificate(ca["tls.crt"])
 		privKey = decodePrivateKey(ca["tls.key"])
+		cert.KeyUsage = x509.KeyUsageDigitalSignature
 	}
 	certBytes, _ := x509.CreateCertificate(rand.Reader, cert, parent, &key.PublicKey, privKey)
 	return encodeCertificate(certBytes), encodePrivateKey(key)
