@@ -416,13 +416,13 @@ func setupTelemetryServices(opts telemetryOptions) {
 }
 
 func setupManager(options ctrl.Options) (ctrl.Manager, error) {
+	if options.Metrics.BindAddress != "0" {
+		options.Metrics.ExtraHandlers = map[string]http.Handler{"/server-metrics": promhttp.Handler()}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		return nil, err
-	}
-
-	if options.Metrics.BindAddress != "0" {
-		options.Metrics.ExtraHandlers = map[string]http.Handler{"/server-metrics": promhttp.Handler()}
 	}
 
 	if options.HealthProbeBindAddress != "0" {
