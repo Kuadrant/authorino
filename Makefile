@@ -52,7 +52,7 @@ kustomize: ## Installs kustomize in $PROJECT_DIR/bin
 
 ENVTEST = $(PROJECT_DIR)/bin/setup-envtest
 envtest: ## Installs setup-envtest in $PROJECT_DIR/bin
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.16)
 
 MOCKGEN = $(PROJECT_DIR)/bin/mockgen
 mockgen: ## Installs mockgen in $PROJECT_DIR/bin
