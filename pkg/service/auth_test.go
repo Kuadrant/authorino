@@ -143,6 +143,16 @@ func TestBuildDynamicEnvoyMetadata(t *testing.T) {
 	assert.NilError(t, err)
 }
 
+func TestInvalidCheckRequest(t *testing.T) {
+	authService := AuthService{Index: index.NewIndex()}
+	resp, err := authService.Check(context.TODO(), &envoy_auth.CheckRequest{})
+	assert.NilError(t, err)
+	assert.Equal(t, resp.Status.Code, int32(rpc.INVALID_ARGUMENT))
+	denied := resp.GetDeniedResponse()
+	assert.Equal(t, denied.Status.Code, envoy_type.StatusCode_BadRequest)
+	assert.Equal(t, getHeader(denied.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Invalid request")
+}
+
 func TestAuthServiceRawHTTPAuthorization_Post(t *testing.T) {
 	mockController := gomock.NewController(t)
 	defer mockController.Finish()

@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -51,6 +52,7 @@ var (
 	statusCodeMapping = map[rpc.Code]envoy_type.StatusCode{
 		rpc.OK:                  envoy_type.StatusCode_OK,
 		rpc.FAILED_PRECONDITION: envoy_type.StatusCode_BadRequest,
+		rpc.INVALID_ARGUMENT:    envoy_type.StatusCode_BadRequest,
 		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
 		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
 		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
@@ -235,7 +237,22 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 // Check performs authorization check based on the attributes associated with the incoming request,
 // and returns status `OK` or not `OK`.
 func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.CheckRequest) (*envoy_auth.CheckResponse, error) {
-	requestData := req.Attributes.Request.Http
+	logger := log.WithName("service").WithName("auth")
+
+	var requestData *envoy_auth.AttributeContext_HttpRequest
+	if req != nil && req.Attributes != nil && req.Attributes.Request != nil && req.Attributes.Request.Http != nil {
+		requestData = req.Attributes.Request.Http
+	} else {
+		requestId := ensureRequestId()
+		_, span := trace.NewAuthorizationRequestSpan(parentContext, "AuthService", "Check", requestId, "")
+		defer span.End()
+		err := fmt.Errorf("invalid authorization request")
+		logger.Error(err, "missing http attributes", "request", req, "request id", requestId)
+		span.RecordError(err)
+		span.SetStatus(otel_codes.Error, err.Error())
+		result := auth.AuthResult{Code: rpc.INVALID_ARGUMENT, Message: RESPONSE_MESSAGE_INVALID_REQUEST}
+		return a.deniedResponse(result), nil
+	}
 
 	propagationRequestId := requestData.Headers[strings.ToLower(ENVOY_TRACE_REQUEST_ID_HEADER)]
 	requestId := ensureRequestId(propagationRequestId, requestData.GetId())
@@ -244,7 +261,7 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 	ctx, span := trace.NewAuthorizationRequestSpan(parentContext, "AuthService", "Check", requestId, propagationRequestId)
 	defer span.End()
 
-	requestLogger := log.WithName("service").WithName("auth").WithValues("request id", requestId)
+	requestLogger := logger.WithValues("request id", requestId)
 	ctx = log.IntoContext(context.New(context.WithParent(ctx), context.WithTimeout(a.Timeout)), requestLogger)
 
 	a.logAuthRequest(req, ctx)
