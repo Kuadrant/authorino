@@ -10,7 +10,7 @@ If you prefer learning with an example, check out our [Hello World](./user-guide
 
 These are the platform requirements to use Authorino:
 
-- [**Kubernetes**](https://kubernetes.io) server (recommended v1.20 or later), with permission to create Kubernetes Custom Resource Definitions (CRDs) (for bootstrapping Authorino and Authorino Operator)
+- [**Kubernetes**](https://kubernetes.io) server (recommended v1.21 or later), with permission to create Kubernetes Custom Resource Definitions (CRDs) (for bootstrapping Authorino and Authorino Operator)
 
     <details markdown="1">
     <summary>Alternative: K8s distros and platforms</summary>
