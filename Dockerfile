@@ -2,6 +2,10 @@
 # https://catalog.redhat.com/software/containers/ubi9/go-toolset
 FROM registry.access.redhat.com/ubi9/go-toolset:1.21 AS builder
 USER root
+
+# CVE-2024-28182 | TODO: Remove it once fixed in the base image
+RUN dnf --assumeyes install --nodocs libnghttp2-1.43.0-5.el9_4.3
+
 WORKDIR /usr/src/authorino
 COPY ./ ./
 ARG version=latest
@@ -10,6 +14,9 @@ RUN CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=${version
 # Use Red Hat minimal base image to package the binary
 # https://catalog.redhat.com/software/containers/ubi9-minimal
 FROM registry.access.redhat.com/ubi9-minimal:latest
+
+# CVE-2024-28182 | TODO: Remove it once fixed in the base image
+RUN microdnf --assumeyes install --nodocs libnghttp2-1.43.0-5.el9_4.3
 
 # shadow-utils is required for `useradd`
 RUN PKGS="shadow-utils" \
