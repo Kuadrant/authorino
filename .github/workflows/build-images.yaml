@@ -38,17 +38,15 @@ jobs:
           else
           echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
           fi
-      - name: Install qemu dependency
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-user-static
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       - name: Build Image
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
           image: authorino
           tags: ${{ env.IMG_TAGS }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
           build-args: |
             version=${{ env.VERSION }}
           containerfiles: |
