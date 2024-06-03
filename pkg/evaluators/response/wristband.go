@@ -13,8 +13,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/json"
 
+	jose "github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt"
-	jose "gopkg.in/square/go-jose.v2"
 )
 
 const DEFAULT_WRISTBAND_DURATION = int64(300)

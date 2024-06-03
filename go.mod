@@ -9,6 +9,7 @@ require (
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/eko/gocache v1.2.0
 	github.com/envoyproxy/go-control-plane v0.12.0
+	github.com/go-jose/go-jose/v4 v4.0.2
 	github.com/go-logr/logr v1.4.1
 	github.com/gogo/googleapis v1.4.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -32,7 +33,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
-	gopkg.in/square/go-jose.v2 v2.5.1
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
@@ -61,6 +61,7 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240227224415-6ceb2ff114de // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
 require (

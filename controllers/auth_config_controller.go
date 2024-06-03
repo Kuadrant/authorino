@@ -36,8 +36,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/oauth2"
 	"github.com/kuadrant/authorino/pkg/utils"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/go-logr/logr"
-	"gopkg.in/square/go-jose.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

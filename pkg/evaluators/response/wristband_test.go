@@ -12,8 +12,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	jose "github.com/go-jose/go-jose/v4"
 	"github.com/golang/mock/gomock"
-	jose "gopkg.in/square/go-jose.v2"
 	"gotest.tools/assert"
 )
 
