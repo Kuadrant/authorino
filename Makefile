@@ -1,8 +1,24 @@
 # Use bash as shell
 SHELL = /bin/bash
 
+# Check for dirty :D 
+define check_dirty
+	GIT_SHA=$$(git rev-parse HEAD) || { \
+		GIT_HASH=$${GITHUB_SHA:-NO_SHA}; \
+	}; \
+	if [ -z "$$GIT_HASH" ]; then \
+		GIT_DIRTY=$$(git diff --stat); \
+		if [ -n "$$GIT_DIRTY" ]; then \
+			GIT_HASH=$${GIT_SHA}-dirty; \
+		else \
+			GIT_HASH=$${GIT_SHA}; \
+		fi; \
+	fi; \
+	echo $$GIT_HASH
+endef
+
 # Authorino version
-VERSION = $(shell git rev-parse HEAD)
+VERSION = $(shell $(check_dirty))
 
 # Use vi as default editor
 EDITOR ?= vi
