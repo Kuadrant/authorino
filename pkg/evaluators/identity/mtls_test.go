@@ -336,7 +336,7 @@ func issueCertificate(subject pkix.Name, ca map[string][]byte, days int, extKeyU
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: isCA,
 	}
-	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	key, _ := rsa.GenerateKey(rand.Reader, 4096)
 	privKey := key
 	parent := cert
 	if !isCA {

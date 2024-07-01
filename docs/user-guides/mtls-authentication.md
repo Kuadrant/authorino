@@ -108,9 +108,9 @@ kubectl apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/m
 Create a CA (Certificate Authority) certificate to issue the client certificates that will be used to authenticate clients that send requests to the Talker API:
 
 ```sh
-openssl req -x509 -sha256 -nodes \
+openssl req -x509 -sha512 -nodes \
   -days 365 \
-  -newkey rsa:2048 \
+  -newkey rsa:4096 \
   -subj "/CN=talker-api-ca" \
   -addext basicConstraints=CA:TRUE \
   -addext keyUsage=digitalSignature,keyCertSign \
@@ -157,7 +157,7 @@ data:
       - address:
           socket_address:
             address: 0.0.0.0
-            port_value: 8000
+            port_value: 8443
         filter_chains:
         - transport_socket:
             name: envoy.transport_sockets.tls
@@ -265,7 +265,7 @@ spec:
         image: envoyproxy/envoy:v1.19-latest
         name: envoy
         ports:
-        - containerPort: 8000
+        - containerPort: 8443
           name: web
         - containerPort: 8001
           name: admin
@@ -305,7 +305,7 @@ spec:
     app: envoy
   ports:
   - name: web
-    port: 8000
+    port: 8443
     protocol: TCP
 ---
 apiVersion: networking.k8s.io/v1
@@ -320,16 +320,16 @@ spec:
       - backend:
           service:
             name: envoy
-            port: { number: 8000 }
+            port: { number: 8443 }
         path: /
         pathType: Prefix
 EOF
 ```
 
-The command above creates an `Ingress` with host name `talker-api.127.0.0.1.nip.io`. If you are using a local Kubernetes cluster created with Kind, forward requests from your local port 8000 to the Envoy service running inside the cluster:
+The command above creates an `Ingress` with host name `talker-api.127.0.0.1.nip.io`. If you are using a local Kubernetes cluster created with Kind, forward requests from your local port 8443 to the Envoy service running inside the cluster:
 
 ```sh
-kubectl port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
+kubectl port-forward deployment/envoy 8443:8443 2>&1 >/dev/null &
 ```
 
 ## ❻ Create the `AuthConfig`
@@ -378,22 +378,22 @@ EOF
 With a TLS certificate signed by the trusted CA:
 
 ```sh
-openssl genrsa -out /tmp/aisha.key 2048
+openssl genrsa -out /tmp/aisha.key 4096
 openssl req -new -subj "/CN=aisha/C=PK/L=Islamabad/O=ACME Inc./OU=Engineering" -key /tmp/aisha.key -out /tmp/aisha.csr
-openssl x509 -req -sha256 -days 1 -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/aisha.csr -out /tmp/aisha.crt
+openssl x509 -req -sha512 -days 1 -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/aisha.csr -out /tmp/aisha.crt
 
-curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api.127.0.0.1.nip.io:8000 -i
+curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api.127.0.0.1.nip.io:8443 -i
 # HTTP/1.1 200 OK
 ```
 
 With a TLS certificate signed by the trusted CA, though missing an authorized Organization:
 
 ```sh
-openssl genrsa -out /tmp/john.key 2048
+openssl genrsa -out /tmp/john.key 4096
 openssl req -new -subj "/CN=john/C=UK/L=London" -key /tmp/john.key -out /tmp/john.csr
-openssl x509 -req -sha256 -days 1 -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/john.csr -out /tmp/john.crt
+openssl x509 -req -sha512 -days 1 -CA /tmp/ca.crt -CAkey /tmp/ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/john.csr -out /tmp/john.crt
 
-curl -k --cert /tmp/john.crt --key /tmp/john.key https://talker-api.127.0.0.1.nip.io:8000 -i
+curl -k --cert /tmp/john.crt --key /tmp/john.key https://talker-api.127.0.0.1.nip.io:8443 -i
 # HTTP/1.1 403 Forbidden
 # x-ext-auth-reason: Unauthorized
 ```
@@ -403,7 +403,7 @@ curl -k --cert /tmp/john.crt --key /tmp/john.key https://talker-api.127.0.0.1.ni
 Expose Authorino's raw HTTP authorization to the local host:
 
 ```sh
-kubectl port-forward service/authorino-authorino-authorization 5001:5001 &
+kubectl port-forward service/authorino-authorino-authorization 5001:5001 2>&1 >/dev/null &
 ```
 
 With a TLS certificate signed by the trusted CA:
@@ -416,18 +416,18 @@ curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key -H 'Content-Type: application
 With a TLS certificate signed by an unknown authority:
 
 ```sh
-openssl req -x509 -sha256 -nodes \
+openssl req -x509 -sha512 -nodes \
   -days 365 \
-  -newkey rsa:2048 \
+  -newkey rsa:4096 \
   -subj "/CN=untrusted" \
   -addext basicConstraints=CA:TRUE \
   -addext keyUsage=digitalSignature,keyCertSign \
   -keyout /tmp/untrusted-ca.key \
   -out /tmp/untrusted-ca.crt
 
-openssl genrsa -out /tmp/niko.key 2048
+openssl genrsa -out /tmp/niko.key 4096
 openssl req -new -subj "/CN=niko/C=JP/L=Osaka" -key /tmp/niko.key -out /tmp/niko.csr
-openssl x509 -req -sha256 -days 1 -CA /tmp/untrusted-ca.crt -CAkey /tmp/untrusted-ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/niko.csr -out /tmp/niko.crt
+openssl x509 -req -sha512 -days 1 -CA /tmp/untrusted-ca.crt -CAkey /tmp/untrusted-ca.key -CAcreateserial -extfile /tmp/x509v3.ext -in /tmp/niko.csr -out /tmp/niko.crt
 
 curl -k --cert /tmp/niko.crt --key /tmp/niko.key -H 'Content-Type: application/json' -d '{}' https://talker-api.127.0.0.1.nip.io:5001/check -i
 # HTTP/2 401
@@ -446,7 +446,7 @@ Even if the deleted root certificate is still cached and accepted at the gateway
 Try with a previously accepted certificate:
 
 ```sh
-curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api.127.0.0.1.nip.io:8000 -i
+curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api.127.0.0.1.nip.io:8443 -i
 # HTTP/1.1 401 Unauthorized
 # www-authenticate: Basic realm="mtls"
 # x-ext-auth-reason: x509: certificate signed by unknown authority
