@@ -25,8 +25,3 @@ vendor
 tmp
 target
 .scannerwork
-api/v1beta1/zz_generated.deepcopy.go
-api/v1beta2/zz_generated.deepcopy.go
-install/manifests.yaml
-install/crd/authorino.kuadrant.io_authconfigs.yaml
-install/rbac/role.yaml
