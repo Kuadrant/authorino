@@ -143,7 +143,7 @@ IMAGE_TAG=local
 endif
 AUTHORINO_IMAGE ?= $(IMAGE_REPO):$(IMAGE_TAG)
 docker-build: ## Builds an image based on the current branch
-	docker build --build-arg version=$(VERSION) -t $(AUTHORINO_IMAGE) .
+	docker build --build-arg GITHUB_SHA=$(VERSION) -t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
