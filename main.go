@@ -73,6 +73,7 @@ const (
 var (
 	// ldflags
 	version string
+	dirty   string
 
 	scheme = runtime.NewScheme()
 	logger logr.Logger
@@ -373,7 +374,7 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 func setup(cmd *cobra.Command, log logOptions, telemetry telemetryOptions) {
 	setupLogger(log)
 
-	logger.Info("booting up authorino", "version", version, "cmd", cmd.Use)
+	logger.Info("booting up authorino", "version", version, "cmd", cmd.Use, "dirty", dirty)
 
 	// log the command-line args
 	if logger.V(1).Enabled() {
@@ -562,5 +563,9 @@ func timeoutMs(timeout int) time.Duration {
 }
 
 func printVersion(_ *cobra.Command, _ []string) {
-	fmt.Println("Authorino", version)
+	if dirty == "true" {
+		fmt.Println("Authorino", version, "(dirty)")
+	} else {
+		fmt.Println("Authorino", version)
+	}
 }
