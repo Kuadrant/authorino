@@ -40,7 +40,7 @@ jobs:
           tags: ${{ env.IMG_TAGS }}
           platforms: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
           build-args: |
-            GITHUB_SHA=${{ github.sha }}
+            GIT_SHA=${{ github.sha }}
           containerfiles: |
             ./Dockerfile
       - name: Push Image
