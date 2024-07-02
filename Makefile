@@ -18,7 +18,10 @@ define check_dirty
 endef
 
 # Authorino version
-VERSION = $(shell git rev-parse HEAD)
+AUTHORINO_VERSION = v0.17.3-dev # change as version increments
+
+# Authorino commit hash
+GIT_SHA = $(shell git rev-parse HEAD)
 
 # Authorino dirty
 DIRTY = $(shell $(check_dirty))
@@ -132,12 +135,13 @@ manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/i
 	$(MAKE) patch-webhook
 
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
-	go run -ldflags "-X main.version=$(VERSION)" ./main.go server
+	go run -ldflags "-X main.version=$(AUTHORINO_VERSION) -X main.gitSHA=$(GIT_SHA) -X main.dirty=$(DIRTY)" ./main.go server
 
 build: generate ## Builds the manager binary
-	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(VERSION) -X main.dirty=$(DIRTY)" -o bin/authorino main.go
+	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(AUTHORINO_VERSION) -X main.gitSHA=$(GIT_SHA) -X main.dirty=$(DIRTY)" -o bin/authorino main.go
 
 IMAGE_REPO ?= authorino
+VERSION ?= $(GIT_SHA)
 using_semantic_version := $(shell [[ $(VERSION) =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$$ ]] && echo "true")
 ifdef using_semantic_version
 IMAGE_TAG=v$(VERSION)
@@ -146,7 +150,7 @@ IMAGE_TAG=local
 endif
 AUTHORINO_IMAGE ?= $(IMAGE_REPO):$(IMAGE_TAG)
 docker-build: ## Builds an image based on the current branch
-	docker build --build-arg GIT_SHA=$(VERSION) --build-arg DIRTY=$(DIRTY) -t $(AUTHORINO_IMAGE) .
+	docker build --build-arg VERSION=$(AUTHORINO_VERSION) --build-arg GIT_SHA=$(GIT_SHA) --build-arg DIRTY=$(DIRTY) -t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out

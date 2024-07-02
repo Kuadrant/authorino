@@ -74,6 +74,7 @@ var (
 	// ldflags
 	version string
 	dirty   string
+	gitSHA  string
 
 	scheme = runtime.NewScheme()
 	logger logr.Logger
@@ -374,7 +375,7 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 func setup(cmd *cobra.Command, log logOptions, telemetry telemetryOptions) {
 	setupLogger(log)
 
-	logger.Info("booting up authorino", "version", version, "cmd", cmd.Use, "dirty", dirty)
+	logger.Info("booting up authorino", "version", version, "commit", gitSHA, "dirty", dirty)
 
 	// log the command-line args
 	if logger.V(1).Enabled() {
@@ -564,8 +565,8 @@ func timeoutMs(timeout int) time.Duration {
 
 func printVersion(_ *cobra.Command, _ []string) {
 	if dirty == "true" {
-		fmt.Println("Authorino", version, "(dirty)")
+		fmt.Printf("%s (%s-dirty)", version, gitSHA)
 	} else {
-		fmt.Println("Authorino", version)
+		fmt.Printf("%s (%s)", version, gitSHA)
 	}
 }
