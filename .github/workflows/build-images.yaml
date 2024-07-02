@@ -33,11 +33,25 @@ jobs:
       - name: Set Authorino version
         id: authorino-version
         run: |
+          echo "VERSION=latest" >> $GITHUB_ENV
+      - name: Set Authorino git sha
+        id: authorino-git-sha
+        run: |
           if [[ ${GITHUB_REF_NAME/\//-} =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
           echo "VERSION=${GITHUB_REF_NAME/\//-}" >> $GITHUB_ENV
           else
-          echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          echo "GIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
           fi
+      - name: Set Authorino Dirty
+        id: authorino-dirty
+        run: |
+          GIT_DIRTY=$$(git diff --stat); \
+          if [ -n "$$GIT_DIRTY" ]; then \
+            DIRTY="true"; \
+          else \
+            DIRTY="false"; \
+          fi; \
+          echo "DIRTY=$DIRTY" >> $GITHUB_ENV
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Build Image
@@ -48,7 +62,9 @@ jobs:
           tags: ${{ env.IMG_TAGS }}
           platforms: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
           build-args: |
-            GIT_SHA=${{ env.VERSION }}
+            GIT_SHA=${{ env.GIT_SHA }}
+            VERSION=${{ env.VERSION }}
+            DIRTY=${{ env.DIRTY }}
           containerfiles: |
             ./Dockerfile
       - name: Push Image

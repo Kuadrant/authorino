@@ -375,7 +375,7 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 func setup(cmd *cobra.Command, log logOptions, telemetry telemetryOptions) {
 	setupLogger(log)
 
-	logger.Info("booting up authorino", "version", version, "commit", gitSHA, "dirty", dirty)
+	logger.Info("", "version", version, "commit", gitSHA, "dirty", dirty)
 
 	// log the command-line args
 	if logger.V(1).Enabled() {
@@ -565,8 +565,8 @@ func timeoutMs(timeout int) time.Duration {
 
 func printVersion(_ *cobra.Command, _ []string) {
 	if dirty == "true" {
-		fmt.Printf("%s (%s-dirty)", version, gitSHA)
+		fmt.Printf("%s (%s-dirty)\n", version, gitSHA)
 	} else {
-		fmt.Printf("%s (%s)", version, gitSHA)
+		fmt.Printf("%s (%s)\n", version, gitSHA)
 	}
 }
