@@ -3,14 +3,11 @@
 Get online data from remote HTTP services to enhance authorization rules.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>External auth metadata → <a href="../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - External auth metadata → [HTTP GET/GET-by-POST](../features.md#http-getget-by-post-metadatahttp)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+  - Authorization → [Open Policy Agent (OPA) Rego policies](../features.md#open-policy-agent-opa-rego-policies-authorizationopa)
 
   You can configure Authorino to fetch additional metadata from external sources in request-time, by sending either GET or POST request to an HTTP service. The service is expected to return a JSON content which is appended to the [Authorization JSON](../architecture.md#the-authorization-json), thus becoming available for usage in other configs of the Auth Pipeline, such as in authorization policies or custom responses.
 
@@ -20,8 +17,6 @@ Get online data from remote HTTP services to enhance authorization rules.
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

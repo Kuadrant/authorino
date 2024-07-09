@@ -3,13 +3,11 @@
 Manage permissions in the Kubernetes RBAC and let Authorino to check them in request-time with the authorization system of the cluster.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Authorization → <a href="../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview">Kubernetes SubjectAccessReview</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Authorization → [Kubernetes SubjectAccessReview](../features.md#kubernetes-subjectaccessreview-authorizationkubernetessubjectaccessreview)
+  - Identity verification & authentication → [Kubernetes TokenReview](../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview)
+
 
   Authorino can delegate authorization decision to the Kubernetes authorization system, allowing permissions to be stored and managed using the Kubernetes Role-Based Access Control (RBAC) for example. The feature is based on the `SubjectAccessReview` API and can be used for `resourceAttributes` (parameters defined in the `AuthConfig`) or `nonResourceAttributes` (inferring HTTP path and verb from the original request).
 
@@ -17,8 +15,6 @@ Manage permissions in the Kubernetes RBAC and let Authorino to check them in req
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

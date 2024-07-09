@@ -3,12 +3,9 @@
 Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; leverage OpenID Connect Discovery to automatically fetch JSON Web Key Sets (JWKS).
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
 
   Authorino validates JSON Web Tokens (JWT) issued by an OpenID Connect server that implements OpenID Connect Discovery. Authorino fetches the OpenID Connect configuration and JSON Web Key Set (JWKS) from the issuer endpoint, and verifies the JSON Web Signature (JWS) and time validity of the token.
 
@@ -16,8 +13,6 @@ Validate JSON Web Tokens (JWT) issued and signed by an OpenID Connect server; le
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

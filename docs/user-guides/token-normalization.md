@@ -9,22 +9,17 @@ This user guide focuses on the aspect of mutation of the identity claims resolve
 For not only normalizing the identity claims for purpose of writing simpler authorization checks and policies, but also getting Authorino to issue a new token in a normalized format, check the [Festival Wristband tokens](../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband) feature.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides">Identity extension</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [Identity extension](../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
 
   Check out as well the user guides about [Authentication with API keys](api-key-authentication.md), [OpenID Connect Discovery and authentication with JWTs](oidc-jwt-authentication.md) and [Simple pattern-matching authorization policies](json-pattern-matching-authorization.md).
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

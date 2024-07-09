@@ -11,15 +11,12 @@ The very definition of "edge" is subject to discussion, but the underlying idea 
 As a minimum, EAA allows to simplify authentication between applications and microservices inside the network, as well as to reduce authorization to domain-specific rules and policies, rather than having to deal all the complexity to support all types of clients in every node.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Dynamic response → <a href="../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband">Festival Wristband tokens</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides">Identity extension</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Dynamic response → [Festival Wristband tokens](../features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband)
+  - Identity verification & authentication → [Identity extension](../features.md#extra-identity-extension-authenticationdefaults-and-authenticationoverrides)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
 
   Festival Wristbands are OpenID Connect ID tokens (signed JWTs) issued by Authorino by the end of the Auth Pipeline, for authorized requests. It can be configured to include claims based on static values and values fetched from the [Authorization JSON](../architecture.md#the-authorization-json).
 
@@ -27,8 +24,6 @@ As a minimum, EAA allows to simplify authentication between applications and mic
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

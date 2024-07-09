@@ -3,13 +3,10 @@
 Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and token validation in request-time.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#oauth-20-introspection-authenticationoauth2introspection">OAuth 2.0 introspection</a></li>
-      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [OAuth 2.0 introspection](../features.md#oauth-20-introspection-authenticationoauth2introspection)
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
 
   Authorino can perform OAuth 2.0 token introspection ([RFC 7662](https://tools.ietf.org/html/rfc7662)) on the access tokens supplied in the requests to protected APIs. This is particularly useful when using opaque tokens, for remote checking the token validity and resolving the identity object.
 
@@ -19,8 +16,6 @@ Introspect OAuth 2.0 access tokens (e.g. opaque tokens) for online user data and
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

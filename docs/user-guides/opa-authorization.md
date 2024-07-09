@@ -3,13 +3,10 @@
 Leverage the power of Open Policy Agent (OPA) policies, evaluated against Authorino's Authorization JSON in a built-in runtime compiled together with Authorino; pre-cache policies defined in Rego language inline or fetched from an external policy registry.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Authorization → [Open Policy Agent (OPA) Rego policies](../features.md#open-policy-agent-opa-rego-policies-authorizationopa)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
 
   Authorino supports [Open Policy Agent](https://www.openpolicyagent.org) policies, either inline defined in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language) as part of the `AuthConfig` or fetched from an external endpoint, such as an OPA Policy Registry.
 
@@ -19,8 +16,6 @@ Leverage the power of Open Policy Agent (OPA) policies, evaluated against Author
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

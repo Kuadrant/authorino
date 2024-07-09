@@ -3,17 +3,12 @@
 Bypass identity verification or fall back to anonymous access when credentials fail to validate
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="./../features.md#anonymous-access-authenticationanonymous">Anonymous access</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide:</summary>
 
-  For further details about Authorino features in general, check the [docs](./../features.md).
+  - Identity verification & authentication → [Anonymous access](./../features.md#anonymous-access-authenticationanonymous)
+
+    For further details about Authorino features in general, check the [docs](./../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

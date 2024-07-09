@@ -3,21 +3,16 @@
 Fetch resource metadata relevant for your authorization policies from Keycloak authorization clients, using User-Managed Access (UMA) protocol.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>External auth metadata → <a href="../features.md#user-managed-access-uma-resource-registry-metadatauma">User-Managed Access (UMA) resource registry</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - External auth metadata → [User-Managed Access (UMA) resource registry](../features.md#user-managed-access-uma-resource-registry-metadatauma)
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
+  - Authorization → [Open Policy Agent (OPA) Rego policies](../features.md#open-policy-agent-opa-rego-policies-authorizationopa)
 
   Check out as well the user guides about [OpenID Connect Discovery and authentication with JWTs](oidc-jwt-authentication.md) and [Open Policy Agent (OPA) Rego policies](opa-authorization.md).
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

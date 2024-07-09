@@ -3,13 +3,10 @@
 Write simple authorization rules based on JSON patterns matched against Authorino's Authorization JSON; check contextual information of the request, validate JWT claims, cross metadata fetched from external sources, etc.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
 
   Authorino provides a built-in authorization module to check simple pattern-matching rules against the [Authorization JSON](../architecture.md#the-authorization-json). This is an alternative to [OPA](../features.md#open-policy-agent-opa-rego-policies-authorizationopa) when all you want is to check for some simple rules, without complex logics, such as match the value of a JWT claim.
 
@@ -17,8 +14,6 @@ Write simple authorization rules based on JSON patterns matched against Authorin
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 
