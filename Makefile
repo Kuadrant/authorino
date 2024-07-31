@@ -44,7 +44,7 @@ help:
 
 CONTROLLER_GEN = $(PROJECT_DIR)/bin/controller-gen
 controller-gen: ## Installs controller-gen in $PROJECT_DIR/bin
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.0)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0)
 
 KUSTOMIZE = $(PROJECT_DIR)/bin/kustomize
 kustomize: ## Installs kustomize in $PROJECT_DIR/bin
