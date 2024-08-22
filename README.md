@@ -10,6 +10,7 @@ Authorino is not about inventing anything new. It's about making the best things
 [![Unit Tests](https://github.com/Kuadrant/authorino/actions/workflows/go-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/go-test.yaml)
 [![End-to-end Tests](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml)
 [![Smoke Tests](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino?ref=badge_shield)
 
 ## Getting started
 
@@ -448,3 +449,7 @@ geomean     569.0        2.000       -99.65%
 If you are interested in contributing to Authorino, please refer to the [Developer's guide](./docs/contributing.md) for info about the stack and requirements, workflow, policies and Code of Conduct.
 
 Join us on the [#kuadrant](https://kubernetes.slack.com/archives/C05J0D0V525) channel in the Kubernetes Slack workspace, for live discussions about the roadmap and more.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino?ref=badge_large)
