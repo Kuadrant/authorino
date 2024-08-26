@@ -1,5 +1,10 @@
 package v1beta2
 
+// Hub marks this version as a conversion hub.
+func (a *AuthConfig) Hub() {}
+
+/**
+
 import (
 	"encoding/json"
 
@@ -1078,3 +1083,5 @@ func convertStatusSummaryFrom(src v1beta1.Summary) AuthConfigStatusSummary {
 		FestivalWristbandEnabled: src.FestivalWristbandEnabled,
 	}
 }
+
+*/
