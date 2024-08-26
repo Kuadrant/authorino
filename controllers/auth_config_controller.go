@@ -22,7 +22,7 @@ import (
 	"sort"
 	"sync"
 
-	api "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	authorization_evaluators "github.com/kuadrant/authorino/pkg/evaluators/authorization"
@@ -163,13 +163,16 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedIdentityConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
-	authConfigIdentityConfigs := authConfig.Spec.Identity
+	authConfigIdentityConfigs := authConfig.Spec.Authentication
 
 	if len(authConfigIdentityConfigs) == 0 {
-		authConfigIdentityConfigs = append(authConfigIdentityConfigs, &api.Identity{
-			Name:      "anonymous",
-			Anonymous: &api.Identity_Anonymous{},
-		})
+		authConfigIdentityConfigs["anonymous"] = api.AuthenticationSpec{
+			CommonEvaluatorSpec: api.CommonEvaluatorSpec{},
+			Credentials:         api.Credentials{},
+			AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+				AnonymousAccess: &api.AnonymousAccessSpec{},
+			},
+		}
 	}
 
 	for _, identity := range authConfigIdentityConfigs {
