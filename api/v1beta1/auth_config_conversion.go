@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"encoding/json"
+
 	"github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/utils"
 	"github.com/tidwall/gjson"

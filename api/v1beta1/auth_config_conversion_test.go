@@ -1,4 +1,4 @@
-package v1beta2
+package v1beta1
 
 import (
 	"encoding/json"
@@ -7,12 +7,23 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/api/v1beta2"
 )
 
 func TestConvertTo(t *testing.T) {
-	converted := &v1beta1.AuthConfig{}
-	authConfig().ConvertTo(converted)
+	converted := &v1beta2.AuthConfig{}
+	config := authConfig()
+	config.ConvertTo(converted)
+
+	expected := hubAuthConfig()
+	if !reflect.DeepEqual(expected, converted) {
+		t.Error(cmp.Diff(expected, converted))
+	}
+}
+
+func TestConvertFrom(t *testing.T) {
+	converted := &AuthConfig{}
+	converted.ConvertFrom(hubAuthConfig())
 
 	sort.Slice(converted.Spec.Identity, func(i, j int) bool {
 		return converted.Spec.Identity[i].Name < converted.Spec.Identity[j].Name
@@ -48,23 +59,14 @@ func TestConvertTo(t *testing.T) {
 		return converted.Spec.DenyWith.Unauthorized.Headers[i].Name < converted.Spec.DenyWith.Unauthorized.Headers[j].Name
 	})
 
-	expected := hubAuthConfig()
-	if !reflect.DeepEqual(expected, converted) {
-		t.Error(cmp.Diff(expected, converted))
-	}
-}
-
-func TestConvertFrom(t *testing.T) {
-	converted := &AuthConfig{}
-	converted.ConvertFrom(hubAuthConfig())
 	expected := authConfig()
 	if !reflect.DeepEqual(expected, converted) {
 		t.Error(cmp.Diff(expected, converted))
 	}
 }
 
-func authConfig() *AuthConfig {
-	authConfig := &AuthConfig{}
+func hubAuthConfig() *v1beta2.AuthConfig {
+	authConfig := &v1beta2.AuthConfig{}
 	err := json.Unmarshal([]byte(`
 	{
 		"metadata": {
@@ -477,8 +479,8 @@ func authConfig() *AuthConfig {
 	return authConfig
 }
 
-func hubAuthConfig() *v1beta1.AuthConfig {
-	authConfig := &v1beta1.AuthConfig{}
+func authConfig() *AuthConfig {
+	authConfig := &AuthConfig{}
 	err := json.Unmarshal([]byte(`
 	{
 		"metadata": {
