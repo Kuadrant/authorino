@@ -353,9 +353,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedAuthorizationConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
-	for index, authorization := range authConfig.Spec.Authorization {
+	authzIndex := 0
+	for authzName, authorization := range authConfig.Spec.Authorization {
 		translatedAuthorization := &evaluators.AuthorizationConfig{
-			Name:       authorization.Name,
+			Name:       authzName,
 			Priority:   authorization.Priority,
 			Conditions: buildJSONExpression(authConfig, authorization.Conditions, jsonexp.All),
 			Metrics:    authorization.Metrics,
@@ -372,12 +373,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			)
 		}
 
-		switch authorization.GetType() {
+		switch authorization.GetMethod() {
 		// opa
-		case old.AuthorizationOPA:
-			policyName := authConfig.GetNamespace() + "/" + authConfig.GetName() + "/" + authorization.Name
-			opa := authorization.OPA
-			externalRegistry := opa.ExternalRegistry
+		case api.OpaAuthorization:
+			policyName := authConfig.GetNamespace() + "/" + authConfig.GetName() + "/" + authzName
+			opa := authorization.Opa
+			externalRegistry := opa.External
 			secret := &v1.Secret{}
 			var sharedSecret string
 
@@ -392,49 +393,49 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			externalSource := &authorization_evaluators.OPAExternalSource{
-				Endpoint:        externalRegistry.Endpoint,
+				Endpoint:        externalRegistry.Url,
 				SharedSecret:    sharedSecret,
 				AuthCredentials: newAuthCredential(externalRegistry.Credentials),
 				TTL:             externalRegistry.TTL,
 			}
 
 			var err error
-			translatedAuthorization.OPA, err = authorization_evaluators.NewOPAAuthorization(policyName, opa.InlineRego, externalSource, opa.AllValues, index, ctxWithLogger)
+			translatedAuthorization.OPA, err = authorization_evaluators.NewOPAAuthorization(policyName, opa.Rego, externalSource, opa.AllValues, authzIndex, ctxWithLogger)
 			if err != nil {
 				return nil, err
 			}
 
 		// json
-		case old.AuthorizationJSONPatternMatching:
+		case api.PatternMatchingAuthorization:
 			translatedAuthorization.JSON = &authorization_evaluators.JSONPatternMatching{
-				Rules: buildJSONExpression(authConfig, authorization.JSON.Rules, jsonexp.All),
+				Rules: buildJSONExpression(authConfig, authorization.PatternMatching.Patterns, jsonexp.All),
 			}
 
-		case old.AuthorizationKubernetesAuthz:
-			user := authorization.KubernetesAuthz.User
-			authorinoUser := json.JSONValue{Static: user.Value, Pattern: user.ValueFrom.AuthJSON}
+		case api.KubernetesSubjectAccessReviewAuthorization:
+			user := authorization.KubernetesSubjectAccessReview.User
+			authorinoUser := json.JSONValue{Static: user.Value, Pattern: user.Selector}
 
 			var authorinoResourceAttributes *authorization_evaluators.KubernetesAuthzResourceAttributes
-			resourceAttributes := authorization.KubernetesAuthz.ResourceAttributes
+			resourceAttributes := authorization.KubernetesSubjectAccessReview.ResourceAttributes
 			if resourceAttributes != nil {
 				authorinoResourceAttributes = &authorization_evaluators.KubernetesAuthzResourceAttributes{
-					Namespace:   json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.ValueFrom.AuthJSON},
-					Group:       json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.ValueFrom.AuthJSON},
-					Resource:    json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.ValueFrom.AuthJSON},
-					Name:        json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.ValueFrom.AuthJSON},
-					SubResource: json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.ValueFrom.AuthJSON},
-					Verb:        json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.ValueFrom.AuthJSON},
+					Namespace:   json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.Selector},
+					Group:       json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.Selector},
+					Resource:    json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.Selector},
+					Name:        json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.Selector},
+					SubResource: json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.Selector},
+					Verb:        json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.Selector},
 				}
 			}
 
 			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesAuthz.Groups, authorinoResourceAttributes)
+			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}
 
-		case old.AuthorizationAuthzed:
-			authzed := authorization.Authzed
+		case api.SpiceDBAuthorization:
+			authzed := authorization.SpiceDB
 
 			secret := &v1.Secret{}
 			var sharedSecret string
@@ -456,11 +457,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 			translatedAuthorization.Authzed = translatedAuthzed
 
-		case old.TypeUnknown:
+		case api.UnknownAuthorizationMethod:
 			return nil, fmt.Errorf("unknown authorization type %v", authorization)
 		}
 
 		interfacedAuthorizationConfigs = append(interfacedAuthorizationConfigs, translatedAuthorization)
+		authzIndex++
 	}
 
 	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
