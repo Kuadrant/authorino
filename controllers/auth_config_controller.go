@@ -467,13 +467,36 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
 
-	for _, response := range authConfig.Spec.Response {
+	for responseName, headerResponse := range authConfig.Spec.Response.Success.Headers {
 		translatedResponse := evaluators.NewResponseConfig(
-			response.Name,
+			responseName,
+			headerResponse.Priority,
+			buildJSONExpression(authConfig, headerResponse.Conditions, jsonexp.All),
+			"httpHeader",
+			headerResponse.Key,
+			headerResponse.Metrics,
+		)
+
+		if headerResponse.Cache != nil {
+			ttl := headerResponse.Cache.TTL
+			if ttl == 0 {
+				ttl = old.EvaluatorDefaultCacheTTL
+			}
+			translatedResponse.Cache = evaluators.NewEvaluatorCache(
+				*getJsonFromStaticDynamic(&headerResponse.Cache.Key),
+				ttl,
+			)
+		}
+		interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
+	}
+
+	for responseName, response := range authConfig.Spec.Response.Success.DynamicMetadata {
+		translatedResponse := evaluators.NewResponseConfig(
+			responseName,
 			response.Priority,
 			buildJSONExpression(authConfig, response.Conditions, jsonexp.All),
-			string(response.Wrapper),
-			response.WrapperKey,
+			"envoyDynamicMetadata",
+			response.Key,
 			response.Metrics,
 		)
 
@@ -488,9 +511,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			)
 		}
 
-		switch response.GetType() {
+		switch response.GetMethod() {
 		// wristband
-		case old.ResponseWristband:
+		case api.WristbandAuthResponse:
 			wristband := response.Wristband
 			signingKeys := make([]jose.JSONWebKey, 0)
 
@@ -516,12 +539,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			customClaims := make([]json.JSONProperty, 0)
-			for _, claim := range wristband.CustomClaims {
+			for claimName, claim := range wristband.CustomClaims {
 				customClaims = append(customClaims, json.JSONProperty{
-					Name: claim.Name,
+					Name: claimName,
 					Value: json.JSONValue{
 						Static:  claim.Value,
-						Pattern: claim.ValueFrom.AuthJSON,
+						Pattern: claim.Selector,
 					},
 				})
 			}
@@ -538,15 +561,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// dynamic json
-		case old.ResponseDynamicJSON:
+		case api.JsonAuthResponse:
 			jsonProperties := make([]json.JSONProperty, 0)
 
-			for _, property := range response.JSON.Properties {
+			for propertyName, property := range response.Json.Properties {
 				jsonProperties = append(jsonProperties, json.JSONProperty{
-					Name: property.Name,
+					Name: propertyName,
 					Value: json.JSONValue{
 						Static:  property.Value,
-						Pattern: property.ValueFrom.AuthJSON,
+						Pattern: property.Selector,
 					},
 				})
 			}
@@ -554,15 +577,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
 		// plain
-		case old.ResponsePlain:
+		case api.PlainAuthResponse:
 			translatedResponse.Plain = &response_evaluators.Plain{
 				JSONValue: json.JSONValue{
 					Static:  response.Plain.Value,
-					Pattern: response.Plain.ValueFrom.AuthJSON,
+					Pattern: response.Plain.Selector,
 				},
 			}
 
-		case old.TypeUnknown:
+		case api.UnknownAuthResponseMethod:
 			return nil, fmt.Errorf("unknown response type %v", response)
 		}
 
