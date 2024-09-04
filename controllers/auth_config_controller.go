@@ -571,9 +571,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
 
-	for name, callback := range authConfig.Spec.Callbacks {
+	for callbackName, callback := range authConfig.Spec.Callbacks {
 		translatedCallback := &evaluators.CallbackConfig{
-			Name:       name,
+			Name:       callbackName,
 			Priority:   callback.Priority,
 			Conditions: buildJSONExpression(authConfig, callback.Conditions, jsonexp.All),
 			Metrics:    callback.Metrics,
@@ -606,9 +606,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	// denyWith
-	if denyWith := authConfig.Spec.DenyWith; denyWith != nil {
-		translatedAuthConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith.Unauthenticated)
-		translatedAuthConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith.Unauthorized)
+	if denyWith := authConfig.Spec.Response.Unauthenticated; denyWith != nil {
+		translatedAuthConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith)
+	}
+	if denyWith := authConfig.Spec.Response.Unauthorized; denyWith != nil {
+		translatedAuthConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith)
 	}
 
 	return translatedAuthConfig, nil
