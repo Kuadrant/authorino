@@ -451,8 +451,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				SharedSecret: sharedSecret,
 				Permission:   *getJsonFromStaticDynamic(&authzed.Permission),
 			}
-			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = authzedObjectToJsonValues(authzed.Subject)
-			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = authzedObjectToJsonValues(authzed.Resource)
+			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = spiceDBObjectToJsonValues(authzed.Subject)
+			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = spiceDBObjectToJsonValues(authzed.Resource)
 
 			translatedAuthorization.Authzed = translatedAuthzed
 
@@ -860,14 +860,14 @@ func buildJSONExpressionPattern(expression api.PatternExpression) jsonexp.Expres
 	}
 }
 
-func buildAuthorinoDenyWithValues(denyWithSpec *old.DenyWithSpec) *evaluators.DenyWithValues {
+func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.DenyWithValues {
 	if denyWithSpec == nil {
 		return nil
 	}
 
 	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
-	for _, header := range denyWithSpec.Headers {
-		headers = append(headers, json.JSONProperty{Name: header.Name, Value: json.JSONValue{Static: header.Value, Pattern: header.ValueFrom.AuthJSON}})
+	for name, header := range denyWithSpec.Headers {
+		headers = append(headers, json.JSONProperty{Name: name, Value: json.JSONValue{Static: header.Value, Pattern: header.Selector}})
 	}
 
 	return &evaluators.DenyWithValues{
@@ -889,7 +889,7 @@ func getJsonFromStaticDynamic(value *api.ValueOrSelector) *json.JSONValue {
 	}
 }
 
-func authzedObjectToJsonValues(obj *old.AuthzedObject) (name json.JSONValue, kind json.JSONValue) {
+func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name json.JSONValue, kind json.JSONValue) {
 	if obj == nil {
 		return
 	}
