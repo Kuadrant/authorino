@@ -210,7 +210,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			)
 		}
 
-		authCred := auth.NewAuthCredential(identity.Credentials.KeySelector, string(identity.Credentials.In))
+		authCred := newAuthCredential(identity.Credentials)
 
 		switch identity.GetType() {
 		// oauth2
@@ -394,7 +394,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			externalSource := &authorization_evaluators.OPAExternalSource{
 				Endpoint:        externalRegistry.Endpoint,
 				SharedSecret:    sharedSecret,
-				AuthCredentials: auth.NewAuthCredential(externalRegistry.Credentials.KeySelector, string(externalRegistry.Credentials.In)),
+				AuthCredentials: newAuthCredential(externalRegistry.Credentials),
 				TTL:             externalRegistry.TTL,
 			}
 
@@ -569,24 +569,24 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
 
-	for _, callback := range authConfig.Spec.Callbacks {
+	for name, callback := range authConfig.Spec.Callbacks {
 		translatedCallback := &evaluators.CallbackConfig{
-			Name:       callback.Name,
+			Name:       name,
 			Priority:   callback.Priority,
 			Conditions: buildJSONExpression(authConfig, callback.Conditions, jsonexp.All),
 			Metrics:    callback.Metrics,
 		}
 
-		switch callback.GetType() {
+		switch callback.GetMethod() {
 		// http
-		case old.CallbackHTTP:
-			ev, err := r.buildGenericHttpEvaluator(ctx, callback.HTTP, authConfig.Namespace)
+		case api.HttpCallback:
+			ev, err := r.buildGenericHttpEvaluator(ctx, callback.Http, authConfig.Namespace)
 			if err != nil {
 				return nil, err
 			}
 			translatedCallback.HTTP = ev
 
-		case old.TypeUnknown:
+		case api.UnknownCallbackMethod:
 			return nil, fmt.Errorf("unknown callback type %v", callback)
 		}
 
@@ -728,7 +728,7 @@ func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {
 	return nil
 }
 
-func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, http *old.Metadata_GenericHTTP, namespace string) (*metadata_evaluators.GenericHttp, error) {
+func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, http *api.HttpEndpointSpec, namespace string) (*metadata_evaluators.GenericHttp, error) {
 	var sharedSecret string
 	if sharedSecretRef := http.SharedSecret; sharedSecretRef != nil {
 		secret := &v1.Secret{}
@@ -754,27 +754,27 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 
 	var body *json.JSONValue
 	if b := http.Body; b != nil {
-		body = &json.JSONValue{Static: b.Value, Pattern: b.ValueFrom.AuthJSON}
+		body = &json.JSONValue{Static: b.Value, Pattern: b.Selector}
 	}
 
 	params := make([]json.JSONProperty, 0, len(http.Parameters))
-	for _, param := range http.Parameters {
+	for name, param := range http.Parameters {
 		params = append(params, json.JSONProperty{
-			Name: param.Name,
+			Name: name,
 			Value: json.JSONValue{
 				Static:  param.Value,
-				Pattern: param.ValueFrom.AuthJSON,
+				Pattern: param.Selector,
 			},
 		})
 	}
 
 	headers := make([]json.JSONProperty, 0, len(http.Headers))
-	for _, header := range http.Headers {
+	for name, header := range http.Headers {
 		headers = append(headers, json.JSONProperty{
-			Name: header.Name,
+			Name: name,
 			Value: json.JSONValue{
 				Static:  header.Value,
-				Pattern: header.ValueFrom.AuthJSON,
+				Pattern: header.Selector,
 			},
 		})
 	}
@@ -785,7 +785,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	}
 
 	ev := &metadata_evaluators.GenericHttp{
-		Endpoint:              http.Endpoint,
+		Endpoint:              http.Url,
 		Method:                method,
 		Body:                  body,
 		Parameters:            params,
@@ -797,10 +797,29 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	}
 
 	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {
-		ev.AuthCredentials = auth.NewAuthCredential(http.Credentials.KeySelector, string(http.Credentials.In))
+		ev.AuthCredentials = newAuthCredential(http.Credentials)
 	}
 
 	return ev, nil
+}
+
+func newAuthCredential(creds api.Credentials) *auth.AuthCredential {
+	var in, key string
+	switch creds.GetType() {
+	case api.AuthorizationHeaderCredentials:
+		in = "authorization_header"
+		key = creds.AuthorizationHeader.Prefix
+	case api.CustomHeaderCredentials:
+		in = "custom_header"
+		key = creds.CustomHeader.Name
+	case api.QueryStringCredentials:
+		in = "query"
+		key = creds.QueryString.Name
+	case api.CookieCredentials:
+		in = "cookie"
+		key = creds.Cookie.Name
+	}
+	return auth.NewAuthCredential(key, in)
 }
 
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {
