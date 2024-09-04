@@ -6,7 +6,8 @@ import (
 	"os"
 	"testing"
 
-	api "github.com/kuadrant/authorino/api/v1beta1"
+	old "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
@@ -40,6 +41,71 @@ func TestMain(m *testing.M) {
 }
 
 func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
+	spec := old.AuthConfigSpec{
+		Hosts: []string{"echo-api"},
+		Identity: []*old.Identity{
+			{
+				Name: "keycloak",
+				Oidc: &old.Identity_OidcConfig{
+					Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
+				},
+				ExtendedProperties: []old.ExtendedProperty{
+					{
+						JsonProperty: old.JsonProperty{
+							Name:  "source",
+							Value: runtime.RawExtension{Raw: []byte(`"test"`)},
+						},
+					},
+				},
+			},
+		},
+		Metadata: []*old.Metadata{
+			{
+				Name: "userinfo",
+				UserInfo: &old.Metadata_UserInfo{
+					IdentitySource: "keycloak",
+				},
+			},
+			{
+				Name: "resource-data",
+				UMA: &old.Metadata_UMA{
+					Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
+					Credentials: &v1.LocalObjectReference{
+						Name: "secret",
+					},
+				},
+			},
+		},
+		Authorization: []*old.Authorization{
+			{
+				Name: "main-policy",
+				OPA: &old.Authorization_OPA{
+					InlineRego: `
+			method = object.get(input.context.request.http, "method", "")
+			path = object.get(input.context.request.http, "path", "")
+
+			allow {
+              method == "GET"
+              path = "/allow"
+          }`,
+				},
+			},
+			{
+				Name: "some-extra-rules",
+				JSON: &old.Authorization_JSONPatternMatching{
+					Rules: []old.JSONPattern{
+						{
+							JSONPatternExpression: old.JSONPatternExpression{
+								Selector: "context.identity.role",
+								Operator: "eq",
+								Value:    "admin",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	return api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
@@ -51,69 +117,14 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 			Labels:    authConfigLabels,
 		},
 		Spec: api.AuthConfigSpec{
-			Hosts: []string{"echo-api"},
-			Identity: []*api.Identity{
-				{
-					Name: "keycloak",
-					Oidc: &api.Identity_OidcConfig{
-						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
-					},
-					ExtendedProperties: []api.ExtendedProperty{
-						{
-							JsonProperty: api.JsonProperty{
-								Name:  "source",
-								Value: runtime.RawExtension{Raw: []byte(`"test"`)},
-							},
-						},
-					},
-				},
-			},
-			Metadata: []*api.Metadata{
-				{
-					Name: "userinfo",
-					UserInfo: &api.Metadata_UserInfo{
-						IdentitySource: "keycloak",
-					},
-				},
-				{
-					Name: "resource-data",
-					UMA: &api.Metadata_UMA{
-						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
-						Credentials: &v1.LocalObjectReference{
-							Name: "secret",
-						},
-					},
-				},
-			},
-			Authorization: []*api.Authorization{
-				{
-					Name: "main-policy",
-					OPA: &api.Authorization_OPA{
-						InlineRego: `
-			method = object.get(input.context.request.http, "method", "")
-			path = object.get(input.context.request.http, "path", "")
-
-			allow {
-              method == "GET"
-              path = "/allow"
-          }`,
-					},
-				},
-				{
-					Name: "some-extra-rules",
-					JSON: &api.Authorization_JSONPatternMatching{
-						Rules: []api.JSONPattern{
-							{
-								JSONPatternExpression: api.JSONPatternExpression{
-									Selector: "context.identity.role",
-									Operator: "eq",
-									Value:    "admin",
-								},
-							},
-						},
-					},
-				},
-			},
+			Hosts:          []string{"echo-api"},
+			NamedPatterns:  nil,
+			Conditions:     nil,
+			Authentication: nil,
+			Metadata:       nil,
+			Authorization:  nil,
+			Response:       nil,
+			Callbacks:      nil,
 		},
 	}
 }
@@ -387,26 +398,26 @@ func TestBootstrapIndex(t *testing.T) {
 	indexMock := mock_index.NewMockIndex(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{"scope": "in"})
-	authConfig.Status.Summary = api.Summary{
+	authConfig.Status.Summary = api.AuthConfigStatusSummary{
 		Ready:                    true,
 		HostsReady:               authConfig.Spec.Hosts,
 		NumHostsReady:            fmt.Sprintf("%d/%d", len(authConfig.Spec.Hosts), len(authConfig.Spec.Hosts)),
-		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		NumResponseItems:         int64(len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)),
 		FestivalWristbandEnabled: false,
 	}
 
 	authConfigOutOfScope := newTestAuthConfig(map[string]string{"scope": "out"})
-	authConfigOutOfScope.Status.Summary = api.Summary{
+	authConfigOutOfScope.Status.Summary = api.AuthConfigStatusSummary{
 		Ready:                    true,
 		HostsReady:               authConfig.Spec.Hosts,
 		NumHostsReady:            fmt.Sprintf("%d/%d", len(authConfig.Spec.Hosts), len(authConfig.Spec.Hosts)),
-		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		NumResponseItems:         int64(len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)),
 		FestivalWristbandEnabled: false,
 	}
 
