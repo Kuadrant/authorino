@@ -475,8 +475,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
 
-	if authConfig.Spec.Response != nil {
-		for responseName, headerResponse := range authConfig.Spec.Response.Success.Headers {
+	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
+		for responseName, headerResponse := range responseConfig.Success.Headers {
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
 				headerResponse.Priority,
@@ -486,22 +486,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				headerResponse.Metrics,
 			)
 
-			if headerResponse.Cache != nil {
-				ttl := headerResponse.Cache.TTL
-				if ttl == 0 {
-					ttl = api.EvaluatorDefaultCacheTTL
-				}
-				translatedResponse.Cache = evaluators.NewEvaluatorCache(
-					*getJsonFromStaticDynamic(&headerResponse.Cache.Key),
-					ttl,
-				)
-			}
+			injectCache(headerResponse.Cache, translatedResponse)
 			interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 		}
-	}
 
-	if authConfig.Spec.Response != nil {
-		for responseName, response := range authConfig.Spec.Response.Success.DynamicMetadata {
+		for responseName, response := range responseConfig.Success.DynamicMetadata {
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
 				response.Priority,
@@ -511,16 +500,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				response.Metrics,
 			)
 
-			if response.Cache != nil {
-				ttl := response.Cache.TTL
-				if ttl == 0 {
-					ttl = api.EvaluatorDefaultCacheTTL
-				}
-				translatedResponse.Cache = evaluators.NewEvaluatorCache(
-					*getJsonFromStaticDynamic(&response.Cache.Key),
-					ttl,
-				)
-			}
+			injectCache(response.Cache, translatedResponse)
 
 			switch response.GetMethod() {
 			// wristband
@@ -641,16 +621,29 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	// denyWith
-	if authConfig.Spec.Response != nil {
-		if denyWith := authConfig.Spec.Response.Unauthenticated; denyWith != nil {
+	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
+		if denyWith := responseConfig.Unauthenticated; denyWith != nil {
 			translatedAuthConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith)
 		}
-		if denyWith := authConfig.Spec.Response.Unauthorized; denyWith != nil {
+		if denyWith := responseConfig.Unauthorized; denyWith != nil {
 			translatedAuthConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith)
 		}
 	}
 
 	return translatedAuthConfig, nil
+}
+
+func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) {
+	if cache != nil {
+		ttl := cache.TTL
+		if ttl == 0 {
+			ttl = api.EvaluatorDefaultCacheTTL
+		}
+		translatedResponse.Cache = evaluators.NewEvaluatorCache(
+			*getJsonFromStaticDynamic(&cache.Key),
+			ttl,
+		)
+	}
 }
 
 func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, authConfig *evaluators.AuthConfig, hosts []string) (linkedHosts, looseHosts []string, err error) {

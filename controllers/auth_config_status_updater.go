@@ -218,6 +218,11 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 
 func issuingWristbands(authConfig *api.AuthConfig) bool {
 	if authConfig.Spec.Response != nil {
+		for _, responseConfig := range authConfig.Spec.Response.Success.Headers {
+			if responseConfig.GetMethod() == api.WristbandAuthResponse {
+				return true
+			}
+		}
 		for _, responseConfig := range authConfig.Spec.Response.Success.DynamicMetadata {
 			if responseConfig.GetMethod() == api.WristbandAuthResponse {
 				return true
