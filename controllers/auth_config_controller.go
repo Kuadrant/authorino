@@ -304,19 +304,19 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			)
 		}
 
-		switch metadata.GetType() {
+		switch metadata.GetMethod() {
 		// uma
-		case old.MetadataUma:
+		case api.UmaResourceMetadata:
 			secret := &v1.Secret{}
 			if err := r.Client.Get(ctx, types.NamespacedName{
 				Namespace: authConfig.Namespace,
-				Name:      metadata.UMA.Credentials.Name},
+				Name:      metadata.Uma.Credentials.Name},
 				secret); err != nil {
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
 			if uma, err := metadata_evaluators.NewUMAMetadata(
-				metadata.UMA.Endpoint,
+				metadata.Uma.Endpoint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
 			); err != nil {
@@ -326,7 +326,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// user_info
-		case old.MetadataUserinfo:
+		case api.UserInfoMetadata:
 			translatedMetadata.UserInfo = &metadata_evaluators.UserInfo{}
 
 			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource); err != nil {
@@ -336,14 +336,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		// generic http
-		case old.MetadataGenericHTTP:
-			ev, err := r.buildGenericHttpEvaluator(ctx, metadata.GenericHTTP, authConfig.Namespace)
+		case api.HttpMetadata:
+			ev, err := r.buildGenericHttpEvaluator(ctx, metadata.Http, authConfig.Namespace)
 			if err != nil {
 				return nil, err
 			}
 			translatedMetadata.GenericHTTP = ev
 
-		case old.TypeUnknown:
+		case api.UnknownMetadataMethod:
 			return nil, fmt.Errorf("unknown metadata type %v", metadata)
 		}
 
