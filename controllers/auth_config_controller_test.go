@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	old "github.com/kuadrant/authorino/api/v1beta1"
 	api "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
@@ -41,46 +40,46 @@ func TestMain(m *testing.M) {
 }
 
 func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
-	spec := old.AuthConfigSpec{
+	spec := api.AuthConfigSpec{
 		Hosts: []string{"echo-api"},
-		Identity: []*old.Identity{
-			{
-				Name: "keycloak",
-				Oidc: &old.Identity_OidcConfig{
-					Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
+		Authentication: map[string]api.AuthenticationSpec{
+			"keycloak": {
+				AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+					Jwt: &api.JwtAuthenticationSpec{
+						IssuerUrl: "http://127.0.0.1:9001/auth/realms/demo",
+					},
 				},
-				ExtendedProperties: []old.ExtendedProperty{
-					{
-						JsonProperty: old.JsonProperty{
-							Name:  "source",
-							Value: runtime.RawExtension{Raw: []byte(`"test"`)},
+				Defaults: map[string]api.ValueOrSelector{
+					"source": {
+						Value: runtime.RawExtension{Raw: []byte(`"test"`)},
+					},
+				},
+			},
+		},
+		Metadata: map[string]api.MetadataSpec{
+			"userinfo": {
+				MetadataMethodSpec: api.MetadataMethodSpec{
+					UserInfo: &api.UserInfoMetadataSpec{
+						IdentitySource: "keycloak",
+					},
+				},
+			},
+			"resource-data": {
+				MetadataMethodSpec: api.MetadataMethodSpec{
+					Uma: &api.UmaMetadataSpec{
+						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
+						Credentials: &v1.LocalObjectReference{
+							Name: "secret",
 						},
 					},
 				},
 			},
 		},
-		Metadata: []*old.Metadata{
-			{
-				Name: "userinfo",
-				UserInfo: &old.Metadata_UserInfo{
-					IdentitySource: "keycloak",
-				},
-			},
-			{
-				Name: "resource-data",
-				UMA: &old.Metadata_UMA{
-					Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
-					Credentials: &v1.LocalObjectReference{
-						Name: "secret",
-					},
-				},
-			},
-		},
-		Authorization: []*old.Authorization{
-			{
-				Name: "main-policy",
-				OPA: &old.Authorization_OPA{
-					InlineRego: `
+		Authorization: map[string]api.AuthorizationSpec{
+			"main-policy": {
+				AuthorizationMethodSpec: api.AuthorizationMethodSpec{
+					Opa: &api.OpaAuthorizationSpec{
+						Rego: `
 			method = object.get(input.context.request.http, "method", "")
 			path = object.get(input.context.request.http, "path", "")
 
@@ -88,17 +87,19 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
               method == "GET"
               path = "/allow"
           }`,
+					},
 				},
 			},
-			{
-				Name: "some-extra-rules",
-				JSON: &old.Authorization_JSONPatternMatching{
-					Rules: []old.JSONPattern{
-						{
-							JSONPatternExpression: old.JSONPatternExpression{
-								Selector: "context.identity.role",
-								Operator: "eq",
-								Value:    "admin",
+			"some-extra-rules": {
+				AuthorizationMethodSpec: api.AuthorizationMethodSpec{
+					PatternMatching: &api.PatternMatchingAuthorizationSpec{
+						Patterns: []api.PatternExpressionOrRef{
+							{
+								PatternExpression: api.PatternExpression{
+									Selector: "context.identity.role",
+									Operator: "eq",
+									Value:    "admin",
+								},
 							},
 						},
 					},
@@ -109,23 +110,14 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 	return api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "authorino.kuadrant.io/v1beta1",
+			APIVersion: "authorino.kuadrant.io/v1beta2",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",
 			Namespace: "authorino",
 			Labels:    authConfigLabels,
 		},
-		Spec: api.AuthConfigSpec{
-			Hosts:          []string{"echo-api"},
-			NamedPatterns:  nil,
-			Conditions:     nil,
-			Authentication: nil,
-			Metadata:       nil,
-			Authorization:  nil,
-			Response:       nil,
-			Callbacks:      nil,
-		},
+		Spec: spec,
 	}
 }
 
