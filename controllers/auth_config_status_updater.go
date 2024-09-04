@@ -181,6 +181,10 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 		newLinkedHosts = []string{}
 	}
 
+	numResponseItems := 0
+	if authConfig.Spec.Response != nil {
+		numResponseItems = len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)
+	}
 	new := api.AuthConfigStatusSummary{
 		Ready:                    authConfig.Status.Ready(),
 		HostsReady:               newLinkedHosts,
@@ -188,7 +192,7 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)),
+		NumResponseItems:         int64(numResponseItems),
 		FestivalWristbandEnabled: issuingWristbands(authConfig),
 	}
 
@@ -213,9 +217,11 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 }
 
 func issuingWristbands(authConfig *api.AuthConfig) bool {
-	for _, responseConfig := range authConfig.Spec.Response.Success.DynamicMetadata {
-		if responseConfig.GetMethod() == api.WristbandAuthResponse {
-			return true
+	if authConfig.Spec.Response != nil {
+		for _, responseConfig := range authConfig.Spec.Response.Success.DynamicMetadata {
+			if responseConfig.GetMethod() == api.WristbandAuthResponse {
+				return true
+			}
 		}
 	}
 	return false

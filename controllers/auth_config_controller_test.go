@@ -170,7 +170,7 @@ func TestReconcileAuthConfigOk(t *testing.T) {
 	config := authConfigIndex.Get("echo-api")
 	assert.Check(t, config != nil)
 	idConfig, _ := config.IdentityConfigs[0].(*evaluators.IdentityConfig)
-	assert.Equal(t, idConfig.ExtendedProperties[0].Name, "source")
+	assert.Equal(t, idConfig.ExtendedProperties[1].Name, "source")
 	// TODO(@guicassolato): assert other fields of the AuthConfig
 }
 
@@ -390,6 +390,10 @@ func TestBootstrapIndex(t *testing.T) {
 	indexMock := mock_index.NewMockIndex(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{"scope": "in"})
+	expectedNumResponseItems := 0
+	if authConfig.Spec.Response != nil {
+		expectedNumResponseItems = len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)
+	}
 	authConfig.Status.Summary = api.AuthConfigStatusSummary{
 		Ready:                    true,
 		HostsReady:               authConfig.Spec.Hosts,
@@ -397,7 +401,7 @@ func TestBootstrapIndex(t *testing.T) {
 		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)),
+		NumResponseItems:         int64(expectedNumResponseItems),
 		FestivalWristbandEnabled: false,
 	}
 
@@ -409,7 +413,7 @@ func TestBootstrapIndex(t *testing.T) {
 		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)),
+		NumResponseItems:         int64(expectedNumResponseItems),
 		FestivalWristbandEnabled: false,
 	}
 
