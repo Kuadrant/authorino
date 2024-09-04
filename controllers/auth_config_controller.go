@@ -22,7 +22,6 @@ import (
 	"sort"
 	"sync"
 
-	old "github.com/kuadrant/authorino/api/v1beta1"
 	api "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -202,7 +201,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if identity.Cache != nil {
 			ttl := identity.Cache.TTL
 			if ttl == 0 {
-				ttl = old.EvaluatorDefaultCacheTTL
+				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
 				*getJsonFromStaticDynamic(&identity.Cache.Key),
@@ -296,7 +295,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if metadata.Cache != nil {
 			ttl := metadata.Cache.TTL
 			if ttl == 0 {
-				ttl = old.EvaluatorDefaultCacheTTL
+				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedMetadata.Cache = evaluators.NewEvaluatorCache(
 				*getJsonFromStaticDynamic(&metadata.Cache.Key),
@@ -365,7 +364,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if authorization.Cache != nil {
 			ttl := authorization.Cache.TTL
 			if ttl == 0 {
-				ttl = old.EvaluatorDefaultCacheTTL
+				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedAuthorization.Cache = evaluators.NewEvaluatorCache(
 				*getJsonFromStaticDynamic(&authorization.Cache.Key),
@@ -480,7 +479,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if headerResponse.Cache != nil {
 			ttl := headerResponse.Cache.TTL
 			if ttl == 0 {
-				ttl = old.EvaluatorDefaultCacheTTL
+				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedResponse.Cache = evaluators.NewEvaluatorCache(
 				*getJsonFromStaticDynamic(&headerResponse.Cache.Key),
@@ -503,7 +502,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if response.Cache != nil {
 			ttl := response.Cache.TTL
 			if ttl == 0 {
-				ttl = old.EvaluatorDefaultCacheTTL
+				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedResponse.Cache = evaluators.NewEvaluatorCache(
 				*getJsonFromStaticDynamic(&response.Cache.Key),
@@ -680,7 +679,7 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		return nil
 	}
 
-	authConfigList := old.AuthConfigList{}
+	authConfigList := api.AuthConfigList{}
 	listOptions := []client.ListOption{}
 	if r.LabelSelector != nil {
 		listOptions = append(listOptions, client.MatchingLabelsSelector{Selector: r.LabelSelector})
@@ -735,7 +734,7 @@ func (r *AuthConfigReconciler) ClusterWide() bool {
 
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&old.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
+		For(&api.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
 		Complete(r)
 }
 
@@ -746,7 +745,7 @@ func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {
 
 	for id, status := range r.StatusReport.ReadAll() {
 		switch status.Reason {
-		case old.StatusReasonReconciled:
+		case api.StatusReasonReconciled:
 			continue
 		default:
 			return fmt.Errorf("authconfig is not ready: %s (reason: %s)", id, status.Reason)
