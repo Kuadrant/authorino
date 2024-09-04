@@ -377,25 +377,31 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		case api.OpaAuthorization:
 			policyName := authConfig.GetNamespace() + "/" + authConfig.GetName() + "/" + authzName
 			opa := authorization.Opa
-			externalRegistry := opa.External
 			secret := &v1.Secret{}
-			var sharedSecret string
 
-			if externalRegistry.SharedSecret != nil {
-				if err := r.Client.Get(ctx, types.NamespacedName{
-					Namespace: authConfig.Namespace,
-					Name:      externalRegistry.SharedSecret.Name},
-					secret); err != nil {
-					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			var (
+				sharedSecret   string
+				externalSource *authorization_evaluators.OPAExternalSource
+			)
+
+			if opa.External != nil {
+				externalRegistry := opa.External
+				if externalRegistry.SharedSecret != nil {
+					if err := r.Client.Get(ctx, types.NamespacedName{
+						Namespace: authConfig.Namespace,
+						Name:      externalRegistry.SharedSecret.Name},
+						secret); err != nil {
+						return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+					}
+					sharedSecret = string(secret.Data[externalRegistry.SharedSecret.Key])
 				}
-				sharedSecret = string(secret.Data[externalRegistry.SharedSecret.Key])
-			}
 
-			externalSource := &authorization_evaluators.OPAExternalSource{
-				Endpoint:        externalRegistry.Url,
-				SharedSecret:    sharedSecret,
-				AuthCredentials: newAuthCredential(externalRegistry.Credentials),
-				TTL:             externalRegistry.TTL,
+				externalSource = &authorization_evaluators.OPAExternalSource{
+					Endpoint:        externalRegistry.Url,
+					SharedSecret:    sharedSecret,
+					AuthCredentials: newAuthCredential(externalRegistry.Credentials),
+					TTL:             externalRegistry.TTL,
+				}
 			}
 
 			var err error
