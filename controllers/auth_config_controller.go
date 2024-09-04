@@ -212,10 +212,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		authCred := newAuthCredential(identity.Credentials)
 
-		switch identity.GetType() {
+		switch identity.GetMethod() {
 		// oauth2
-		case old.IdentityOAuth2:
-			oauth2Identity := identity.OAuth2
+		case api.OAuth2TokenIntrospectionAuthentication:
+			oauth2Identity := identity.OAuth2TokenIntrospection
 
 			secret := &v1.Secret{}
 			if err := r.Client.Get(ctx, types.NamespacedName{
@@ -226,7 +226,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			translatedIdentity.OAuth2 = identity_evaluators.NewOAuth2Identity(
-				oauth2Identity.TokenIntrospectionUrl,
+				oauth2Identity.Url,
 				oauth2Identity.TokenTypeHint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
@@ -234,48 +234,48 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			)
 
 		// oidc
-		case old.IdentityOidc:
-			translatedIdentity.OIDC = identity_evaluators.NewOIDC(identity.Oidc.Endpoint, authCred, identity.Oidc.TTL, ctxWithLogger)
+		case api.JwtAuthentication:
+			translatedIdentity.OIDC = identity_evaluators.NewOIDC(identity.Jwt.IssuerUrl, authCred, identity.Jwt.TTL, ctxWithLogger)
 
 		// apiKey
-		case old.IdentityApiKey:
+		case api.ApiKeyAuthentication:
 			namespace := authConfig.Namespace
-			if identity.APIKey.AllNamespaces && r.ClusterWide() {
+			if identity.ApiKey.AllNamespaces && r.ClusterWide() {
 				namespace = ""
 			}
-			selector, err := metav1.LabelSelectorAsSelector(identity.APIKey.Selector)
+			selector, err := metav1.LabelSelectorAsSelector(identity.ApiKey.Selector)
 			if err != nil {
 				return nil, err
 			}
-			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identity.Name, selector, namespace, authCred, r.Client, ctxWithLogger)
+			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identityCfgName, selector, namespace, authCred, r.Client, ctxWithLogger)
 
 		// MTLS
-		case old.IdentityMTLS:
+		case api.X509ClientCertificateAuthentication:
 			namespace := authConfig.Namespace
-			if identity.MTLS.AllNamespaces && r.ClusterWide() {
+			if identity.X509ClientCertificate.AllNamespaces && r.ClusterWide() {
 				namespace = ""
 			}
-			selector, err := metav1.LabelSelectorAsSelector(identity.MTLS.Selector)
+			selector, err := metav1.LabelSelectorAsSelector(identity.X509ClientCertificate.Selector)
 			if err != nil {
 				return nil, err
 			}
-			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identity.Name, selector, namespace, r.Client, ctxWithLogger)
+			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identityCfgName, selector, namespace, r.Client, ctxWithLogger)
 
 		// kubernetes auth
-		case old.IdentityKubernetesAuth:
-			if k8sAuthConfig, err := identity_evaluators.NewKubernetesAuthIdentity(authCred, identity.KubernetesAuth.Audiences); err != nil {
+		case api.KubernetesTokenReviewAuthentication:
+			if k8sAuthConfig, err := identity_evaluators.NewKubernetesAuthIdentity(authCred, identity.KubernetesTokenReview.Audiences); err != nil {
 				return nil, err
 			} else {
 				translatedIdentity.KubernetesAuth = k8sAuthConfig
 			}
 
-		case old.IdentityPlain:
-			translatedIdentity.Plain = &identity_evaluators.Plain{Pattern: identity.Plain.AuthJSON}
+		case api.PlainIdentityAuthentication:
+			translatedIdentity.Plain = &identity_evaluators.Plain{Pattern: identity.Plain.Selector}
 
-		case old.IdentityAnonymous:
+		case api.AnonymousAccessAuthentication:
 			translatedIdentity.Noop = &identity_evaluators.Noop{AuthCredentials: authCred}
 
-		case old.TypeUnknown:
+		case api.UnknownAuthenticationMethod:
 			return nil, fmt.Errorf("unknown identity type %v", identity)
 		}
 
@@ -285,9 +285,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
 
-	for _, metadata := range authConfig.Spec.Metadata {
+	for name, metadata := range authConfig.Spec.Metadata {
 		translatedMetadata := &evaluators.MetadataConfig{
-			Name:       metadata.Name,
+			Name:       name,
 			Priority:   metadata.Priority,
 			Conditions: buildJSONExpression(authConfig, metadata.Conditions, jsonexp.All),
 			Metrics:    metadata.Metrics,
