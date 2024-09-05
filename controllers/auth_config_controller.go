@@ -476,108 +476,37 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
-		for responseName, headerResponse := range responseConfig.Success.Headers {
+		for responseName, headerSuccessResponse := range responseConfig.Success.Headers {
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
-				headerResponse.Priority,
-				buildJSONExpression(authConfig, headerResponse.Conditions, jsonexp.All),
+				headerSuccessResponse.Priority,
+				buildJSONExpression(authConfig, headerSuccessResponse.Conditions, jsonexp.All),
 				"httpHeader",
-				headerResponse.Key,
-				headerResponse.Metrics,
+				headerSuccessResponse.Key,
+				headerSuccessResponse.Metrics,
 			)
 
-			injectCache(headerResponse.Cache, translatedResponse)
+			injectCache(headerSuccessResponse.Cache, translatedResponse)
+			if err := injectResponseConfig(ctx, authConfig, headerSuccessResponse.SuccessResponseSpec, r, translatedResponse); err != nil {
+				return nil, err
+			}
+
 			interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 		}
 
-		for responseName, response := range responseConfig.Success.DynamicMetadata {
+		for responseName, successResponse := range responseConfig.Success.DynamicMetadata {
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
-				response.Priority,
-				buildJSONExpression(authConfig, response.Conditions, jsonexp.All),
+				successResponse.Priority,
+				buildJSONExpression(authConfig, successResponse.Conditions, jsonexp.All),
 				"envoyDynamicMetadata",
-				response.Key,
-				response.Metrics,
+				successResponse.Key,
+				successResponse.Metrics,
 			)
 
-			injectCache(response.Cache, translatedResponse)
-
-			switch response.GetMethod() {
-			// wristband
-			case api.WristbandAuthResponse:
-				wristband := response.Wristband
-				signingKeys := make([]jose.JSONWebKey, 0)
-
-				for _, signingKeyRef := range wristband.SigningKeyRefs {
-					secret := &v1.Secret{}
-					secretName := types.NamespacedName{
-						Namespace: authConfig.Namespace,
-						Name:      signingKeyRef.Name,
-					}
-					if err := r.Client.Get(ctx, secretName, secret); err != nil {
-						return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
-					} else {
-						if signingKey, err := response_evaluators.NewSigningKey(
-							signingKeyRef.Name,
-							string(signingKeyRef.Algorithm),
-							secret.Data["key.pem"],
-						); err != nil {
-							return nil, err
-						} else {
-							signingKeys = append(signingKeys, *signingKey)
-						}
-					}
-				}
-
-				customClaims := make([]json.JSONProperty, 0)
-				for claimName, claim := range wristband.CustomClaims {
-					customClaims = append(customClaims, json.JSONProperty{
-						Name: claimName,
-						Value: json.JSONValue{
-							Static:  claim.Value,
-							Pattern: claim.Selector,
-						},
-					})
-				}
-
-				if authorinoWristband, err := response_evaluators.NewWristbandConfig(
-					wristband.Issuer,
-					customClaims,
-					wristband.TokenDuration,
-					signingKeys,
-				); err != nil {
-					return nil, err
-				} else {
-					translatedResponse.Wristband = authorinoWristband
-				}
-
-			// dynamic json
-			case api.JsonAuthResponse:
-				jsonProperties := make([]json.JSONProperty, 0)
-
-				for propertyName, property := range response.Json.Properties {
-					jsonProperties = append(jsonProperties, json.JSONProperty{
-						Name: propertyName,
-						Value: json.JSONValue{
-							Static:  property.Value,
-							Pattern: property.Selector,
-						},
-					})
-				}
-
-				translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
-
-			// plain
-			case api.PlainAuthResponse:
-				translatedResponse.Plain = &response_evaluators.Plain{
-					JSONValue: json.JSONValue{
-						Static:  response.Plain.Value,
-						Pattern: response.Plain.Selector,
-					},
-				}
-
-			case api.UnknownAuthResponseMethod:
-				return nil, fmt.Errorf("unknown response type %v", response)
+			injectCache(successResponse.Cache, translatedResponse)
+			if err := injectResponseConfig(ctx, authConfig, successResponse, r, translatedResponse); err != nil {
+				return nil, err
 			}
 
 			interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
@@ -631,6 +560,87 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	return translatedAuthConfig, nil
+}
+
+func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, successResponse api.SuccessResponseSpec, r *AuthConfigReconciler, translatedResponse *evaluators.ResponseConfig) error {
+	switch successResponse.GetMethod() {
+	// wristband
+	case api.WristbandAuthResponse:
+		wristband := successResponse.Wristband
+		signingKeys := make([]jose.JSONWebKey, 0)
+
+		for _, signingKeyRef := range wristband.SigningKeyRefs {
+			secret := &v1.Secret{}
+			secretName := types.NamespacedName{
+				Namespace: authConfig.Namespace,
+				Name:      signingKeyRef.Name,
+			}
+			if err := r.Client.Get(ctx, secretName, secret); err != nil {
+				return err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
+			} else {
+				if signingKey, err := response_evaluators.NewSigningKey(
+					signingKeyRef.Name,
+					string(signingKeyRef.Algorithm),
+					secret.Data["key.pem"],
+				); err != nil {
+					return err
+				} else {
+					signingKeys = append(signingKeys, *signingKey)
+				}
+			}
+		}
+
+		customClaims := make([]json.JSONProperty, 0)
+		for claimName, claim := range wristband.CustomClaims {
+			customClaims = append(customClaims, json.JSONProperty{
+				Name: claimName,
+				Value: json.JSONValue{
+					Static:  claim.Value,
+					Pattern: claim.Selector,
+				},
+			})
+		}
+
+		if authorinoWristband, err := response_evaluators.NewWristbandConfig(
+			wristband.Issuer,
+			customClaims,
+			wristband.TokenDuration,
+			signingKeys,
+		); err != nil {
+			return err
+		} else {
+			translatedResponse.Wristband = authorinoWristband
+		}
+
+	// dynamic json
+	case api.JsonAuthResponse:
+		jsonProperties := make([]json.JSONProperty, 0)
+
+		for propertyName, property := range successResponse.Json.Properties {
+			jsonProperties = append(jsonProperties, json.JSONProperty{
+				Name: propertyName,
+				Value: json.JSONValue{
+					Static:  property.Value,
+					Pattern: property.Selector,
+				},
+			})
+		}
+
+		translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
+
+	// plain
+	case api.PlainAuthResponse:
+		translatedResponse.Plain = &response_evaluators.Plain{
+			JSONValue: json.JSONValue{
+				Static:  successResponse.Plain.Value,
+				Pattern: successResponse.Plain.Selector,
+			},
+		}
+
+	case api.UnknownAuthResponseMethod:
+		return fmt.Errorf("unknown successResponse type %v", successResponse)
+	}
+	return nil
 }
 
 func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) {
