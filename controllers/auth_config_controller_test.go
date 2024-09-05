@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	api "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
@@ -40,44 +40,33 @@ func TestMain(m *testing.M) {
 }
 
 func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
-	return api.AuthConfig{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "AuthConfig",
-			APIVersion: "authorino.kuadrant.io/v1beta1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "auth-config-1",
-			Namespace: "authorino",
-			Labels:    authConfigLabels,
-		},
-		Spec: api.AuthConfigSpec{
-			Hosts: []string{"echo-api"},
-			Identity: []*api.Identity{
-				{
-					Name: "keycloak",
-					Oidc: &api.Identity_OidcConfig{
-						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
+	spec := api.AuthConfigSpec{
+		Hosts: []string{"echo-api"},
+		Authentication: map[string]api.AuthenticationSpec{
+			"keycloak": {
+				AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+					Jwt: &api.JwtAuthenticationSpec{
+						IssuerUrl: "http://127.0.0.1:9001/auth/realms/demo",
 					},
-					ExtendedProperties: []api.ExtendedProperty{
-						{
-							JsonProperty: api.JsonProperty{
-								Name:  "source",
-								Value: runtime.RawExtension{Raw: []byte(`"test"`)},
-							},
-						},
+				},
+				Defaults: map[string]api.ValueOrSelector{
+					"source": {
+						Value: runtime.RawExtension{Raw: []byte(`"test"`)},
 					},
 				},
 			},
-			Metadata: []*api.Metadata{
-				{
-					Name: "userinfo",
-					UserInfo: &api.Metadata_UserInfo{
+		},
+		Metadata: map[string]api.MetadataSpec{
+			"userinfo": {
+				MetadataMethodSpec: api.MetadataMethodSpec{
+					UserInfo: &api.UserInfoMetadataSpec{
 						IdentitySource: "keycloak",
 					},
 				},
-				{
-					Name: "resource-data",
-					UMA: &api.Metadata_UMA{
+			},
+			"resource-data": {
+				MetadataMethodSpec: api.MetadataMethodSpec{
+					Uma: &api.UmaMetadataSpec{
 						Endpoint: "http://127.0.0.1:9001/auth/realms/demo",
 						Credentials: &v1.LocalObjectReference{
 							Name: "secret",
@@ -85,11 +74,12 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 					},
 				},
 			},
-			Authorization: []*api.Authorization{
-				{
-					Name: "main-policy",
-					OPA: &api.Authorization_OPA{
-						InlineRego: `
+		},
+		Authorization: map[string]api.AuthorizationSpec{
+			"main-policy": {
+				AuthorizationMethodSpec: api.AuthorizationMethodSpec{
+					Opa: &api.OpaAuthorizationSpec{
+						Rego: `
 			method = object.get(input.context.request.http, "method", "")
 			path = object.get(input.context.request.http, "path", "")
 
@@ -99,12 +89,13 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
           }`,
 					},
 				},
-				{
-					Name: "some-extra-rules",
-					JSON: &api.Authorization_JSONPatternMatching{
-						Rules: []api.JSONPattern{
+			},
+			"some-extra-rules": {
+				AuthorizationMethodSpec: api.AuthorizationMethodSpec{
+					PatternMatching: &api.PatternMatchingAuthorizationSpec{
+						Patterns: []api.PatternExpressionOrRef{
 							{
-								JSONPatternExpression: api.JSONPatternExpression{
+								PatternExpression: api.PatternExpression{
 									Selector: "context.identity.role",
 									Operator: "eq",
 									Value:    "admin",
@@ -115,6 +106,18 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 				},
 			},
 		},
+	}
+	return api.AuthConfig{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "AuthConfig",
+			APIVersion: "authorino.kuadrant.io/v1beta2",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "auth-config-1",
+			Namespace: "authorino",
+			Labels:    authConfigLabels,
+		},
+		Spec: spec,
 	}
 }
 
@@ -167,7 +170,7 @@ func TestReconcileAuthConfigOk(t *testing.T) {
 	config := authConfigIndex.Get("echo-api")
 	assert.Check(t, config != nil)
 	idConfig, _ := config.IdentityConfigs[0].(*evaluators.IdentityConfig)
-	assert.Equal(t, idConfig.ExtendedProperties[0].Name, "source")
+	assert.Equal(t, idConfig.ExtendedProperties[1].Name, "source")
 	// TODO(@guicassolato): assert other fields of the AuthConfig
 }
 
@@ -387,26 +390,30 @@ func TestBootstrapIndex(t *testing.T) {
 	indexMock := mock_index.NewMockIndex(mockController)
 
 	authConfig := newTestAuthConfig(map[string]string{"scope": "in"})
-	authConfig.Status.Summary = api.Summary{
+	expectedNumResponseItems := 0
+	if authConfig.Spec.Response != nil {
+		expectedNumResponseItems = len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)
+	}
+	authConfig.Status.Summary = api.AuthConfigStatusSummary{
 		Ready:                    true,
 		HostsReady:               authConfig.Spec.Hosts,
 		NumHostsReady:            fmt.Sprintf("%d/%d", len(authConfig.Spec.Hosts), len(authConfig.Spec.Hosts)),
-		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		NumResponseItems:         int64(expectedNumResponseItems),
 		FestivalWristbandEnabled: false,
 	}
 
 	authConfigOutOfScope := newTestAuthConfig(map[string]string{"scope": "out"})
-	authConfigOutOfScope.Status.Summary = api.Summary{
+	authConfigOutOfScope.Status.Summary = api.AuthConfigStatusSummary{
 		Ready:                    true,
 		HostsReady:               authConfig.Spec.Hosts,
 		NumHostsReady:            fmt.Sprintf("%d/%d", len(authConfig.Spec.Hosts), len(authConfig.Spec.Hosts)),
-		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		NumResponseItems:         int64(expectedNumResponseItems),
 		FestivalWristbandEnabled: false,
 	}
 

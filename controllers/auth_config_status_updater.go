@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	api "github.com/kuadrant/authorino/api/v1beta1"
+	api "github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/utils"
 
@@ -105,11 +105,11 @@ func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(u)
 }
 
-func updateStatusConditions(currentConditions []api.Condition, newCondition api.Condition) ([]api.Condition, bool) {
+func updateStatusConditions(currentConditions []api.AuthConfigStatusCondition, newCondition api.AuthConfigStatusCondition) ([]api.AuthConfigStatusCondition, bool) {
 	newCondition.LastTransitionTime = metav1.Now()
 
 	if currentConditions == nil {
-		return []api.Condition{newCondition}, true
+		return []api.AuthConfigStatusCondition{newCondition}, true
 	}
 
 	for i, condition := range currentConditions {
@@ -122,7 +122,7 @@ func updateStatusConditions(currentConditions []api.Condition, newCondition api.
 				newCondition.LastTransitionTime = condition.LastTransitionTime
 			}
 
-			res := make([]api.Condition, len(currentConditions))
+			res := make([]api.AuthConfigStatusCondition, len(currentConditions))
 			copy(res, currentConditions)
 			res[i] = newCondition
 			return res, true
@@ -143,7 +143,7 @@ func updateStatusAvailable(authConfig *api.AuthConfig, available bool) (changed 
 		message = ""
 	}
 
-	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.Condition{
+	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.AuthConfigStatusCondition{
 		Type:    api.StatusConditionAvailable,
 		Status:  status,
 		Reason:  reason,
@@ -164,7 +164,7 @@ func updateStatusReady(authConfig *api.AuthConfig, ready bool, reason, message s
 		reason = api.StatusReasonUnknown
 	}
 
-	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.Condition{
+	authConfig.Status.Conditions, changed = updateStatusConditions(authConfig.Status.Conditions, api.AuthConfigStatusCondition{
 		Type:    api.StatusConditionReady,
 		Status:  status,
 		Reason:  reason,
@@ -181,14 +181,18 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 		newLinkedHosts = []string{}
 	}
 
-	new := api.Summary{
+	numResponseItems := 0
+	if authConfig.Spec.Response != nil {
+		numResponseItems = len(authConfig.Spec.Response.Success.DynamicMetadata) + len(authConfig.Spec.Response.Success.Headers)
+	}
+	new := api.AuthConfigStatusSummary{
 		Ready:                    authConfig.Status.Ready(),
 		HostsReady:               newLinkedHosts,
 		NumHostsReady:            fmt.Sprintf("%d/%d", len(newLinkedHosts), len(authConfig.Spec.Hosts)),
-		NumIdentitySources:       int64(len(authConfig.Spec.Identity)),
+		NumIdentitySources:       int64(len(authConfig.Spec.Authentication)),
 		NumMetadataSources:       int64(len(authConfig.Spec.Metadata)),
 		NumAuthorizationPolicies: int64(len(authConfig.Spec.Authorization)),
-		NumResponseItems:         int64(len(authConfig.Spec.Response)),
+		NumResponseItems:         int64(numResponseItems),
 		FestivalWristbandEnabled: issuingWristbands(authConfig),
 	}
 
@@ -213,9 +217,16 @@ func updateStatusSummary(authConfig *api.AuthConfig, newLinkedHosts []string) (c
 }
 
 func issuingWristbands(authConfig *api.AuthConfig) bool {
-	for _, responseConfig := range authConfig.Spec.Response {
-		if responseConfig.GetType() == api.ResponseWristband {
-			return true
+	if authConfig.Spec.Response != nil {
+		for _, responseConfig := range authConfig.Spec.Response.Success.Headers {
+			if responseConfig.GetMethod() == api.WristbandAuthResponse {
+				return true
+			}
+		}
+		for _, responseConfig := range authConfig.Spec.Response.Success.DynamicMetadata {
+			if responseConfig.GetMethod() == api.WristbandAuthResponse {
+				return true
+			}
 		}
 	}
 	return false
