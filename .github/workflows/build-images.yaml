@@ -30,14 +30,18 @@ jobs:
         id: add-branch-tag
         run: |
           echo "IMG_TAGS=${GITHUB_REF_NAME/\//-} ${{ env.IMG_TAGS }}" >> $GITHUB_ENV
-      - name: Set Authorino version
-        id: authorino-version
+      - name: Set Authorino build info
+        id: authorino-build-info
         run: |
           if [[ ${GITHUB_REF_NAME/\//-} =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
-          echo "VERSION=${GITHUB_REF_NAME/\//-}" >> $GITHUB_ENV
+            tag=${GITHUB_REF_NAME/\//-}
+            echo "version=${tag#v}" >> $GITHUB_ENV
+          elif [[ ${GITHUB_REF_NAME/\//-} == "main" ]]; then
+            echo "version=latest" >> $GITHUB_ENV
           else
-          echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
+            echo "version=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
+          echo "git_sha=${{ github.sha }}" >> $GITHUB_ENV
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Build Image
@@ -48,7 +52,9 @@ jobs:
           tags: ${{ env.IMG_TAGS }}
           platforms: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
           build-args: |
-            version=${{ env.VERSION }}
+            git_sha=${{ env.git_sha }}
+            version=${{ env.version }}
+            dirty=${{ env.dirty }}
           containerfiles: |
             ./Dockerfile
       - name: Push Image

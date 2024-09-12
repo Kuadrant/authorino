@@ -1,18 +1,24 @@
 # Use bash as shell
 SHELL = /bin/bash
 
-# Authorino version
-VERSION = $(shell git rev-parse HEAD)
-
 # Use vi as default editor
 EDITOR ?= vi
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
+# Set version and image tag
+ifeq ($(VERSION),)
+VERSION = $(shell git rev-parse --abbrev-ref HEAD)
 endif
+ifeq ($(VERSION),main)
+override VERSION = latest
+endif
+using_semantic_version := $(shell [[ $(VERSION) =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$$ ]] && echo "true")
+ifdef using_semantic_version
+IMAGE_TAG=v$(VERSION)
+else
+IMAGE_TAG=local
+endif
+IMAGE_REPO ?= authorino
+AUTHORINO_IMAGE ?= $(IMAGE_REPO):$(IMAGE_TAG)
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 export PATH := $(PROJECT_DIR)/bin:$(PATH)
@@ -77,6 +83,13 @@ ifeq ($(SED),)
 	exit 1
 endif
 
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
+
 # go-get-tool will 'go install' any package $2 and install it to $1.
 define go-get-tool
 @[ -f $(1) ] || { \
@@ -112,22 +125,20 @@ manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/i
 	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && $(KUSTOMIZE) build install > $(AUTHORINO_MANIFESTS)
 	$(MAKE) patch-webhook
 
+run:git_sha=$(shell git rev-parse HEAD)
+run:dirty=$(shell $(PROJECT_DIR)/hack/check-git-dirty.sh || echo "unknown")
 run: generate manifests ## Runs the application against the Kubernetes cluster configured in ~/.kube/config
-	go run -ldflags "-X main.version=$(VERSION)" ./main.go server
+	go run -ldflags "-X main.version=$(VERSION) -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" ./main.go server
 
+build:git_sha=$(shell git rev-parse HEAD)
+build:dirty=$(shell $(PROJECT_DIR)/hack/check-git-dirty.sh || echo "unknown")
 build: generate ## Builds the manager binary
-	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(VERSION)" -o bin/authorino main.go
+	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(VERSION) -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o bin/authorino main.go
 
-IMAGE_REPO ?= authorino
-using_semantic_version := $(shell [[ $(VERSION) =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$$ ]] && echo "true")
-ifdef using_semantic_version
-IMAGE_TAG=v$(VERSION)
-else
-IMAGE_TAG=local
-endif
-AUTHORINO_IMAGE ?= $(IMAGE_REPO):$(IMAGE_TAG)
+docker-build:git_sha=$(shell git rev-parse HEAD)
+docker-build:dirty=$(shell $(PROJECT_DIR)/hack/check-git-dirty.sh || echo "unknown")
 docker-build: ## Builds an image based on the current branch
-	docker build --build-arg version=$(VERSION) -t $(AUTHORINO_IMAGE) .
+	docker build --build-arg version=$(VERSION) --build-arg git_sha=$(git_sha) --build-arg dirty=$(dirty) -t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
