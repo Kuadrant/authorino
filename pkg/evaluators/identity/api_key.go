@@ -26,18 +26,20 @@ type APIKey struct {
 	Name           string              `yaml:"name"`
 	LabelSelectors k8s_labels.Selector `yaml:"labelSelectors"`
 	Namespace      string              `yaml:"namespace"`
+	KeySelectors   []string            `yaml:"keySelectors"`
 
 	secrets   map[string]k8s.Secret
 	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
-func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, keySelectors []string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
 	apiKey := &APIKey{
 		AuthCredentials: authCred,
 		Name:            name,
 		LabelSelectors:  labelSelectors,
 		Namespace:       namespace,
+		KeySelectors:    append(keySelectors, apiKeySelector),
 		secrets:         make(map[string]k8s.Secret),
 		k8sClient:       k8sClient,
 	}
@@ -103,17 +105,19 @@ func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) 
 	logger := log.FromContext(ctx).WithName("apikey")
 
 	// updating existing
-	newAPIKeyValue := string(new.Data[apiKeySelector])
-	for oldAPIKeyValue, current := range a.secrets {
-		if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
-			if oldAPIKeyValue != newAPIKeyValue {
-				a.appendK8sSecretBasedIdentity(new)
-				delete(a.secrets, oldAPIKeyValue)
-				logger.V(1).Info("api key updated")
-			} else {
-				logger.V(1).Info("api key unchanged")
+	for _, key := range a.KeySelectors {
+		newAPIKeyValue := string(new.Data[key])
+		for oldAPIKeyValue, current := range a.secrets {
+			if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
+				if oldAPIKeyValue != newAPIKeyValue {
+					a.appendK8sSecretBasedIdentity(new)
+					delete(a.secrets, oldAPIKeyValue)
+					logger.V(1).Info("api key updated")
+				} else {
+					logger.V(1).Info("api key unchanged")
+				}
+				return
 			}
-			return
 		}
 	}
 
@@ -146,10 +150,13 @@ func (a *APIKey) withinScope(namespace string) bool {
 // Appends the K8s Secret to the cache of API keys
 // Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
 func (a *APIKey) appendK8sSecretBasedIdentity(secret k8s.Secret) bool {
-	value, isAPIKeySecret := secret.Data[apiKeySelector]
-	if isAPIKeySecret && len(value) > 0 {
-		a.secrets[string(value)] = secret
-		return true
+	for _, key := range a.KeySelectors {
+		value, isAPIKeySecret := secret.Data[key]
+		if isAPIKeySecret && len(value) > 0 {
+			a.secrets[string(value)] = secret
+			return true
+		}
 	}
+
 	return false
 }
