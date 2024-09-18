@@ -2660,6 +2660,14 @@ spec:
                             Whether Authorino should look for API key secrets in all namespaces or only in the same namespace as the AuthConfig.
                             Enabling this option in namespaced Authorino instances has no effect.
                           type: boolean
+                        keySelectors:
+                          description: |-
+                            List of keys within the selected Kubernetes secret that contain valid API credentials.
+                            Authorino will attempt to authenticate using the first key that matches.
+                            If no match is found, authentication will fail.
+                          items:
+                            type: string
+                          type: array
                         selector:
                           description: Label selector used by Authorino to match secrets
                             from the cluster storing valid credentials to authenticate

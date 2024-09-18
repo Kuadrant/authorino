@@ -355,6 +355,12 @@ type ApiKeyAuthenticationSpec struct {
 	// +optional
 	// +kubebuilder:default:=false
 	AllNamespaces bool `json:"allNamespaces,omitempty"`
+
+	// List of keys within the selected Kubernetes secret that contain valid API credentials.
+	// Authorino will attempt to authenticate using the first key that matches.
+	// If no match is found, authentication will fail.
+	// +optional
+	KeySelectors []string `json:"keySelectors,omitempty"`
 }
 
 // Settings to fetch the JSON Web Key Set (JWKS) for the JWT authentication.
