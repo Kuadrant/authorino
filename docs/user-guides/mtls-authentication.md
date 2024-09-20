@@ -3,13 +3,10 @@
 Verify client X.509 certificates against trusted root CAs stored in Kubernetes `Secret`s to authenticate access to APIs protected with Authorino.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#x509-client-certificate-authentication-authenticationx509">X.509 client certificate authentication</a></li>
-      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [X.509 client certificate authentication](../features.md#x509-client-certificate-authentication-authenticationx509)
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
 
   Authorino can verify x509 certificates presented by clients for authentication on the request to the protected APIs, at application level.
 
@@ -17,8 +14,6 @@ Verify client X.509 certificates against trusted root CAs stored in Kubernetes `
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

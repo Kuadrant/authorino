@@ -3,16 +3,11 @@
 Permission requests sent to a Google Zanzibar-based [Authzed/SpiceDB](https://authzed.com) instance, via gRPC.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Authorization → <a href="../features.md#spicedb-authorizationspicedb">SpiceDB</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-    </ul>
-  </summary>
-</details>
+  <summary>Authorino capabilities featured in this guide</summary>
 
-<br/>
+  - Authorization → [SpiceDB](../features.md#spicedb-authorizationspicedb)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+</details>
 
 ## Requirements
 
