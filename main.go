@@ -27,8 +27,13 @@ import (
 	"os"
 	"time"
 
-	v1beta1 "github.com/kuadrant/authorino/api/v1beta1"
-	v1beta2 "github.com/kuadrant/authorino/api/v1beta2"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/kuadrant/authorino/api/v1beta1"
+	"github.com/kuadrant/authorino/api/v1beta2"
+	"github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/health"
@@ -38,9 +43,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/service"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/go-logr/logr"
@@ -84,6 +86,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
 	utilruntime.Must(v1beta2.AddToScheme(scheme))
+	utilruntime.Must(v1beta3.AddToScheme(scheme))
 }
 
 type logOptions struct {
