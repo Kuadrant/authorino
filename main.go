@@ -31,7 +31,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/kuadrant/authorino/api/v1beta1"
 	"github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/controllers"
@@ -84,7 +83,6 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
 	utilruntime.Must(v1beta2.AddToScheme(scheme))
 	utilruntime.Must(v1beta3.AddToScheme(scheme))
 }
@@ -357,12 +355,6 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 	})
 	if err != nil {
 		logger.Error(err, "failed to setup webhook manager")
-		os.Exit(1)
-	}
-
-	// sets up the authconfig webhook
-	if err := (&v1beta2.AuthConfig{}).SetupWebhookWithManager(mgr); err != nil {
-		logger.Error(err, "failed to setup authconfig webhook")
 		os.Exit(1)
 	}
 

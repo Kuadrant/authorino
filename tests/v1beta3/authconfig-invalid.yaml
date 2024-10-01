@@ -1,4 +1,4 @@
-apiVersion: authorino.kuadrant.io/v1beta3
+apiVersion: authorino.kuadrant.io/v1beta2
 kind: AuthConfig
 metadata:
   name: e2e-test-invalid
