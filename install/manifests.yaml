@@ -76,6 +76,42 @@ spec:
             properties:
               authentication:
                 additionalProperties:
+                  oneOf:
+                  - properties:
+                      credentials: {}
+                      oauth2Introspection: {}
+                    required:
+                    - oauth2Introspection
+                  - properties:
+                      credentials: {}
+                      jwt: {}
+                    required:
+                    - jwt
+                  - properties:
+                      apiKey: {}
+                      credentials: {}
+                    required:
+                    - apiKey
+                  - properties:
+                      credentials: {}
+                      x509: {}
+                    required:
+                    - x509
+                  - properties:
+                      credentials: {}
+                      kubernetesTokenReview: {}
+                    required:
+                    - kubernetesTokenReview
+                  - properties:
+                      anonymous: {}
+                      credentials: {}
+                    required:
+                    - anonymous
+                  - properties:
+                      credentials: {}
+                      plain: {}
+                    required:
+                    - plain
                   properties:
                     anonymous:
                       description: Anonymous access.
@@ -324,6 +360,26 @@ spec:
                         If omitted, the config will be enforced for all requests.
                         If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
                       items:
+                        oneOf:
+                        - properties:
+                            patternRef: {}
+                          required:
+                          - patternRef
+                        - properties:
+                            operator: {}
+                            selector: {}
+                            value: {}
+                          required:
+                          - operator
+                          - selector
+                        - properties:
+                            all: {}
+                          required:
+                          - all
+                        - properties:
+                            any: {}
+                          required:
+                          - any
                         properties:
                           all:
                             description: A list of pattern expressions to be evaluated
@@ -433,6 +489,23 @@ spec:
                 type: object
               authorization:
                 additionalProperties:
+                  oneOf:
+                  - properties:
+                      opa: {}
+                    required:
+                    - opa
+                  - properties:
+                      patternMatching: {}
+                    required:
+                    - patternMatching
+                  - properties:
+                      kubernetesSubjectAccessReview: {}
+                    required:
+                    - kubernetesSubjectAccessReview
+                  - properties:
+                      spicedb: {}
+                    required:
+                    - spicedb
                   properties:
                     cache:
                       description: |-
@@ -803,6 +876,26 @@ spec:
                       properties:
                         patterns:
                           items:
+                            oneOf:
+                            - properties:
+                                patternRef: {}
+                              required:
+                              - patternRef
+                            - properties:
+                                operator: {}
+                                selector: {}
+                                value: {}
+                              required:
+                              - operator
+                              - selector
+                            - properties:
+                                all: {}
+                              required:
+                              - all
+                            - properties:
+                                any: {}
+                              required:
+                              - any
                             properties:
                               all:
                                 description: A list of pattern expressions to be evaluated
@@ -964,6 +1057,26 @@ spec:
                         If omitted, the config will be enforced for all requests.
                         If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
                       items:
+                        oneOf:
+                        - properties:
+                            patternRef: {}
+                          required:
+                          - patternRef
+                        - properties:
+                            operator: {}
+                            selector: {}
+                            value: {}
+                          required:
+                          - operator
+                          - selector
+                        - properties:
+                            all: {}
+                          required:
+                          - all
+                        - properties:
+                            any: {}
+                          required:
+                          - any
                         properties:
                           all:
                             description: A list of pattern expressions to be evaluated
@@ -1304,6 +1417,19 @@ spec:
                 type: array
               metadata:
                 additionalProperties:
+                  oneOf:
+                  - properties:
+                      userInfo: {}
+                    required:
+                    - userInfo
+                  - properties:
+                      uma: {}
+                    required:
+                    - uma
+                  - properties:
+                      http: {}
+                    required:
+                    - http
                   properties:
                     cache:
                       description: |-
@@ -1574,6 +1700,26 @@ spec:
                         If omitted, the config will be enforced for all requests.
                         If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
                       items:
+                        oneOf:
+                        - properties:
+                            patternRef: {}
+                          required:
+                          - patternRef
+                        - properties:
+                            operator: {}
+                            selector: {}
+                            value: {}
+                          required:
+                          - operator
+                          - selector
+                        - properties:
+                            all: {}
+                          required:
+                          - all
+                        - properties:
+                            any: {}
+                          required:
+                          - any
                         properties:
                           all:
                             description: A list of pattern expressions to be evaluated
@@ -1665,6 +1811,19 @@ spec:
                       dynamicMetadata:
                         additionalProperties:
                           description: Settings of the success custom response item.
+                          oneOf:
+                          - properties:
+                              wristband: {}
+                            required:
+                            - wristband
+                          - properties:
+                              json: {}
+                            required:
+                            - json
+                          - properties:
+                              plain: {}
+                            required:
+                            - plain
                           properties:
                             cache:
                               description: |-
@@ -1752,6 +1911,26 @@ spec:
                                 If omitted, the config will be enforced for all requests.
                                 If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
                               items:
+                                oneOf:
+                                - properties:
+                                    patternRef: {}
+                                  required:
+                                  - patternRef
+                                - properties:
+                                    operator: {}
+                                    selector: {}
+                                    value: {}
+                                  required:
+                                  - operator
+                                  - selector
+                                - properties:
+                                    all: {}
+                                  required:
+                                  - all
+                                - properties:
+                                    any: {}
+                                  required:
+                                  - any
                                 properties:
                                   all:
                                     description: A list of pattern expressions to
@@ -1864,6 +2043,19 @@ spec:
                         type: object
                       headers:
                         additionalProperties:
+                          oneOf:
+                          - properties:
+                              wristband: {}
+                            required:
+                            - wristband
+                          - properties:
+                              json: {}
+                            required:
+                            - json
+                          - properties:
+                              plain: {}
+                            required:
+                            - plain
                           properties:
                             cache:
                               description: |-
@@ -1951,6 +2143,26 @@ spec:
                                 If omitted, the config will be enforced for all requests.
                                 If present, all conditions must match for the config to be enforced; otherwise, the config will be skipped.
                               items:
+                                oneOf:
+                                - properties:
+                                    patternRef: {}
+                                  required:
+                                  - patternRef
+                                - properties:
+                                    operator: {}
+                                    selector: {}
+                                    value: {}
+                                  required:
+                                  - operator
+                                  - selector
+                                - properties:
+                                    all: {}
+                                  required:
+                                  - all
+                                - properties:
+                                    any: {}
+                                  required:
+                                  - any
                                 properties:
                                   all:
                                     description: A list of pattern expressions to
@@ -2182,6 +2394,26 @@ spec:
                   If omitted, the AuthConfig will be enforced at all requests.
                   If present, all conditions must match for the AuthConfig to be enforced; otherwise, Authorino skips the AuthConfig and returns to the auth request with status OK.
                 items:
+                  oneOf:
+                  - properties:
+                      patternRef: {}
+                    required:
+                    - patternRef
+                  - properties:
+                      operator: {}
+                      selector: {}
+                      value: {}
+                    required:
+                    - operator
+                    - selector
+                  - properties:
+                      all: {}
+                    required:
+                    - all
+                  - properties:
+                      any: {}
+                    required:
+                    - any
                   properties:
                     all:
                       description: A list of pattern expressions to be evaluated as
