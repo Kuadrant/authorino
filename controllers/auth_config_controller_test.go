@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	api "github.com/kuadrant/authorino/api/v1beta2"
+	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
