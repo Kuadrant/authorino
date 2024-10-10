@@ -140,7 +140,7 @@ An annotation `auth-data/username` will be read from the Kubernetes API Key secr
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: talker-api-protection

@@ -148,7 +148,7 @@ The cached values will be visible in the response returned by the Talker API in 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: talker-api-protection

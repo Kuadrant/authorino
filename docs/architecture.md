@@ -71,7 +71,7 @@ The desired protection for a service is declaratively stated by applying an `Aut
 An `AuthConfig` resource typically looks like the following:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: my-api-protection

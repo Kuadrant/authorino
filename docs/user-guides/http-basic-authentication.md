@@ -131,7 +131,7 @@ The config uses API Key secrets to store base64-encoded `username:password` HTTP
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: talker-api-protection

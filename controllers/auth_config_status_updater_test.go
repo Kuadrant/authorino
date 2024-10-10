@@ -176,7 +176,7 @@ func mockStatusUpdateAuthConfigWithLabelsAndHosts(labels map[string]string, host
 	return api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "authorino.kuadrant.io/v1beta2",
+			APIVersion: "authorino.kuadrant.io/v1beta3",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",

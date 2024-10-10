@@ -333,7 +333,7 @@ For authentication based on OpenID Connect (OIDC) JSON Web Tokens (JWT), plus on
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: my-api-protection

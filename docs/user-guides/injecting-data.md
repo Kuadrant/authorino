@@ -132,7 +132,7 @@ The following defines a JSON object to be injected as an added HTTP header into 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: talker-api-protection
