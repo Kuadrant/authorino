@@ -63,7 +63,7 @@ virtual_hosts:
 Create the AuthConfig for the **Pets API**:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: dogs-api-protection
@@ -77,7 +77,7 @@ spec:
 Create the AuthConfig for the **Cats API**:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: cats-api-protection
@@ -121,7 +121,7 @@ The `host` context extension used above is any key that matches one of the hosts
 Create the AuthConfig for the **Pets API**:
 
 ```yaml
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: pets-api-protection

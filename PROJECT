@@ -5,10 +5,10 @@ repo: github.com/kuadrant/authorino/
 resources:
 - group: config
   kind: AuthConfig
-  version: v1beta1
+  version: v1beta2
 - group: config
   kind: AuthConfig
-  version: v1beta2
+  version: v1beta3
 version: 3-alpha
 plugins:
   go.sdk.operatorframework.io/v2-alpha: {}

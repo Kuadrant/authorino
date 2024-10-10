@@ -128,7 +128,7 @@ Create an Authorino `AuthConfig` custom resource declaring the auth rules to be 
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection
@@ -240,7 +240,7 @@ kubectl set env deployment/matrix-quotes KEYCLOAK_REALM=http://keycloak:8080/rea
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: matrix-quotes-protection

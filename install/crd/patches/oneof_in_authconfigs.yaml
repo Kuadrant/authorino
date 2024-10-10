@@ -1,99 +1,95 @@
 # Enables oneOf validation for the identity/authentication, metadata, authorization, and response fields.
 
-# v1beta1
+# v1beta2
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authentication/additionalProperties/oneOf
   value:
     - properties:
-        name: {}
         credentials: {}
-        oauth2: {}
-      required: [name, oauth2]
+        oauth2Introspection: {}
+      required: [oauth2Introspection]
     - properties:
-        name: {}
         credentials: {}
-        oidc: {}
-      required: [name, oidc]
+        jwt: {}
+      required: [jwt]
     - properties:
-        name: {}
         credentials: {}
         apiKey: {}
-      required: [name, apiKey]
+      required: [apiKey]
     - properties:
-        name: {}
         credentials: {}
-        mtls: {}
-      required: [name, mtls]
+        x509: {}
+      required: [x509]
     - properties:
-        name: {}
         credentials: {}
-        kubernetes: {}
-      required: [name, kubernetes]
+        kubernetesTokenReview: {}
+      required: [kubernetesTokenReview]
     - properties:
-        name: {}
         credentials: {}
         anonymous: {}
-      required: [name, anonymous]
+      required: [anonymous]
     - properties:
-        name: {}
         credentials: {}
         plain: {}
-      required: [name, plain]
+      required: [plain]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/additionalProperties/oneOf
   value:
     - properties:
-        name: {}
         userInfo: {}
-      required: [name, userInfo]
+      required: [userInfo]
     - properties:
-        name: {}
         uma: {}
-      required: [name, uma]
+      required: [uma]
     - properties:
-        name: {}
         http: {}
-      required: [name, http]
+      required: [http]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/additionalProperties/oneOf
   value:
     - properties:
-        name: {}
         opa: {}
-      required: [name, opa]
+      required: [opa]
     - properties:
-        name: {}
-        json: {}
-      required: [name, json]
+        patternMatching: {}
+      required: [patternMatching]
     - properties:
-        name: {}
-        kubernetes: {}
-      required: [name, kubernetes]
+        kubernetesSubjectAccessReview: {}
+      required: [kubernetesSubjectAccessReview]
     - properties:
-        name: {}
-        authzed: {}
-      required: [name, authzed]
+        spicedb: {}
+      required: [spicedb]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/properties/success/properties/headers/additionalProperties/oneOf
   value:
     - properties:
-        name: {}
         wristband: {}
-      required: [name, wristband]
+      required: [wristband]
     - properties:
-        name: {}
         json: {}
-      required: [name, json]
+      required: [json]
     - properties:
-        name: {}
         plain: {}
-      required: [name, plain]
+      required: [plain]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/json/properties/rules/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/properties/success/properties/dynamicMetadata/additionalProperties/oneOf
+  value:
+    - properties:
+        wristband: {}
+      required: [wristband]
+    - properties:
+        json: {}
+      required: [json]
+    - properties:
+        plain: {}
+      required: [plain]
+
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/additionalProperties/properties/patternMatching/properties/patterns/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -129,7 +125,7 @@
       required: [any]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/identity/items/properties/when/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authentication/additionalProperties/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -147,7 +143,7 @@
       required: [any]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/items/properties/when/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/metadata/additionalProperties/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -165,7 +161,7 @@
       required: [any]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/items/properties/when/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authorization/additionalProperties/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -183,7 +179,7 @@
       required: [any]
 
 - op: add
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/items/properties/when/items/oneOf
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/properties/success/properties/headers/additionalProperties/properties/when/items/oneOf
   value:
     - properties:
         patternRef: {}
@@ -200,7 +196,25 @@
         any: {}
       required: [any]
 
-# v1beta2
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/response/properties/success/properties/dynamicMetadata/additionalProperties/properties/when/items/oneOf
+  value:
+    - properties:
+        patternRef: {}
+      required: [patternRef]
+    - properties:
+        operator: {}
+        selector: {}
+        value: {}
+      required: [operator, selector]
+    - properties:
+        all: {}
+      required: [all]
+    - properties:
+        any: {}
+      required: [any]
+
+# v1beta3
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/authentication/additionalProperties/oneOf
   value:

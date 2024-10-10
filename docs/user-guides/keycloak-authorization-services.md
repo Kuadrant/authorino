@@ -150,7 +150,7 @@ Whenever an RPT with proper permissions is obtained by Authorino, the RPT is sup
 
 ```sh
 kubectl apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: talker-api-protection

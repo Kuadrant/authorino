@@ -173,7 +173,7 @@ Create the config:
 
 ```sh
 kubectl -n edge apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: edge-auth
@@ -255,7 +255,7 @@ kubectl -n internal port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 
 ```sh
 kubectl -n internal apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: talker-api-protection

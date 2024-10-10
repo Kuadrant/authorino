@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	api "github.com/kuadrant/authorino/api/v1beta2"
+	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
@@ -110,7 +110,7 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 	return api.AuthConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "AuthConfig",
-			APIVersion: "authorino.kuadrant.io/v1beta2",
+			APIVersion: "authorino.kuadrant.io/v1beta3",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "auth-config-1",
