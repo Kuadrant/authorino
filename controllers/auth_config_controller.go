@@ -628,6 +628,13 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 
 		translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
+	case api.CelAuthResponse:
+		if exp, err := response_evaluators.NewDynamicCelResponse(string(*successResponse.Expression)); err != nil {
+			return err
+		} else {
+			translatedResponse.DynamicCEL = exp
+		}
+
 	// plain
 	case api.PlainAuthResponse:
 		translatedResponse.Plain = &response_evaluators.Plain{
