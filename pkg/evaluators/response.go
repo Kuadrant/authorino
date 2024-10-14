@@ -53,7 +53,6 @@ type ResponseConfig struct {
 	Cache      EvaluatorCache
 
 	Wristband   auth.WristbandIssuer  `yaml:"wristband,omitempty"`
-	DynamicCEL  *response.DynamicCEL  `yaml:"json,omitempty"`
 	DynamicJSON *response.DynamicJSON `yaml:"json,omitempty"`
 	Plain       *response.Plain       `yaml:"plain,omitempty"`
 }

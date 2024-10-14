@@ -19,10 +19,6 @@ func TestDynamicJSONCall(t *testing.T) {
 	jsonProperties := []json.JSONProperty{
 		{Name: "prop1", Value: json.JSONValue{Static: "value1"}},
 		{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.username"}},
-		{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.username"}},
-		{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.username"}},
-		{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.username"}},
-		{Name: "prop2", Value: json.JSONValue{Pattern: "auth.identity.username"}},
 	}
 
 	jsonResponseEvaluator := NewDynamicJSONResponse(jsonProperties)
