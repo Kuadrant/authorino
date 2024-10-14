@@ -163,13 +163,21 @@ type PatternExpression struct {
 	Value string `json:"value,omitempty"`
 }
 
+type CelExpression struct {
+	Expression string `json:"expression,omitempty"`
+}
+
+type CelPredicate struct {
+	Predicate string `json:"predicate,omitempty"`
+}
+
 // +kubebuilder:validation:Enum:=eq;neq;incl;excl;matches
 type PatternExpressionOperator string
 
 type PatternExpressionOrRef struct {
 	PatternExpression `json:",omitempty"`
 	PatternRef        `json:",omitempty"`
-
+	CelPredicate      `json:",omitempty"`
 	// A list of pattern expressions to be evaluated as a logical AND.
 	All []UnstructuredPatternExpressionOrRef `json:"all,omitempty"`
 	// A list of pattern expressions to be evaluated as a logical OR.
@@ -198,6 +206,8 @@ type ValueOrSelector struct {
 	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector,omitempty"`
+
+	Expression CelExpression `json:",omitempty"`
 }
 
 type CommonEvaluatorSpec struct {
