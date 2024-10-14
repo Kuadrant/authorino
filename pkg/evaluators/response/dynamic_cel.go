@@ -2,18 +2,14 @@ package response
 
 import (
 	"context"
-	"reflect"
 	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
-	"github.com/google/cel-go/common/types/ref"
 	"github.com/kuadrant/authorino/pkg/auth"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"google.golang.org/protobuf/types/known/structpb"
-
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 const rootBinding = "auth"
@@ -22,29 +18,13 @@ func NewDynamicCelResponse(expression string) (*DynamicCEL, error) {
 
 	cel_exp := DynamicCEL{}
 
-	env, err := cel.NewEnv(cel.Declarations(
+	if program, err := expressions.CelCompile(expression, cel.Declarations(
 		decls.NewConst(rootBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-	))
-	if err != nil {
+	)); err != nil {
 		return nil, err
+	} else {
+		cel_exp.program = program
 	}
-
-	ast, issues := env.Parse(expression)
-	if issues.Err() != nil {
-		return nil, issues.Err()
-	}
-
-	checked, issues := env.Check(ast)
-	if issues.Err() != nil {
-		return nil, issues.Err()
-	}
-
-	program, err := env.Program(checked)
-	if err != nil {
-		return nil, err
-	}
-
-	cel_exp.program = program
 
 	return &cel_exp, nil
 }
@@ -69,22 +49,9 @@ func (c *DynamicCEL) Call(pipeline auth.AuthPipeline, ctx context.Context) (inte
 		return nil, err
 	}
 
-	if jsonVal, err := valueToJSON(result); err != nil {
+	if jsonVal, err := expressions.CelValueToJSON(result); err != nil {
 		return nil, err
 	} else {
 		return jsonVal, nil
 	}
-}
-
-func valueToJSON(val ref.Val) (string, error) {
-	v, err := val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
-	if err != nil {
-		return "", err
-	}
-	marshaller := protojson.MarshalOptions{Multiline: false}
-	bytes, err := marshaller.Marshal(v.(proto.Message))
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
 }

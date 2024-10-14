@@ -51,7 +51,6 @@ const (
 	PlainAuthResponse
 	JsonAuthResponse
 	WristbandAuthResponse
-	CelAuthResponse
 
 	// The following constants are used to identify the different methods of callback functions.
 	UnknownCallbackMethod CallbackMethod = iota
@@ -733,8 +732,6 @@ func (s *SuccessResponseSpec) GetMethod() AuthResponseMethod {
 type AuthResponseMethodSpec struct {
 	// Plain text content
 	Plain *PlainAuthResponseSpec `json:"plain,omitempty"`
-	// Cel Expression, where the result is outputted as JSON
-	Expression string `json:"expression,omitempty"`
 	// JSON object
 	// Specify it as the list of properties of the object, whose values can combine static values and values selected from the authorization JSON.
 	Json *JsonAuthResponseSpec `json:"json,omitempty"`
