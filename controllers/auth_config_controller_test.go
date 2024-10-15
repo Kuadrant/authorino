@@ -95,10 +95,8 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 					PatternMatching: &api.PatternMatchingAuthorizationSpec{
 						Patterns: []api.PatternExpressionOrRef{
 							{
-								PatternExpression: api.PatternExpression{
-									Selector: "context.identity.role",
-									Operator: "eq",
-									Value:    "admin",
+								CelPredicate: api.CelPredicate{
+									Predicate: "context.identity.role == 'admin'",
 								},
 							},
 						},

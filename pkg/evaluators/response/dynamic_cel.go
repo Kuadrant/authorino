@@ -2,25 +2,17 @@ package response
 
 import (
 	"context"
-	"strings"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	interpreter "github.com/google/cel-go/cel"
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/expressions"
-	"google.golang.org/protobuf/types/known/structpb"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 )
-
-const rootBinding = "auth"
 
 func NewDynamicCelResponse(expression string) (*DynamicCEL, error) {
 
 	cel_exp := DynamicCEL{}
 
-	if program, err := expressions.CelCompile(expression, cel.Declarations(
-		decls.NewConst(rootBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-	)); err != nil {
+	if program, err := cel.Compile(expression, false); err != nil {
 		return nil, err
 	} else {
 		cel_exp.program = program
@@ -30,26 +22,20 @@ func NewDynamicCelResponse(expression string) (*DynamicCEL, error) {
 }
 
 type DynamicCEL struct {
-	program cel.Program
+	program interpreter.Program
 }
 
 func (c *DynamicCEL) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-
-	auth_json := pipeline.GetAuthorizationJSON()
-	data := structpb.Struct{}
-	if err := jsonpb.Unmarshal(strings.NewReader(auth_json), &data); err != nil {
+	input, err := cel.AuthJsonToCel(pipeline.GetAuthorizationJSON())
+	if err != nil {
 		return nil, err
 	}
-
-	value := data.GetFields()["auth"]
-	result, _, err := c.program.Eval(map[string]interface{}{
-		rootBinding: value,
-	})
+	result, _, err := c.program.Eval(input)
 	if err != nil {
 		return nil, err
 	}
 
-	if jsonVal, err := expressions.CelValueToJSON(result); err != nil {
+	if jsonVal, err := cel.ValueToJSON(result); err != nil {
 		return nil, err
 	} else {
 		return jsonVal, nil

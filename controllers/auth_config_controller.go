@@ -29,6 +29,7 @@ import (
 	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
 	metadata_evaluators "github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -193,10 +194,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}, true))
 		}
 
+		predicates, err := buildPredicates(authConfig, identity.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedIdentity := &evaluators.IdentityConfig{
 			Name:               identityCfgName,
 			Priority:           identity.Priority,
-			Conditions:         buildJSONExpression(authConfig, identity.Conditions, jsonexp.All),
+			Conditions:         predicates,
 			ExtendedProperties: extendedProperties,
 			Metrics:            identity.Metrics,
 		}
@@ -288,10 +293,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for name, metadata := range authConfig.Spec.Metadata {
+		predicates, err := buildPredicates(authConfig, metadata.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedMetadata := &evaluators.MetadataConfig{
 			Name:       name,
 			Priority:   metadata.Priority,
-			Conditions: buildJSONExpression(authConfig, metadata.Conditions, jsonexp.All),
+			Conditions: predicates,
 			Metrics:    metadata.Metrics,
 		}
 
@@ -357,10 +366,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	authzIndex := 0
 	for authzName, authorization := range authConfig.Spec.Authorization {
+		predicates, err := buildPredicates(authConfig, authorization.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedAuthorization := &evaluators.AuthorizationConfig{
 			Name:       authzName,
 			Priority:   authorization.Priority,
-			Conditions: buildJSONExpression(authConfig, authorization.Conditions, jsonexp.All),
+			Conditions: predicates,
 			Metrics:    authorization.Metrics,
 		}
 
@@ -415,8 +428,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// json
 		case api.PatternMatchingAuthorization:
+			rules, err := buildPredicates(authConfig, authorization.PatternMatching.Patterns, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthorization.JSON = &authorization_evaluators.JSONPatternMatching{
-				Rules: buildJSONExpression(authConfig, authorization.PatternMatching.Patterns, jsonexp.All),
+				Rules: rules,
 			}
 
 		case api.KubernetesSubjectAccessReviewAuthorization:
@@ -477,10 +494,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
 		for responseName, headerSuccessResponse := range responseConfig.Success.Headers {
+			predicates, err := buildPredicates(authConfig, headerSuccessResponse.Conditions, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
 				headerSuccessResponse.Priority,
-				buildJSONExpression(authConfig, headerSuccessResponse.Conditions, jsonexp.All),
+				predicates,
 				"httpHeader",
 				headerSuccessResponse.Key,
 				headerSuccessResponse.Metrics,
@@ -495,10 +516,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		}
 
 		for responseName, successResponse := range responseConfig.Success.DynamicMetadata {
+			predicates, err := buildPredicates(authConfig, successResponse.Conditions, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
 				successResponse.Priority,
-				buildJSONExpression(authConfig, successResponse.Conditions, jsonexp.All),
+				predicates,
 				"envoyDynamicMetadata",
 				successResponse.Key,
 				successResponse.Metrics,
@@ -516,10 +541,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for callbackName, callback := range authConfig.Spec.Callbacks {
+		predicates, err := buildPredicates(authConfig, callback.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedCallback := &evaluators.CallbackConfig{
 			Name:       callbackName,
 			Priority:   callback.Priority,
-			Conditions: buildJSONExpression(authConfig, callback.Conditions, jsonexp.All),
+			Conditions: predicates,
 			Metrics:    callback.Metrics,
 		}
 
@@ -539,8 +568,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedCallbackConfigs = append(interfacedCallbackConfigs, translatedCallback)
 	}
 
+	predicates, err := buildPredicates(authConfig, authConfig.Spec.Conditions, jsonexp.All)
+	if err != nil {
+		return nil, err
+	}
 	translatedAuthConfig := &evaluators.AuthConfig{
-		Conditions:           buildJSONExpression(authConfig, authConfig.Spec.Conditions, jsonexp.All),
+		Conditions:           predicates,
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
@@ -875,18 +908,26 @@ func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name 
 	return nil, fmt.Errorf("missing identity config %v", name)
 }
 
-func buildJSONExpression(authConfig *api.AuthConfig, patterns []api.PatternExpressionOrRef, op func(...jsonexp.Expression) jsonexp.Expression) jsonexp.Expression {
+func buildPredicates(authConfig *api.AuthConfig, patterns []api.PatternExpressionOrRef, op func(...jsonexp.Expression) jsonexp.Expression) (jsonexp.Expression, error) {
 	var expression []jsonexp.Expression
 	for _, pattern := range patterns {
 		// patterns or refs
-		expression = append(expression, buildJSONExpressionPatterns(authConfig, pattern)...)
+		expressions, err := buildJSONExpressionPatterns(authConfig, pattern)
+		if err != nil {
+			return nil, err
+		}
+		expression = append(expression, expressions...)
 		// all
 		if len(pattern.All) > 0 {
 			p := make([]api.PatternExpressionOrRef, len(pattern.All))
 			for i, ptn := range pattern.All {
 				p[i] = ptn.PatternExpressionOrRef
 			}
-			expression = append(expression, buildJSONExpression(authConfig, p, jsonexp.All))
+			predicates, err := buildPredicates(authConfig, p, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
+			expression = append(expression, predicates)
 		}
 		// any
 		if len(pattern.Any) > 0 {
@@ -894,25 +935,35 @@ func buildJSONExpression(authConfig *api.AuthConfig, patterns []api.PatternExpre
 			for i, ptn := range pattern.Any {
 				p[i] = ptn.PatternExpressionOrRef
 			}
-			expression = append(expression, buildJSONExpression(authConfig, p, jsonexp.Any))
+			predicates, err := buildPredicates(authConfig, p, jsonexp.Any)
+			if err != nil {
+				return nil, err
+			}
+			expression = append(expression, predicates)
 		}
 	}
-	return op(expression...)
+	return op(expression...), nil
 }
 
-func buildJSONExpressionPatterns(authConfig *api.AuthConfig, pattern api.PatternExpressionOrRef) []jsonexp.Expression {
+func buildJSONExpressionPatterns(authConfig *api.AuthConfig, pattern api.PatternExpressionOrRef) ([]jsonexp.Expression, error) {
 	expressionsToAdd := api.PatternExpressions{}
+	expressions := make([]jsonexp.Expression, len(expressionsToAdd))
 	if expressionsByRef, found := authConfig.Spec.NamedPatterns[pattern.PatternRef.Name]; found {
 		expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
 	} else if pattern.PatternExpression.Operator != "" {
 		expressionsToAdd = append(expressionsToAdd, pattern.PatternExpression)
+	} else if pattern.Predicate != "" {
+		if predicate, err := cel.NewPredicate(pattern.Predicate); err != nil {
+			return nil, err
+		} else {
+			expressions = append(expressions, predicate)
+		}
 	}
 
-	expressions := make([]jsonexp.Expression, len(expressionsToAdd))
-	for i, expression := range expressionsToAdd {
-		expressions[i] = buildJSONExpressionPattern(expression)
+	for _, expression := range expressionsToAdd {
+		expressions = append(expressions, buildJSONExpressionPattern(expression))
 	}
-	return expressions
+	return expressions, nil
 }
 
 func buildJSONExpressionPattern(expression api.PatternExpression) jsonexp.Expression {
