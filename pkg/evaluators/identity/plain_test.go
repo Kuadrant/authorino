@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	j "github.com/kuadrant/authorino/pkg/json"
 
 	"github.com/golang/mock/gomock"
 	"gotest.tools/assert"
@@ -18,7 +19,7 @@ func TestPlainCall(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"body":"{\"username\":\"john\"}"}}}}`)
 
-	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
+	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
 	id, err := plain.Call(pipelineMock, nil)
 	assert.NilError(t, err)
 	j, _ := json.Marshal(id)
@@ -32,7 +33,7 @@ func TestPlainCallWithUresolvableObject(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{}`)
 
-	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
+	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
 	id, err := plain.Call(pipelineMock, nil)
 	assert.ErrorContains(t, err, "could not retrieve identity object")
 	assert.Check(t, id == nil)
@@ -45,19 +46,19 @@ func TestPlainCallWithInvalidPatttern(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"body":"{\"username\":\"john\"}"}}}}`)
 
-	plain := &Plain{Pattern: "not a valid json path"}
+	plain := &Plain{Value: &j.JSONValue{Pattern: "not a valid json path"}, Pattern: "not a valid json path"}
 	id, err := plain.Call(pipelineMock, nil)
 	assert.ErrorContains(t, err, "could not retrieve identity object")
 	assert.Check(t, id == nil)
 }
 
 func TestPlainGetCredentialsKeySelector(t *testing.T) {
-	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
+	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
 	assert.Equal(t, plain.GetCredentialsKeySelector(), "context.request.http.body.@fromstr")
 }
 
 func TestPlainGetCredentialsIn(t *testing.T) {
-	plain := &Plain{Pattern: "context.request.http.body.@fromstr"}
+	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
 	assert.Equal(t, plain.GetCredentialsIn(), "context.request.http.body.@fromstr")
 }
 

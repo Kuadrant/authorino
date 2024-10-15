@@ -5377,6 +5377,8 @@ spec:
                         Identity object extracted from the context.
                         Use this method when authentication is performed beforehand by a proxy and the resulting object passed to Authorino as JSON in the auth request.
                       properties:
+                        expression:
+                          type: string
                         selector:
                           description: |-
                             Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
@@ -5774,6 +5776,8 @@ spec:
                                   - name
                                   type: object
                               type: object
+                            expression:
+                              type: string
                             headers:
                               additionalProperties:
                                 properties:
@@ -5886,11 +5890,6 @@ spec:
                                 by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                                 E.g. https://ext-auth-server.io/metadata?p={request.path}
                               type: string
-                            urlExpression:
-                              properties:
-                                expression:
-                                  type: string
-                              type: object
                           required:
                           - url
                           type: object
@@ -6243,6 +6242,8 @@ spec:
                               - name
                               type: object
                           type: object
+                        expression:
+                          type: string
                         headers:
                           additionalProperties:
                             properties:
@@ -6351,11 +6352,6 @@ spec:
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
                           type: string
-                        urlExpression:
-                          properties:
-                            expression:
-                              type: string
-                          type: object
                       required:
                       - url
                       type: object
@@ -6549,6 +6545,8 @@ spec:
                               - name
                               type: object
                           type: object
+                        expression:
+                          type: string
                         headers:
                           additionalProperties:
                             properties:
@@ -6657,11 +6655,6 @@ spec:
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
                           type: string
-                        urlExpression:
-                          properties:
-                            expression:
-                              type: string
-                          type: object
                       required:
                       - url
                       type: object
