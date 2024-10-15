@@ -2,10 +2,10 @@ package authorization
 
 import (
 	"context"
-	"github.com/kuadrant/authorino/pkg/expressions"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"

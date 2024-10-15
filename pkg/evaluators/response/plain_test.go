@@ -3,10 +3,10 @@ package response
 import (
 	"context"
 	"fmt"
-	"github.com/kuadrant/authorino/pkg/json"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/json"
 	"gotest.tools/assert"
 
 	"github.com/golang/mock/gomock"
