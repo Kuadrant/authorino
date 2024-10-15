@@ -63,26 +63,58 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-	jsonValueToStr := func(value json.JSONValue) string {
-		return fmt.Sprintf("%s", value.ResolveFor(authJSON))
+	jsonValueToStr := func(value json.JSONValue) (string, error) {
+		resolved, err := value.ResolveFor(authJSON)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s", resolved), nil
 	}
 
+	user, err := jsonValueToStr(k.User)
+	if err != nil {
+		return nil, err
+	}
 	subjectAccessReview := kubeAuthz.SubjectAccessReview{
 		Spec: kubeAuthz.SubjectAccessReviewSpec{
-			User: jsonValueToStr(k.User),
+			User: user,
 		},
 	}
 
 	if k.ResourceAttributes != nil {
 		resourceAttributes := k.ResourceAttributes
 
+		namespace, err := jsonValueToStr(resourceAttributes.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		group, err := jsonValueToStr(resourceAttributes.Group)
+		if err != nil {
+			return nil, err
+		}
+		resource, err := jsonValueToStr(resourceAttributes.Resource)
+		if err != nil {
+			return nil, err
+		}
+		name, err := jsonValueToStr(resourceAttributes.Name)
+		if err != nil {
+			return nil, err
+		}
+		subresource, err := jsonValueToStr(resourceAttributes.SubResource)
+		if err != nil {
+			return nil, err
+		}
+		verb, err := jsonValueToStr(resourceAttributes.Verb)
+		if err != nil {
+			return nil, err
+		}
 		subjectAccessReview.Spec.ResourceAttributes = &kubeAuthz.ResourceAttributes{
-			Namespace:   jsonValueToStr(resourceAttributes.Namespace),
-			Group:       jsonValueToStr(resourceAttributes.Group),
-			Resource:    jsonValueToStr(resourceAttributes.Resource),
-			Name:        jsonValueToStr(resourceAttributes.Name),
-			Subresource: jsonValueToStr(resourceAttributes.SubResource),
-			Verb:        jsonValueToStr(resourceAttributes.Verb),
+			Namespace:   namespace,
+			Group:       group,
+			Resource:    resource,
+			Name:        name,
+			Subresource: subresource,
+			Verb:        verb,
 		}
 	} else {
 		request := pipeline.GetHttp()

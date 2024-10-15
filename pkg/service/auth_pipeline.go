@@ -587,17 +587,20 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 		authJSON := pipeline.GetAuthorizationJSON()
 
 		if denyWith.Message != nil {
-			authResult.Message, _ = json.StringifyJSON(denyWith.Message.ResolveFor(authJSON))
+			resolved, _ := denyWith.Message.ResolveFor(authJSON)
+			authResult.Message, _ = json.StringifyJSON(resolved)
 		}
 
 		if denyWith.Body != nil {
-			authResult.Body, _ = json.StringifyJSON(denyWith.Body.ResolveFor(authJSON))
+			resolved, _ := denyWith.Body.ResolveFor(authJSON)
+			authResult.Body, _ = json.StringifyJSON(resolved)
 		}
 
 		if len(denyWith.Headers) > 0 {
 			headers := make([]map[string]string, 0)
 			for _, header := range denyWith.Headers {
-				value, _ := json.StringifyJSON(header.Value.ResolveFor(authJSON))
+				resolved, _ := header.Value.ResolveFor(authJSON)
+				value, _ := json.StringifyJSON(resolved)
 				headers = append(headers, map[string]string{header.Name: value})
 			}
 			authResult.Headers = headers

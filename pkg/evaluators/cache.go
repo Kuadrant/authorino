@@ -16,7 +16,7 @@ var EvaluatorCacheSize int // in megabytes
 type EvaluatorCache interface {
 	Get(key interface{}) (interface{}, error)
 	Set(key, value interface{}) error
-	ResolveKeyFor(authJSON string) interface{}
+	ResolveKeyFor(authJSON string) (interface{}, error)
 	Shutdown() error
 }
 
@@ -58,7 +58,7 @@ func (c *evaluatorCache) Set(key, value interface{}) error {
 	}
 }
 
-func (c *evaluatorCache) ResolveKeyFor(authJSON string) interface{} {
+func (c *evaluatorCache) ResolveKeyFor(authJSON string) (interface{}, error) {
 	return c.keyTemplate.ResolveFor(authJSON)
 }
 

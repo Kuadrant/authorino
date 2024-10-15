@@ -17,9 +17,9 @@ type IdentityExtension struct {
 	Overwrite bool
 }
 
-func (i *IdentityExtension) ResolveFor(identityObject map[string]any, authJSON string) interface{} {
+func (i *IdentityExtension) ResolveFor(identityObject map[string]any, authJSON string) (interface{}, error) {
 	if value, exists := identityObject[i.Name]; exists && !i.Overwrite {
-		return value
+		return value, nil
 	}
 	return i.Value.ResolveFor(authJSON)
 }

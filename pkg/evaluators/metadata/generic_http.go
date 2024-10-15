@@ -127,7 +127,11 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 	}
 
 	for _, header := range h.Headers {
-		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(authJSON)))
+		headerValue, err := header.Value.ResolveFor(authJSON)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set(header.Name, fmt.Sprintf("%s", headerValue))
 	}
 
 	req.Header.Set("Content-Type", contentType)
@@ -152,16 +156,24 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 
 func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
 	if h.Body != nil {
-		if body, err := json.StringifyJSON(h.Body.ResolveFor(authData)); err != nil {
-			return nil, fmt.Errorf("failed to encode http request")
+		if resolved, err := h.Body.ResolveFor(authData); err != nil {
+			return nil, err
 		} else {
-			return bytes.NewBufferString(body), nil
+			if body, err := json.StringifyJSON(resolved); err != nil {
+				return nil, fmt.Errorf("failed to encode http request")
+			} else {
+				return bytes.NewBufferString(body), nil
+			}
 		}
 	}
 
 	data := make(map[string]interface{})
 	for _, param := range h.Parameters {
-		data[param.Name] = param.Value.ResolveFor(authData)
+		if resolved, err := param.Value.ResolveFor(authData); err != nil {
+			return nil, err
+		} else {
+			data[param.Name] = resolved
+		}
 	}
 
 	switch h.ContentType {

@@ -13,5 +13,5 @@ type Plain struct {
 
 func (p *Plain) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	authJSON := pipeline.GetAuthorizationJSON()
-	return p.ResolveFor(authJSON), nil
+	return p.ResolveFor(authJSON)
 }
