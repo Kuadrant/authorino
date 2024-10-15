@@ -64,6 +64,9 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 
 	authJSON := pipeline.GetAuthorizationJSON()
 	jsonValueToStr := func(value expressions.Value) (string, error) {
+		if value == nil {
+			return "", nil
+		}
 		resolved, err := value.ResolveFor(authJSON)
 		if err != nil {
 			return "", err
