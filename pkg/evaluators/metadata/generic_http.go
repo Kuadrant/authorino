@@ -5,7 +5,6 @@ import (
 	gocontext "context"
 	gojson "encoding/json"
 	"fmt"
-	"github.com/kuadrant/authorino/pkg/expressions"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"

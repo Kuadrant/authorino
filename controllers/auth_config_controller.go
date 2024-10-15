@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/kuadrant/authorino/pkg/expressions"
 	"sort"
 	"sync"
 
@@ -30,6 +29,7 @@ import (
 	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
 	metadata_evaluators "github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"

@@ -4,13 +4,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/kuadrant/authorino/pkg/expressions"
 	"io"
 	"mime"
 	"net/http"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/kuadrant/authorino/pkg/expressions"
 
 	"github.com/tidwall/gjson"
 )
