@@ -13,7 +13,6 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/expressions"
-	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"
@@ -24,7 +23,7 @@ import (
 
 type GenericHttp struct {
 	Endpoint              string
-	DynamicEndpoint       *cel.Expression
+	DynamicEndpoint       expressions.Value
 	Method                string
 	Body                  expressions.Value
 	Parameters            []json.JSONProperty
@@ -44,10 +43,10 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	authJSON := pipeline.GetAuthorizationJSON()
 	var endpoint string
 	if h.DynamicEndpoint != nil {
-		if val, err := h.DynamicEndpoint.EvaluateStringValue(authJSON); err != nil {
+		if val, err := h.DynamicEndpoint.ResolveFor(authJSON); err != nil {
 			return nil, err
 		} else {
-			endpoint = val
+			endpoint = val.(string)
 		}
 	} else {
 		endpoint = json.ReplaceJSONPlaceholders(h.Endpoint, authJSON)

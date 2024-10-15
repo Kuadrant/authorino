@@ -50,6 +50,10 @@ type Expression struct {
 	source  string
 }
 
+type StringExpression struct {
+	expression Expression
+}
+
 func NewExpression(source string) (*Expression, error) {
 	program, err := Compile(source, nil)
 	if err != nil {
@@ -61,14 +65,16 @@ func NewExpression(source string) (*Expression, error) {
 	}, nil
 }
 
-func NewStringExpression(source string) (*Expression, error) {
+func NewStringExpression(source string) (*StringExpression, error) {
 	program, err := Compile(source, cel.StringType)
 	if err != nil {
 		return nil, err
 	}
-	return &Expression{
-		program: program,
-		source:  source,
+	return &StringExpression{
+		expression: Expression{
+			program: program,
+			source:  source,
+		},
 	}, nil
 }
 
@@ -83,6 +89,10 @@ func (e *Expression) ResolveFor(json string) (interface{}, error) {
 	} else {
 		return jsonVal, nil
 	}
+}
+
+func (e *StringExpression) ResolveFor(json string) (interface{}, error) {
+	return e.expression.EvaluateStringValue(json)
 }
 
 func (e *Expression) Evaluate(json string) (ref.Val, *cel.EvalDetails, error) {

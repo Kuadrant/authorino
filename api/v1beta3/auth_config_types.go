@@ -412,6 +412,8 @@ type PlainIdentitySpec struct {
 	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector"`
+
+	Expression CelExpression `json:",omitempty"`
 }
 
 type AnonymousAccessSpec struct{}
@@ -449,7 +451,7 @@ type HttpEndpointSpec struct {
 	// E.g. https://ext-auth-server.io/metadata?p={request.path}
 	Url string `json:"url"`
 
-	UrlExpression CelExpression `json:"urlExpression,omitempty"`
+	UrlExpression CelExpression `json:",omitempty"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
 	// When the request method is POST, the authorization JSON is passed in the body of the request.
