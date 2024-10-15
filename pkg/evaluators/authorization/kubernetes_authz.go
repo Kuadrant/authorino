@@ -3,11 +3,11 @@ package authorization
 import (
 	gocontext "context"
 	"fmt"
-	"github.com/kuadrant/authorino/pkg/expressions"
 	"strings"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
