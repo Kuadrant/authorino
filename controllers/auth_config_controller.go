@@ -896,7 +896,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		method = string(*m)
 	}
 
-	var dynamicEndpoint *cel.Expression
+	var dynamicEndpoint expressions.Value
 	if http.UrlExpression.Expression != "" {
 		endpoint, err := cel.NewStringExpression(http.UrlExpression.Expression)
 		if err != nil {
