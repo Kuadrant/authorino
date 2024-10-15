@@ -45,6 +45,29 @@ func (p *Predicate) Matches(json string) (bool, error) {
 	return result.Value().(bool), nil
 }
 
+type Expression struct {
+	program cel.Program
+	source  string
+}
+
+func (e *Expression) ResolveFor(json string) (interface{}, error) {
+	input, err := AuthJsonToCel(json)
+	if err != nil {
+		return nil, err
+	}
+
+	result, _, err := e.program.Eval(input)
+	if err != nil {
+		return nil, err
+	}
+
+	if jsonVal, err := ValueToJSON(result); err != nil {
+		return nil, err
+	} else {
+		return jsonVal, nil
+	}
+}
+
 func Compile(expression string, predicate bool, opts ...cel.EnvOption) (cel.Program, error) {
 	envOpts := append([]cel.EnvOption{cel.Declarations(
 		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),

@@ -84,7 +84,9 @@ func TestResolveIdentityExtension(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		actual, _ := json.StringifyJSON(tc.input.ResolveFor(obj, authJSON))
+		resolved, err := tc.input.ResolveFor(obj, authJSON)
+		assert.NilError(t, err)
+		actual, _ := json.StringifyJSON(resolved)
 		assert.Equal(t, actual, tc.expected, fmt.Sprintf("%s failed: got '%s', want '%s'", tc.name, string(actual), string(tc.expected)))
 	}
 }
