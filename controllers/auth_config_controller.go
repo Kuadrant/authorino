@@ -22,7 +22,7 @@ import (
 	"sort"
 	"sync"
 
-	api "github.com/kuadrant/authorino/api/v1beta2"
+	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	authorization_evaluators "github.com/kuadrant/authorino/pkg/evaluators/authorization"

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	api "github.com/kuadrant/authorino/api/v1beta2"
+	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/utils"
 
