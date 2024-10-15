@@ -12,7 +12,7 @@ func NewDynamicCelResponse(expression string) (*DynamicCEL, error) {
 
 	cel_exp := DynamicCEL{}
 
-	if program, err := cel.Compile(expression, false); err != nil {
+	if program, err := cel.Compile(expression, nil); err != nil {
 		return nil, err
 	} else {
 		cel_exp.program = program

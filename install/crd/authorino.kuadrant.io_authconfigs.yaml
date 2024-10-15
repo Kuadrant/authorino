@@ -3121,6 +3121,11 @@ spec:
                                 by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                                 E.g. https://ext-auth-server.io/metadata?p={request.path}
                               type: string
+                            urlExpression:
+                              properties:
+                                expression:
+                                  type: string
+                              type: object
                           required:
                           - url
                           type: object
@@ -3581,6 +3586,11 @@ spec:
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
                           type: string
+                        urlExpression:
+                          properties:
+                            expression:
+                              type: string
+                          type: object
                       required:
                       - url
                       type: object
@@ -3882,6 +3892,11 @@ spec:
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
                           type: string
+                        urlExpression:
+                          properties:
+                            expression:
+                              type: string
+                          type: object
                       required:
                       - url
                       type: object

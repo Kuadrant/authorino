@@ -23,7 +23,7 @@ type Predicate struct {
 }
 
 func NewPredicate(source string) (*Predicate, error) {
-	program, err := Compile(source, true)
+	program, err := Compile(source, cel.BoolType)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,18 @@ type Expression struct {
 }
 
 func NewExpression(source string) (*Expression, error) {
-	program, err := Compile(source, false)
+	program, err := Compile(source, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &Expression{
+		program: program,
+		source:  source,
+	}, nil
+}
+
+func NewStringExpression(source string) (*Expression, error) {
+	program, err := Compile(source, cel.StringType)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +73,7 @@ func NewExpression(source string) (*Expression, error) {
 }
 
 func (e *Expression) ResolveFor(json string) (interface{}, error) {
-	input, err := AuthJsonToCel(json)
-	if err != nil {
-		return nil, err
-	}
-
-	result, _, err := e.program.Eval(input)
+	result, _, err := e.Evaluate(json)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +85,26 @@ func (e *Expression) ResolveFor(json string) (interface{}, error) {
 	}
 }
 
-func Compile(expression string, predicate bool, opts ...cel.EnvOption) (cel.Program, error) {
+func (e *Expression) Evaluate(json string) (ref.Val, *cel.EvalDetails, error) {
+	input, err := AuthJsonToCel(json)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return e.program.Eval(input)
+}
+
+func (e *Expression) EvaluateStringValue(json string) (string, error) {
+	if result, _, err := e.Evaluate(json); err != nil {
+		return "", err
+	} else if !reflect.DeepEqual(result.Type(), cel.StringType) {
+		return "", err
+	} else {
+		return result.Value().(string), nil
+	}
+}
+
+func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (cel.Program, error) {
 	envOpts := append([]cel.EnvOption{cel.Declarations(
 		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 		decls.NewConst(RootContextBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
@@ -99,9 +124,9 @@ func Compile(expression string, predicate bool, opts ...cel.EnvOption) (cel.Prog
 		return nil, issues.Err()
 	}
 
-	if predicate {
-		if !reflect.DeepEqual(checked.OutputType(), cel.BoolType) && !reflect.DeepEqual(checked.OutputType(), cel.DynType) {
-			return nil, fmt.Errorf("type error: got %v, wanted %v output type", checked.OutputType(), cel.BoolType)
+	if expectedType != nil {
+		if !reflect.DeepEqual(checked.OutputType(), expectedType) && !reflect.DeepEqual(checked.OutputType(), cel.DynType) {
+			return nil, fmt.Errorf("type error: got %v, wanted %v output type", checked.OutputType(), expectedType)
 		}
 	}
 
