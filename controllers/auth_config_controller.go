@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"sort"
 	"sync"
 
@@ -182,13 +183,13 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	for identityCfgName, identity := range authConfigIdentityConfigs {
 		extendedProperties := make([]evaluators.IdentityExtension, len(identity.Defaults)+len(identity.Overrides))
 		for propertyName, property := range identity.Defaults {
-			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, json.JSONValue{
+			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, &json.JSONValue{
 				Static:  property.Value,
 				Pattern: property.Selector,
 			}, false))
 		}
 		for propertyName, property := range identity.Overrides {
-			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, json.JSONValue{
+			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, &json.JSONValue{
 				Static:  property.Value,
 				Pattern: property.Selector,
 			}, true))
@@ -212,7 +213,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
-				*getJsonFromStaticDynamic(&identity.Cache.Key),
+				getJsonFromStaticDynamic(&identity.Cache.Key),
 				ttl,
 			)
 		}
@@ -310,7 +311,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedMetadata.Cache = evaluators.NewEvaluatorCache(
-				*getJsonFromStaticDynamic(&metadata.Cache.Key),
+				getJsonFromStaticDynamic(&metadata.Cache.Key),
 				ttl,
 			)
 		}
@@ -383,7 +384,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
 			translatedAuthorization.Cache = evaluators.NewEvaluatorCache(
-				*getJsonFromStaticDynamic(&authorization.Cache.Key),
+				getJsonFromStaticDynamic(&authorization.Cache.Key),
 				ttl,
 			)
 		}
@@ -444,17 +445,17 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			resourceAttributes := authorization.KubernetesSubjectAccessReview.ResourceAttributes
 			if resourceAttributes != nil {
 				authorinoResourceAttributes = &authorization_evaluators.KubernetesAuthzResourceAttributes{
-					Namespace:   json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.Selector},
-					Group:       json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.Selector},
-					Resource:    json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.Selector},
-					Name:        json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.Selector},
-					SubResource: json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.Selector},
-					Verb:        json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.Selector},
+					Namespace:   &json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.Selector},
+					Group:       &json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.Selector},
+					Resource:    &json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.Selector},
+					Name:        &json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.Selector},
+					SubResource: &json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.Selector},
+					Verb:        &json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.Selector},
 				}
 			}
 
 			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
+			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(&authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}
@@ -475,7 +476,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				Endpoint:     authzed.Endpoint,
 				Insecure:     authzed.Insecure,
 				SharedSecret: sharedSecret,
-				Permission:   *getJsonFromStaticDynamic(&authzed.Permission),
+				Permission:   getJsonFromStaticDynamic(&authzed.Permission),
 			}
 			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = spiceDBObjectToJsonValues(authzed.Subject)
 			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = spiceDBObjectToJsonValues(authzed.Resource)
@@ -627,7 +628,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 		for claimName, claim := range wristband.CustomClaims {
 			customClaims = append(customClaims, json.JSONProperty{
 				Name: claimName,
-				Value: json.JSONValue{
+				Value: &json.JSONValue{
 					Static:  claim.Value,
 					Pattern: claim.Selector,
 				},
@@ -652,7 +653,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 		for propertyName, property := range successResponse.Json.Properties {
 			jsonProperties = append(jsonProperties, json.JSONProperty{
 				Name: propertyName,
-				Value: json.JSONValue{
+				Value: &json.JSONValue{
 					Static:  property.Value,
 					Pattern: property.Selector,
 				},
@@ -664,7 +665,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 	// plain
 	case api.PlainAuthResponse:
 		translatedResponse.Plain = &response_evaluators.Plain{
-			JSONValue: json.JSONValue{
+			Value: &json.JSONValue{
 				Static:  successResponse.Plain.Value,
 				Pattern: successResponse.Plain.Selector,
 			},
@@ -683,7 +684,7 @@ func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.Res
 			ttl = api.EvaluatorDefaultCacheTTL
 		}
 		translatedResponse.Cache = evaluators.NewEvaluatorCache(
-			*getJsonFromStaticDynamic(&cache.Key),
+			getJsonFromStaticDynamic(&cache.Key),
 			ttl,
 		)
 	}
@@ -838,7 +839,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	for name, param := range http.Parameters {
 		params = append(params, json.JSONProperty{
 			Name: name,
-			Value: json.JSONValue{
+			Value: &json.JSONValue{
 				Static:  param.Value,
 				Pattern: param.Selector,
 			},
@@ -849,7 +850,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	for name, header := range http.Headers {
 		headers = append(headers, json.JSONProperty{
 			Name: name,
-			Value: json.JSONValue{
+			Value: &json.JSONValue{
 				Static:  header.Value,
 				Pattern: header.Selector,
 			},
@@ -981,7 +982,7 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.De
 
 	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
 	for name, header := range denyWithSpec.Headers {
-		headers = append(headers, json.JSONProperty{Name: name, Value: json.JSONValue{Static: header.Value, Pattern: header.Selector}})
+		headers = append(headers, json.JSONProperty{Name: name, Value: &json.JSONValue{Static: header.Value, Pattern: header.Selector}})
 	}
 
 	return &evaluators.DenyWithValues{
@@ -1003,13 +1004,13 @@ func getJsonFromStaticDynamic(value *api.ValueOrSelector) *json.JSONValue {
 	}
 }
 
-func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name json.JSONValue, kind json.JSONValue) {
+func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name expressions.Value, kind expressions.Value) {
 	if obj == nil {
 		return
 	}
 
-	name = *getJsonFromStaticDynamic(&obj.Name)
-	kind = *getJsonFromStaticDynamic(&obj.Kind)
+	name = getJsonFromStaticDynamic(&obj.Name)
+	kind = getJsonFromStaticDynamic(&obj.Kind)
 
 	return name, kind
 }

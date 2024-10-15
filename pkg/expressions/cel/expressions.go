@@ -50,6 +50,17 @@ type Expression struct {
 	source  string
 }
 
+func NewExpression(source string) (*Expression, error) {
+	program, err := Compile(source, false)
+	if err != nil {
+		return nil, err
+	}
+	return &Expression{
+		program: program,
+		source:  source,
+	}, nil
+}
+
 func (e *Expression) ResolveFor(json string) (interface{}, error) {
 	input, err := AuthJsonToCel(json)
 	if err != nil {

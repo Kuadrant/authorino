@@ -5,6 +5,7 @@ import (
 	gocontext "context"
 	gojson "encoding/json"
 	"fmt"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,7 +24,7 @@ import (
 type GenericHttp struct {
 	Endpoint              string
 	Method                string
-	Body                  *json.JSONValue
+	Body                  expressions.Value
 	Parameters            []json.JSONProperty
 	Headers               []json.JSONProperty
 	ContentType           string

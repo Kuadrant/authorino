@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"io"
 	"mime"
 	"net/http"
@@ -23,7 +24,7 @@ var (
 // a pattern for a value fetched dynamically from the authorization JSON
 type JSONProperty struct {
 	Name  string
-	Value JSONValue
+	Value expressions.Value
 }
 
 type JSONValue struct {

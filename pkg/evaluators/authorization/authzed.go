@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"google.golang.org/grpc"
 	insecuregrpc "google.golang.org/grpc/credentials/insecure"
 
@@ -19,11 +19,11 @@ type Authzed struct {
 	Insecure     bool
 	SharedSecret string
 
-	Subject      json.JSONValue
-	SubjectKind  json.JSONValue
-	Resource     json.JSONValue
-	ResourceKind json.JSONValue
-	Permission   json.JSONValue
+	Subject      expressions.Value
+	SubjectKind  expressions.Value
+	Resource     expressions.Value
+	ResourceKind expressions.Value
+	Permission   expressions.Value
 }
 
 type permissionResponse struct {
@@ -86,7 +86,7 @@ func (a *Authzed) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 	return obj, nil
 }
 
-func authzedObjectFor(name, kind json.JSONValue, authJSON string) (*authzedpb.ObjectReference, error) {
+func authzedObjectFor(name, kind expressions.Value, authJSON string) (*authzedpb.ObjectReference, error) {
 	objectId, err := name.ResolveFor(authJSON)
 	if err != nil {
 		return nil, err
