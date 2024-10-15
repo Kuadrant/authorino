@@ -212,8 +212,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if ttl == 0 {
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
+			key, err := getJsonFromStaticDynamic(&identity.Cache.Key)
+			if err != nil {
+				return nil, err
+			}
 			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
-				getJsonFromStaticDynamic(&identity.Cache.Key),
+				key,
 				ttl,
 			)
 		}
@@ -310,8 +314,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if ttl == 0 {
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
+			key, err := getJsonFromStaticDynamic(&metadata.Cache.Key)
+			if err != nil {
+				return nil, err
+			}
 			translatedMetadata.Cache = evaluators.NewEvaluatorCache(
-				getJsonFromStaticDynamic(&metadata.Cache.Key),
+				key,
 				ttl,
 			)
 		}
@@ -383,8 +391,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if ttl == 0 {
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
+			key, err := getJsonFromStaticDynamic(&authorization.Cache.Key)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthorization.Cache = evaluators.NewEvaluatorCache(
-				getJsonFromStaticDynamic(&authorization.Cache.Key),
+				key,
 				ttl,
 			)
 		}
@@ -472,15 +484,24 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[secretRef.Key])
 			}
 
+			permission, err := getJsonFromStaticDynamic(&authzed.Permission)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthzed := &authorization_evaluators.Authzed{
 				Endpoint:     authzed.Endpoint,
 				Insecure:     authzed.Insecure,
 				SharedSecret: sharedSecret,
-				Permission:   getJsonFromStaticDynamic(&authzed.Permission),
+				Permission:   permission,
 			}
-			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = spiceDBObjectToJsonValues(authzed.Subject)
-			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = spiceDBObjectToJsonValues(authzed.Resource)
-
+			translatedAuthzed.Subject, translatedAuthzed.SubjectKind, err = spiceDBObjectToJsonValues(authzed.Subject)
+			if err != nil {
+				return nil, err
+			}
+			translatedAuthzed.Resource, translatedAuthzed.ResourceKind, err = spiceDBObjectToJsonValues(authzed.Resource)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthorization.Authzed = translatedAuthzed
 
 		case api.UnknownAuthorizationMethod:
@@ -586,10 +607,18 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	// denyWith
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
 		if denyWith := responseConfig.Unauthenticated; denyWith != nil {
-			translatedAuthConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith)
+			value, err := buildAuthorinoDenyWithValues(denyWith)
+			if err != nil {
+				return nil, err
+			}
+			translatedAuthConfig.Unauthenticated = value
 		}
 		if denyWith := responseConfig.Unauthorized; denyWith != nil {
-			translatedAuthConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith)
+			value, err := buildAuthorinoDenyWithValues(denyWith)
+			if err != nil {
+				return nil, err
+			}
+			translatedAuthConfig.Unauthorized = value
 		}
 	}
 
@@ -677,17 +706,22 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 	return nil
 }
 
-func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) {
+func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) error {
 	if cache != nil {
 		ttl := cache.TTL
 		if ttl == 0 {
 			ttl = api.EvaluatorDefaultCacheTTL
 		}
-		translatedResponse.Cache = evaluators.NewEvaluatorCache(
-			getJsonFromStaticDynamic(&cache.Key),
-			ttl,
-		)
+		if key, err := getJsonFromStaticDynamic(&cache.Key); err != nil {
+			return err
+		} else {
+			translatedResponse.Cache = evaluators.NewEvaluatorCache(
+				key,
+				ttl,
+			)
+		}
 	}
+	return nil
 }
 
 func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, authConfig *evaluators.AuthConfig, hosts []string) (linkedHosts, looseHosts []string, err error) {
@@ -975,9 +1009,9 @@ func buildJSONExpressionPattern(expression api.PatternExpression) jsonexp.Expres
 	}
 }
 
-func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.DenyWithValues {
+func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) (*evaluators.DenyWithValues, error) {
 	if denyWithSpec == nil {
-		return nil
+		return nil, nil
 	}
 
 	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
@@ -985,32 +1019,49 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.De
 		headers = append(headers, json.JSONProperty{Name: name, Value: &json.JSONValue{Static: header.Value, Pattern: header.Selector}})
 	}
 
+	message, err := getJsonFromStaticDynamic(denyWithSpec.Message)
+	if err != nil {
+		return nil, err
+	}
+	body, err := getJsonFromStaticDynamic(denyWithSpec.Body)
+	if err != nil {
+		return nil, err
+	}
 	return &evaluators.DenyWithValues{
 		Code:    int32(denyWithSpec.Code),
-		Message: getJsonFromStaticDynamic(denyWithSpec.Message),
+		Message: message,
 		Headers: headers,
-		Body:    getJsonFromStaticDynamic(denyWithSpec.Body),
-	}
+		Body:    body,
+	}, nil
 }
 
-func getJsonFromStaticDynamic(value *api.ValueOrSelector) *json.JSONValue {
+func getJsonFromStaticDynamic(value *api.ValueOrSelector) (expressions.Value, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+
+	if value.Expression.Expression != "" {
+		return cel.NewExpression(value.Expression.Expression)
 	}
 
 	return &json.JSONValue{
 		Static:  value.Value,
 		Pattern: value.Selector,
-	}
+	}, nil
 }
 
-func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name expressions.Value, kind expressions.Value) {
+func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name expressions.Value, kind expressions.Value, err error) {
 	if obj == nil {
 		return
 	}
 
-	name = getJsonFromStaticDynamic(&obj.Name)
-	kind = getJsonFromStaticDynamic(&obj.Kind)
-
-	return name, kind
+	nameResolved, err := getJsonFromStaticDynamic(&obj.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	kindResolved, err := getJsonFromStaticDynamic(&obj.Kind)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nameResolved, kindResolved, nil
 }
