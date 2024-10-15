@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
 
@@ -74,7 +75,7 @@ type DenyWith struct {
 
 type DenyWithValues struct {
 	Code    int32
-	Message *json.JSONValue
+	Message expressions.Value
 	Headers []json.JSONProperty
-	Body    *json.JSONValue
+	Body    expressions.Value
 }

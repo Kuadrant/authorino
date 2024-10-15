@@ -256,7 +256,7 @@ func TestAuthServiceRawHTTPAuthorization_WithHeaders(t *testing.T) {
 		Wrapper:    "httpHeader",
 		WrapperKey: "x-auth-data",
 		DynamicJSON: &response.DynamicJSON{
-			Properties: []json.JSONProperty{{Name: "headers", Value: json.JSONValue{Pattern: "context.request.http.headers"}}},
+			Properties: []json.JSONProperty{{Name: "headers", Value: &json.JSONValue{Pattern: "context.request.http.headers"}}},
 		},
 	}}
 	indexMock := mock_index.NewMockIndex(mockController)

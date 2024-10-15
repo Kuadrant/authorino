@@ -3,11 +3,11 @@ package authorization
 import (
 	gocontext "context"
 	"fmt"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"strings"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
-	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
@@ -21,7 +21,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(user json.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user expressions.Value, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -41,16 +41,16 @@ func NewKubernetesAuthz(user json.JSONValue, groups []string, resourceAttributes
 }
 
 type KubernetesAuthzResourceAttributes struct {
-	Namespace   json.JSONValue
-	Group       json.JSONValue
-	Resource    json.JSONValue
-	Name        json.JSONValue
-	SubResource json.JSONValue
-	Verb        json.JSONValue
+	Namespace   expressions.Value
+	Group       expressions.Value
+	Resource    expressions.Value
+	Name        expressions.Value
+	SubResource expressions.Value
+	Verb        expressions.Value
 }
 
 type KubernetesAuthz struct {
-	User               json.JSONValue
+	User               expressions.Value
 	Groups             []string
 	ResourceAttributes *KubernetesAuthzResourceAttributes
 
@@ -63,7 +63,7 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-	jsonValueToStr := func(value json.JSONValue) (string, error) {
+	jsonValueToStr := func(value expressions.Value) (string, error) {
 		resolved, err := value.ResolveFor(authJSON)
 		if err != nil {
 			return "", err
