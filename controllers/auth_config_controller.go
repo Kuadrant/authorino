@@ -282,7 +282,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		case api.PlainIdentityAuthentication:
-			translatedIdentity.Plain = &identity_evaluators.Plain{Pattern: identity.Plain.Selector}
+			if identity.Plain.Expression.Expression != "" {
+				expression, err := cel.NewStringExpression(identity.Plain.Expression.Expression)
+				if err != nil {
+					return nil, err
+				}
+				translatedIdentity.Plain = &identity_evaluators.Plain{Value: expression, Pattern: identity.Plain.Expression.Expression}
+			} else {
+				translatedIdentity.Plain = &identity_evaluators.Plain{Value: &json.JSONValue{Pattern: identity.Plain.Selector}, Pattern: identity.Plain.Selector}
+			}
 
 		case api.AnonymousAccessAuthentication:
 			translatedIdentity.Noop = &identity_evaluators.Noop{AuthCredentials: authCred}
