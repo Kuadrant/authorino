@@ -96,7 +96,7 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 						Patterns: []api.PatternExpressionOrRef{
 							{
 								CelPredicate: api.CelPredicate{
-									Predicate: "context.identity.role == 'admin'",
+									Predicate: "auth.identity.role == 'admin'",
 								},
 							},
 						},

@@ -13,7 +13,7 @@ func TestPredicate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	predicate, err := NewPredicate(`context`)
+	predicate, err := NewPredicate(`auth`)
 	assert.ErrorContains(t, err, "wanted bool output type")
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
@@ -34,10 +34,10 @@ func TestPredicate(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, response, true)
 
-	predicate, err = NewPredicate(`context.request.http.method == "GET"`)
+	predicate, err = NewPredicate(`request.http.method == "GET"`)
 	assert.NilError(t, err)
 
-	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http": {"method": "GET"}}}}`)
+	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"request":{"http": {"method": "GET"}}}`)
 	response, err = predicate.Matches(pipelineMock.GetAuthorizationJSON())
 	assert.NilError(t, err)
 	assert.Equal(t, response, true)
