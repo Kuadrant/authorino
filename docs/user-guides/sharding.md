@@ -116,7 +116,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: auth-config-1
@@ -167,7 +167,7 @@ Create an `AuthConfig`:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: auth-config-2

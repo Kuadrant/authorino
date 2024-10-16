@@ -1241,26 +1241,24 @@ The examples below are all with `--log-level=debug` and `--log-mode=production`.
   <summary>Booting up the service</summary>
 
   ```jsonc
-  {"level":"info","ts":1669220526.929678,"logger":"authorino","msg":"setting instance base logger","min level":"debug","mode":"production"}
-  {"level":"info","ts":1669220526.929718,"logger":"authorino","msg":"booting up authorino","version":"7688cfa32317a49f0461414e741c980e9c05dba3"}
-  {"level":"debug","ts":1669220526.9297278,"logger":"authorino","msg":"setting up with options","auth-config-label-selector":"","deep-metrics-enabled":"false","enable-leader-election":"false","evaluator-cache-size":"1","ext-auth-grpc-port":"50051","ext-auth-http-port":"5001","health-probe-addr":":8081","log-level":"debug","log-mode":"production","max-http-request-body-size":"8192","metrics-addr":":8080","oidc-http-port":"8083","oidc-tls-cert":"/etc/ssl/certs/oidc.crt","oidc-tls-cert-key":"/etc/ssl/private/oidc.key","secret-label-selector":"authorino.kuadrant.io/managed-by=authorino","timeout":"0","tls-cert":"/etc/ssl/certs/tls.crt","tls-cert-key":"/etc/ssl/private/tls.key","watch-namespace":"default"}
-  {"level":"info","ts":1669220527.9816976,"logger":"authorino.controller-runtime.metrics","msg":"Metrics server is starting to listen","addr":":8080"}
-  {"level":"info","ts":1669220527.9823213,"logger":"authorino","msg":"starting grpc auth service","port":50051,"tls":true}
-  {"level":"info","ts":1669220527.9823658,"logger":"authorino","msg":"starting http auth service","port":5001,"tls":true}
-  {"level":"info","ts":1669220527.9824295,"logger":"authorino","msg":"starting http oidc service","port":8083,"tls":true}
-  {"level":"info","ts":1669220527.9825335,"logger":"authorino","msg":"starting manager"}
-  {"level":"info","ts":1669220527.982721,"logger":"authorino","msg":"Starting server","path":"/metrics","kind":"metrics","addr":"[::]:8080"}
-  {"level":"info","ts":1669220527.982766,"logger":"authorino","msg":"Starting server","kind":"health probe","addr":"[::]:8081"}
-  {"level":"info","ts":1669220527.9829438,"logger":"authorino.controller.secret","msg":"Starting EventSource","reconciler group":"","reconciler kind":"Secret","source":"kind source: *v1.Secret"}
-  {"level":"info","ts":1669220527.9829693,"logger":"authorino.controller.secret","msg":"Starting Controller","reconciler group":"","reconciler kind":"Secret"}
-  {"level":"info","ts":1669220527.9829714,"logger":"authorino.controller.authconfig","msg":"Starting EventSource","reconciler group":"authorino.kuadrant.io","reconciler kind":"AuthConfig","source":"kind source: *v1beta1.AuthConfig"}
-  {"level":"info","ts":1669220527.9830208,"logger":"authorino.controller.authconfig","msg":"Starting Controller","reconciler group":"authorino.kuadrant.io","reconciler kind":"AuthConfig"}
-  {"level":"info","ts":1669220528.0834699,"logger":"authorino.controller.authconfig","msg":"Starting workers","reconciler group":"authorino.kuadrant.io","reconciler kind":"AuthConfig","worker count":1}
-  {"level":"info","ts":1669220528.0836608,"logger":"authorino.controller.secret","msg":"Starting workers","reconciler group":"","reconciler kind":"Secret","worker count":1}
-  {"level":"info","ts":1669220529.041266,"logger":"authorino","msg":"starting status update manager"}
-  {"level":"info","ts":1669220529.0418258,"logger":"authorino.controller.authconfig","msg":"Starting EventSource","reconciler group":"authorino.kuadrant.io","reconciler kind":"AuthConfig","source":"kind source: *v1beta1.AuthConfig"}
-  {"level":"info","ts":1669220529.0418813,"logger":"authorino.controller.authconfig","msg":"Starting Controller","reconciler group":"authorino.kuadrant.io","reconciler kind":"AuthConfig"}
-  {"level":"info","ts":1669220529.1432905,"logger":"authorino.controller.authconfig","msg":"Starting workers","reconciler group":"authorino.kuadrant.io","reconciler kind":"AuthConfig","worker count":1}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"setting instance base logger","min level":"info","mode":"production"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"build information","version":"v1beta3","commit":"ae2dc8150af2e6cdb35957ba7305c4c2a76d6149","dirty":"false","cmd":"server"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"starting http auth service","port":5001,"tls":false}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"starting grpc auth service","port":50051,"tls":false}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"starting http oidc service","port":8083,"tls":false}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"starting reconciliation manager"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"starting server","kind":"health probe","addr":"[::]:8081"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino.controller-runtime.metrics","msg":"Starting metrics server"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino.controller-runtime.metrics","msg":"Serving metrics server","bindAddress":":8080","secure":false}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting EventSource","controller":"authconfig","controllerGroup":"authorino.kuadrant.io","controllerKind":"AuthConfig","source":"kind source: *v1beta3.AuthConfig"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting EventSource","controller":"secret","controllerGroup":"","controllerKind":"Secret","source":"kind source: *v1.Secret"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting Controller","controller":"secret","controllerGroup":"","controllerKind":"Secret"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting Controller","controller":"authconfig","controllerGroup":"authorino.kuadrant.io","controllerKind":"AuthConfig"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"starting status update manager"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting EventSource","controller":"authconfig","controllerGroup":"authorino.kuadrant.io","controllerKind":"AuthConfig","source":"kind source: *v1beta3.AuthConfig"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting Controller","controller":"authconfig","controllerGroup":"authorino.kuadrant.io","controllerKind":"AuthConfig"}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting workers","controller":"secret","controllerGroup":"","controllerKind":"Secret","worker count":1}
+  {"level":"info","ts":"2024-10-07T10:31:02+01:00","logger":"authorino","msg":"Starting workers","controller":"authconfig","controllerGroup":"authorino.kuadrant.io","controllerKind":"AuthConfig","worker count":1}
   ```
 </details>
 

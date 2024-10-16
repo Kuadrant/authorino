@@ -141,7 +141,7 @@ The AuthConfig to validate other AuthConfigs will enforce the following rules:
 
 ```sh
 kubectl -n authorino apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: authconfig-validator
@@ -273,7 +273,7 @@ kubectl create namespace myapp
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -294,7 +294,7 @@ Anonymous access:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -303,16 +303,16 @@ spec:
   - myapp.io
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":null}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":null}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -324,9 +324,9 @@ spec:
       anonymous: {}
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"anonymous-access\":{\"anonymous\":{}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"anonymous-access":{"anonymous":{}},"keycloak":null}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"anonymous-access\":{\"anonymous\":{}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"anonymous-access":{"anonymous":{}},"keycloak":null}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
@@ -335,7 +335,7 @@ Kubernetes TokenReview:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -348,9 +348,9 @@ spec:
         audiences: ["myapp"]
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"k8s-tokenreview\":{\"kubernetesTokenReview\":{\"audiences\":[\"myapp\"]}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"k8s-tokenreview":{"kubernetesTokenReview":{"audiences":["myapp"]}},"keycloak":null}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"k8s-tokenreview\":{\"kubernetesTokenReview\":{\"audiences\":[\"myapp\"]}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"k8s-tokenreview":{"kubernetesTokenReview":{"audiences":["myapp"]}},"keycloak":null}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
@@ -359,7 +359,7 @@ Plain identity extracted from context:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -372,9 +372,9 @@ spec:
         selector: context.metadata_context.filter_metadata.envoy\.filters\.http\.jwt_authn|verified_jwt
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"envoy-jwt-authn\":{\"plain\":{\"selector\":\"context.metadata_context.filter_metadata.envoy\\\\.filters\\\\.http\\\\.jwt_authn|verified_jwt\"}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"envoy-jwt-authn":{"plain":{"selector":"context.metadata_context.filter_metadata.envoy\\.filters\\.http\\.jwt_authn|verified_jwt"}},"keycloak":null}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"envoy-jwt-authn\":{\"plain\":{\"selector\":\"context.metadata_context.filter_metadata.envoy\\\\.filters\\\\.http\\\\.jwt_authn|verified_jwt\"}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"envoy-jwt-authn":{"plain":{"selector":"context.metadata_context.filter_metadata.envoy\\.filters\\.http\\.jwt_authn|verified_jwt"}},"keycloak":null}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
@@ -383,7 +383,7 @@ Kubernetes SubjectAccessReview:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -401,9 +401,9 @@ spec:
           selector: auth.identity.sub
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"keycloak\":{\"jwt\":{\"issuerUrl\":\"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant\"}}},\"authorization\":{\"k8s-subjectaccessreview\":{\"kubernetesSubjectAccessReview\":{\"user\":{\"selector\":\"auth.identity.sub\"}}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authorization":{"k8s-subjectaccessreview":{"kubernetesSubjectAccessReview":{"user":{"selector":"auth.identity.sub"}}}}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"keycloak\":{\"jwt\":{\"issuerUrl\":\"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant\"}}},\"authorization\":{\"k8s-subjectaccessreview\":{\"kubernetesSubjectAccessReview\":{\"user\":{\"selector\":\"auth.identity.sub\"}}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authorization":{"k8s-subjectaccessreview":{"kubernetesSubjectAccessReview":{"user":{"selector":"auth.identity.sub"}}}}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
@@ -425,7 +425,7 @@ stringData:
     -----END EC PRIVATE KEY-----
 type: Opaque
 ---
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -448,9 +448,9 @@ spec:
 EOF
 # secret/wristband-signing-key created
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"keycloak\":{\"jwt\":{\"issuerUrl\":\"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant\"}}},\"hosts\":[\"myapp.io\"],\"response\":{\"success\":{\"headers\":{\"wristband\":{\"wristband\":{\"issuer\":\"http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/myapp/myapp-protection/wristband\",\"signingKeyRefs\":[{\"algorithm\":\"ES256\",\"name\":\"wristband-signing-key\"}]}}}}}}}\n"}},"spec":{"response":{"success":{"headers":{"wristband":{"wristband":{"issuer":"http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/myapp/myapp-protection/wristband","signingKeyRefs":[{"algorithm":"ES256","name":"wristband-signing-key"}]}}}}}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"keycloak\":{\"jwt\":{\"issuerUrl\":\"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant\"}}},\"hosts\":[\"myapp.io\"],\"response\":{\"success\":{\"headers\":{\"wristband\":{\"wristband\":{\"issuer\":\"http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/myapp/myapp-protection/wristband\",\"signingKeyRefs\":[{\"algorithm\":\"ES256\",\"name\":\"wristband-signing-key\"}]}}}}}}}\n"}},"spec":{"response":{"success":{"headers":{"wristband":{"wristband":{"issuer":"http://authorino-authorino-oidc.authorino.svc.cluster.local:8083/myapp/myapp-protection/wristband","signingKeyRefs":[{"algorithm":"ES256","name":"wristband-signing-key"}]}}}}}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
@@ -461,7 +461,7 @@ Before adding the required permissions:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -475,9 +475,9 @@ spec:
           matchLabels: { app: myapp }
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"api-key\":{\"apiKey\":{\"selector\":{\"matchLabels\":{\"app\":\"myapp\"}}}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"api-key":{"apiKey":{"selector":{"matchLabels":{"app":"myapp"}}}},"keycloak":null}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"api-key\":{\"apiKey\":{\"selector\":{\"matchLabels\":{\"app\":\"myapp\"}}}}},\"hosts\":[\"myapp.io\"]}}\n"}},"spec":{"authentication":{"api-key":{"apiKey":{"selector":{"matchLabels":{"app":"myapp"}}}},"keycloak":null}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Not authorized: unknown reason
 ```
@@ -505,7 +505,7 @@ After adding the required permissions:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -527,7 +527,7 @@ Invalid:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection
@@ -547,9 +547,9 @@ spec:
         ttl: 60
 EOF
 # Error from server: error when applying patch:
-# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta2\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"keycloak\":{\"jwt\":{\"issuerUrl\":\"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant\"}}},\"hosts\":[\"myapp.io\"],\"metadata\":{\"external-source\":{\"cache\":{\"key\":{\"value\":\"global\"},\"ttl\":60},\"http\":{\"url\":\"http://metadata.io\"}}}}}\n"}},"spec":{"authentication":{"api-key":null,"keycloak":{"jwt":{"issuerUrl":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant"}}},"metadata":{"external-source":{"cache":{"key":{"value":"global"},"ttl":60},"http":{"url":"http://metadata.io"}}}}}
+# {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"authorino.kuadrant.io/v1beta3\",\"kind\":\"AuthConfig\",\"metadata\":{\"annotations\":{},\"name\":\"myapp-protection\",\"namespace\":\"myapp\"},\"spec\":{\"authentication\":{\"keycloak\":{\"jwt\":{\"issuerUrl\":\"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant\"}}},\"hosts\":[\"myapp.io\"],\"metadata\":{\"external-source\":{\"cache\":{\"key\":{\"value\":\"global\"},\"ttl\":60},\"http\":{\"url\":\"http://metadata.io\"}}}}}\n"}},"spec":{"authentication":{"api-key":null,"keycloak":{"jwt":{"issuerUrl":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant"}}},"metadata":{"external-source":{"cache":{"key":{"value":"global"},"ttl":60},"http":{"url":"http://metadata.io"}}}}}
 # to:
-# Resource: "authorino.kuadrant.io/v1beta2, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta2, Kind=AuthConfig"
+# Resource: "authorino.kuadrant.io/v1beta3, Resource=authconfigs", GroupVersionKind: "authorino.kuadrant.io/v1beta3, Kind=AuthConfig"
 # Name: "myapp-protection", Namespace: "myapp"
 # for: "STDIN": error when patching "STDIN": admission webhook "check-authconfig.authorino.kuadrant.io" denied the request: Unauthorized
 ```
@@ -558,7 +558,7 @@ Valid:
 
 ```sh
 kubectl -n myapp apply -f -<<EOF
-apiVersion: authorino.kuadrant.io/v1beta2
+apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
   name: myapp-protection

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta2
+package v1beta3
 
 import (
 	k8score "k8s.io/api/core/v1"
@@ -91,6 +91,7 @@ type StatusConditionType string
 // AuthConfig is the schema for Authorino's AuthConfig API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.summary.ready`,description="Ready for all hosts"
 // +kubebuilder:printcolumn:name="Hosts",type=string,JSONPath=`.status.summary.numHostsReady`,description="Number of hosts ready"
 // +kubebuilder:printcolumn:name="Authentication",type=integer,JSONPath=`.status.summary.numIdentitySources`,description="Number of trusted identity sources",priority=2
