@@ -14,8 +14,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const RootMetadataBinding = "metadata"
+const RootRequestBinding = "request"
+const RootSourceBinding = "source"
+const RootDestinationBinding = "destination"
 const RootAuthBinding = "auth"
-const RootContextBinding = "context"
 
 type Predicate struct {
 	program cel.Program
@@ -116,8 +119,11 @@ func (e *Expression) EvaluateStringValue(json string) (string, error) {
 
 func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (cel.Program, error) {
 	envOpts := append([]cel.EnvOption{cel.Declarations(
+		decls.NewConst(RootMetadataBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
+		decls.NewConst(RootRequestBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
+		decls.NewConst(RootSourceBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
+		decls.NewConst(RootDestinationBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-		decls.NewConst(RootContextBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 	)}, opts...)
 	env, env_err := cel.NewEnv(envOpts...)
 	if env_err != nil {
@@ -166,11 +172,18 @@ func AuthJsonToCel(json string) (map[string]interface{}, error) {
 	if err := jsonpb.Unmarshal(strings.NewReader(json), &data); err != nil {
 		return nil, err
 	}
-	auth := data.GetFields()["auth"]
-	context := data.GetFields()["context"]
+	metadata := data.GetFields()[RootMetadataBinding]
+	request := data.GetFields()[RootRequestBinding]
+	source := data.GetFields()[RootSourceBinding]
+	destination := data.GetFields()[RootDestinationBinding]
+	auth := data.GetFields()[RootAuthBinding]
+
 	input := map[string]interface{}{
-		RootAuthBinding:    auth,
-		RootContextBinding: context,
+		RootMetadataBinding:    metadata,
+		RootRequestBinding:     request,
+		RootSourceBinding:      source,
+		RootDestinationBinding: destination,
+		RootAuthBinding:        auth,
 	}
 	return input, nil
 }
