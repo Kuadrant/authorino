@@ -29,6 +29,7 @@ import (
 
 	v1beta1 "github.com/kuadrant/authorino/api/v1beta1"
 	v1beta2 "github.com/kuadrant/authorino/api/v1beta2"
+	v1beta3 "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/health"
@@ -84,6 +85,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(v1beta1.AddToScheme(scheme))
 	utilruntime.Must(v1beta2.AddToScheme(scheme))
+	utilruntime.Must(v1beta3.AddToScheme(scheme))
 }
 
 type logOptions struct {

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/kuadrant/authorino/pkg/expressions"
+
 	"github.com/tidwall/gjson"
 )
 
@@ -23,7 +25,7 @@ var (
 // a pattern for a value fetched dynamically from the authorization JSON
 type JSONProperty struct {
 	Name  string
-	Value JSONValue
+	Value expressions.Value
 }
 
 type JSONValue struct {
@@ -38,7 +40,11 @@ type JSONValue struct {
 // simple pattern or as a template that mixes static value with variable placeholders that resolve to patterns.
 // In case of a template that mixes no variable placeholder, but it contains nothing but a static string value, users
 // should use `JSONValue.Static` instead of `JSONValue.Pattern`.
-func (v *JSONValue) ResolveFor(jsonData string) interface{} {
+func (v *JSONValue) ResolveFor(jsonData string) (interface{}, error) {
+	return v.resolveForSafe(jsonData), nil
+}
+
+func (v *JSONValue) resolveForSafe(jsonData string) interface{} {
 	if v.Pattern != "" {
 		// If all curly braces in the pattern are for passing arguments to modifiers, then it's likely NOT a template.
 		// To be a template, the pattern must contain at least one curly brace delimiting a variable placeholder.

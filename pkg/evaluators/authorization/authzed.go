@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"google.golang.org/grpc"
 	insecuregrpc "google.golang.org/grpc/credentials/insecure"
 
@@ -19,11 +19,11 @@ type Authzed struct {
 	Insecure     bool
 	SharedSecret string
 
-	Subject      json.JSONValue
-	SubjectKind  json.JSONValue
-	Resource     json.JSONValue
-	ResourceKind json.JSONValue
-	Permission   json.JSONValue
+	Subject      expressions.Value
+	SubjectKind  expressions.Value
+	Resource     expressions.Value
+	ResourceKind expressions.Value
+	Permission   expressions.Value
 }
 
 type permissionResponse struct {
@@ -48,10 +48,22 @@ func (a *Authzed) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 
 	authJSON := pipeline.GetAuthorizationJSON()
 
+	resource, err := authzedObjectFor(a.Resource, a.ResourceKind, authJSON)
+	if err != nil {
+		return nil, err
+	}
+	object, err := authzedObjectFor(a.Subject, a.SubjectKind, authJSON)
+	if err != nil {
+		return nil, err
+	}
+	permission, err := a.Permission.ResolveFor(authJSON)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.CheckPermission(ctx, &authzedpb.CheckPermissionRequest{
-		Resource:   authzedObjectFor(a.Resource, a.ResourceKind, authJSON),
-		Subject:    &authzedpb.SubjectReference{Object: authzedObjectFor(a.Subject, a.SubjectKind, authJSON)},
-		Permission: fmt.Sprintf("%s", a.Permission.ResolveFor(authJSON)),
+		Resource:   resource,
+		Subject:    &authzedpb.SubjectReference{Object: object},
+		Permission: fmt.Sprintf("%s", permission),
 	})
 	if err != nil {
 		return nil, err
@@ -74,9 +86,17 @@ func (a *Authzed) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 	return obj, nil
 }
 
-func authzedObjectFor(name, kind json.JSONValue, authJSON string) *authzedpb.ObjectReference {
-	return &authzedpb.ObjectReference{
-		ObjectId:   fmt.Sprintf("%s", name.ResolveFor(authJSON)),
-		ObjectType: fmt.Sprintf("%s", kind.ResolveFor(authJSON)),
+func authzedObjectFor(name, kind expressions.Value, authJSON string) (*authzedpb.ObjectReference, error) {
+	objectId, err := name.ResolveFor(authJSON)
+	if err != nil {
+		return nil, err
 	}
+	objectType, err := kind.ResolveFor(authJSON)
+	if err != nil {
+		return nil, err
+	}
+	return &authzedpb.ObjectReference{
+		ObjectId:   fmt.Sprintf("%s", objectId),
+		ObjectType: fmt.Sprintf("%s", objectType),
+	}, nil
 }
