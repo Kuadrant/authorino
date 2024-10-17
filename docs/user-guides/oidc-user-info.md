@@ -3,14 +3,11 @@
 Fetch user info for OpenID Connect ID tokens in request-time for extra metadata for your policies and online verification of token validity.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>External auth metadata → <a href="../features.md#oidc-userinfo-metadatauserinfo">OIDC UserInfo</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - External auth metadata → [OIDC UserInfo](../features.md#oidc-userinfo-metadatauserinfo)
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
 
   Apart from possibly complementing information of the JWT, fetching OpenID Connect UserInfo in request-time can be particularly useful for remote checking the state of the session, as opposed to only verifying the JWT/JWS offline. Implementation requires an OpenID Connect issuer ([`spec.identity.oidc`](#openid-connect-oidc-jwtjose-verification-and-validation-identityoidc)) configured in the same `AuthConfig`.
 
@@ -18,8 +15,6 @@ Fetch user info for OpenID Connect ID tokens in request-time for extra metadata 
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 
