@@ -163,7 +163,7 @@ e2e: ## Runs the end-to-end tests on a local environment setup
 
 ##@ Apps
 
-.PHONY: user-apps keycloak dex limitador
+.PHONY: user-apps keycloak dex limitador cert-manager
 
 DEPLOY_KEYCLOAK ?= $(DEPLOY_IDPS)
 DEPLOY_DEX ?= $(DEPLOY_IDPS)
@@ -191,6 +191,12 @@ dex: ## Deploys Dex from kuadrant/authorino-examples into the Kubernetes cluster
 limitador: ## Deploys Limitador from kuadrant/authorino-examples into the Kubernetes cluster configured in ~/.kube/config
 	kubectl -n $(NAMESPACE) apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/limitador/limitador-deploy.yaml
 
+cert-manager:
+ifeq (true,$(TLS_ENABLED))
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.1/cert-manager.yaml
+	kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
+endif
+
 ##@ Installation
 
 .PHONY: install-operator uninstall-operator install uninstall patch-webhook
@@ -204,7 +210,7 @@ OPERATOR_BRANCH = $(OPERATOR_VERSION)
 endif
 install-operator: ## Installs Authorino Operator and dependencies into the Kubernetes cluster configured in ~/.kube/config
 	curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/$(OPERATOR_BRANCH)/utils/install.sh | bash -s -- --git-ref $(OPERATOR_BRANCH)
-	kubectl patch deployment/authorino-webhooks -n $(AUTHORINO_OPERATOR_NAMESPACE) -p '{"spec":{"template":{"spec":{"containers":[{"name":"webhooks","image":"$(AUTHORINO_IMAGE)","imagePullPolicy":"IfNotPresent"}]}}}}'
+#	kubectl patch deployment/authorino-webhooks -n $(AUTHORINO_OPERATOR_NAMESPACE) -p '{"spec":{"template":{"spec":{"containers":[{"name":"webhooks","image":"$(AUTHORINO_IMAGE)","imagePullPolicy":"IfNotPresent"}]}}}}'
 	kubectl -n $(AUTHORINO_OPERATOR_NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 
 uninstall-operator: ## Uninstalls Authorino Operator and corresponding version of the manifests from the Kubernetes cluster configured in ~/.kube/config
@@ -265,7 +271,7 @@ cluster: kind ## Starts a local Kubernetes cluster using Kind
 local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
 	$(KIND) load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
 
-local-setup: cluster local-build install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
+local-setup: cluster cert-manager local-build install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all
 	@{ \
 	echo "Now you can export the envoy service by doing:"; \
