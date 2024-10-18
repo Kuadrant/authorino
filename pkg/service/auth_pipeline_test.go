@@ -340,8 +340,8 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 			Unauthenticated: &evaluators.DenyWithValues{
 				Code: 302,
 				Headers: []json.JSONProperty{
-					{Name: "X-Static-Header", Value: json.JSONValue{Static: "some-value"}},
-					{Name: "Location", Value: json.JSONValue{Pattern: "https://my-app.io/login?redirect_to=https://{context.request.http.host}{context.request.http.path}"}},
+					{Name: "X-Static-Header", Value: &json.JSONValue{Static: "some-value"}},
+					{Name: "Location", Value: &json.JSONValue{Pattern: "https://my-app.io/login?redirect_to=https://{context.request.http.host}{context.request.http.path}"}},
 				},
 				Body: &json.JSONValue{
 					Static: authConfigStaticResponse,
