@@ -74,7 +74,9 @@ spec:
       anonymous: {}
       priority: 1
       when:
-      - predicate: request.http.method == "GET"
+      - selector: context.request.http.method
+        operator: eq
+        value: GET
       - selector: context.request.http.path
         operator: matches
         value: ^/$
