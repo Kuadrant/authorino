@@ -35,6 +35,10 @@ jobs:
         run: |
           curl -sL https://raw.githubusercontent.com/Kuadrant/authorino-operator/main/utils/install.sh | bash -s
           kubectl -n authorino-operator wait --timeout=300s --for=condition=Available deployments --all
+      - name: Install cert-manager
+        run: |
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.1/cert-manager.yaml
+          kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
       - name: Create the namespace
         run: |
           kubectl create namespace authorino
