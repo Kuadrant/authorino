@@ -54,7 +54,7 @@ controller-gen: ## Installs controller-gen in $PROJECT_DIR/bin
 
 KUSTOMIZE = $(PROJECT_DIR)/bin/kustomize
 kustomize: ## Installs kustomize in $PROJECT_DIR/bin
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.5)
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@v5.5.0)
 
 ENVTEST = $(PROJECT_DIR)/bin/setup-envtest
 envtest: ## Installs setup-envtest in $PROJECT_DIR/bin
@@ -118,11 +118,11 @@ vet: ## Runs go vet against code
 	go vet ./...
 
 generate: vendor controller-gen ## Generates types deepcopy code
-	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 	$(MAKE) fmt vet
 
 manifests: controller-gen kustomize ## Generates the manifests in $PROJECT_DIR/install
-	controller-gen crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && $(KUSTOMIZE) build install > $(AUTHORINO_MANIFESTS)
+	$(CONTROLLER_GEN) crd:crdVersions=v1 rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=install/crd output:rbac:artifacts:config=install/rbac && $(KUSTOMIZE) build install > $(AUTHORINO_MANIFESTS)
 	$(MAKE) patch-webhook
 
 run:git_sha=$(shell git rev-parse HEAD)
