@@ -17,21 +17,16 @@ Cases where one will **NOT** want to enable caching, due to relatively cheap com
 - Anonymous access
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Common feature → <a href="../features.md#common-feature-caching-cache">Caching</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#anonymous-access-authenticationanonymous">Anonymous access</a></li>
-      <li>External auth metadata → <a href="../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-      <li>Dynamic response → <a href="../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Common feature → [Caching](../features.md#common-feature-caching-cache)
+  - Identity verification & authentication → [Anonymous access](../features.md#anonymous-access-authenticationanonymous)
+  - External auth metadata → [HTTP GET/GET-by-POST](../features.md#http-getget-by-post-metadatahttp)
+  - Authorization → [Open Policy Agent (OPA) Rego policies](../features.md#open-policy-agent-opa-rego-policies-authorizationopa)
+  - Dynamic response → [JSON injection](../features.md#json-injection-responsesuccessheadersdynamicmetadatajson)
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

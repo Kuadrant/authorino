@@ -3,12 +3,9 @@
 Validate Kubernetes Service Account tokens to authenticate requests to your protected hosts.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview">Kubernetes TokenReview</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [Kubernetes TokenReview](../features.md#kubernetes-tokenreview-authenticationkubernetestokenreview)
 
   Authorino can verify Kubernetes-valid access tokens (using Kubernetes [TokenReview](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1) API).
 
@@ -18,8 +15,6 @@ Validate Kubernetes Service Account tokens to authenticate requests to your prot
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

@@ -3,13 +3,10 @@
 Turn Authorino API key `Secret`s settings into HTTP basic auth.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-        <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
 
   HTTP "Basic" Authentication ([RFC 7235](https://datatracker.ietf.org/doc/html/rfc7235)) is not recommended if you can afford other more secure methods such as OpenID Connect. To support legacy nonetheless it is sometimes necessary to implement it.
 
@@ -19,8 +16,6 @@ Turn Authorino API key `Secret`s settings into HTTP basic auth.
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 
