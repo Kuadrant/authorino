@@ -8,9 +8,13 @@ spec:
 
   patterns:
     admin-path:
-    - predicate: request.http.path.matches("^/admin(/.*)?$")
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/admin(/.*)?$
     resource-path:
-    - predicate: request.http.path.matches("^/greetings/\d+$")
+      - selector: context.request.http.path
+        operator: matches
+        value: ^/greetings/\d+$
 
   authentication:
     k8s-auth:
