@@ -155,7 +155,7 @@ report-benchmarks:
 cover: ## Shows test coverage
 	go tool cover -html=cover.out
 
-AUTHCONFIG_VERSION ?= v1beta3
+AUTHCONFIG_VERSION ?= v1beta2
 VERBOSE ?= 0
 e2e: ## Runs the end-to-end tests on a local environment setup
 	$(MAKE) local-setup NAMESPACE=authorino KIND_CLUSTER_NAME=authorino-e2e AUTHORINO_IMAGE=$(AUTHORINO_IMAGE) TLS_ENABLED=$(TLS_ENABLED) OPERATOR_BRANCH=$(OPERATOR_BRANCH) AUTHORINO_MANIFESTS=$(AUTHORINO_MANIFESTS) AUTHORINO_INSTANCE=$(AUTHORINO_INSTANCE) ENVOY_OVERLAY=$(ENVOY_OVERLAY) DEPLOY_KEYCLOAK=1 FF=1
