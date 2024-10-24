@@ -52,11 +52,11 @@ func TestAuthzedCallAuthorized(t *testing.T) {
 		Endpoint:     testAuthzedServerEndpoint,
 		Insecure:     true,
 		SharedSecret: "secret",
-		Subject:      json.JSONValue{Static: "1"},
-		SubjectKind:  json.JSONValue{Static: "user"},
-		Resource:     json.JSONValue{Static: "123"},
-		ResourceKind: json.JSONValue{Static: "post"},
-		Permission:   json.JSONValue{Static: "read"},
+		Subject:      &json.JSONValue{Static: "1"},
+		SubjectKind:  &json.JSONValue{Static: "user"},
+		Resource:     &json.JSONValue{Static: "123"},
+		ResourceKind: &json.JSONValue{Static: "post"},
+		Permission:   &json.JSONValue{Static: "read"},
 	}
 
 	obj, err := authzed.Call(pipelineMock, ctx)
@@ -91,11 +91,11 @@ func TestAuthzedCallForbidden(t *testing.T) {
 		Endpoint:     testAuthzedServerEndpoint,
 		Insecure:     true,
 		SharedSecret: "secret",
-		Subject:      json.JSONValue{Static: "1"},
-		SubjectKind:  json.JSONValue{Static: "user"},
-		Resource:     json.JSONValue{Static: "123"},
-		ResourceKind: json.JSONValue{Static: "post"},
-		Permission:   json.JSONValue{Static: "read"},
+		Subject:      &json.JSONValue{Static: "1"},
+		SubjectKind:  &json.JSONValue{Static: "user"},
+		Resource:     &json.JSONValue{Static: "123"},
+		ResourceKind: &json.JSONValue{Static: "post"},
+		Permission:   &json.JSONValue{Static: "read"},
 	}
 
 	obj, err := authzed.Call(pipelineMock, ctx)

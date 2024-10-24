@@ -80,7 +80,7 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
 		Method:          "POST",
-		Parameters:      []json.JSONProperty{{Name: "user", Value: json.JSONValue{Pattern: "auth.identity.user"}}},
+		Parameters:      []json.JSONProperty{{Name: "user", Value: &json.JSONValue{Pattern: "auth.identity.user"}}},
 		ContentType:     "application/x-www-form-urlencoded",
 		SharedSecret:    "secret",
 		AuthCredentials: sharedCredsMock,
@@ -226,8 +226,8 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 		Endpoint: endpoint,
 		Method:   "GET",
 		Headers: []json.JSONProperty{
-			{Name: "X-Requested-By", Value: json.JSONValue{Static: "authorino"}},
-			{Name: "Content-Type", Value: json.JSONValue{Static: "to-be-overwritten"}},
+			{Name: "X-Requested-By", Value: &json.JSONValue{Static: "authorino"}},
+			{Name: "Content-Type", Value: &json.JSONValue{Static: "to-be-overwritten"}},
 		},
 		AuthCredentials: sharedCredsMock,
 	}

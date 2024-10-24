@@ -24,7 +24,11 @@ func (j *DynamicJSON) Call(pipeline auth.AuthPipeline, ctx context.Context) (int
 
 	for _, property := range j.Properties {
 		value := property.Value
-		obj[property.Name] = value.ResolveFor(authJSON)
+		if resolved, err := value.ResolveFor(authJSON); err != nil {
+			return nil, err
+		} else {
+			obj[property.Name] = resolved
+		}
 	}
 
 	return obj, nil

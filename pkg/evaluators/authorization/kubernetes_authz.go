@@ -7,7 +7,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
@@ -21,7 +21,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(user json.JSONValue, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user expressions.Value, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -41,16 +41,16 @@ func NewKubernetesAuthz(user json.JSONValue, groups []string, resourceAttributes
 }
 
 type KubernetesAuthzResourceAttributes struct {
-	Namespace   json.JSONValue
-	Group       json.JSONValue
-	Resource    json.JSONValue
-	Name        json.JSONValue
-	SubResource json.JSONValue
-	Verb        json.JSONValue
+	Namespace   expressions.Value
+	Group       expressions.Value
+	Resource    expressions.Value
+	Name        expressions.Value
+	SubResource expressions.Value
+	Verb        expressions.Value
 }
 
 type KubernetesAuthz struct {
-	User               json.JSONValue
+	User               expressions.Value
 	Groups             []string
 	ResourceAttributes *KubernetesAuthzResourceAttributes
 
@@ -63,26 +63,61 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-	jsonValueToStr := func(value json.JSONValue) string {
-		return fmt.Sprintf("%s", value.ResolveFor(authJSON))
+	jsonValueToStr := func(value expressions.Value) (string, error) {
+		if value == nil {
+			return "", nil
+		}
+		resolved, err := value.ResolveFor(authJSON)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s", resolved), nil
 	}
 
+	user, err := jsonValueToStr(k.User)
+	if err != nil {
+		return nil, err
+	}
 	subjectAccessReview := kubeAuthz.SubjectAccessReview{
 		Spec: kubeAuthz.SubjectAccessReviewSpec{
-			User: jsonValueToStr(k.User),
+			User: user,
 		},
 	}
 
 	if k.ResourceAttributes != nil {
 		resourceAttributes := k.ResourceAttributes
 
+		namespace, err := jsonValueToStr(resourceAttributes.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		group, err := jsonValueToStr(resourceAttributes.Group)
+		if err != nil {
+			return nil, err
+		}
+		resource, err := jsonValueToStr(resourceAttributes.Resource)
+		if err != nil {
+			return nil, err
+		}
+		name, err := jsonValueToStr(resourceAttributes.Name)
+		if err != nil {
+			return nil, err
+		}
+		subresource, err := jsonValueToStr(resourceAttributes.SubResource)
+		if err != nil {
+			return nil, err
+		}
+		verb, err := jsonValueToStr(resourceAttributes.Verb)
+		if err != nil {
+			return nil, err
+		}
 		subjectAccessReview.Spec.ResourceAttributes = &kubeAuthz.ResourceAttributes{
-			Namespace:   jsonValueToStr(resourceAttributes.Namespace),
-			Group:       jsonValueToStr(resourceAttributes.Group),
-			Resource:    jsonValueToStr(resourceAttributes.Resource),
-			Name:        jsonValueToStr(resourceAttributes.Name),
-			Subresource: jsonValueToStr(resourceAttributes.SubResource),
-			Verb:        jsonValueToStr(resourceAttributes.Verb),
+			Namespace:   namespace,
+			Group:       group,
+			Resource:    resource,
+			Name:        name,
+			Subresource: subresource,
+			Verb:        verb,
 		}
 	} else {
 		request := pipeline.GetHttp()

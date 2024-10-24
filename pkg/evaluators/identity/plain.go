@@ -7,18 +7,20 @@ import (
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/expressions"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
 
 type Plain struct {
+	Value   expressions.Value
 	Pattern string
 }
 
 func (p *Plain) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	pattern := json.JSONValue{Pattern: p.Pattern}
-	if object := pattern.ResolveFor(pipeline.GetAuthorizationJSON()); object != nil {
+	if object, err := p.Value.ResolveFor(pipeline.GetAuthorizationJSON()); err != nil {
+		return nil, err
+	} else if object != nil {
 		return object, nil
 	}
 	return nil, fmt.Errorf("could not retrieve identity object or null")
