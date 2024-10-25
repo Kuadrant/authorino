@@ -6,16 +6,6 @@ spec:
   hosts:
   - talker-api.127.0.0.1.nip.io
 
-  patterns:
-    admin-path:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/admin(/.*)?$
-    resource-path:
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/greetings/\d+$
-
   authentication:
     k8s-auth:
       kubernetesTokenReview:
@@ -99,7 +89,7 @@ spec:
           expression: request.http.headers.authorization
     resource-info:
       when:
-      - patternRef: resource-path
+      - predicate: request.http.path.matches("^/greetings/\\d+$")
       uma:
         credentialsRef:
           name: talker-api-uma-credentials
@@ -125,21 +115,21 @@ spec:
           }
     admin-kubernetes-rbac:
       when:
-      - patternRef: admin-path
-      - predicate: auth.identity.kubernetes-rbac
+      - predicate: request.http.path.matches("^/admin(/.*)?$")
+      - predicate: auth.identity["kubernetes-rbac"]
       kubernetesSubjectAccessReview:
         user:
           expression: auth.identity.username
     admin-jwt-rbac:
       when:
-      - patternRef: admin-path
-      - predicate: auth.identity.jwt-rbac
+      - predicate: request.http.path.matches("^/admin(/.*)?$")
+      - predicate: auth.identity["jwt-rbac"]
       patternMatching:
         patterns:
-        - predicate: auth.identity.roles.exists("admin")
+        - predicate: auth.identity.roles.contains("admin")
     resource-owner:
       when:
-      - patternRef: resource-path
+      - predicate: request.http.path.matches("^/greetings/\\d+$")
       opa:
         rego: |
           allow {
