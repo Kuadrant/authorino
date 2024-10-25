@@ -319,6 +319,9 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
 
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/when/items/oneOf
@@ -337,6 +340,9 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
 
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/authentication/additionalProperties/properties/when/items/oneOf
@@ -355,6 +361,9 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
 
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/metadata/additionalProperties/properties/when/items/oneOf
@@ -373,6 +382,9 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
 
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/authorization/additionalProperties/properties/when/items/oneOf
@@ -391,6 +403,9 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
 
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/response/properties/success/properties/headers/additionalProperties/properties/when/items/oneOf
@@ -409,6 +424,9 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
 
 - op: add
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/response/properties/success/properties/dynamicMetadata/additionalProperties/properties/when/items/oneOf
@@ -427,3 +445,6 @@
     - properties:
         any: {}
       required: [any]
+    - properties:
+        predicate: {}
+      required: [predicate]
