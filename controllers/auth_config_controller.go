@@ -183,16 +183,32 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	for identityCfgName, identity := range authConfigIdentityConfigs {
 		extendedProperties := make([]evaluators.IdentityExtension, len(identity.Defaults)+len(identity.Overrides))
 		for propertyName, property := range identity.Defaults {
-			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, json.JSONValue{
-				Static:  property.Value,
-				Pattern: property.Selector,
-			}, false))
+			if property.Expression.Expression != "" {
+				if expression, err := cel.NewExpression(property.Expression.Expression); err == nil {
+					extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, expression, false))
+				} else {
+					return nil, err
+				}
+			} else {
+				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, &json.JSONValue{
+					Static:  property.Value,
+					Pattern: property.Selector,
+				}, false))
+			}
 		}
 		for propertyName, property := range identity.Overrides {
-			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, json.JSONValue{
-				Static:  property.Value,
-				Pattern: property.Selector,
-			}, true))
+			if property.Expression.Expression != "" {
+				if expression, err := cel.NewExpression(property.Expression.Expression); err == nil {
+					extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, expression, true))
+				} else {
+					return nil, err
+				}
+			} else {
+				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, &json.JSONValue{
+					Static:  property.Value,
+					Pattern: property.Selector,
+				}, true))
+			}
 		}
 
 		predicates, err := buildPredicates(authConfig, identity.Conditions, jsonexp.All)

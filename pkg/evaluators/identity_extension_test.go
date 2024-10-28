@@ -23,62 +23,62 @@ func TestResolveIdentityExtension(t *testing.T) {
 	}{
 		{
 			name:     "static value for existing property without overwrite",
-			input:    NewIdentityExtension("username", json.JSONValue{Static: "foo"}, false),
+			input:    NewIdentityExtension("username", &json.JSONValue{Static: "foo"}, false),
 			expected: "beth",
 		},
 		{
 			name:     "static value for missing property without overwrite",
-			input:    NewIdentityExtension("uid", json.JSONValue{Static: "foo"}, false),
+			input:    NewIdentityExtension("uid", &json.JSONValue{Static: "foo"}, false),
 			expected: "foo",
 		},
 		{
 			name:     "static value for existing property without overwrite",
-			input:    NewIdentityExtension("username", json.JSONValue{Static: "foo"}, true),
+			input:    NewIdentityExtension("username", &json.JSONValue{Static: "foo"}, true),
 			expected: "foo",
 		},
 		{
 			name:     "static value for missing property without overwrite",
-			input:    NewIdentityExtension("uid", json.JSONValue{Static: "foo"}, true),
+			input:    NewIdentityExtension("uid", &json.JSONValue{Static: "foo"}, true),
 			expected: "foo",
 		},
 		{
 			name:     "existing pattern for existing property without overwrite",
-			input:    NewIdentityExtension("username", json.JSONValue{Pattern: "auth.identity.sub"}, false),
+			input:    NewIdentityExtension("username", &json.JSONValue{Pattern: "auth.identity.sub"}, false),
 			expected: "beth",
 		},
 		{
 			name:     "existing pattern for missing property without overwrite",
-			input:    NewIdentityExtension("uid", json.JSONValue{Pattern: "auth.identity.sub"}, false),
+			input:    NewIdentityExtension("uid", &json.JSONValue{Pattern: "auth.identity.sub"}, false),
 			expected: "1234567890",
 		},
 		{
 			name:     "existing pattern for existing property without overwrite",
-			input:    NewIdentityExtension("username", json.JSONValue{Pattern: "auth.identity.sub"}, true),
+			input:    NewIdentityExtension("username", &json.JSONValue{Pattern: "auth.identity.sub"}, true),
 			expected: "1234567890",
 		},
 		{
 			name:     "existing pattern for missing property without overwrite",
-			input:    NewIdentityExtension("uid", json.JSONValue{Pattern: "auth.identity.sub"}, true),
+			input:    NewIdentityExtension("uid", &json.JSONValue{Pattern: "auth.identity.sub"}, true),
 			expected: "1234567890",
 		},
 		{
 			name:     "missing pattern for existing property without overwrite",
-			input:    NewIdentityExtension("username", json.JSONValue{Pattern: "auth.identity.full_name"}, false),
+			input:    NewIdentityExtension("username", &json.JSONValue{Pattern: "auth.identity.full_name"}, false),
 			expected: "beth",
 		},
 		{
 			name:     "missing pattern for missing property without overwrite",
-			input:    NewIdentityExtension("uid", json.JSONValue{Pattern: "auth.identity.full_name"}, false),
+			input:    NewIdentityExtension("uid", &json.JSONValue{Pattern: "auth.identity.full_name"}, false),
 			expected: "",
 		},
 		{
 			name:     "missing pattern for existing property without overwrite",
-			input:    NewIdentityExtension("username", json.JSONValue{Pattern: "auth.identity.full_name"}, true),
+			input:    NewIdentityExtension("username", &json.JSONValue{Pattern: "auth.identity.full_name"}, true),
 			expected: "",
 		},
 		{
 			name:     "missing pattern for missing property without overwrite",
-			input:    NewIdentityExtension("uid", json.JSONValue{Pattern: "auth.identity.full_name"}, true),
+			input:    NewIdentityExtension("uid", &json.JSONValue{Pattern: "auth.identity.full_name"}, true),
 			expected: "",
 		},
 	}
