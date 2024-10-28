@@ -164,9 +164,7 @@ type PatternExpression struct {
 	Value string `json:"value,omitempty"`
 }
 
-type CelExpression struct {
-	Expression string `json:"expression,omitempty"`
-}
+type CelExpression string
 
 type CelPredicate struct {
 	Predicate string `json:"predicate,omitempty"`
@@ -208,7 +206,7 @@ type ValueOrSelector struct {
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector,omitempty"`
 
-	Expression CelExpression `json:",omitempty"`
+	Expression CelExpression `json:"expression,omitempty"`
 }
 
 type CommonEvaluatorSpec struct {
@@ -413,7 +411,7 @@ type PlainIdentitySpec struct {
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector"`
 
-	Expression CelExpression `json:",omitempty"`
+	Expression CelExpression `json:"expression,omitempty"`
 }
 
 type AnonymousAccessSpec struct{}
@@ -451,7 +449,7 @@ type HttpEndpointSpec struct {
 	// E.g. https://ext-auth-server.io/metadata?p={request.path}
 	Url string `json:"url"`
 
-	UrlExpression CelExpression `json:",omitempty"`
+	UrlExpression CelExpression `json:"urlExpression,omitempty"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
 	// When the request method is POST, the authorization JSON is passed in the body of the request.

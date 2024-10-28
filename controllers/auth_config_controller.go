@@ -183,8 +183,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	for identityCfgName, identity := range authConfigIdentityConfigs {
 		extendedProperties := make([]evaluators.IdentityExtension, len(identity.Defaults)+len(identity.Overrides))
 		for propertyName, property := range identity.Defaults {
-			if property.Expression.Expression != "" {
-				if expression, err := cel.NewExpression(property.Expression.Expression); err == nil {
+			if property.Expression != "" {
+				if expression, err := cel.NewExpression(string(property.Expression)); err == nil {
 					extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, expression, false))
 				} else {
 					return nil, err
@@ -197,8 +197,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 		}
 		for propertyName, property := range identity.Overrides {
-			if property.Expression.Expression != "" {
-				if expression, err := cel.NewExpression(property.Expression.Expression); err == nil {
+			if property.Expression != "" {
+				if expression, err := cel.NewExpression(string(property.Expression)); err == nil {
 					extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, expression, true))
 				} else {
 					return nil, err
@@ -298,12 +298,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		case api.PlainIdentityAuthentication:
-			if identity.Plain.Expression.Expression != "" {
-				expression, err := cel.NewStringExpression(identity.Plain.Expression.Expression)
+			if identity.Plain.Expression != "" {
+				expression, err := cel.NewStringExpression(string(identity.Plain.Expression))
 				if err != nil {
 					return nil, err
 				}
-				translatedIdentity.Plain = &identity_evaluators.Plain{Value: expression, Pattern: identity.Plain.Expression.Expression}
+				translatedIdentity.Plain = &identity_evaluators.Plain{Value: expression, Pattern: string(identity.Plain.Expression)}
 			} else {
 				translatedIdentity.Plain = &identity_evaluators.Plain{Value: &json.JSONValue{Pattern: identity.Plain.Selector}, Pattern: identity.Plain.Selector}
 			}
@@ -921,8 +921,8 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	}
 
 	var dynamicEndpoint expressions.Value
-	if http.UrlExpression.Expression != "" {
-		endpoint, err := cel.NewStringExpression(http.UrlExpression.Expression)
+	if http.UrlExpression != "" {
+		endpoint, err := cel.NewStringExpression(string(http.UrlExpression))
 		if err != nil {
 			return nil, err
 		} else {
@@ -1074,9 +1074,9 @@ func getJsonFromStaticDynamic(value *api.ValueOrSelector) (expressions.Value, er
 	if value == nil {
 		return nil, nil
 	}
-
-	if value.Expression.Expression != "" {
-		return cel.NewExpression(value.Expression.Expression)
+	expression := string(value.Expression)
+	if expression != "" {
+		return cel.NewExpression(expression)
 	}
 
 	return &json.JSONValue{

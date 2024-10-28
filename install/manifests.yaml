@@ -3319,8 +3319,6 @@ spec:
                                   - name
                                   type: object
                               type: object
-                            expression:
-                              type: string
                             headers:
                               additionalProperties:
                                 properties:
@@ -3432,6 +3430,8 @@ spec:
                                 The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
                                 by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                                 E.g. https://ext-auth-server.io/metadata?p={request.path}
+                              type: string
+                            urlExpression:
                               type: string
                           required:
                           - url
@@ -3833,8 +3833,6 @@ spec:
                               - name
                               type: object
                           type: object
-                        expression:
-                          type: string
                         headers:
                           additionalProperties:
                             properties:
@@ -3942,6 +3940,8 @@ spec:
                             The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
+                          type: string
+                        urlExpression:
                           type: string
                       required:
                       - url
@@ -4149,8 +4149,6 @@ spec:
                               - name
                               type: object
                           type: object
-                        expression:
-                          type: string
                         headers:
                           additionalProperties:
                             properties:
@@ -4258,6 +4256,8 @@ spec:
                             The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
+                          type: string
+                        urlExpression:
                           type: string
                       required:
                       - url
