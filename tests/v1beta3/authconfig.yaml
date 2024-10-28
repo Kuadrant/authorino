@@ -58,13 +58,13 @@ spec:
           expression: auth.identity.preferred_username
       cache:
         key:
-          expression: request.http.headers.authorization
+          expression: request.headers["authorization"]
     anonymous:
       anonymous: {}
       priority: 1
       when:
-      - predicate: request.http.method == "GET"
-      - predicate: request.http.path.matches("^/$")
+      - predicate: request.method == "GET"
+      - predicate: request.path.matches("^/$")
       defaults:
         username:
           value: global
@@ -86,17 +86,17 @@ spec:
         identitySource: keycloak
       cache:
         key:
-          expression: request.http.headers.authorization
+          expression: request.headers["authorization"]
     resource-info:
       when:
-      - predicate: request.http.path.matches("^/greetings/\\d+$")
+      - predicate: request.path.matches("^/greetings/\\d+$")
       uma:
         credentialsRef:
           name: talker-api-uma-credentials
         endpoint: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
       cache:
         key:
-          expression: request.http.path
+          expression: request.path
 
   authorization:
     allowed-methods:
@@ -115,21 +115,21 @@ spec:
           }
     admin-kubernetes-rbac:
       when:
-      - predicate: request.http.path.matches("^/admin(/.*)?$")
+      - predicate: request.path.matches("^/admin(/.*)?$")
       - predicate: auth.identity["kubernetes-rbac"]
       kubernetesSubjectAccessReview:
         user:
           expression: auth.identity.username
     admin-jwt-rbac:
       when:
-      - predicate: request.http.path.matches("^/admin(/.*)?$")
+      - predicate: request.path.matches("^/admin(/.*)?$")
       - predicate: auth.identity["jwt-rbac"]
       patternMatching:
         patterns:
         - predicate: auth.identity.roles.contains("admin")
     resource-owner:
       when:
-      - predicate: request.http.path.matches("^/greetings/\\d+$")
+      - predicate: request.path.matches("^/greetings/\\d+$")
       opa:
         rego: |
           allow {
@@ -166,7 +166,7 @@ spec:
               username:
                 expression: auth.identity.username
               geo:
-                expression: auth.metadata.geo-info
+                expression: auth.metadata["geo-info"]
               timestamp:
                 expression: auth.authorization.timestamp.now
         wristband:
@@ -177,7 +177,7 @@ spec:
               username:
                 expression: auth.identity.username
               uri:
-                expression: request.http.path
+                expression: request.path
               scope:
                 selector: request.http.method.@case:lower
             signingKeyRefs:
