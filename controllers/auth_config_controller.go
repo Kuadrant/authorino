@@ -181,33 +181,19 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	for identityCfgName, identity := range authConfigIdentityConfigs {
-		extendedProperties := make([]evaluators.IdentityExtension, len(identity.Defaults)+len(identity.Overrides))
+		extendedProperties := make([]evaluators.IdentityExtension, 0)
 		for propertyName, property := range identity.Defaults {
-			if property.Expression != "" {
-				if expression, err := cel.NewExpression(string(property.Expression)); err == nil {
-					extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, expression, false))
-				} else {
-					return nil, err
-				}
+			if value, err := stringValueFrom(&property); err != nil {
+				return nil, err
 			} else {
-				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, &json.JSONValue{
-					Static:  property.Value,
-					Pattern: property.Selector,
-				}, false))
+				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, false))
 			}
 		}
 		for propertyName, property := range identity.Overrides {
-			if property.Expression != "" {
-				if expression, err := cel.NewExpression(string(property.Expression)); err == nil {
-					extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, expression, true))
-				} else {
-					return nil, err
-				}
+			if value, err := stringValueFrom(&property); err != nil {
+				return nil, err
 			} else {
-				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, &json.JSONValue{
-					Static:  property.Value,
-					Pattern: property.Selector,
-				}, true))
+				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, true))
 			}
 		}
 
@@ -475,23 +461,49 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		case api.KubernetesSubjectAccessReviewAuthorization:
 			user := authorization.KubernetesSubjectAccessReview.User
-			authorinoUser := json.JSONValue{Static: user.Value, Pattern: user.Selector}
+			authorinoUser, err := stringValueFrom(user)
+			if err != nil {
+				return nil, err
+			}
 
 			var authorinoResourceAttributes *authorization_evaluators.KubernetesAuthzResourceAttributes
 			resourceAttributes := authorization.KubernetesSubjectAccessReview.ResourceAttributes
 			if resourceAttributes != nil {
+				namespace, err := stringValueFrom(&resourceAttributes.Namespace)
+				if err != nil {
+					return nil, err
+				}
+				group, err := stringValueFrom(&resourceAttributes.Group)
+				if err != nil {
+					return nil, err
+				}
+				resource, err := stringValueFrom(&resourceAttributes.Resource)
+				if err != nil {
+					return nil, err
+				}
+				name, err := stringValueFrom(&resourceAttributes.Name)
+				if err != nil {
+					return nil, err
+				}
+				subResource, err := stringValueFrom(&resourceAttributes.SubResource)
+				if err != nil {
+					return nil, err
+				}
+				verb, err := stringValueFrom(&resourceAttributes.Verb)
+				if err != nil {
+					return nil, err
+				}
 				authorinoResourceAttributes = &authorization_evaluators.KubernetesAuthzResourceAttributes{
-					Namespace:   &json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.Selector},
-					Group:       &json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.Selector},
-					Resource:    &json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.Selector},
-					Name:        &json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.Selector},
-					SubResource: &json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.Selector},
-					Verb:        &json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.Selector},
+					Namespace:   namespace,
+					Group:       group,
+					Resource:    resource,
+					Name:        name,
+					SubResource: subResource,
+					Verb:        verb,
 				}
 			}
 
-			var err error
-			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(&authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
+			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}
@@ -649,6 +661,32 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	return translatedAuthConfig, nil
 }
 
+func stringValueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
+	var strValue expressions.Value
+	var err error
+	if user.Expression != "" {
+		if strValue, err = cel.NewStringExpression(string(user.Expression)); err != nil {
+			return nil, err
+		}
+	} else {
+		strValue = &json.JSONValue{Static: user.Value, Pattern: user.Selector}
+	}
+	return strValue, nil
+}
+
+func valueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
+	var strValue expressions.Value
+	var err error
+	if user.Expression != "" {
+		if strValue, err = cel.NewExpression(string(user.Expression)); err != nil {
+			return nil, err
+		}
+	} else {
+		strValue = &json.JSONValue{Static: user.Value, Pattern: user.Selector}
+	}
+	return strValue, nil
+}
+
 func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, successResponse api.SuccessResponseSpec, r *AuthConfigReconciler, translatedResponse *evaluators.ResponseConfig) error {
 	switch successResponse.GetMethod() {
 	// wristband
@@ -679,13 +717,14 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 
 		customClaims := make([]json.JSONProperty, 0)
 		for claimName, claim := range wristband.CustomClaims {
-			customClaims = append(customClaims, json.JSONProperty{
-				Name: claimName,
-				Value: &json.JSONValue{
-					Static:  claim.Value,
-					Pattern: claim.Selector,
-				},
-			})
+			if value, err := stringValueFrom(&claim); err != nil {
+				return err
+			} else {
+				customClaims = append(customClaims, json.JSONProperty{
+					Name:  claimName,
+					Value: value,
+				})
+			}
 		}
 
 		if authorinoWristband, err := response_evaluators.NewWristbandConfig(
@@ -704,24 +743,27 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 		jsonProperties := make([]json.JSONProperty, 0)
 
 		for propertyName, property := range successResponse.Json.Properties {
-			jsonProperties = append(jsonProperties, json.JSONProperty{
-				Name: propertyName,
-				Value: &json.JSONValue{
-					Static:  property.Value,
-					Pattern: property.Selector,
-				},
-			})
+			if value, err := valueFrom(&property); err != nil {
+				return err
+			} else {
+				jsonProperties = append(jsonProperties, json.JSONProperty{
+					Name:  propertyName,
+					Value: value,
+				})
+
+			}
 		}
 
 		translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
 	// plain
 	case api.PlainAuthResponse:
-		translatedResponse.Plain = &response_evaluators.Plain{
-			Value: &json.JSONValue{
-				Static:  successResponse.Plain.Value,
-				Pattern: successResponse.Plain.Selector,
-			},
+		if value, err := stringValueFrom((*api.ValueOrSelector)(successResponse.Plain)); err != nil {
+			return err
+		} else {
+			translatedResponse.Plain = &response_evaluators.Plain{
+				Value: value,
+			}
 		}
 
 	case api.UnknownAuthResponseMethod:
@@ -888,31 +930,37 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		oauth2TokenForceFetch = oauth2Config.Cache != nil && !*oauth2Config.Cache
 	}
 
-	var body *json.JSONValue
+	var body expressions.Value
 	if b := http.Body; b != nil {
-		body = &json.JSONValue{Static: b.Value, Pattern: b.Selector}
+		if value, err := stringValueFrom(b); err != nil {
+			return nil, err
+		} else {
+			body = value
+		}
 	}
 
 	params := make([]json.JSONProperty, 0, len(http.Parameters))
 	for name, param := range http.Parameters {
-		params = append(params, json.JSONProperty{
-			Name: name,
-			Value: &json.JSONValue{
-				Static:  param.Value,
-				Pattern: param.Selector,
-			},
-		})
+		if value, err := valueFrom(&param); err != nil {
+			return nil, err
+		} else {
+			params = append(params, json.JSONProperty{
+				Name:  name,
+				Value: value,
+			})
+		}
 	}
 
 	headers := make([]json.JSONProperty, 0, len(http.Headers))
 	for name, header := range http.Headers {
-		headers = append(headers, json.JSONProperty{
-			Name: name,
-			Value: &json.JSONValue{
-				Static:  header.Value,
-				Pattern: header.Selector,
-			},
-		})
+		if value, err := valueFrom(&header); err != nil {
+			return nil, err
+		} else {
+			headers = append(headers, json.JSONProperty{
+				Name:  name,
+				Value: value,
+			})
+		}
 	}
 
 	method := "GET"
@@ -1051,7 +1099,11 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) (*evaluators.D
 
 	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
 	for name, header := range denyWithSpec.Headers {
-		headers = append(headers, json.JSONProperty{Name: name, Value: &json.JSONValue{Static: header.Value, Pattern: header.Selector}})
+		if value, err := stringValueFrom(&header); err != nil {
+			return nil, err
+		} else {
+			headers = append(headers, json.JSONProperty{Name: name, Value: value})
+		}
 	}
 
 	message, err := getJsonFromStaticDynamic(denyWithSpec.Message)

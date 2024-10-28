@@ -111,9 +111,14 @@ func (e *Expression) EvaluateStringValue(json string) (string, error) {
 	if result, _, err := e.Evaluate(json); err != nil {
 		return "", err
 	} else if !reflect.DeepEqual(result.Type(), cel.StringType) {
-		return "", err
+		toJSON, err := ValueToJSON(result)
+		return toJSON, err
 	} else {
-		return result.Value().(string), nil
+		str, err := result.ConvertToNative(reflect.TypeOf(""))
+		if err != nil {
+			return "", err
+		}
+		return str.(string), nil
 	}
 }
 
