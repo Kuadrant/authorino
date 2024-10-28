@@ -199,13 +199,11 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, extendedProperty := range config.ExtendedProperties {
-		if extendedProperty.Value != nil {
-			resolved, err := extendedProperty.ResolveFor(extendedIdentityObject, authJSON)
-			if err != nil {
-				return nil, err
-			}
-			extendedIdentityObject[extendedProperty.Name] = resolved
+		resolved, err := extendedProperty.ResolveFor(extendedIdentityObject, authJSON)
+		if err != nil {
+			return nil, err
 		}
+		extendedIdentityObject[extendedProperty.Name] = resolved
 	}
 
 	return extendedIdentityObject, nil
