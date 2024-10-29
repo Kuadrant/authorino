@@ -87,11 +87,7 @@ func (e *Expression) ResolveFor(json string) (interface{}, error) {
 		return nil, err
 	}
 
-	if jsonVal, err := ValueToJSON(result); err != nil {
-		return nil, err
-	} else {
-		return jsonVal, nil
-	}
+	return ValueToJSON(result)
 }
 
 func (e *StringExpression) ResolveFor(json string) (interface{}, error) {

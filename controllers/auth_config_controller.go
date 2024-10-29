@@ -678,7 +678,7 @@ func valueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
 	var strValue expressions.Value
 	var err error
 	if user.Expression != "" {
-		if strValue, err = cel.NewExpression(string(user.Expression)); err != nil {
+		if strValue, err = cel.NewStringExpression(string(user.Expression)); err != nil {
 			return nil, err
 		}
 	} else {
@@ -1128,7 +1128,7 @@ func getJsonFromStaticDynamic(value *api.ValueOrSelector) (expressions.Value, er
 	}
 	expression := string(value.Expression)
 	if expression != "" {
-		return cel.NewExpression(expression)
+		return cel.NewStringExpression(expression)
 	}
 
 	return &json.JSONValue{
