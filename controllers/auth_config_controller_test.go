@@ -95,10 +95,8 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 					PatternMatching: &api.PatternMatchingAuthorizationSpec{
 						Patterns: []api.PatternExpressionOrRef{
 							{
-								PatternExpression: api.PatternExpression{
-									Selector: "context.identity.role",
-									Operator: "eq",
-									Value:    "admin",
+								CelPredicate: api.CelPredicate{
+									Predicate: "auth.identity.role == 'admin'",
 								},
 							},
 						},
@@ -170,7 +168,7 @@ func TestReconcileAuthConfigOk(t *testing.T) {
 	config := authConfigIndex.Get("echo-api")
 	assert.Check(t, config != nil)
 	idConfig, _ := config.IdentityConfigs[0].(*evaluators.IdentityConfig)
-	assert.Equal(t, idConfig.ExtendedProperties[1].Name, "source")
+	assert.Equal(t, idConfig.ExtendedProperties[0].Name, "source")
 	// TODO(@guicassolato): assert other fields of the AuthConfig
 }
 

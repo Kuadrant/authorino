@@ -84,11 +84,13 @@ func (config *IdentityConfig) Call(pipeline auth.AuthPipeline, ctx context.Conte
 		var cacheKey interface{}
 
 		if cache != nil {
-			cacheKey = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
-			if cachedObj, err := cache.Get(cacheKey); err != nil {
-				logger.V(1).Error(err, "failed to retrieve data from the cache")
-			} else if cachedObj != nil {
-				return cachedObj, nil
+			cacheKey, _ = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
+			if cacheKey != nil {
+				if cachedObj, err := cache.Get(cacheKey); err != nil {
+					logger.V(1).Error(err, "failed to retrieve data from the cache")
+				} else if cachedObj != nil {
+					return cachedObj, nil
+				}
 			}
 		}
 
@@ -197,7 +199,11 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 	authJSON := pipeline.GetAuthorizationJSON()
 
 	for _, extendedProperty := range config.ExtendedProperties {
-		extendedIdentityObject[extendedProperty.Name] = extendedProperty.ResolveFor(extendedIdentityObject, authJSON)
+		resolved, err := extendedProperty.ResolveFor(extendedIdentityObject, authJSON)
+		if err != nil {
+			return nil, err
+		}
+		extendedIdentityObject[extendedProperty.Name] = resolved
 	}
 
 	return extendedIdentityObject, nil

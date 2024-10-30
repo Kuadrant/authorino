@@ -160,11 +160,11 @@ func TestWristbandCall(t *testing.T) {
 	claims := []json.JSONProperty{
 		{
 			Name:  "sta",
-			Value: json.JSONValue{Static: "foo"},
+			Value: &json.JSONValue{Static: "foo"},
 		},
 		{
 			Name:  "dyn",
-			Value: json.JSONValue{Pattern: "auth.identity"},
+			Value: &json.JSONValue{Pattern: "auth.identity"},
 		},
 	}
 	signingKey, _ := NewSigningKey("my-signing-key", "ES256", []byte(ellipticCurveSigningKey))

@@ -6,16 +6,6 @@ spec:
   hosts:
   - talker-api.127.0.0.1.nip.io
 
-  patterns:
-    admin-path:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/admin(/.*)?$
-    resource-path:
-    - selector: context.request.http.path
-      operator: matches
-      value: ^/greetings/\d+$
-
   authentication:
     k8s-auth:
       kubernetesTokenReview:
@@ -25,8 +15,7 @@ spec:
         kubernetes-rbac:
           value: true
         username:
-          selector: auth.identity.user.username
-          value: null
+          expression: auth.identity.user.username
     api-key:
       apiKey:
         selector:
@@ -39,7 +28,7 @@ spec:
         kubernetes-rbac:
           value: true
         username:
-          selector: auth.identity.metadata.annotations.username
+          expression: auth.identity.metadata.annotations.username
     keycloak:
       jwt:
         issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
@@ -48,9 +37,9 @@ spec:
         jwt-rbac:
           value: true
         roles:
-          selector: auth.identity.realm_access.roles
+          expression: "has(auth.identity.realm_access) ? auth.identity.realm_access.roles : []"
         username:
-          selector: auth.identity.preferred_username
+          expression: "has(auth.identity.preferred_username) ? auth.identity.preferred_username : 'unknown'"
     oauth2-introspection:
       oauth2Introspection:
         credentialsRef:
@@ -64,22 +53,18 @@ spec:
         jwt-rbac:
           value: true
         roles:
-          selector: auth.identity.realm_access.roles
+          expression: "has(auth.identity.realm_access) ? auth.identity.realm_access.roles : []"
         username:
-          selector: auth.identity.preferred_username
+          expression: "has(auth.identity.preferred_username) ? auth.identity.preferred_username : 'unknown'"
       cache:
         key:
-          selector: context.request.http.headers.authorization
+          expression: request.headers["authorization"]
     anonymous:
       anonymous: {}
       priority: 1
       when:
-      - selector: context.request.http.method
-        operator: eq
-        value: GET
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/$
+      - predicate: request.method == "GET"
+      - predicate: request.path.matches("^/$")
       defaults:
         username:
           value: global
@@ -95,23 +80,23 @@ spec:
         url: http://ip-location.authorino.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
       cache:
         key:
-          selector: context.request.http.headers.x-forwarded-for.@extract:{"sep":","}
+          selector: request.http.headers.x-forwarded-for.@extract:{"sep":","}
     user-info:
       userInfo:
         identitySource: keycloak
       cache:
         key:
-          selector: context.request.http.headers.authorization
+          expression: request.headers["authorization"]
     resource-info:
       when:
-      - patternRef: resource-path
+      - predicate: request.path.matches("^/greetings/\\d+$")
       uma:
         credentialsRef:
           name: talker-api-uma-credentials
         endpoint: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
       cache:
         key:
-          selector: context.request.http.path
+          expression: request.path
 
   authorization:
     allowed-methods:
@@ -130,27 +115,21 @@ spec:
           }
     admin-kubernetes-rbac:
       when:
-      - patternRef: admin-path
-      - selector: auth.identity.kubernetes-rbac
-        operator: eq
-        value: 'true'
+      - predicate: request.path.matches("^/admin(/.*)?$")
+      - predicate: auth.identity["kubernetes-rbac"]
       kubernetesSubjectAccessReview:
         user:
-          selector: auth.identity.username
+          expression: auth.identity.username
     admin-jwt-rbac:
       when:
-      - patternRef: admin-path
-      - selector: auth.identity.jwt-rbac
-        operator: eq
-        value: 'true'
+      - predicate: request.path.matches("^/admin(/.*)?$")
+      - predicate: auth.identity["jwt-rbac"]
       patternMatching:
         patterns:
-        - selector: auth.identity.roles
-          operator: incl
-          value: admin
+        - predicate: auth.identity.roles.exists(r, r == "admin")
     resource-owner:
       when:
-      - patternRef: resource-path
+      - predicate: request.path.matches("^/greetings/\\d+$")
       opa:
         rego: |
           allow {
@@ -180,40 +159,38 @@ spec:
             value: Authorino
         x-username:
           plain:
-            selector: auth.identity.username
+            expression: auth.identity.username
         x-auth-data:
           json:
             properties:
               username:
-                selector: auth.identity.username
+                expression: auth.identity.username
               geo:
-                selector: auth.metadata.geo-info
+                expression: auth.metadata["geo-info"]
               timestamp:
-                selector: auth.authorization.timestamp.now
+                expression: auth.authorization.timestamp.now
         wristband:
           wristband:
             issuer: https://authorino-authorino-oidc.authorino.svc.cluster.local:8083/authorino/e2e-test/wristband
             tokenDuration: 300
             customClaims:
               username:
-                selector: auth.identity.username
+                expression: auth.identity.username
               uri:
-                selector: context.request.http.path
+                expression: request.path
               scope:
-                selector: context.request.http.method.@case:lower
+                selector: request.http.method.@case:lower
             signingKeyRefs:
             - name: wristband-signing-key
               algorithm: ES256
           when:
-          - selector: auth.identity.anonymous
-            operator: neq
-            value: 'true'
+          - predicate: auth.identity.anonymous == false
       dynamicMetadata:
         rate-limit-data:
           json:
             properties:
               username:
-                selector: auth.identity.username
+                expression: auth.identity.username
           key: ext_auth_data
 ---
 apiVersion: v1

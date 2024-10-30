@@ -120,7 +120,11 @@ func (w *Wristband) Call(pipeline auth.AuthPipeline, ctx context.Context) (inter
 
 		for _, claim := range w.CustomClaims {
 			value := claim.Value
-			claims[claim.Name] = value.ResolveFor(authJSON)
+			if resolved, err := value.ResolveFor(authJSON); err != nil {
+				return nil, err
+			} else {
+				claims[claim.Name] = resolved
+			}
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"
@@ -22,8 +23,9 @@ import (
 
 type GenericHttp struct {
 	Endpoint              string
+	DynamicEndpoint       expressions.Value
 	Method                string
-	Body                  *json.JSONValue
+	Body                  expressions.Value
 	Parameters            []json.JSONProperty
 	Headers               []json.JSONProperty
 	ContentType           string
@@ -39,7 +41,16 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	}
 
 	authJSON := pipeline.GetAuthorizationJSON()
-	endpoint := json.ReplaceJSONPlaceholders(h.Endpoint, authJSON)
+	var endpoint string
+	if h.DynamicEndpoint != nil {
+		if val, err := h.DynamicEndpoint.ResolveFor(authJSON); err != nil {
+			return nil, err
+		} else {
+			endpoint = val.(string)
+		}
+	} else {
+		endpoint = json.ReplaceJSONPlaceholders(h.Endpoint, authJSON)
+	}
 
 	req, err := h.buildRequest(ctx, endpoint, authJSON)
 	if err != nil {
@@ -127,7 +138,11 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 	}
 
 	for _, header := range h.Headers {
-		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(authJSON)))
+		headerValue, err := header.Value.ResolveFor(authJSON)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set(header.Name, fmt.Sprintf("%s", headerValue))
 	}
 
 	req.Header.Set("Content-Type", contentType)
@@ -152,16 +167,24 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 
 func (h *GenericHttp) buildRequestBody(authData string) (io.Reader, error) {
 	if h.Body != nil {
-		if body, err := json.StringifyJSON(h.Body.ResolveFor(authData)); err != nil {
-			return nil, fmt.Errorf("failed to encode http request")
+		if resolved, err := h.Body.ResolveFor(authData); err != nil {
+			return nil, err
 		} else {
-			return bytes.NewBufferString(body), nil
+			if body, err := json.StringifyJSON(resolved); err != nil {
+				return nil, fmt.Errorf("failed to encode http request")
+			} else {
+				return bytes.NewBufferString(body), nil
+			}
 		}
 	}
 
 	data := make(map[string]interface{})
 	for _, param := range h.Parameters {
-		data[param.Name] = param.Value.ResolveFor(authData)
+		if resolved, err := param.Value.ResolveFor(authData); err != nil {
+			return nil, err
+		} else {
+			data[param.Name] = resolved
+		}
 	}
 
 	switch h.ContentType {

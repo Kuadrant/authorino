@@ -4,7 +4,7 @@ import (
 	gojson "encoding/json"
 	"time"
 
-	"github.com/kuadrant/authorino/pkg/json"
+	"github.com/kuadrant/authorino/pkg/expressions"
 
 	"github.com/coocood/freecache"
 	gocache "github.com/eko/gocache/cache"
@@ -16,11 +16,11 @@ var EvaluatorCacheSize int // in megabytes
 type EvaluatorCache interface {
 	Get(key interface{}) (interface{}, error)
 	Set(key, value interface{}) error
-	ResolveKeyFor(authJSON string) interface{}
+	ResolveKeyFor(authJSON string) (interface{}, error)
 	Shutdown() error
 }
 
-func NewEvaluatorCache(keyTemplate json.JSONValue, ttl int) EvaluatorCache {
+func NewEvaluatorCache(keyTemplate expressions.Value, ttl int) EvaluatorCache {
 	duration := time.Duration(ttl) * time.Second
 	cacheClient := freecache.NewCache(EvaluatorCacheSize * 1024 * 1024)
 	cacheStore := cache_store.NewFreecache(cacheClient, &cache_store.Options{Expiration: duration})
@@ -33,7 +33,7 @@ func NewEvaluatorCache(keyTemplate json.JSONValue, ttl int) EvaluatorCache {
 
 // evaluatorCache caches JSON values (objects, arrays, strings, etc)
 type evaluatorCache struct {
-	keyTemplate json.JSONValue
+	keyTemplate expressions.Value
 	store       *gocache.Cache
 }
 
@@ -58,7 +58,7 @@ func (c *evaluatorCache) Set(key, value interface{}) error {
 	}
 }
 
-func (c *evaluatorCache) ResolveKeyFor(authJSON string) interface{} {
+func (c *evaluatorCache) ResolveKeyFor(authJSON string) (interface{}, error) {
 	return c.keyTemplate.ResolveFor(authJSON)
 }
 

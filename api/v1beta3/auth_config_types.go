@@ -164,13 +164,19 @@ type PatternExpression struct {
 	Value string `json:"value,omitempty"`
 }
 
+type CelExpression string
+
+type CelPredicate struct {
+	Predicate string `json:"predicate,omitempty"`
+}
+
 // +kubebuilder:validation:Enum:=eq;neq;incl;excl;matches
 type PatternExpressionOperator string
 
 type PatternExpressionOrRef struct {
 	PatternExpression `json:",omitempty"`
 	PatternRef        `json:",omitempty"`
-
+	CelPredicate      `json:",omitempty"`
 	// A list of pattern expressions to be evaluated as a logical AND.
 	All []UnstructuredPatternExpressionOrRef `json:"all,omitempty"`
 	// A list of pattern expressions to be evaluated as a logical OR.
@@ -199,6 +205,8 @@ type ValueOrSelector struct {
 	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector,omitempty"`
+
+	Expression CelExpression `json:"expression,omitempty"`
 }
 
 type CommonEvaluatorSpec struct {
@@ -401,7 +409,9 @@ type PlainIdentitySpec struct {
 	// Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
 	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
-	Selector string `json:"selector"`
+	Selector string `json:"selector,omitempty"`
+
+	Expression CelExpression `json:"expression,omitempty"`
 }
 
 type AnonymousAccessSpec struct{}
@@ -437,7 +447,9 @@ type HttpEndpointSpec struct {
 	// The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
 	// by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
 	// E.g. https://ext-auth-server.io/metadata?p={request.path}
-	Url string `json:"url"`
+	Url string `json:"url,omitempty"`
+
+	UrlExpression CelExpression `json:"urlExpression,omitempty"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
 	// When the request method is POST, the authorization JSON is passed in the body of the request.

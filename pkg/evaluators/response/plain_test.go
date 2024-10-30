@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/json"
 	"gotest.tools/assert"
 
 	"github.com/golang/mock/gomock"
@@ -16,7 +17,9 @@ func TestPlainCallWithStaticValue(t *testing.T) {
 	defer ctrl.Finish()
 
 	ev := Plain{}
-	ev.Static = "value1"
+	ev.Value = &json.JSONValue{
+		Static: "value1",
+	}
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"auth":{"identity":{"username":"john"}}}`)
@@ -32,7 +35,9 @@ func TestPlainCallWithPattern(t *testing.T) {
 	defer ctrl.Finish()
 
 	ev := Plain{}
-	ev.Pattern = "auth.identity.username"
+	ev.Value = &json.JSONValue{
+		Pattern: "auth.identity.username",
+	}
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"auth":{"identity":{"username":"john"}}}`)

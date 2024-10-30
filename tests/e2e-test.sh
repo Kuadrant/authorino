@@ -8,7 +8,7 @@ for cmd in realpath kubectl curl jq base64; do
 done
 
 namespace=${NAMESPACE:-"authorino"}
-authconfig_version=${AUTHCONFIG_VERSION:-"v1beta2"}
+authconfig_version=${AUTHCONFIG_VERSION:-"v1beta3"}
 authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/${authconfig_version}/authconfig.yaml"}
 authconfig_invalid=${AUTHCONFIG_INVALID:-"$(dirname $(realpath $0))/${authconfig_version}/authconfig-invalid.yaml"}
 verbose=${VERBOSE}
@@ -204,6 +204,7 @@ send_k8s_sa_requests $IP_IN "app-1-sa" "
     GET /admin => 200
     GET /greetings/1 => 403"
 
+# Test #5 done
 send_k8s_sa_requests $IP_IN "app-2-sa" "
     GET / => 200
     POST / => 200
@@ -211,6 +212,7 @@ send_k8s_sa_requests $IP_IN "app-2-sa" "
     GET /admin => 403
     GET /greetings/1 => 403"
 
+# Test #10 done
 send_api_key_requests $IP_IN "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" "
     GET / => 200
     POST / => 200
@@ -218,6 +220,7 @@ send_api_key_requests $IP_IN "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" "
     GET /admin => 200
     GET /greetings/1 => 403"
 
+# Test #15 done
 send_api_key_requests $IP_IN "pR2zLorYFIYOE4LLiQAWMPIRei1YgRBy" "
     GET / => 200
     POST / => 200
@@ -225,14 +228,17 @@ send_api_key_requests $IP_IN "pR2zLorYFIYOE4LLiQAWMPIRei1YgRBy" "
     GET /admin => 403
     GET /greetings/1 => 403"
 
+# Test #20 done
 kubectl -n $namespace delete secret/alice-api-key 2>/dev/null >/dev/null && sleep 1
 
 send_api_key_requests $IP_IN "pR2zLorYFIYOE4LLiQAWMPIRei1YgRBy" "
     POST / => 401"
 
+# Test #21 done
 send_api_key_requests $IP_IN "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx" "
     POST / => 200"
 
+# Test #22 done
 send_oidc_requests $IP_IN "john" "p" "
     GET / => 200
     POST / => 200
@@ -240,6 +246,7 @@ send_oidc_requests $IP_IN "john" "p" "
     GET /admin => 403
     GET /greetings/1 => 200"
 
+# Test #27 done
 send_oidc_requests $IP_IN "jane" "p" "
     GET / => 200
     POST / => 200
@@ -247,6 +254,7 @@ send_oidc_requests $IP_IN "jane" "p" "
     GET /admin => 200
     GET /greetings/1 => 403"
 
+# Test #32 done
 send_oauth_opaque_requests $IP_IN "peter" "p" "
     GET / => 200
     POST / => 200
@@ -254,6 +262,7 @@ send_oauth_opaque_requests $IP_IN "peter" "p" "
     GET /admin => 403
     GET /greetings/1 => 403"
 
+# Test #37 done
 send_anonymous_requests $IP_IN "
     GET / => 200
     POST / => 401
@@ -261,9 +270,11 @@ send_anonymous_requests $IP_IN "
     GET /admin => 401
     GET /greetings/1 => 401"
 
+# Test #42 done
 send_anonymous_requests $IP_OUT "
     GET / => 403"
 
+# Test #43 done
 send_requests "https" "authorino-authorino-oidc" "8083" $IP_IN "" "
     GET /authorino/e2e-test/wristband/.well-known/openid-configuration => 200
     GET /authorino/e2e-test/wristband/.well-known/openid-connect/certs => 200

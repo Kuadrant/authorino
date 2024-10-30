@@ -29,6 +29,8 @@ import (
 	identity_evaluators "github.com/kuadrant/authorino/pkg/evaluators/identity"
 	metadata_evaluators "github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
+	"github.com/kuadrant/authorino/pkg/expressions"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -179,24 +181,30 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	}
 
 	for identityCfgName, identity := range authConfigIdentityConfigs {
-		extendedProperties := make([]evaluators.IdentityExtension, len(identity.Defaults)+len(identity.Overrides))
+		extendedProperties := make([]evaluators.IdentityExtension, 0)
 		for propertyName, property := range identity.Defaults {
-			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, json.JSONValue{
-				Static:  property.Value,
-				Pattern: property.Selector,
-			}, false))
+			if value, err := valueFrom(&property); err != nil {
+				return nil, err
+			} else {
+				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, false))
+			}
 		}
 		for propertyName, property := range identity.Overrides {
-			extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, json.JSONValue{
-				Static:  property.Value,
-				Pattern: property.Selector,
-			}, true))
+			if value, err := valueFrom(&property); err != nil {
+				return nil, err
+			} else {
+				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, true))
+			}
 		}
 
+		predicates, err := buildPredicates(authConfig, identity.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedIdentity := &evaluators.IdentityConfig{
 			Name:               identityCfgName,
 			Priority:           identity.Priority,
-			Conditions:         buildJSONExpression(authConfig, identity.Conditions, jsonexp.All),
+			Conditions:         predicates,
 			ExtendedProperties: extendedProperties,
 			Metrics:            identity.Metrics,
 		}
@@ -206,8 +214,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if ttl == 0 {
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
+			key, err := getJsonFromStaticDynamic(&identity.Cache.Key)
+			if err != nil {
+				return nil, err
+			}
 			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
-				*getJsonFromStaticDynamic(&identity.Cache.Key),
+				key,
 				ttl,
 			)
 		}
@@ -272,7 +284,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		case api.PlainIdentityAuthentication:
-			translatedIdentity.Plain = &identity_evaluators.Plain{Pattern: identity.Plain.Selector}
+			if identity.Plain.Expression != "" {
+				expression, err := cel.NewExpression(string(identity.Plain.Expression))
+				if err != nil {
+					return nil, err
+				}
+				translatedIdentity.Plain = &identity_evaluators.Plain{Value: expression, Pattern: string(identity.Plain.Expression)}
+			} else {
+				translatedIdentity.Plain = &identity_evaluators.Plain{Value: &json.JSONValue{Pattern: identity.Plain.Selector}, Pattern: identity.Plain.Selector}
+			}
 
 		case api.AnonymousAccessAuthentication:
 			translatedIdentity.Noop = &identity_evaluators.Noop{AuthCredentials: authCred}
@@ -288,10 +308,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for name, metadata := range authConfig.Spec.Metadata {
+		predicates, err := buildPredicates(authConfig, metadata.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedMetadata := &evaluators.MetadataConfig{
 			Name:       name,
 			Priority:   metadata.Priority,
-			Conditions: buildJSONExpression(authConfig, metadata.Conditions, jsonexp.All),
+			Conditions: predicates,
 			Metrics:    metadata.Metrics,
 		}
 
@@ -300,8 +324,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if ttl == 0 {
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
+			key, err := getJsonFromStaticDynamic(&metadata.Cache.Key)
+			if err != nil {
+				return nil, err
+			}
 			translatedMetadata.Cache = evaluators.NewEvaluatorCache(
-				*getJsonFromStaticDynamic(&metadata.Cache.Key),
+				key,
 				ttl,
 			)
 		}
@@ -357,10 +385,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	authzIndex := 0
 	for authzName, authorization := range authConfig.Spec.Authorization {
+		predicates, err := buildPredicates(authConfig, authorization.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedAuthorization := &evaluators.AuthorizationConfig{
 			Name:       authzName,
 			Priority:   authorization.Priority,
-			Conditions: buildJSONExpression(authConfig, authorization.Conditions, jsonexp.All),
+			Conditions: predicates,
 			Metrics:    authorization.Metrics,
 		}
 
@@ -369,8 +401,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if ttl == 0 {
 				ttl = api.EvaluatorDefaultCacheTTL
 			}
+			key, err := getJsonFromStaticDynamic(&authorization.Cache.Key)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthorization.Cache = evaluators.NewEvaluatorCache(
-				*getJsonFromStaticDynamic(&authorization.Cache.Key),
+				key,
 				ttl,
 			)
 		}
@@ -415,28 +451,58 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// json
 		case api.PatternMatchingAuthorization:
+			rules, err := buildPredicates(authConfig, authorization.PatternMatching.Patterns, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthorization.JSON = &authorization_evaluators.JSONPatternMatching{
-				Rules: buildJSONExpression(authConfig, authorization.PatternMatching.Patterns, jsonexp.All),
+				Rules: rules,
 			}
 
 		case api.KubernetesSubjectAccessReviewAuthorization:
 			user := authorization.KubernetesSubjectAccessReview.User
-			authorinoUser := json.JSONValue{Static: user.Value, Pattern: user.Selector}
+			authorinoUser, err := valueFrom(user)
+			if err != nil {
+				return nil, err
+			}
 
 			var authorinoResourceAttributes *authorization_evaluators.KubernetesAuthzResourceAttributes
 			resourceAttributes := authorization.KubernetesSubjectAccessReview.ResourceAttributes
 			if resourceAttributes != nil {
+				namespace, err := valueFrom(&resourceAttributes.Namespace)
+				if err != nil {
+					return nil, err
+				}
+				group, err := valueFrom(&resourceAttributes.Group)
+				if err != nil {
+					return nil, err
+				}
+				resource, err := valueFrom(&resourceAttributes.Resource)
+				if err != nil {
+					return nil, err
+				}
+				name, err := valueFrom(&resourceAttributes.Name)
+				if err != nil {
+					return nil, err
+				}
+				subResource, err := valueFrom(&resourceAttributes.SubResource)
+				if err != nil {
+					return nil, err
+				}
+				verb, err := valueFrom(&resourceAttributes.Verb)
+				if err != nil {
+					return nil, err
+				}
 				authorinoResourceAttributes = &authorization_evaluators.KubernetesAuthzResourceAttributes{
-					Namespace:   json.JSONValue{Static: resourceAttributes.Namespace.Value, Pattern: resourceAttributes.Namespace.Selector},
-					Group:       json.JSONValue{Static: resourceAttributes.Group.Value, Pattern: resourceAttributes.Group.Selector},
-					Resource:    json.JSONValue{Static: resourceAttributes.Resource.Value, Pattern: resourceAttributes.Resource.Selector},
-					Name:        json.JSONValue{Static: resourceAttributes.Name.Value, Pattern: resourceAttributes.Name.Selector},
-					SubResource: json.JSONValue{Static: resourceAttributes.SubResource.Value, Pattern: resourceAttributes.SubResource.Selector},
-					Verb:        json.JSONValue{Static: resourceAttributes.Verb.Value, Pattern: resourceAttributes.Verb.Selector},
+					Namespace:   namespace,
+					Group:       group,
+					Resource:    resource,
+					Name:        name,
+					SubResource: subResource,
+					Verb:        verb,
 				}
 			}
 
-			var err error
 			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
@@ -454,15 +520,24 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				sharedSecret = string(secret.Data[secretRef.Key])
 			}
 
+			permission, err := getJsonFromStaticDynamic(&authzed.Permission)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthzed := &authorization_evaluators.Authzed{
 				Endpoint:     authzed.Endpoint,
 				Insecure:     authzed.Insecure,
 				SharedSecret: sharedSecret,
-				Permission:   *getJsonFromStaticDynamic(&authzed.Permission),
+				Permission:   permission,
 			}
-			translatedAuthzed.Subject, translatedAuthzed.SubjectKind = spiceDBObjectToJsonValues(authzed.Subject)
-			translatedAuthzed.Resource, translatedAuthzed.ResourceKind = spiceDBObjectToJsonValues(authzed.Resource)
-
+			translatedAuthzed.Subject, translatedAuthzed.SubjectKind, err = spiceDBObjectToJsonValues(authzed.Subject)
+			if err != nil {
+				return nil, err
+			}
+			translatedAuthzed.Resource, translatedAuthzed.ResourceKind, err = spiceDBObjectToJsonValues(authzed.Resource)
+			if err != nil {
+				return nil, err
+			}
 			translatedAuthorization.Authzed = translatedAuthzed
 
 		case api.UnknownAuthorizationMethod:
@@ -477,10 +552,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
 		for responseName, headerSuccessResponse := range responseConfig.Success.Headers {
+			predicates, err := buildPredicates(authConfig, headerSuccessResponse.Conditions, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
 				headerSuccessResponse.Priority,
-				buildJSONExpression(authConfig, headerSuccessResponse.Conditions, jsonexp.All),
+				predicates,
 				"httpHeader",
 				headerSuccessResponse.Key,
 				headerSuccessResponse.Metrics,
@@ -495,10 +574,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		}
 
 		for responseName, successResponse := range responseConfig.Success.DynamicMetadata {
+			predicates, err := buildPredicates(authConfig, successResponse.Conditions, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
 			translatedResponse := evaluators.NewResponseConfig(
 				responseName,
 				successResponse.Priority,
-				buildJSONExpression(authConfig, successResponse.Conditions, jsonexp.All),
+				predicates,
 				"envoyDynamicMetadata",
 				successResponse.Key,
 				successResponse.Metrics,
@@ -516,10 +599,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for callbackName, callback := range authConfig.Spec.Callbacks {
+		predicates, err := buildPredicates(authConfig, callback.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, err
+		}
 		translatedCallback := &evaluators.CallbackConfig{
 			Name:       callbackName,
 			Priority:   callback.Priority,
-			Conditions: buildJSONExpression(authConfig, callback.Conditions, jsonexp.All),
+			Conditions: predicates,
 			Metrics:    callback.Metrics,
 		}
 
@@ -539,8 +626,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedCallbackConfigs = append(interfacedCallbackConfigs, translatedCallback)
 	}
 
+	predicates, err := buildPredicates(authConfig, authConfig.Spec.Conditions, jsonexp.All)
+	if err != nil {
+		return nil, err
+	}
 	translatedAuthConfig := &evaluators.AuthConfig{
-		Conditions:           buildJSONExpression(authConfig, authConfig.Spec.Conditions, jsonexp.All),
+		Conditions:           predicates,
 		IdentityConfigs:      interfacedIdentityConfigs,
 		MetadataConfigs:      interfacedMetadataConfigs,
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
@@ -552,14 +643,35 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	// denyWith
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
 		if denyWith := responseConfig.Unauthenticated; denyWith != nil {
-			translatedAuthConfig.Unauthenticated = buildAuthorinoDenyWithValues(denyWith)
+			value, err := buildAuthorinoDenyWithValues(denyWith)
+			if err != nil {
+				return nil, err
+			}
+			translatedAuthConfig.Unauthenticated = value
 		}
 		if denyWith := responseConfig.Unauthorized; denyWith != nil {
-			translatedAuthConfig.Unauthorized = buildAuthorinoDenyWithValues(denyWith)
+			value, err := buildAuthorinoDenyWithValues(denyWith)
+			if err != nil {
+				return nil, err
+			}
+			translatedAuthConfig.Unauthorized = value
 		}
 	}
 
 	return translatedAuthConfig, nil
+}
+
+func valueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
+	var strValue expressions.Value
+	var err error
+	if user.Expression != "" {
+		if strValue, err = cel.NewExpression(string(user.Expression)); err != nil {
+			return nil, err
+		}
+	} else {
+		strValue = &json.JSONValue{Static: user.Value, Pattern: user.Selector}
+	}
+	return strValue, nil
 }
 
 func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, successResponse api.SuccessResponseSpec, r *AuthConfigReconciler, translatedResponse *evaluators.ResponseConfig) error {
@@ -592,13 +704,14 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 
 		customClaims := make([]json.JSONProperty, 0)
 		for claimName, claim := range wristband.CustomClaims {
-			customClaims = append(customClaims, json.JSONProperty{
-				Name: claimName,
-				Value: json.JSONValue{
-					Static:  claim.Value,
-					Pattern: claim.Selector,
-				},
-			})
+			if value, err := valueFrom(&claim); err != nil {
+				return err
+			} else {
+				customClaims = append(customClaims, json.JSONProperty{
+					Name:  claimName,
+					Value: value,
+				})
+			}
 		}
 
 		if authorinoWristband, err := response_evaluators.NewWristbandConfig(
@@ -617,24 +730,27 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 		jsonProperties := make([]json.JSONProperty, 0)
 
 		for propertyName, property := range successResponse.Json.Properties {
-			jsonProperties = append(jsonProperties, json.JSONProperty{
-				Name: propertyName,
-				Value: json.JSONValue{
-					Static:  property.Value,
-					Pattern: property.Selector,
-				},
-			})
+			if value, err := valueFrom(&property); err != nil {
+				return err
+			} else {
+				jsonProperties = append(jsonProperties, json.JSONProperty{
+					Name:  propertyName,
+					Value: value,
+				})
+
+			}
 		}
 
 		translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
 	// plain
 	case api.PlainAuthResponse:
-		translatedResponse.Plain = &response_evaluators.Plain{
-			JSONValue: json.JSONValue{
-				Static:  successResponse.Plain.Value,
-				Pattern: successResponse.Plain.Selector,
-			},
+		if value, err := valueFrom((*api.ValueOrSelector)(successResponse.Plain)); err != nil {
+			return err
+		} else {
+			translatedResponse.Plain = &response_evaluators.Plain{
+				Value: value,
+			}
 		}
 
 	case api.UnknownAuthResponseMethod:
@@ -643,17 +759,22 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 	return nil
 }
 
-func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) {
+func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) error {
 	if cache != nil {
 		ttl := cache.TTL
 		if ttl == 0 {
 			ttl = api.EvaluatorDefaultCacheTTL
 		}
-		translatedResponse.Cache = evaluators.NewEvaluatorCache(
-			*getJsonFromStaticDynamic(&cache.Key),
-			ttl,
-		)
+		if key, err := getJsonFromStaticDynamic(&cache.Key); err != nil {
+			return err
+		} else {
+			translatedResponse.Cache = evaluators.NewEvaluatorCache(
+				key,
+				ttl,
+			)
+		}
 	}
+	return nil
 }
 
 func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, authConfig *evaluators.AuthConfig, hosts []string) (linkedHosts, looseHosts []string, err error) {
@@ -796,31 +917,37 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		oauth2TokenForceFetch = oauth2Config.Cache != nil && !*oauth2Config.Cache
 	}
 
-	var body *json.JSONValue
+	var body expressions.Value
 	if b := http.Body; b != nil {
-		body = &json.JSONValue{Static: b.Value, Pattern: b.Selector}
+		if value, err := valueFrom(b); err != nil {
+			return nil, err
+		} else {
+			body = value
+		}
 	}
 
 	params := make([]json.JSONProperty, 0, len(http.Parameters))
 	for name, param := range http.Parameters {
-		params = append(params, json.JSONProperty{
-			Name: name,
-			Value: json.JSONValue{
-				Static:  param.Value,
-				Pattern: param.Selector,
-			},
-		})
+		if value, err := valueFrom(&param); err != nil {
+			return nil, err
+		} else {
+			params = append(params, json.JSONProperty{
+				Name:  name,
+				Value: value,
+			})
+		}
 	}
 
 	headers := make([]json.JSONProperty, 0, len(http.Headers))
 	for name, header := range http.Headers {
-		headers = append(headers, json.JSONProperty{
-			Name: name,
-			Value: json.JSONValue{
-				Static:  header.Value,
-				Pattern: header.Selector,
-			},
-		})
+		if value, err := valueFrom(&header); err != nil {
+			return nil, err
+		} else {
+			headers = append(headers, json.JSONProperty{
+				Name:  name,
+				Value: value,
+			})
+		}
 	}
 
 	method := "GET"
@@ -828,8 +955,19 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		method = string(*m)
 	}
 
+	var dynamicEndpoint expressions.Value
+	if http.UrlExpression != "" {
+		endpoint, err := cel.NewExpression(string(http.UrlExpression))
+		if err != nil {
+			return nil, err
+		} else {
+			dynamicEndpoint = endpoint
+		}
+	}
+
 	ev := &metadata_evaluators.GenericHttp{
 		Endpoint:              http.Url,
+		DynamicEndpoint:       dynamicEndpoint,
 		Method:                method,
 		Body:                  body,
 		Parameters:            params,
@@ -875,18 +1013,26 @@ func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name 
 	return nil, fmt.Errorf("missing identity config %v", name)
 }
 
-func buildJSONExpression(authConfig *api.AuthConfig, patterns []api.PatternExpressionOrRef, op func(...jsonexp.Expression) jsonexp.Expression) jsonexp.Expression {
+func buildPredicates(authConfig *api.AuthConfig, patterns []api.PatternExpressionOrRef, op func(...jsonexp.Expression) jsonexp.Expression) (jsonexp.Expression, error) {
 	var expression []jsonexp.Expression
 	for _, pattern := range patterns {
 		// patterns or refs
-		expression = append(expression, buildJSONExpressionPatterns(authConfig, pattern)...)
+		expressions, err := buildJSONExpressionPatterns(authConfig, pattern)
+		if err != nil {
+			return nil, err
+		}
+		expression = append(expression, expressions...)
 		// all
 		if len(pattern.All) > 0 {
 			p := make([]api.PatternExpressionOrRef, len(pattern.All))
 			for i, ptn := range pattern.All {
 				p[i] = ptn.PatternExpressionOrRef
 			}
-			expression = append(expression, buildJSONExpression(authConfig, p, jsonexp.All))
+			predicates, err := buildPredicates(authConfig, p, jsonexp.All)
+			if err != nil {
+				return nil, err
+			}
+			expression = append(expression, predicates)
 		}
 		// any
 		if len(pattern.Any) > 0 {
@@ -894,25 +1040,35 @@ func buildJSONExpression(authConfig *api.AuthConfig, patterns []api.PatternExpre
 			for i, ptn := range pattern.Any {
 				p[i] = ptn.PatternExpressionOrRef
 			}
-			expression = append(expression, buildJSONExpression(authConfig, p, jsonexp.Any))
+			predicates, err := buildPredicates(authConfig, p, jsonexp.Any)
+			if err != nil {
+				return nil, err
+			}
+			expression = append(expression, predicates)
 		}
 	}
-	return op(expression...)
+	return op(expression...), nil
 }
 
-func buildJSONExpressionPatterns(authConfig *api.AuthConfig, pattern api.PatternExpressionOrRef) []jsonexp.Expression {
+func buildJSONExpressionPatterns(authConfig *api.AuthConfig, pattern api.PatternExpressionOrRef) ([]jsonexp.Expression, error) {
 	expressionsToAdd := api.PatternExpressions{}
+	expressions := make([]jsonexp.Expression, len(expressionsToAdd))
 	if expressionsByRef, found := authConfig.Spec.NamedPatterns[pattern.PatternRef.Name]; found {
 		expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
 	} else if pattern.PatternExpression.Operator != "" {
 		expressionsToAdd = append(expressionsToAdd, pattern.PatternExpression)
+	} else if pattern.Predicate != "" {
+		if predicate, err := cel.NewPredicate(pattern.Predicate); err != nil {
+			return nil, err
+		} else {
+			expressions = append(expressions, predicate)
+		}
 	}
 
-	expressions := make([]jsonexp.Expression, len(expressionsToAdd))
-	for i, expression := range expressionsToAdd {
-		expressions[i] = buildJSONExpressionPattern(expression)
+	for _, expression := range expressionsToAdd {
+		expressions = append(expressions, buildJSONExpressionPattern(expression))
 	}
-	return expressions
+	return expressions, nil
 }
 
 func buildJSONExpressionPattern(expression api.PatternExpression) jsonexp.Expression {
@@ -923,42 +1079,63 @@ func buildJSONExpressionPattern(expression api.PatternExpression) jsonexp.Expres
 	}
 }
 
-func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) *evaluators.DenyWithValues {
+func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) (*evaluators.DenyWithValues, error) {
 	if denyWithSpec == nil {
-		return nil
+		return nil, nil
 	}
 
 	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
 	for name, header := range denyWithSpec.Headers {
-		headers = append(headers, json.JSONProperty{Name: name, Value: json.JSONValue{Static: header.Value, Pattern: header.Selector}})
+		if value, err := valueFrom(&header); err != nil {
+			return nil, err
+		} else {
+			headers = append(headers, json.JSONProperty{Name: name, Value: value})
+		}
 	}
 
+	message, err := getJsonFromStaticDynamic(denyWithSpec.Message)
+	if err != nil {
+		return nil, err
+	}
+	body, err := getJsonFromStaticDynamic(denyWithSpec.Body)
+	if err != nil {
+		return nil, err
+	}
 	return &evaluators.DenyWithValues{
 		Code:    int32(denyWithSpec.Code),
-		Message: getJsonFromStaticDynamic(denyWithSpec.Message),
+		Message: message,
 		Headers: headers,
-		Body:    getJsonFromStaticDynamic(denyWithSpec.Body),
-	}
+		Body:    body,
+	}, nil
 }
 
-func getJsonFromStaticDynamic(value *api.ValueOrSelector) *json.JSONValue {
+func getJsonFromStaticDynamic(value *api.ValueOrSelector) (expressions.Value, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+	expression := string(value.Expression)
+	if expression != "" {
+		return cel.NewExpression(expression)
 	}
 
 	return &json.JSONValue{
 		Static:  value.Value,
 		Pattern: value.Selector,
-	}
+	}, nil
 }
 
-func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name json.JSONValue, kind json.JSONValue) {
+func spiceDBObjectToJsonValues(obj *api.SpiceDBObject) (name expressions.Value, kind expressions.Value, err error) {
 	if obj == nil {
 		return
 	}
 
-	name = *getJsonFromStaticDynamic(&obj.Name)
-	kind = *getJsonFromStaticDynamic(&obj.Kind)
-
-	return name, kind
+	nameResolved, err := getJsonFromStaticDynamic(&obj.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	kindResolved, err := getJsonFromStaticDynamic(&obj.Kind)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nameResolved, kindResolved, nil
 }

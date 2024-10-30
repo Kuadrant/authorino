@@ -33,17 +33,17 @@ func TestJSONValueResolveFor(t *testing.T) {
 	var resolvedValueAsJSON []byte
 
 	value = JSONValue{Static: "foo"}
-	assert.Equal(t, value.ResolveFor(jsonData), "foo")
-	assert.Equal(t, value.ResolveFor(""), "foo")
+	assert.Equal(t, value.resolveForSafe(jsonData), "foo")
+	assert.Equal(t, value.resolveForSafe(""), "foo")
 
 	value = JSONValue{Pattern: "auth.identity.username"}
-	assert.Equal(t, value.ResolveFor(jsonData), "john")
+	assert.Equal(t, value.resolveForSafe(jsonData), "john")
 
 	value = JSONValue{Pattern: "auth.identity.email_verified"}
-	assert.Equal(t, value.ResolveFor(jsonData), true)
+	assert.Equal(t, value.resolveForSafe(jsonData), true)
 
 	value = JSONValue{Pattern: "auth.identity.address"}
-	resolvedValueAsJSON, _ = json.Marshal(value.ResolveFor(jsonData))
+	resolvedValueAsJSON, _ = json.Marshal(value.resolveForSafe(jsonData))
 	type address struct {
 		Line1      string `json:"line_1"`
 		PostalCode int    `json:"postal_code"`
@@ -54,22 +54,22 @@ func TestJSONValueResolveFor(t *testing.T) {
 	assert.Equal(t, resolvedAddress.PostalCode, 987654)
 
 	value = JSONValue{Pattern: "auth.identity.roles"}
-	resolvedValueAsJSON, _ = json.Marshal(value.ResolveFor(jsonData))
+	resolvedValueAsJSON, _ = json.Marshal(value.resolveForSafe(jsonData))
 	var resolvedRoles []string
 	_ = json.Unmarshal(resolvedValueAsJSON, &resolvedRoles)
 	assert.DeepEqual(t, resolvedRoles, []string{"user", "admin"})
 
 	// pattern mixing static and variable placeholders ("template")
 	value = JSONValue{Pattern: "Hello, {auth.identity.username}!"}
-	assert.Equal(t, value.ResolveFor(jsonData), "Hello, john!")
+	assert.Equal(t, value.resolveForSafe(jsonData), "Hello, john!")
 
 	// template with inner patterns passing arguments to modifier
 	value = JSONValue{Pattern: `Email domain: {auth.identity.email.@extract:{"sep":"@","pos":1}}`}
-	assert.Equal(t, value.ResolveFor(jsonData), "Email domain: test")
+	assert.Equal(t, value.resolveForSafe(jsonData), "Email domain: test")
 
 	// simple pattern passing arguments to modifier (not a template)
 	value = JSONValue{Pattern: `auth.identity.email.@extract:{"sep":"@","pos":1}`}
-	assert.Equal(t, value.ResolveFor(jsonData), "test")
+	assert.Equal(t, value.resolveForSafe(jsonData), "test")
 }
 
 func TestIsTemplate(t *testing.T) {
