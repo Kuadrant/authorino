@@ -2,7 +2,6 @@ package cel
 
 import (
 	"fmt"
-	"github.com/tidwall/gjson"
 	"reflect"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/tidwall/gjson"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
