@@ -183,14 +183,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	for identityCfgName, identity := range authConfigIdentityConfigs {
 		extendedProperties := make([]evaluators.IdentityExtension, 0)
 		for propertyName, property := range identity.Defaults {
-			if value, err := stringValueFrom(&property); err != nil {
+			if value, err := valueFrom(&property); err != nil {
 				return nil, err
 			} else {
 				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, false))
 			}
 		}
 		for propertyName, property := range identity.Overrides {
-			if value, err := stringValueFrom(&property); err != nil {
+			if value, err := valueFrom(&property); err != nil {
 				return nil, err
 			} else {
 				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, true))
@@ -285,7 +285,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		case api.PlainIdentityAuthentication:
 			if identity.Plain.Expression != "" {
-				expression, err := cel.NewStringExpression(string(identity.Plain.Expression))
+				expression, err := cel.NewExpression(string(identity.Plain.Expression))
 				if err != nil {
 					return nil, err
 				}
@@ -461,7 +461,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		case api.KubernetesSubjectAccessReviewAuthorization:
 			user := authorization.KubernetesSubjectAccessReview.User
-			authorinoUser, err := stringValueFrom(user)
+			authorinoUser, err := valueFrom(user)
 			if err != nil {
 				return nil, err
 			}
@@ -469,27 +469,27 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			var authorinoResourceAttributes *authorization_evaluators.KubernetesAuthzResourceAttributes
 			resourceAttributes := authorization.KubernetesSubjectAccessReview.ResourceAttributes
 			if resourceAttributes != nil {
-				namespace, err := stringValueFrom(&resourceAttributes.Namespace)
+				namespace, err := valueFrom(&resourceAttributes.Namespace)
 				if err != nil {
 					return nil, err
 				}
-				group, err := stringValueFrom(&resourceAttributes.Group)
+				group, err := valueFrom(&resourceAttributes.Group)
 				if err != nil {
 					return nil, err
 				}
-				resource, err := stringValueFrom(&resourceAttributes.Resource)
+				resource, err := valueFrom(&resourceAttributes.Resource)
 				if err != nil {
 					return nil, err
 				}
-				name, err := stringValueFrom(&resourceAttributes.Name)
+				name, err := valueFrom(&resourceAttributes.Name)
 				if err != nil {
 					return nil, err
 				}
-				subResource, err := stringValueFrom(&resourceAttributes.SubResource)
+				subResource, err := valueFrom(&resourceAttributes.SubResource)
 				if err != nil {
 					return nil, err
 				}
-				verb, err := stringValueFrom(&resourceAttributes.Verb)
+				verb, err := valueFrom(&resourceAttributes.Verb)
 				if err != nil {
 					return nil, err
 				}
@@ -661,24 +661,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	return translatedAuthConfig, nil
 }
 
-func stringValueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
-	var strValue expressions.Value
-	var err error
-	if user.Expression != "" {
-		if strValue, err = cel.NewStringExpression(string(user.Expression)); err != nil {
-			return nil, err
-		}
-	} else {
-		strValue = &json.JSONValue{Static: user.Value, Pattern: user.Selector}
-	}
-	return strValue, nil
-}
-
 func valueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
 	var strValue expressions.Value
 	var err error
 	if user.Expression != "" {
-		if strValue, err = cel.NewStringExpression(string(user.Expression)); err != nil {
+		if strValue, err = cel.NewExpression(string(user.Expression)); err != nil {
 			return nil, err
 		}
 	} else {
@@ -717,7 +704,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 
 		customClaims := make([]json.JSONProperty, 0)
 		for claimName, claim := range wristband.CustomClaims {
-			if value, err := stringValueFrom(&claim); err != nil {
+			if value, err := valueFrom(&claim); err != nil {
 				return err
 			} else {
 				customClaims = append(customClaims, json.JSONProperty{
@@ -758,7 +745,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 
 	// plain
 	case api.PlainAuthResponse:
-		if value, err := stringValueFrom((*api.ValueOrSelector)(successResponse.Plain)); err != nil {
+		if value, err := valueFrom((*api.ValueOrSelector)(successResponse.Plain)); err != nil {
 			return err
 		} else {
 			translatedResponse.Plain = &response_evaluators.Plain{
@@ -932,7 +919,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 
 	var body expressions.Value
 	if b := http.Body; b != nil {
-		if value, err := stringValueFrom(b); err != nil {
+		if value, err := valueFrom(b); err != nil {
 			return nil, err
 		} else {
 			body = value
@@ -970,7 +957,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 
 	var dynamicEndpoint expressions.Value
 	if http.UrlExpression != "" {
-		endpoint, err := cel.NewStringExpression(string(http.UrlExpression))
+		endpoint, err := cel.NewExpression(string(http.UrlExpression))
 		if err != nil {
 			return nil, err
 		} else {
@@ -1099,7 +1086,7 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) (*evaluators.D
 
 	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
 	for name, header := range denyWithSpec.Headers {
-		if value, err := stringValueFrom(&header); err != nil {
+		if value, err := valueFrom(&header); err != nil {
 			return nil, err
 		} else {
 			headers = append(headers, json.JSONProperty{Name: name, Value: value})
@@ -1128,7 +1115,7 @@ func getJsonFromStaticDynamic(value *api.ValueOrSelector) (expressions.Value, er
 	}
 	expression := string(value.Expression)
 	if expression != "" {
-		return cel.NewStringExpression(expression)
+		return cel.NewExpression(expression)
 	}
 
 	return &json.JSONValue{

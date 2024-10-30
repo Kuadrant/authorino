@@ -2,6 +2,7 @@ package cel
 
 import (
 	"fmt"
+	"github.com/tidwall/gjson"
 	"reflect"
 	"strings"
 
@@ -68,30 +69,18 @@ func NewExpression(source string) (*Expression, error) {
 	}, nil
 }
 
-func NewStringExpression(source string) (*StringExpression, error) {
-	program, err := Compile(source, cel.StringType)
-	if err != nil {
-		return nil, err
-	}
-	return &StringExpression{
-		expression: Expression{
-			program: program,
-			source:  source,
-		},
-	}, nil
-}
-
 func (e *Expression) ResolveFor(json string) (interface{}, error) {
 	result, _, err := e.Evaluate(json)
 	if err != nil {
 		return nil, err
 	}
 
-	return ValueToJSON(result)
-}
-
-func (e *StringExpression) ResolveFor(json string) (interface{}, error) {
-	return e.expression.EvaluateStringValue(json)
+	// this is for backwards compatibility with JSONValue, these should interoperate seamlessly this way
+	if jsonLiteral, err := ValueToJSON(result); err != nil {
+		return nil, err
+	} else {
+		return gjson.Parse(jsonLiteral).Value(), nil
+	}
 }
 
 func (e *Expression) Evaluate(json string) (ref.Val, *cel.EvalDetails, error) {
@@ -101,21 +90,6 @@ func (e *Expression) Evaluate(json string) (ref.Val, *cel.EvalDetails, error) {
 	}
 
 	return e.program.Eval(input)
-}
-
-func (e *Expression) EvaluateStringValue(json string) (string, error) {
-	if result, _, err := e.Evaluate(json); err != nil {
-		return "", err
-	} else if !reflect.DeepEqual(result.Type(), cel.StringType) {
-		toJSON, err := ValueToJSON(result)
-		return toJSON, err
-	} else {
-		str, err := result.ConvertToNative(reflect.TypeOf(""))
-		if err != nil {
-			return "", err
-		}
-		return str.(string), nil
-	}
 }
 
 func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (cel.Program, error) {
