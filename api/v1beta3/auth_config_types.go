@@ -409,7 +409,7 @@ type PlainIdentitySpec struct {
 	// Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
 	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
-	Selector string `json:"selector"`
+	Selector string `json:"selector,omitempty"`
 
 	Expression CelExpression `json:"expression,omitempty"`
 }
@@ -447,7 +447,7 @@ type HttpEndpointSpec struct {
 	// The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
 	// by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
 	// E.g. https://ext-auth-server.io/metadata?p={request.path}
-	Url string `json:"url"`
+	Url string `json:"url,omitempty"`
 
 	UrlExpression CelExpression `json:"urlExpression,omitempty"`
 

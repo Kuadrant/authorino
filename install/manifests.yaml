@@ -2887,8 +2887,6 @@ spec:
                             Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
                             The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
                           type: string
-                      required:
-                      - selector
                       type: object
                     priority:
                       default: 0
@@ -3433,8 +3431,6 @@ spec:
                               type: string
                             urlExpression:
                               type: string
-                          required:
-                          - url
                           type: object
                         rego:
                           description: |-
@@ -3943,8 +3939,6 @@ spec:
                           type: string
                         urlExpression:
                           type: string
-                      required:
-                      - url
                       type: object
                     metrics:
                       default: false
@@ -4259,8 +4253,6 @@ spec:
                           type: string
                         urlExpression:
                           type: string
-                      required:
-                      - url
                       type: object
                     metrics:
                       default: false
