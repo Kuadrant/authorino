@@ -126,7 +126,7 @@ spec:
       - predicate: auth.identity["jwt-rbac"]
       patternMatching:
         patterns:
-        - predicate: auth.identity.roles.contains("admin")
+        - predicate: auth.identity.roles.exists(r, r == "admin")
     resource-owner:
       when:
       - predicate: request.path.matches("^/greetings/\\d+$")
