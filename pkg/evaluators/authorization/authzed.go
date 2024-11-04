@@ -48,10 +48,23 @@ func (a *Authzed) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 
 	authJSON := pipeline.GetAuthorizationJSON()
 
+	resource, err := authzedObjectFor(a.Resource, a.ResourceKind, authJSON)
+	if err != nil {
+		return nil, err
+	}
+	object, err := authzedObjectFor(a.Subject, a.SubjectKind, authJSON)
+	if err != nil {
+		return nil, err
+	}
+	permission := a.Permission.ResolveFor(authJSON)
+	permissionStr, err := json.StringifyJSON(permission)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.CheckPermission(ctx, &authzedpb.CheckPermissionRequest{
-		Resource:   authzedObjectFor(a.Resource, a.ResourceKind, authJSON),
-		Subject:    &authzedpb.SubjectReference{Object: authzedObjectFor(a.Subject, a.SubjectKind, authJSON)},
-		Permission: fmt.Sprintf("%s", a.Permission.ResolveFor(authJSON)),
+		Resource:   resource,
+		Subject:    &authzedpb.SubjectReference{Object: object},
+		Permission: permissionStr,
 	})
 	if err != nil {
 		return nil, err
@@ -74,9 +87,19 @@ func (a *Authzed) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 	return obj, nil
 }
 
-func authzedObjectFor(name, kind json.JSONValue, authJSON string) *authzedpb.ObjectReference {
-	return &authzedpb.ObjectReference{
-		ObjectId:   fmt.Sprintf("%s", name.ResolveFor(authJSON)),
-		ObjectType: fmt.Sprintf("%s", kind.ResolveFor(authJSON)),
+func authzedObjectFor(name, kind json.JSONValue, authJSON string) (*authzedpb.ObjectReference, error) {
+	objectId := name.ResolveFor(authJSON)
+	objectIdStr, err := json.StringifyJSON(objectId)
+	if err != nil {
+		return nil, err
 	}
+	objectType := kind.ResolveFor(authJSON)
+	objectTypeStr, err := json.StringifyJSON(objectType)
+	if err != nil {
+		return nil, err
+	}
+	return &authzedpb.ObjectReference{
+		ObjectId:   objectIdStr,
+		ObjectType: objectTypeStr,
+	}, nil
 }
