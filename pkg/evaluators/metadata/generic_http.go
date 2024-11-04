@@ -142,7 +142,11 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set(header.Name, fmt.Sprintf("%s", headerValue))
+		headerValueStr, err := json.StringifyJSON(headerValue)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set(header.Name, headerValueStr)
 	}
 
 	req.Header.Set("Content-Type", contentType)

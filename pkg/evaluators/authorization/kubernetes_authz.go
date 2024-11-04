@@ -8,6 +8,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/expressions"
+	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
@@ -71,7 +72,7 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%s", resolved), nil
+		return json.StringifyJSON(resolved)
 	}
 
 	user, err := jsonValueToStr(k.User)
