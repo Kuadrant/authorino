@@ -127,7 +127,12 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 	}
 
 	for _, header := range h.Headers {
-		req.Header.Set(header.Name, fmt.Sprintf("%s", header.Value.ResolveFor(authJSON)))
+		headerValue := header.Value.ResolveFor(authJSON)
+		headerValueStr, err := json.StringifyJSON(headerValue)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set(header.Name, headerValueStr)
 	}
 
 	req.Header.Set("Content-Type", contentType)
