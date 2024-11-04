@@ -157,6 +157,10 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 }
 
 func StringifyJSON(data interface{}) (string, error) {
+	_, ok := data.(string)
+	if ok {
+		return data.(string), nil
+	}
 	if dataAsJSON, err := json.Marshal(data); err != nil {
 		return "", err
 	} else {
