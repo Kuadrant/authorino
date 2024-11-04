@@ -62,6 +62,9 @@ func (a *Authzed) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 		return nil, err
 	}
 	permissionStr, err := json.StringifyJSON(permission)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.CheckPermission(ctx, &authzedpb.CheckPermissionRequest{
 		Resource:   resource,
 		Subject:    &authzedpb.SubjectReference{Object: object},
