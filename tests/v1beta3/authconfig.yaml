@@ -77,10 +77,10 @@ spec:
           Accept:
             value: application/json
         method: GET
-        url: http://ip-location.authorino.svc.cluster.local:3000/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}
+        urlExpression: "http://ip-location.authorino.svc.cluster.local:3000/" + request.headers["x-forwarded-for"].split(",")[0]
       cache:
         key:
-          selector: request.http.headers.x-forwarded-for.@extract:{"sep":","}
+          expression: request.headers["x-forwarded-for"].split(",")[0]
     user-info:
       userInfo:
         identitySource: keycloak
@@ -179,7 +179,7 @@ spec:
               uri:
                 expression: request.path
               scope:
-                selector: request.http.method.@case:lower
+                expression: request.method.lowerAscii()
             signingKeyRefs:
             - name: wristband-signing-key
               algorithm: ES256

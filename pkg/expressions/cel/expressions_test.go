@@ -41,4 +41,10 @@ func TestPredicate(t *testing.T) {
 	response, err = predicate.Matches(pipelineMock.GetAuthorizationJSON())
 	assert.NilError(t, err)
 	assert.Equal(t, response, true)
+
+	predicate, err = NewPredicate(`"GET".lowerAscii() == "get"`)
+	assert.NilError(t, err)
+	response, err = predicate.Matches("{}")
+	assert.NilError(t, err)
+	assert.Equal(t, response, true)
 }
