@@ -77,7 +77,8 @@ spec:
           Accept:
             value: application/json
         method: GET
-        urlExpression: "http://ip-location.authorino.svc.cluster.local:3000/" + request.headers["x-forwarded-for"].split(",")[0]
+        urlExpression: |
+          "http://ip-location.authorino.svc.cluster.local:3000/" + request.headers["x-forwarded-for"].split(",")[0]
       cache:
         key:
           expression: request.headers["x-forwarded-for"].split(",")[0]
