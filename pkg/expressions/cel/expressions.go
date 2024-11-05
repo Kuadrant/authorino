@@ -9,6 +9,7 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/ext"
 	"github.com/tidwall/gjson"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -100,6 +101,7 @@ func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (
 		decls.NewConst(RootDestinationBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 	)}, opts...)
+	envOpts = append(envOpts, ext.Strings())
 	env, env_err := cel.NewEnv(envOpts...)
 	if env_err != nil {
 		return nil, env_err
