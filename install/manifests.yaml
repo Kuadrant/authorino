@@ -3104,6 +3104,23 @@ spec:
                     kubernetesSubjectAccessReview:
                       description: Authorization by Kubernetes SubjectAccessReview
                       properties:
+                        authorizationGroups:
+                          description: AuthorizationGroups is a value or selector
+                            to use as groups to check for authorization in the Kubernetes
+                            RBAC.
+                          properties:
+                            expression:
+                              type: string
+                            selector:
+                              description: |-
+                                Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                              type: string
+                            value:
+                              description: Static value
+                              x-kubernetes-preserve-unknown-fields: true
+                          type: object
                         groups:
                           description: Groups the user must be a member of or, if
                             `user` is omitted, the groups to check for authorization

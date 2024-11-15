@@ -503,7 +503,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				}
 			}
 
-			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoResourceAttributes)
+			var authorinoGroups expressions.Value
+			if authorization.KubernetesSubjectAccessReview.AuthorizationGroups != nil {
+				authorinoGroups, err = valueFrom(authorization.KubernetesSubjectAccessReview.AuthorizationGroups)
+				if err != nil {
+					return nil, err
+				}
+			}
+			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorization.KubernetesSubjectAccessReview.Groups, authorinoGroups, authorinoResourceAttributes)
 			if err != nil {
 				return nil, err
 			}

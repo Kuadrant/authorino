@@ -622,6 +622,9 @@ type KubernetesSubjectAccessReviewAuthorizationSpec struct {
 	// Groups the user must be a member of or, if `user` is omitted, the groups to check for authorization in the Kubernetes RBAC.
 	Groups []string `json:"groups,omitempty"`
 
+	// AuthorizationGroups is a value or selector to use as groups to check for authorization in the Kubernetes RBAC.
+	AuthorizationGroups *ValueOrSelector `json:"authorizationGroups,omitempty"`
+
 	// Use resourceAttributes to check permissions on Kubernetes resources.
 	// If omitted, it performs a non-resource SubjectAccessReview, with verb and path inferred from the request.
 	// +optional
