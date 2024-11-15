@@ -167,6 +167,8 @@ type PatternExpression struct {
 type CelExpression string
 
 type CelPredicate struct {
+	// A Common Expression Language (CEL) expression that evaluates to a boolean.
+	// String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
 	Predicate string `json:"predicate,omitempty"`
 }
 
@@ -206,6 +208,8 @@ type ValueOrSelector struct {
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector,omitempty"`
 
+	// A Common Expression Language (CEL) expression that evaluates to a value.
+	// String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
 	Expression CelExpression `json:"expression,omitempty"`
 }
 
@@ -411,6 +415,8 @@ type PlainIdentitySpec struct {
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
 	Selector string `json:"selector,omitempty"`
 
+	// A Common Expression Language (CEL) expression that evaluates to a value that represents an identity.
+	// String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
 	Expression CelExpression `json:"expression,omitempty"`
 }
 
@@ -449,6 +455,8 @@ type HttpEndpointSpec struct {
 	// E.g. https://ext-auth-server.io/metadata?p={request.path}
 	Url string `json:"url,omitempty"`
 
+	// A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
+	// String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
 	UrlExpression CelExpression `json:"urlExpression,omitempty"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
