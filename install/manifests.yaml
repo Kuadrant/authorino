@@ -2720,6 +2720,9 @@ spec:
                             The resolved key must be unique within the scope of this particular config.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -2775,6 +2778,9 @@ spec:
                       additionalProperties:
                         properties:
                           expression:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a value.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -2857,6 +2863,9 @@ spec:
                       additionalProperties:
                         properties:
                           expression:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a value.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -2880,6 +2889,9 @@ spec:
                         Use this method when authentication is performed beforehand by a proxy and the resulting object passed to Authorino as JSON in the auth request.
                       properties:
                         expression:
+                          description: |-
+                            A Common Expression Language (CEL) expression that evaluates to a value that represents an identity.
+                            String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                           type: string
                         selector:
                           description: |-
@@ -2954,6 +2966,9 @@ spec:
                             description: Reference to a named set of pattern expressions
                             type: string
                           predicate:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a boolean.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -3064,6 +3079,9 @@ spec:
                             The resolved key must be unique within the scope of this particular config.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -3104,6 +3122,9 @@ spec:
                                 Use '*' for all API groups.
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3121,6 +3142,9 @@ spec:
                                 Omit it to check for authorization on all resources of the specified kind.
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3137,6 +3161,9 @@ spec:
                                 on the resource.
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3154,6 +3181,9 @@ spec:
                                 Use '*' for all resource kinds.
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3169,6 +3199,9 @@ spec:
                               description: Subresource kind
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3186,6 +3219,9 @@ spec:
                                 Use '*' for all verbs.
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3204,6 +3240,9 @@ spec:
                             Omit it to check for group authorization only.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -3245,6 +3284,9 @@ spec:
                                 Use it with method=POST; for GET requests, set parameters as query string in the 'endpoint' (placeholders can be used).
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3260,6 +3302,9 @@ spec:
                               additionalProperties:
                                 properties:
                                   expression:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a value.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                     type: string
                                   selector:
                                     description: |-
@@ -3321,6 +3366,9 @@ spec:
                               additionalProperties:
                                 properties:
                                   expression:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a value.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                     type: string
                                   selector:
                                     description: |-
@@ -3430,6 +3478,9 @@ spec:
                                 E.g. https://ext-auth-server.io/metadata?p={request.path}
                               type: string
                             urlExpression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                           type: object
                         rego:
@@ -3498,6 +3549,9 @@ spec:
                                 description: Reference to a named set of pattern expressions
                                 type: string
                               predicate:
+                                description: |-
+                                  A Common Expression Language (CEL) expression that evaluates to a boolean.
+                                  String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                 type: string
                               selector:
                                 description: |-
@@ -3538,6 +3592,9 @@ spec:
                             which to execute the check.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -3556,6 +3613,9 @@ spec:
                             kind:
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3570,6 +3630,9 @@ spec:
                             name:
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3606,6 +3669,9 @@ spec:
                             kind:
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3620,6 +3686,9 @@ spec:
                             name:
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -3695,6 +3764,9 @@ spec:
                             description: Reference to a named set of pattern expressions
                             type: string
                           predicate:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a boolean.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -3728,6 +3800,9 @@ spec:
                             The resolved key must be unique within the scope of this particular config.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -3757,6 +3832,9 @@ spec:
                             Use it with method=POST; for GET requests, set parameters as query string in the 'endpoint' (placeholders can be used).
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -3772,6 +3850,9 @@ spec:
                           additionalProperties:
                             properties:
                               expression:
+                                description: |-
+                                  A Common Expression Language (CEL) expression that evaluates to a value.
+                                  String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                 type: string
                               selector:
                                 description: |-
@@ -3833,6 +3914,9 @@ spec:
                           additionalProperties:
                             properties:
                               expression:
+                                description: |-
+                                  A Common Expression Language (CEL) expression that evaluates to a value.
+                                  String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                 type: string
                               selector:
                                 description: |-
@@ -3938,6 +4022,9 @@ spec:
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
                           type: string
                         urlExpression:
+                          description: |-
+                            A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
+                            String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                           type: string
                       type: object
                     metrics:
@@ -3987,6 +4074,9 @@ spec:
                             description: Reference to a named set of pattern expressions
                             type: string
                           predicate:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a boolean.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -4042,6 +4132,9 @@ spec:
                             The resolved key must be unique within the scope of this particular config.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -4071,6 +4164,9 @@ spec:
                             Use it with method=POST; for GET requests, set parameters as query string in the 'endpoint' (placeholders can be used).
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -4086,6 +4182,9 @@ spec:
                           additionalProperties:
                             properties:
                               expression:
+                                description: |-
+                                  A Common Expression Language (CEL) expression that evaluates to a value.
+                                  String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                 type: string
                               selector:
                                 description: |-
@@ -4147,6 +4246,9 @@ spec:
                           additionalProperties:
                             properties:
                               expression:
+                                description: |-
+                                  A Common Expression Language (CEL) expression that evaluates to a value.
+                                  String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                 type: string
                               selector:
                                 description: |-
@@ -4252,6 +4354,9 @@ spec:
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
                           type: string
                         urlExpression:
+                          description: |-
+                            A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
+                            String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                           type: string
                       type: object
                     metrics:
@@ -4362,6 +4467,9 @@ spec:
                             description: Reference to a named set of pattern expressions
                             type: string
                           predicate:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a boolean.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -4450,6 +4558,9 @@ spec:
                                     The resolved key must be unique within the scope of this particular config.
                                   properties:
                                     expression:
+                                      description: |-
+                                        A Common Expression Language (CEL) expression that evaluates to a value.
+                                        String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                       type: string
                                     selector:
                                       description: |-
@@ -4479,6 +4590,9 @@ spec:
                                   additionalProperties:
                                     properties:
                                       expression:
+                                        description: |-
+                                          A Common Expression Language (CEL) expression that evaluates to a value.
+                                          String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                         type: string
                                       selector:
                                         description: |-
@@ -4508,6 +4622,9 @@ spec:
                               description: Plain text content
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -4586,6 +4703,9 @@ spec:
                                       expressions
                                     type: string
                                   predicate:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a boolean.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                     type: string
                                   selector:
                                     description: |-
@@ -4607,6 +4727,9 @@ spec:
                                   additionalProperties:
                                     properties:
                                       expression:
+                                        description: |-
+                                          A Common Expression Language (CEL) expression that evaluates to a value.
+                                          String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                         type: string
                                       selector:
                                         description: |-
@@ -4696,6 +4819,9 @@ spec:
                                     The resolved key must be unique within the scope of this particular config.
                                   properties:
                                     expression:
+                                      description: |-
+                                        A Common Expression Language (CEL) expression that evaluates to a value.
+                                        String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                       type: string
                                     selector:
                                       description: |-
@@ -4725,6 +4851,9 @@ spec:
                                   additionalProperties:
                                     properties:
                                       expression:
+                                        description: |-
+                                          A Common Expression Language (CEL) expression that evaluates to a value.
+                                          String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                         type: string
                                       selector:
                                         description: |-
@@ -4754,6 +4883,9 @@ spec:
                               description: Plain text content
                               properties:
                                 expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                   type: string
                                 selector:
                                   description: |-
@@ -4832,6 +4964,9 @@ spec:
                                       expressions
                                     type: string
                                   predicate:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a boolean.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                     type: string
                                   selector:
                                     description: |-
@@ -4853,6 +4988,9 @@ spec:
                                   additionalProperties:
                                     properties:
                                       expression:
+                                        description: |-
+                                          A Common Expression Language (CEL) expression that evaluates to a value.
+                                          String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                                         type: string
                                       selector:
                                         description: |-
@@ -4926,6 +5064,9 @@ spec:
                           body.
                         properties:
                           expression:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a value.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -4948,6 +5089,9 @@ spec:
                         additionalProperties:
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -4966,6 +5110,9 @@ spec:
                         description: HTTP message to override the default denial message.
                         properties:
                           expression:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a value.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -4989,6 +5136,9 @@ spec:
                           body.
                         properties:
                           expression:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a value.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -5011,6 +5161,9 @@ spec:
                         additionalProperties:
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
@@ -5029,6 +5182,9 @@ spec:
                         description: HTTP message to override the default denial message.
                         properties:
                           expression:
+                            description: |-
+                              A Common Expression Language (CEL) expression that evaluates to a value.
+                              String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                             type: string
                           selector:
                             description: |-
@@ -5102,6 +5258,9 @@ spec:
                       description: Reference to a named set of pattern expressions
                       type: string
                     predicate:
+                      description: |-
+                        A Common Expression Language (CEL) expression that evaluates to a boolean.
+                        String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                       type: string
                     selector:
                       description: |-
