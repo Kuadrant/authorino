@@ -23,7 +23,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(user expressions.Value, groups []string, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -36,7 +36,6 @@ func NewKubernetesAuthz(user expressions.Value, groups []string, authorizationGr
 
 	return &KubernetesAuthz{
 		User:                user,
-		Groups:              groups,
 		AuthorizationGroups: authorizationGroups,
 		ResourceAttributes:  resourceAttributes,
 		authorizer:          k8sClient.AuthorizationV1(),
@@ -54,7 +53,6 @@ type KubernetesAuthzResourceAttributes struct {
 
 type KubernetesAuthz struct {
 	User                expressions.Value
-	Groups              []string
 	AuthorizationGroups expressions.Value
 	ResourceAttributes  *KubernetesAuthzResourceAttributes
 
@@ -132,14 +130,8 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 		}
 	}
 
-	if len(k.Groups) > 0 {
-		subjectAccessReview.Spec.Groups = k.Groups
-	} else if k.AuthorizationGroups != nil {
-		resolvedValue, err := k.AuthorizationGroups.ResolveFor(authJSON)
-		if err != nil {
-			return nil, err
-		}
-		stringJson, err := json.StringifyJSON(resolvedValue)
+	if k.AuthorizationGroups != nil {
+		stringJson, err := jsonValueToStr(k.AuthorizationGroups)
 		if err != nil {
 			return nil, err
 		}
