@@ -2804,6 +2804,9 @@ spec:
                             dynamically resolve to one from the Authorization JSON.
                           properties:
                             expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
                               type: string
                             selector:
                               description: |-
