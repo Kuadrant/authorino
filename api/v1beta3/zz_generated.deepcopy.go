@@ -779,6 +779,11 @@ func (in *KubernetesSubjectAccessReviewAuthorizationSpec) DeepCopyInto(out *Kube
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.AuthorizationGroups != nil {
+		in, out := &in.AuthorizationGroups, &out.AuthorizationGroups
+		*out = new(ValueOrSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ResourceAttributes != nil {
 		in, out := &in.ResourceAttributes, &out.ResourceAttributes
 		*out = new(KubernetesSubjectAccessReviewResourceAttributesSpec)

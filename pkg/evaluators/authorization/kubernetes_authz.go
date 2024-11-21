@@ -2,6 +2,7 @@ package authorization
 
 import (
 	gocontext "context"
+	gojson "encoding/json"
 	"fmt"
 	"strings"
 
@@ -22,7 +23,7 @@ type kubernetesSubjectAccessReviewer interface {
 	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
 }
 
-func NewKubernetesAuthz(user expressions.Value, groups []string, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
+func NewKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -34,10 +35,10 @@ func NewKubernetesAuthz(user expressions.Value, groups []string, resourceAttribu
 	}
 
 	return &KubernetesAuthz{
-		User:               user,
-		Groups:             groups,
-		ResourceAttributes: resourceAttributes,
-		authorizer:         k8sClient.AuthorizationV1(),
+		User:                user,
+		AuthorizationGroups: authorizationGroups,
+		ResourceAttributes:  resourceAttributes,
+		authorizer:          k8sClient.AuthorizationV1(),
 	}, nil
 }
 
@@ -51,9 +52,9 @@ type KubernetesAuthzResourceAttributes struct {
 }
 
 type KubernetesAuthz struct {
-	User               expressions.Value
-	Groups             []string
-	ResourceAttributes *KubernetesAuthzResourceAttributes
+	User                expressions.Value
+	AuthorizationGroups expressions.Value
+	ResourceAttributes  *KubernetesAuthzResourceAttributes
 
 	authorizer kubernetesSubjectAccessReviewer
 }
@@ -129,8 +130,17 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 		}
 	}
 
-	if len(k.Groups) > 0 {
-		subjectAccessReview.Spec.Groups = k.Groups
+	if k.AuthorizationGroups != nil {
+		stringJson, err := jsonValueToStr(k.AuthorizationGroups)
+		if err != nil {
+			return nil, err
+		}
+		var resolvedGroups []string
+		err = gojson.Unmarshal([]byte(stringJson), &resolvedGroups)
+		if err != nil {
+			return nil, err
+		}
+		subjectAccessReview.Spec.Groups = resolvedGroups
 	}
 
 	log.FromContext(ctx).WithName("kubernetesauthz").V(1).Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)

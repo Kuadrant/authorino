@@ -2796,10 +2796,32 @@ spec:
                     kubernetesSubjectAccessReview:
                       description: Authorization by Kubernetes SubjectAccessReview
                       properties:
+                        authorizationGroups:
+                          description: Groups to check for existing permission in
+                            the Kubernetes RBAC alternatively to a specific user.
+                            This is typically obtained from a list of groups the user
+                            is a member of. Must be a static list of group names or
+                            dynamically resolve to one from the Authorization JSON.
+                          properties:
+                            expression:
+                              description: |-
+                                A Common Expression Language (CEL) expression that evaluates to a value.
+                                String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                              type: string
+                            selector:
+                              description: |-
+                                Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                              type: string
+                            value:
+                              description: Static value
+                              x-kubernetes-preserve-unknown-fields: true
+                          type: object
                         groups:
-                          description: Groups the user must be a member of or, if
-                            `user` is omitted, the groups to check for authorization
-                            in the Kubernetes RBAC.
+                          description: |-
+                            Groups the user must be a member of or, if `user` is omitted, the groups to check for authorization in the Kubernetes RBAC.
+                            Deprecated: Use authorizationGroups instead.
                           items:
                             type: string
                           type: array
