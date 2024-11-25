@@ -155,15 +155,16 @@ spec:
           json:
             properties:
               "authorized":
-                value: true
+                expression: "true"
               "request-time":
-                selector: context.request.time.seconds
+                expression: request.time.seconds
               "greeting-message":
-                selector: Hello, {auth.identity.metadata.annotations.auth-data\/name}!
+                expression: |
+                  'Hello, ' + auth.identity.metadata.annotations['auth-data/name']
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
+Check out the docs about using [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
 
 ## ❻ Create an API key
 

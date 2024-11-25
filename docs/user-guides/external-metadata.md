@@ -153,10 +153,11 @@ spec:
   metadata:
     "geo":
       http:
-        url: 'http://ip-api.com/json/{context.request.http.headers.x-forwarded-for.@extract:{"sep":","}}?fields=countryCode'
+        urlExpression: |
+          'http://ip-api.com/json/' + request.headers['x-forwarded-for'].split(',')[0] + '?fields=countryCode'
         headers:
           "Accept":
-            value: application/json
+            expression: '"application/json"'
   authorization:
     "geofence":
       opa:
@@ -171,7 +172,7 @@ spec:
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](../architecture.md#the-authorization-json), including the description of the `@extract` string modifier.
+Check out the docs about using [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
 
 ## ❻ Create an API key
 

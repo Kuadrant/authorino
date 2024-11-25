@@ -157,11 +157,12 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: "http://matrix-quotes.127.0.0.1.nip.io:8000/login.html?redirect_to={request.path}"
+          expression: |
+            'http://matrix-quotes.127.0.0.1.nip.io:8000/login.html?redirect_to=' + request.path
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
+Check out the docs about using [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
 
 ## ❻ Create an API key
 
@@ -259,7 +260,8 @@ spec:
       code: 302
       headers:
         "Location":
-          selector: "http://keycloak:8080/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes.127.0.0.1.nip.io:8000/auth?redirect_to={request.path}&scope=openid&response_type=code"
+          expression: |
+            'http://keycloak:8080/realms/kuadrant/protocol/openid-connect/auth?client_id=matrix-quotes&redirect_uri=http://matrix-quotes.127.0.0.1.nip.io:8000/auth?redirect_to=' + request.path + '&scope=openid&response_type=code'
 EOF
 ```
 

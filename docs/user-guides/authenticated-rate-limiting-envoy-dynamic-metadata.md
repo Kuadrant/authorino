@@ -163,12 +163,12 @@ spec:
           json:
             properties:
               "username":
-                selector: auth.identity.metadata.annotations.auth-data\/username
+                expression: auth.identity.metadata.annotations['auth-data/username']
           key: ext_auth_data # how this bit of dynamic metadata from the ext authz service is named in the Envoy config
 EOF
 ```
 
-Check out the docs for information about the common feature [JSON paths](../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
+Check out the docs about using [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel) for reading from the [Authorization JSON](../architecture.md#the-authorization-json).
 
 ## ❼ Create the API keys
 

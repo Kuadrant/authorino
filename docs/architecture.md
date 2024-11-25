@@ -286,7 +286,7 @@ After phase (iii), Authorino appends to the authorization JSON the results of th
 
 [Festival Wristbands](./features.md#festival-wristband-tokens-responsesuccessheadersdynamicmetadatawristband) and [Dynamic JSON](./features.md#json-injection-responsesuccessheadersdynamicmetadatajson) responses can include dynamic values (custom claims/properties) fetched from the authorization JSON. These can be returned to the external authorization client in added HTTP headers or as Envoy [Well Known Dynamic Metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata). Check out [Custom response features](./features.md#custom-response-features-response) for details.
 
-For information about reading and fetching data from the Authorization JSON (syntax, functions, etc), check out [JSON paths](./features.md#common-feature-json-paths-selector).
+For information about reading and fetching data from the Authorization JSON (syntax, functions, etc), check out [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel).
 
 ## Raw HTTP Authorization interface
 
