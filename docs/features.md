@@ -797,10 +797,8 @@ spec:
   authorization:
     "allowed-endpoints":
       when:
-      - predicate: request.path != '/hi'
-      - predicate: request.path != '/hello'
-      - predicate: request.path != '/aloha'
-      - predicate: request.path != '/ciao'
+      - predicate: |
+          !(request.path in ['/hi', '/hello', '/aloha', '/ciao'])
       patternMatching:
         patterns:
         - pattern: "true"
