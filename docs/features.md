@@ -264,7 +264,7 @@ spec:
   authentication:
     "pre-validated-jwt":
       plain:
-        expression: metadata.filter_metadata.envoy['filters.http.jwt_authn'].verified_jwt
+        expression: metadata.filter_metadata['envoy.filters.http.jwt_authn'].verified_jwt
 ```
 
 If the specified JSON path does not exist in the Authorization JSON or the value is `null`, the identity verification will fail and, unless other identity config succeeds, Authorino will halt the Auth Pipeline with the usual `401 Unauthorized`.
