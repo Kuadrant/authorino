@@ -80,7 +80,7 @@ Similar to [JSON Paths](#common-feature-json-paths-selector), Authorino supports
 
 [String extension functions](https://pkg.go.dev/github.com/google/cel-go/ext#readme-strings), such as `split`, `substring`, `indexOf`, etc, are also supported.
 
-Use the `expression` field for selecting values from the [Authorization JSON](./architecture.md#the-authorization-json). The type of the selected value will be converted to a JSON-compatible equivalent. Complex types without a direct JSON equivalent may be converted to objects.
+Use the `expression` field for selecting values from the [Authorization JSON](./architecture.md#the-authorization-json). The type of the selected value will be converted to a JSON-compatible equivalent. Complex types without a direct JSON equivalent may be converted to objects (e.g. `google.golang.org/protobuf/types/known/timestamppb.Timestamp` gets converted to `{ "seconds": Number, "nanos": Number }`)
 
 The most common applications of `expression` are for building dynamic URLs and request parameters when fetching metadata from external sources, extending properties of identity objects, and dynamic authorization response attributes (e.g. injected HTTP headers, etc).
 
