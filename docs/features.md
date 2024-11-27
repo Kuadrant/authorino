@@ -14,6 +14,8 @@ You can also learn about Authorino features by using the [`kubectl explain`](htt
 
 ## Common feature: JSON paths ([`selector`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#ValueOrSelector))
 
+> **Deprecated:** Prefer `predicate` and `expression`, based on [Common Expression Language (CEL)](#common-feature-common-expression-language-cel), instead.
+
 The first feature of Authorino to learn about is a common functionality used in the specification of many other features. _JSON paths_ are selectors of data from the [Authorization JSON](./architecture.md#the-authorization-json) used in parts of an AuthConfig for referring to dynamic values of each authorization request.
 
 Usage examples of JSON paths are: dynamic URLs and request parameters when fetching metadata from external sources, dynamic authorization policy rules, and dynamic authorization response attributes (e.g. injected HTTP headers, Festival Wristband token claims, etc).
@@ -71,6 +73,18 @@ In combination with `@extract`, `@base64` can be used to extract the username in
 ### Interpolation
 
 _JSON paths_ can be interpolated into strings to build template-like dynamic values. E.g. `"Hello, {auth.identity.name}!"`.
+
+## Common feature: Common Expression Language (CEL)
+
+Similar to [JSON Paths](#common-feature-json-paths-selector), Authorino supports [Common Expression Language (CEL)](https://cel.dev/) for selecting data from the [Authorization JSON](./architecture.md#the-authorization-json) and representing predicates. This is a more powerful, properly typed alternative to JSON Paths, with a well-documented [syntax](https://github.com/google/cel-spec/blob/master/doc/langdef.md).
+
+[String extension functions](https://pkg.go.dev/github.com/google/cel-go/ext#readme-strings), such as `split`, `substring`, `indexOf`, etc, are also supported.
+
+Use the `expression` field for selecting values from the [Authorization JSON](./architecture.md#the-authorization-json). The type of the selected value will be converted to a JSON-compatible equivalent. Complex types without a direct JSON equivalent may be converted to objects (e.g. `google.golang.org/protobuf/types/known/timestamppb.Timestamp` gets converted to `{ "seconds": Number, "nanos": Number }`)
+
+The most common applications of `expression` are for building dynamic URLs and request parameters when fetching metadata from external sources, extending properties of identity objects, and dynamic authorization response attributes (e.g. injected HTTP headers, etc).
+
+Use `predicate` for expressions that return a boolean value, such as in [`when`](#common-feature-conditions-when) conditions and pattern-matching authorization rules.
 
 ## Identity verification & authentication features ([`authentication`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#AuthenticationSpec))
 
@@ -237,7 +251,7 @@ The identity object resolved out of a client x509 certificate is equal to the su
 
 Authorino can read plain identity objects, based on authentication tokens provided and verified beforehand using other means (e.g. Envoy [JWT Authentication filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/jwt_authn_filter#config-http-filters-jwt-authn), Kubernetes API server authentication), and injected into the payload to the external authorization service.
 
-The plain identity object is retrieved from the Authorization JSON based on a [JSON path](#common-feature-json-paths-selector) specified in the `AuthConfig`.
+The plain identity object is retrieved from the Authorization JSON. See [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel).
 
 This feature is particularly useful in cases where authentication/identity verification is handled before invoking the authorization service and its resolved value injected in the payload can be trusted. Examples of applications for this feature include:
 - Authentication handled in Envoy leveraging the Envoy JWT Authentication filter (decoded JWT injected as 'metadata_context')
@@ -250,7 +264,7 @@ spec:
   authentication:
     "pre-validated-jwt":
       plain:
-        selector: context.metadata_context.filter_metadata.envoy\.filters\.http\.jwt_authn|verified_jwt
+        expression: metadata.filter_metadata['envoy.filters.http.jwt_authn'].verified_jwt
 ```
 
 If the specified JSON path does not exist in the Authorization JSON or the value is `null`, the identity verification will fail and, unless other identity config succeeds, Authorino will halt the Auth Pipeline with the usual `401 Unauthorized`.
@@ -277,14 +291,10 @@ spec:
   authorization:
     "read-only-access-if-authn-fails":
       when:
-        - selector: auth.identity.anonymous
-          operator: eq
-          value: "true"
+      - predicate: has(auth.identity.anonymous) && auth.identity.anonymous
       patternMatching:
         patterns:
-        - selector: context.request.http.method
-          operator: eq
-          value: GET
+        - predicate: request.method == 'GET'
 ```
 
 ### Festival Wristband authentication
@@ -380,10 +390,13 @@ The resources data is added as metadata of the authorization payload and passed 
 
 Grant/deny access based on simple pattern-matching expressions ("patterns") compared against values selected from the Authorization JSON.
 
-Each expression is a tuple composed of:
-- a `selector`, to fetch from the Authorization JSON – see [Common feature: JSON paths](#common-feature-json-paths-selector) for details about syntax;
-- an `operator` – `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions;
-- a fixed comparable `value`
+Each expression is composed of exactly one of the following options:
+1. a `predicate` field - [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel) expression that evaluates to a boolean value;
+2. a tuple composed of:
+  - `selector`: a [JSON path](#common-feature-json-paths-selector) to fetch a value from the Authorization JSON
+  - `operator`: one of: `eq` (_equals_), `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for arrays; and `matches`, for regular expressions
+  - `value`: a static string value to compare the value selected from the Authorization JSON with;
+3. a `patternRef` field – value that maps to a predefined set of `{ selector, operator, value }` tuples stored at the top-level of the AuthConfig spec (`patterns`).
 
 Rules can mix and combine literal expressions and references to expression sets ("named patterns") defined at the upper level of the `AuthConfig` spec. (See [Common feature: Conditions](#common-feature-conditions-when))
 
@@ -393,9 +406,7 @@ spec:
     "my-simple-json-pattern-matching-policy":
       patternMatching:
         patterns: # All patterns must match for access to be granted
-        - selector: auth.identity.email_verified
-          operator: eq
-          value: "true"
+        - predicate: auth.identity.email_verified
         - patternRef: admin
 
   patterns:
@@ -461,7 +472,7 @@ authorization:
   "kubernetes-rbac":
     kubernetesSubjectAccessReview:
       user: # values of the parameter can be fixed (`value`) or fetched from the Authorization JSON (`selector`)
-        selector: auth.identity.metadata.annotations.userid
+        expression: auth.identity.metadata.annotations.userid
 
       groups: [] # user groups to test for.
 
@@ -475,9 +486,9 @@ authorization:
         resource:
           value: pets # the resource kind
         name:
-          selector: context.request.http.path.@extract:{"sep":"/","pos":2} # resource name – e.g., the {id} in `/pets/{id}`
+          expression: request.path.split('/')[2] # resource name – e.g., the {id} in `/pets/{id}`
         verb:
-          selector: context.request.http.method.@case:lower # api operation – e.g., copying from the context to use the same http method of the request
+          expression: request.method.lowerAscii() # api operation – e.g., copying from the context to use the same http method of the request
 ```
 
 `user` and properties of `resourceAttributes` can be defined from fixed values or patterns of the Authorization JSON.
@@ -504,14 +515,14 @@ spec:
           kind:
             value: blog/user
           name:
-            selector: auth.identity.sub
+            expression: auth.identity.sub
         resource:
           kind:
             value: blog/post
           name:
-            selector: context.request.http.path.@extract:{"sep":"/","pos":2} # /posts/{id}
+            expression: request.path.split('/')[2] # /posts/{id}
         permission:
-          selector: context.request.http.method
+          expression: request.method
 ```
 
 ## Custom response features ([`response`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#Response))
@@ -596,7 +607,7 @@ response:
     headers:
       "x-username":
         plain:
-          selector: auth.identity.username
+          expression: auth.identity.username
 ```
 
 #### JSON injection ([`response.success.<headers|dynamicMetadata>.json`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#JsonAuthResponseSpec))
@@ -632,7 +643,7 @@ spec:
               "prop1":
                 value: value1
               "prop2":
-                selector: some.path.within.auth.json
+                expression: some.path.within.auth.json
         "x-ext-auth-other-json":
           json:
             properties:
@@ -644,9 +655,9 @@ spec:
           json:
             properties:
               "api-key-ns":
-                seletor: auth.identity.metadata.namespace
+                expression: auth.identity.metadata.namespace
               "api-key-name":
-                selector: auth.identity.metadata.name
+                expression: auth.identity.metadata.name
 ```
 
 #### Festival Wristband tokens ([`response.success.<headers|dynamicMetadata>.wristband`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#WristbandAuthResponseSpec))
@@ -682,8 +693,8 @@ spec:
             customClaims:
               "aud":
                 value: internal
-              "born":
-                selector: auth.identity.metadata.creationTimestamp
+              "age":
+                expression: int(request.time.seconds) - (timestamp(auth.identity.metadata.creationTimestamp) - timestamp("1970-01-01T00:00:00Z")).getSeconds()
             tokenDuration: 300
             signingKeyRefs:
             - name: my-signing-key
@@ -721,15 +732,14 @@ spec:
         url: http://logsys
         method: POST
         body:
-          selector: |
-              \{"requestId":context.request.http.id,"username":"{auth.identity.username}","authorizationResult":{auth.authorization}\}
+          expression: |
+            { "requestId": request.id, "username": auth.identity.username, "authorizationResult": auth.authorization }
     "important-forbidden":
       when:
-      - selector: auth.authorization.important-policy
-        operator: eq
-        value: "false"
+      - predicate: "!auth.authorization.important-policy"
       http:
-        url: "http://monitoring/important?forbidden-user={auth.identity.username}"
+        urlExpression: |
+          "http://monitoring/important?forbidden-user=" + auth.identity.username
 ```
 
 ## Common feature: Priorities
@@ -787,23 +797,11 @@ spec:
   authorization:
     "allowed-endpoints":
       when:
-      - selector: context.request.http.path
-        operator: neq
-        value: /hi
-      - selector: context.request.http.path
-        operator: neq
-        value: /hello
-      - selector: context.request.http.path
-        operator: neq
-        value: /aloha
-      - selector: context.request.http.path
-        operator: neq
-        value: /ciao
+      - predicate: |
+          !(request.path in ['/hi', '/hello', '/aloha', '/ciao'])
       patternMatching:
         patterns:
-        - selector: deny
-          operator: eq
-          value: "true"
+        - pattern: "true"
     "more-expensive-policy": # no point in evaluating this one if it's not an allowed endpoint
       priority: 1
       opa:
@@ -816,13 +814,13 @@ spec:
           json:
             properties:
               "tier":
-                selector: auth.identity.metadata.labels.tier
+                expression: auth.identity.metadata.labels.tier
               "first-uuid":
-                selector: auth.metadata.first.uuid
+                expression: auth.metadata.first.uuid
               "second-uuid":
-                selector: auth.metadata.second.uuid
+                expression: auth.metadata.second.uuid
               "second-path":
-                selector: auth.metadata.second.path
+                expression: auth.metadata.second.path
 ```
 
 For the `AuthConfig` above,
@@ -835,16 +833,17 @@ For the `AuthConfig` above,
 
 ## Common feature: Conditions (`when`)
 
-_Conditions_, named `when` in the AuthConfig API, are logical expressions, composed of patterns and logical operator AND and OR, that can be used to condition the evaluation of a particular auth rule within an AuthConfig, as well as of the AuthConfig altogether ("top-level conditions").
+_Conditions_, identified by the `when` field in the AuthConfig API, are logical expressions ("predicates") that can be used to condition the evaluation of a particular auth rule, as well as of the AuthConfig altogether ("top-level conditions").
 
-The patterns are evaluated against the [Authorization JSON](./architecture.md#the-authorization-json), where each pattern is a tuple composed of:
-- `selector`: a [JSON path](#common-feature-json-paths-selector) to fetch a value from the Authorization JSON
-- `operator`: one of: `eq` (_equals_); `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for when the value fetched from the Authorization JSON is expected to be an array; `matches`, for regular expressions
-- `value`: a static string value to compare the value selected from the Authorization JSON with.
+The predicates are evaluated against the [Authorization JSON](./architecture.md#the-authorization-json), where each predicate is composed of exactly one of the following options:
+1. a `predicate` field – [CEL expression](#common-feature-common-expression-language-cel) that evaluates to a boolean value;
+2. a tuple composed of:
+  - `selector`: a [JSON path](#common-feature-json-paths-selector) to fetch a value from the Authorization JSON
+  - `operator`: one of: `eq` (_equals_); `neq` (_not equal_); `incl` (_includes_) and `excl` (_excludes_), for when the value fetched from the Authorization JSON is expected to be an array; `matches`, for regular expressions
+  - `value`: a static string value to compare the value selected from the Authorization JSON with;
+3. a `patternRef` field – value that maps to a predefined set of `{ selector, operator, value }` tuples stored at the top-level of the AuthConfig spec (`patterns`).
 
 An expression contains one or more patterns and they must either all evaluate to true ("AND" operator, declared by grouping the patterns within an `all` block) or at least one of the patterns must be true ("OR" operator, when grouped within an `any` block.) Patterns not explicitly grouped are AND'ed by default.
-
-To avoid repetitions when listing patterns, any set of literal `{ pattern, operator, value }` tuples can be stored at the top-level of the AuthConfig spec, indexed by name, and later referred within an expression by including a `patternRef` in the block of conditions.
 
 **Examples of `when` conditions**
 
@@ -853,79 +852,65 @@ i) to skip an entire `AuthConfig` based on the context (AND operator assumed by 
 ```yaml
 spec:
   when: # auth enforced only on requests to POST /resources/*
-  - selector: context.request.http.method
-    operator: eq
-    value: POST
-  - selector: context.request.http.path
-    operator: matches
-    value: ^/resources/.*
+  - predicate: request.method == 'POST' && request.path.matches("^/resources/.*")
 ```
 
-ii) equivalent to the above with explicit AND operator (i.e., `all` block):
+ii) equivalent to the above using `{ selector, operator, value }` tuples and an explicit AND operator (`all`):
 
 ```yaml
 spec:
   when: # auth enforced only on requests to POST /resources/*
   - all:
-    - selector: context.request.http.method
+    - selector: request.method
       operator: eq
       value: POST
-    - selector: context.request.http.path
+    - selector: request.path
       operator: matches
       value: ^/resources/.*
 ```
 
-iii) OR condition (i.e., `any` block):
+iii) OR condition (`any`) using `{ selector, operator, value }` tuples:
 
 ```yaml
 spec:
   when: # auth enforced only on requests with HTTP method equals to POST or PUT
   - any:
-    - selector: context.request.http.method
+    - selector: request.method
       operator: eq
       value: POST
-    - selector: context.request.http.method
+    - selector: request.method
       operator: eq
       value: PUT
 ```
 
-iv) complex expression with nested operations:
+iv) complex expression with nested operations using `{ selector, operator, value }` tuples:
 
 ```yaml
 spec:
   when: # auth enforced only on requests to POST /resources/* or PUT /resources/*
   - any:
     - all:
-      - selector: context.request.http.method
+      - selector: request.method
         operator: eq
         value: POST
-      - selector: context.request.http.path
+      - selector: request.path
         operator: matches
         value: ^/resources/.*
     - all:
-      - selector: context.request.http.method
+      - selector: request.method
         operator: eq
         value: PUT
-      - selector: context.request.http.path
+      - selector: request.path
         operator: matches
         value: ^/resources/.*
 ```
 
-v) more concise equivalent of the above (with implicit AND operator at the top level):
+v) more concise equivalent of the above using CEL:
 
 ```yaml
 spec:
   when: # auth enforced only on requests to /resources/* path with method equals to POST or PUT
-  - selector: context.request.http.path
-    operator: matches
-    value: ^/resources/.*
-  - any:
-    - selector: context.request.http.method
-      operator: eq
-      value: POST
-    - selector: context.request.http.method
-      operator: eq
-      value: PUT
+  - predicate: request.path .matches("^/resources/.*") && request.method in ['POST', 'PUT']
 ```
 
 vi) to skip part of an AuthConfig (i.e., a specific auth rule):
@@ -937,9 +922,7 @@ spec:
       http:
         url: https://my-metadata-source.io
       when: # only fetch the external metadata if the context is HTTP method other than OPTIONS
-      - selector: context.request.http.method
-        operator: neq
-        value: OPTIONS
+      - predicate: request.method != 'OPTIONS'
 ```
 
 vii) skipping part of an AuthConfig will not affect other auth rules:
@@ -950,12 +933,7 @@ spec:
     "authn-meth-1":
       apiKey: {…} # this auth rule only triggers for POST requests to /foo[/*]
       when:
-      - selector: context.request.http.method
-        operator: eq
-        value: POST
-      - selector: context.request.http.path
-        operator: matches
-        value: ^/foo(/.*)?$
+      - predicate: request.method == 'POST' && request.path.matches("^/foo(/.*)?$")
 
     "authn-meth-2": # this auth rule triggerred regardless
       jwt: {…}
@@ -968,16 +946,12 @@ spec:
   authentication:
     "jwt":
       when:
-      - selector: context.request.http.headers.authorization
-        operator: matches
-        value: JWT .+
+      - predicate: request.headers['authorization'].startsWith('JWT')
       jwt: {…}
 
     "api-key":
       when:
-      - selector: context.request.http.headers.authorization
-        operator: matches
-        value: APIKEY .+
+      - predicate: request.headers['authorization'].startsWith('APIKEY')
       apiKey: {…}
 ```
 
@@ -996,7 +970,8 @@ spec:
       when:
       - patternRef: a-pet
       http:
-        url: https://pets-info.io?petId={context.request.http.path.@extract:{"sep":"/","pos":2}}
+        urlExpression: |
+          "https://pets-info.io?petId=" + request.path.split('/')[2]
 
   authorization:
     "pets-owners-only":
@@ -1013,7 +988,7 @@ x) combining literals and refs – concrete case: authentication required for se
 spec:
   patterns:
     api-base-path:
-    - selector: context.request.http.path
+    - selector: request.path
       operator: matches
       value: ^/api/.*
 
@@ -1035,18 +1010,8 @@ spec:
   authorization:
     api-write-access-requires-authentication: # POST/PUT/DELETE requests to /api/* path cannot be anonymous
       when:
-      - all:
-        - patternRef: api-base-path
-        - any:
-          - selector: context.request.http.method
-            operator: eq
-            value: POST
-          - selector: context.request.http.method
-            operator: eq
-            value: PUT
-          - selector: context.request.http.method
-            operator: eq
-            value: DELETE
+      - patternRef: api-base-path
+      - predicate: request.method in ['POST', 'PUT', 'DELETE']
       opa:
         patternMatching:
           rules:
@@ -1061,7 +1026,7 @@ spec:
           json:
             properties:
               jwt-claims:
-                selector: auth.identity
+                expression: auth.identity
 ```
 
 ## Common feature: Caching (`cache`)
@@ -1082,10 +1047,11 @@ spec:
   metadata:
     "external-metadata":
       http:
-        url: http://my-external-source?search={context.request.http.path}
+        urlExpression: |
+          "http://my-external-source?search=" + request.path
       cache:
         key:
-          selector: context.request.http.path
+          expression: request.path
         ttl: 300
 
   authorization:
@@ -1095,7 +1061,7 @@ spec:
           url: http://my-policy-registry
       cache:
         key:
-          selector: "{auth.identity.group}-{context.request.http.method}-{context.request.http.path}"
+          expression: auth.identity.group + '-' + request.method + '-' + request.path
         ttl: 60
 ```
 
@@ -1125,7 +1091,7 @@ spec:
   metadata:
     "my-external-metadata":
       http:
-        url: http://my-external-source?search={context.request.http.path}
+        url: http://my-external-source?search={request.path}
       metrics: true
 ```
 

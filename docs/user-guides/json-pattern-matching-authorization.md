@@ -156,18 +156,15 @@ spec:
   authorization:
     "email-verified-only":
       when:
-      - selector: "context.request.http.headers.x-forwarded-for.@extract:{\"sep\": \",\"}"
-        operator: matches
-        value: 192\\.168\\.1\\.\\d+
+      - predicate: |
+          request.headers['x-forwarded-for'].split(',')[0].matches("^192\\\.168\\\.1\\\.\\\d+$")
       patternMatching:
         patterns:
-        - selector: auth.identity.email_verified
-          operator: eq
-          value: "true"
+        - predicate: auth.identity.email_verified
 EOF
 ```
 
-Check out the docs for information about semantics and operators supported by the [JSON pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching) feature, as well the common feature [JSON paths](../features.md#common-feature-json-paths-selector) for reading from the [Authorization JSON](../architecture.md#the-authorization-json), including the description of the string modifier `@extract` used above. Check out as well the common feature [Conditions](../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
+Check out the doc about using [Common Expression Language (CEL)](./features.md#common-feature-common-expression-language-cel) for reading from the [Authorization JSON](../architecture.md#the-authorization-json). Check out as well the common feature [Conditions](../features.md#common-feature-conditions-when) about skipping parts of an `AuthConfig` in the auth pipeline based on context.
 
 ## ❻ Obtain an access token and consume the API
 
