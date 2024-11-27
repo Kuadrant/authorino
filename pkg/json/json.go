@@ -9,11 +9,22 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/kuadrant/authorino/pkg/expressions"
+	"github.com/samber/lo"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/tidwall/gjson"
+)
+
+type JSONValueType int
+
+const (
+	JSONValueTypeStatic JSONValueType = iota
+	JSONValueTypePattern
+	JSONValueTypeTemplate
 )
 
 var (
@@ -44,16 +55,23 @@ func (v *JSONValue) ResolveFor(jsonData string) (interface{}, error) {
 	return v.resolveForSafe(jsonData), nil
 }
 
+func (v *JSONValue) Type() JSONValueType {
+	if v.Pattern == "" {
+		return JSONValueTypeStatic
+	}
+	if v.IsTemplate() {
+		return JSONValueTypeTemplate
+	}
+	return JSONValueTypePattern
+}
+
 func (v *JSONValue) resolveForSafe(jsonData string) interface{} {
-	if v.Pattern != "" {
-		// If all curly braces in the pattern are for passing arguments to modifiers, then it's likely NOT a template.
-		// To be a template, the pattern must contain at least one curly brace delimiting a variable placeholder.
-		if v.IsTemplate() {
-			return ReplaceJSONPlaceholders(v.Pattern, jsonData)
-		} else {
-			return gjson.Get(jsonData, v.Pattern).Value()
-		}
-	} else {
+	switch v.Type() {
+	case JSONValueTypeTemplate:
+		return ReplaceJSONPlaceholders(v.Pattern, jsonData)
+	case JSONValueTypePattern:
+		return TryTimestamp(gjson.Get(jsonData, v.Pattern))
+	default:
 		return v.Static
 	}
 }
@@ -64,6 +82,21 @@ func (v *JSONValue) resolveForSafe(jsonData string) interface{} {
 // should use `JSONValue.Static` instead of `JSONValue.Pattern`.
 func (v *JSONValue) IsTemplate() bool {
 	return len(curlyBracesForModifiersRegex.FindAllStringSubmatch(v.Pattern, -1)) != len(allCurlyBracesRegex.FindAllStringSubmatch(v.Pattern, -1))
+}
+
+// TryTimestamp tries to parse a gjson result to a RFC3339 timestamp
+// If the result is not a valid timestamp, it returns the value as parsed by gjson
+func TryTimestamp(v gjson.Result) interface{} {
+	if m := v.Map(); len(m) > 0 && len(m) <= 2 && len(lo.Without(lo.Keys(m), "seconds", "nanos")) == 0 {
+		t := &timestamppb.Timestamp{}
+		if err := json.Unmarshal([]byte(v.Raw), t); err == nil && t.IsValid() {
+			if m["nanos"].Exists() {
+				return t.AsTime().Format(time.RFC3339Nano)
+			}
+			return t.AsTime().Format(time.RFC3339)
+		}
+	}
+	return v.Value()
 }
 
 // UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure

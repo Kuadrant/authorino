@@ -346,3 +346,21 @@ func TestStringifyJSON(t *testing.T) {
 	assert.Equal(t, str, `{"prop_str":"str","prop_num":123,"prop_bool":false,"prop_null":null,"prop_arr":["a","b","c"],"prop_obj":{"a_prop":"a_value"}}`)
 	assert.NilError(t, err)
 }
+
+func TestTryTimestamp(t *testing.T) {
+	val := TryTimestamp(gjson.Parse(`{"seconds":1732721739}`))
+	s, _ := StringifyJSON(val)
+	assert.Equal(t, s, "2024-11-27T15:35:39Z")
+
+	val = TryTimestamp(gjson.Parse(`{"seconds":1732721739,"nanos":123456}`))
+	s, _ = StringifyJSON(val)
+	assert.Equal(t, s, "2024-11-27T15:35:39.000123456Z")
+
+	val = TryTimestamp(gjson.Parse(`"2024-11-27T15:35:39Z"`))
+	s, _ = StringifyJSON(val)
+	assert.Equal(t, s, "2024-11-27T15:35:39Z")
+
+	val = TryTimestamp(gjson.Parse(`{"foo":"bar"}`))
+	s, _ = StringifyJSON(val)
+	assert.Equal(t, s, `{"foo":"bar"}`)
+}
