@@ -5,18 +5,14 @@ Keycloak provides a powerful set of tools (REST endpoints and administrative UIs
 This user guide is an example of how to use Authorino as an adapter to Keycloak Authorization Services while still relying on the reverse-proxy integration pattern, thus not involving importing an authorization library nor rebuilding the application's code.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-      <li>Authorization → <a href="../features.md#open-policy-agent-opa-rego-policies-authorizationopa">Open Policy Agent (OPA) Rego policies</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
+  - Authorization → [Open Policy Agent (OPA) Rego policies](../features.md#open-policy-agent-opa-rego-policies-authorizationopa)
+
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

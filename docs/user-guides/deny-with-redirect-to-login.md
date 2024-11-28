@@ -3,14 +3,11 @@
 Customize response status code and headers on failed requests to redirect users of a web application protected with Authorino to a login page instead of a `401 Unauthorized`.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Dynamic response → <a href="../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized">Custom denial status</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#jwt-verification-authenticationjwt">JWT verification</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Dynamic response → [Custom denial status](../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+  - Identity verification & authentication → [JWT verification](../features.md#jwt-verification-authenticationjwt)
 
   Authorino's default response status codes, messages and headers for unauthenticated (`401`) and unauthorized (`403`) requests can be customized with static values and values fetched from the [Authorization JSON](../architecture.md#the-authorization-json).
 
@@ -18,8 +15,6 @@ Customize response status code and headers on failed requests to redirect users 
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

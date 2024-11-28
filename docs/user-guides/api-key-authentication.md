@@ -3,12 +3,9 @@
 Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with your protected hosts.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide:</summary>
+
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
 
   In Authorino, API keys are stored as Kubernetes `Secret`s. Each resource must contain an `api_key` entry with the value of the API key, and labeled to match the selectors specified in `spec.identity.apiKey.selector` of the `AuthConfig`.
 
@@ -16,8 +13,6 @@ Issue API keys stored in Kubernetes `Secret`s for clients to authenticate with y
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

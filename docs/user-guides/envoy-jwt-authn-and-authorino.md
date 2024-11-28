@@ -9,20 +9,15 @@ The policy defines a geo-fence by which only requests originated in Great Britai
 All requests to the Talker API will be authenticated in Envoy. However, requests to `/global` will **not** trigger the external authorization.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#plain-authenticationplain">Plain</a></li>
-      <li>External auth metadata → <a href="../features.md#http-getget-by-post-metadatahttp">HTTP GET/GET-by-POST</a></li>
-      <li>Authorization → <a href="../features.md#pattern-matching-authorization-authorizationpatternmatching">Pattern-matching authorization</a></li>
-      <li>Dynamic response → <a href="../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized">Custom denial status</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication → [Plain](../features.md#plain-authenticationplain)
+  - External auth metadata → [HTTP GET/GET-by-POST](../features.md#http-getget-by-post-metadatahttp)
+  - Authorization → [Pattern-matching authorization](../features.md#pattern-matching-authorization-authorizationpatternmatching)
+  - Dynamic response → [Custom denial status](../features.md#custom-denial-status-responseunauthenticated-and-responseunauthorized)
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 
