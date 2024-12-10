@@ -3,14 +3,12 @@
 Provide Envoy with dynamic metadata about the external authorization process to be injected into the rate limiting filter.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Dynamic response → Response wrappers → <a href="../features.md#envoy-dynamic-metadata">Envoy Dynamic Metadata</a></li>
-      <li>Dynamic response → <a href="../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Dynamic response → Response wrappers → [Envoy Dynamic Metadata](../features.md#envoy-dynamic-metadata)
+  - Dynamic response → [JSON injection](../features.md#json-injection-responsesuccessheadersdynamicmetadatajson)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
+
 
   Dynamic JSON objects built out of static values and values fetched from the [Authorization JSON](../architecture.md#the-authorization-json) can be wrapped to be returned to the reverse-proxy as Envoy Well Known Dynamic Metadata content. Envoy can use those to inject data returned by the external authorization service into the other filters, such as the rate limiting filter.
 

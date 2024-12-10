@@ -3,13 +3,10 @@
 Inject HTTP headers with serialized JSON content.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Dynamic response → <a href="../features.md#json-injection-responsesuccessheadersdynamicmetadatajson">JSON injection</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Dynamic response → [JSON injection](../features.md#json-injection-responsesuccessheadersdynamicmetadatajson)
+  - Identity verification & authentication → [API key](../features.md#api-key-authenticationapikey)
 
   Inject serialized custom JSON objects as HTTP request headers. Values can be static or fetched from the [Authorization JSON](../architecture.md#the-authorization-json).
 
@@ -17,8 +14,6 @@ Inject HTTP headers with serialized JSON content.
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 

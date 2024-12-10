@@ -3,13 +3,10 @@
 Customize where credentials are supplied in the request by each trusted source of identity.
 
 <details markdown="1">
-  <summary>
-    <strong>Authorino capabilities featured in this guide:</strong>
-    <ul>
-      <li>Identity verification & authentication → <a href="../features.md#extra-auth-credentials-authenticationcredentials">Auth credentials</a></li>
-      <li>Identity verification & authentication → <a href="../features.md#api-key-authenticationapikey">API key</a></li>
-    </ul>
-  </summary>
+  <summary>Authorino capabilities featured in this guide</summary>
+
+  - Identity verification & authentication →[Auth credentials](../features.md#extra-auth-credentials-authenticationcredentials)
+  - Identity verification & authentication →[API key](../features.md#api-key-authenticationapikey)
 
   Authentication tokens can be supplied in the `Authorization` header, in a custom header, cookie or query string parameter.
 
@@ -17,8 +14,6 @@ Customize where credentials are supplied in the request by each trusted source o
 
   For further details about Authorino features in general, check the [docs](../features.md).
 </details>
-
-<br/>
 
 ## Requirements
 
