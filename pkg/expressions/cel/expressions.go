@@ -14,6 +14,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	authorinojson "github.com/kuadrant/authorino/pkg/json"
 )
 
 const RootMetadataBinding = "metadata"
@@ -80,7 +82,7 @@ func (e *Expression) ResolveFor(json string) (interface{}, error) {
 	if jsonLiteral, err := ValueToJSON(result); err != nil {
 		return nil, err
 	} else {
-		return gjson.Parse(jsonLiteral).Value(), nil
+		return authorinojson.TryTimestamp(gjson.Parse(jsonLiteral)), nil
 	}
 }
 
