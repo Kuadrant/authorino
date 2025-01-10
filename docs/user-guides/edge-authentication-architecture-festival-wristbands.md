@@ -66,8 +66,8 @@ The first environment is a facade for handling the first layer of authentication
     <tr>
       <td>
         <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❹.</p>
-        <p>At steps ❹ and ❺, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
-        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.</p>
+        <p>At steps ❹ and ❺, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
+        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.</p>
       </td>
     </tr>
   </tbody>
@@ -164,8 +164,8 @@ Create the config:
     <tr>
       <td>
         <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.
+        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
+        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
       </td>
     </tr>
   </tbody>
@@ -246,8 +246,8 @@ kubectl -n internal port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
     <tr>
       <td>
         <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.
+        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
+        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
       </td>
     </tr>
   </tbody>

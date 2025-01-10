@@ -61,8 +61,8 @@ The next steps walk you through installing Authorino, deploying and configuring 
     <tr>
       <td>
         <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> you may already have Authorino installed and running. In this case, skip straight to step ❸.</p>
-        <p>At step ❺, alternatively to creating an <code>AuthConfig</code> custom resource, you may create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
-        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.</p>
+        <p>At step ❺, alternatively to creating an <code>AuthConfig</code> custom resource, you may create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
+        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.</p>
       </td>
     </tr>
   </tbody>
@@ -264,8 +264,8 @@ kubectl create namespace myapp
     <tr>
       <td>
         <b><i>Kuadrant users –</i></b>
-        For this and other example AuthConfigs below, if you create a Kuadrant <a href="https://docs.kuadrant.io/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead, the output of the commands shall differ. The requested AuthPolicy may be initially accepted, but its state will turn ready or not ready depending on whether the corresponding AuthConfig requested by Kuadrant is accepted or rejected, according to the validating webhook rules. Check the state of the resources to confirm.
-        For more, see <a href="https://docs.kuadrant.io/kuadrant-operator/doc/auth">Kuadrant auth</a>.
+        For this and other example AuthConfigs below, if you create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead, the output of the commands shall differ. The requested AuthPolicy may be initially accepted, but its state will turn ready or not ready depending on whether the corresponding AuthConfig requested by Kuadrant is accepted or rejected, according to the validating webhook rules. Check the state of the resources to confirm.
+        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
       </td>
     </tr>
   </tbody>
