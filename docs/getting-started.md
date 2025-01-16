@@ -52,7 +52,7 @@ The above will install the latest build of the Authorino Operator and latest ver
 
 This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
 
-Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://docs.kuadrant.io/authorino-operator/#installing-via-olm).
+Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://docs.kuadrant.io/latest/authorino-operator/#installing-via-olm).
 
 ### Step: Request an Authorino instance
 
@@ -251,7 +251,7 @@ static_resources:
               filename: /etc/ssl/certs/authorino-ca-cert.crt
 ```
 
-For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://docs.kuadrant.io/limitador/), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
+For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://docs.kuadrant.io/latest/limitador/), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
 
 After creating the `ConfigMap` with the Envoy configuration, create an Envoy `Deployment` and `Service`. E.g.:
 
