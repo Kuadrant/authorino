@@ -9,7 +9,7 @@ Authorino is not about inventing anything new. It's about making the best things
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Unit Tests](https://github.com/Kuadrant/authorino/actions/workflows/go-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/go-test.yaml)
 [![End-to-end Tests](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/e2e-test.yaml)
-[![Smoke Tests](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/integration-test.yaml)
+[![Smoke Tests](https://github.com/Kuadrant/authorino/actions/workflows/smoke-test.yaml/badge.svg)](https://github.com/Kuadrant/authorino/actions/workflows/smoke-test.yaml)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino?ref=badge_shield)
 
 ## Getting started
