@@ -94,6 +94,7 @@ func (a *APIKey) GetK8sSecretLabelSelectors() k8s_labels.Selector {
 	return a.LabelSelectors
 }
 
+// Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
 func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
 	if !a.withinScope(new.GetNamespace()) {
 		return
