@@ -9,10 +9,10 @@ resources:
 #- patches/webhook_in_authconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
-patchesJson6902:
+patches:
 - path: patches/oneof_in_authconfigs.yaml
   target:
     group: apiextensions.k8s.io
-    version: v1
     kind: CustomResourceDefinition
     name: authconfigs.authorino.kuadrant.io
+    version: v1
