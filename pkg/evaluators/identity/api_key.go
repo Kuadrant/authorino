@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	apiKeySelector              = "api_key"
+	defaultAPIKeySelector       = "api_key"
 	invalidApiKeyMsg            = "the API Key provided is invalid"
 	credentialsFetchingErrorMsg = "Something went wrong fetching the authorized credentials"
 )
@@ -39,7 +39,7 @@ func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespac
 		Name:            name,
 		LabelSelectors:  labelSelectors,
 		Namespace:       namespace,
-		KeySelectors:    append(keySelectors, apiKeySelector),
+		KeySelectors:    append(keySelectors, defaultAPIKeySelector),
 		secrets:         make(map[string]k8s.Secret),
 		k8sClient:       k8sClient,
 	}

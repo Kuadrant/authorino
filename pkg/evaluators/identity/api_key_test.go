@@ -23,7 +23,7 @@ var (
 )
 
 func TestConstants(t *testing.T) {
-	assert.Equal(t, apiKeySelector, "api_key")
+	assert.Equal(t, defaultAPIKeySelector, "api_key")
 	assert.Equal(t, invalidApiKeyMsg, "the API Key provided is invalid")
 }
 
@@ -38,7 +38,7 @@ func TestNewApiKeyIdentityAllNamespaces(t *testing.T) {
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "")
 	assert.Equal(t, len(apiKey.KeySelectors), 1)
-	assert.Equal(t, apiKey.KeySelectors[0], apiKeySelector)
+	assert.Equal(t, apiKey.KeySelectors[0], defaultAPIKeySelector)
 	assert.Equal(t, len(apiKey.secrets), 2)
 	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
 	assert.Check(t, exists)
@@ -59,7 +59,7 @@ func TestNewApiKeyIdentitySingleNamespace(t *testing.T) {
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "ns1")
 	assert.Equal(t, len(apiKey.KeySelectors), 1)
-	assert.Equal(t, apiKey.KeySelectors[0], apiKeySelector)
+	assert.Equal(t, apiKey.KeySelectors[0], defaultAPIKeySelector)
 	assert.Equal(t, len(apiKey.secrets), 1)
 	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
 	assert.Check(t, exists)
@@ -81,7 +81,7 @@ func TestNewApiKeyIdentityMultipleKeySelectors(t *testing.T) {
 	assert.Equal(t, apiKey.Namespace, "ns1")
 	assert.Equal(t, len(apiKey.KeySelectors), 2)
 	assert.Equal(t, apiKey.KeySelectors[0], "no_op")
-	assert.Equal(t, apiKey.KeySelectors[1], apiKeySelector)
+	assert.Equal(t, apiKey.KeySelectors[1], defaultAPIKeySelector)
 	assert.Equal(t, len(apiKey.secrets), 1)
 	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
 	assert.Check(t, exists)
