@@ -28,6 +28,7 @@ type APIKey struct {
 	Namespace      string              `yaml:"namespace"`
 	KeySelectors   []string            `yaml:"keySelectors"`
 
+	// Map of API Key value to secret
 	secrets   map[string]k8s.Secret
 	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
@@ -94,7 +95,6 @@ func (a *APIKey) GetK8sSecretLabelSelectors() k8s_labels.Selector {
 	return a.LabelSelectors
 }
 
-// Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
 func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
 	if !a.withinScope(new.GetNamespace()) {
 		return
@@ -105,23 +105,16 @@ func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) 
 
 	logger := log.FromContext(ctx).WithName("apikey")
 
-	// updating existing
-	for _, key := range a.KeySelectors {
-		newAPIKeyValue := string(new.Data[key])
-		for oldAPIKeyValue, current := range a.secrets {
-			if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
-				if oldAPIKeyValue != newAPIKeyValue {
-					a.appendK8sSecretBasedIdentity(new)
-					delete(a.secrets, oldAPIKeyValue)
-					logger.V(1).Info("api key updated")
-				} else {
-					logger.V(1).Info("api key unchanged")
-				}
-				return
-			}
+	// Remove existing entries that match namespace/name, regardless of key value.
+	// This ensures old key values are removed.
+	for oldAPIKeyValue, current := range a.secrets {
+		if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
+			delete(a.secrets, oldAPIKeyValue)
+			logger.V(1).Info("api key removed (replaced or updated)")
 		}
 	}
 
+	// Add the new secret.
 	if a.appendK8sSecretBasedIdentity(new) {
 		logger.V(1).Info("api key added")
 	}
@@ -151,13 +144,15 @@ func (a *APIKey) withinScope(namespace string) bool {
 // Appends the K8s Secret to the cache of API keys
 // Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
 func (a *APIKey) appendK8sSecretBasedIdentity(secret k8s.Secret) bool {
+	appended := false
 	for _, key := range a.KeySelectors {
 		value, isAPIKeySecret := secret.Data[key]
+
 		if isAPIKeySecret && len(value) > 0 {
 			a.secrets[string(value)] = secret
-			return true
+			appended = true
 		}
 	}
 
-	return false
+	return appended
 }
