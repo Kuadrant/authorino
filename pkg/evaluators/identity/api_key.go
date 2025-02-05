@@ -37,12 +37,15 @@ type APIKey struct {
 }
 
 func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, keySelectors []string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
+	if len(keySelectors) == 0 {
+		keySelectors = append(keySelectors, defaultAPIKeySelector)
+	}
 	apiKey := &APIKey{
 		AuthCredentials: authCred,
 		Name:            name,
 		LabelSelectors:  labelSelectors,
 		Namespace:       namespace,
-		KeySelectors:    append(keySelectors, defaultAPIKeySelector),
+		KeySelectors:    keySelectors,
 		secrets:         make(map[string]k8s.Secret),
 		k8sClient:       k8sClient,
 	}

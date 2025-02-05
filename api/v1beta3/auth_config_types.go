@@ -357,7 +357,7 @@ type ApiKeyAuthenticationSpec struct {
 	AllNamespaces bool `json:"allNamespaces,omitempty"`
 
 	// List of keys within the selected Kubernetes secret that contain valid API credentials.
-	// Authorino will attempt to authenticate using any matching key, including "api-key".
+	// Authorino will attempt to authenticate using any matching key. If no keys are defined, the default "api-key" will be used.
 	// If no match is found, the Kubernetes secret is not considered a valid Authorino API Key secret and is ignored.
 	// +optional
 	KeySelectors []string `json:"keySelectors,omitempty"`
