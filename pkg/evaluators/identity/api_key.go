@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/samber/lo"
+
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -105,18 +107,28 @@ func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) 
 
 	logger := log.FromContext(ctx).WithName("apikey")
 
-	// Remove existing entries that match namespace/name, regardless of key value.
-	// This ensures old key values are removed.
-	for oldAPIKeyValue, current := range a.secrets {
-		if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
-			delete(a.secrets, oldAPIKeyValue)
-			logger.V(1).Info("api key removed (replaced or updated)")
+	// Get all current keys in the map that match the new secret name and namespace
+	currentKeysSecret := lo.PickBy(a.secrets, func(key string, current k8s.Secret) bool {
+		return current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName()
+	})
+
+	// get api keys from new secret
+	newAPIKeys := a.getValuesFromSecret(new)
+
+	for _, newKey := range newAPIKeys {
+		a.secrets[newKey] = new
+		if _, ok := currentKeysSecret[newKey]; !ok {
+			logger.V(1).Info("api key added")
+		} else {
+			logger.V(1).Info("api key secret updated")
 		}
 	}
 
-	// Add the new secret.
-	if a.appendK8sSecretBasedIdentity(new) {
-		logger.V(1).Info("api key added")
+	// get difference between new and the old
+	staleKeys, _ := lo.Difference(lo.Keys(currentKeysSecret), newAPIKeys)
+	for _, newKey := range staleKeys {
+		delete(a.secrets, newKey)
+		logger.V(1).Info("stale api key deleted")
 	}
 }
 
@@ -132,7 +144,6 @@ func (a *APIKey) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted k8s_t
 		if secret.GetNamespace() == deleted.Namespace && secret.GetName() == deleted.Name {
 			delete(a.secrets, key)
 			log.FromContext(ctx).WithName("apikey").V(1).Info("api key deleted")
-			return
 		}
 	}
 }
@@ -144,15 +155,25 @@ func (a *APIKey) withinScope(namespace string) bool {
 // Appends the K8s Secret to the cache of API keys
 // Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
 func (a *APIKey) appendK8sSecretBasedIdentity(secret k8s.Secret) bool {
-	appended := false
+	values := a.getValuesFromSecret(secret)
+	for _, value := range values {
+		a.secrets[value] = secret
+	}
+
+	// Was appended if length is greater than zero
+	return len(values) != 0
+}
+
+// getValuesFromSecret extracts the values from the secret based on APIKey KeySelectors
+func (a *APIKey) getValuesFromSecret(secret k8s.Secret) []string {
+	var keys []string
 	for _, key := range a.KeySelectors {
 		value, isAPIKeySecret := secret.Data[key]
 
 		if isAPIKeySecret && len(value) > 0 {
-			a.secrets[string(value)] = secret
-			appended = true
+			keys = append(keys, string(value))
 		}
 	}
 
-	return appended
+	return keys
 }
