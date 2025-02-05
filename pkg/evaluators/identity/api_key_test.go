@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	testAPIKeyK8sSecret1 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "obi-wan", Namespace: "ns1", Labels: map[string]string{"planet": "coruscant"}}, Data: map[string][]byte{"api_key": []byte("ObiWanKenobiLightSaber")}}
+	testAPIKeyK8sSecret1 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "obi-wan", Namespace: "ns1", Labels: map[string]string{"planet": "coruscant"}}, Data: map[string][]byte{"api_key": []byte("ObiWanKenobiLightSaber"), "api_key_2": []byte("TeraSinubeLightSaber")}}
 	testAPIKeyK8sSecret2 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "yoda", Namespace: "ns2", Labels: map[string]string{"planet": "coruscant"}}, Data: map[string][]byte{"api_key": []byte("MasterYodaLightSaber")}}
 	testAPIKeyK8sSecret3 = &k8s.Secret{ObjectMeta: k8s_meta.ObjectMeta{Name: "anakin", Namespace: "ns2", Labels: map[string]string{"planet": "tatooine"}}, Data: map[string][]byte{"api_key": []byte("AnakinSkywalkerLightSaber")}}
 	testAPIKeyK8sClient  = mockK8sClient(testAPIKeyK8sSecret1, testAPIKeyK8sSecret2, testAPIKeyK8sSecret3)
@@ -74,16 +74,19 @@ func TestNewApiKeyIdentityMultipleKeySelectors(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "ns1", []string{"no_op"}, mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
+	apiKey := NewApiKeyIdentity("jedi", selector, "ns1", []string{"no_op", "api_key_2"}, mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
 
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "ns1")
-	assert.Equal(t, len(apiKey.KeySelectors), 2)
+	assert.Equal(t, len(apiKey.KeySelectors), 3)
 	assert.Equal(t, apiKey.KeySelectors[0], "no_op")
-	assert.Equal(t, apiKey.KeySelectors[1], defaultAPIKeySelector)
-	assert.Equal(t, len(apiKey.secrets), 1)
+	assert.Equal(t, apiKey.KeySelectors[1], "api_key_2")
+	assert.Equal(t, apiKey.KeySelectors[2], defaultAPIKeySelector)
+	assert.Equal(t, len(apiKey.secrets), 2)
 	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
+	assert.Check(t, exists)
+	_, exists = apiKey.secrets["TeraSinubeLightSaber"]
 	assert.Check(t, exists)
 	_, exists = apiKey.secrets["MasterYodaLightSaber"]
 	assert.Check(t, !exists)
