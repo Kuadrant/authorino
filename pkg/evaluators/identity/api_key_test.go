@@ -79,13 +79,12 @@ func TestNewApiKeyIdentityMultipleKeySelectors(t *testing.T) {
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "ns1")
-	assert.Equal(t, len(apiKey.KeySelectors), 3)
+	assert.Equal(t, len(apiKey.KeySelectors), 2)
 	assert.Equal(t, apiKey.KeySelectors[0], "no_op")
 	assert.Equal(t, apiKey.KeySelectors[1], "api_key_2")
-	assert.Equal(t, apiKey.KeySelectors[2], defaultAPIKeySelector)
-	assert.Equal(t, len(apiKey.secrets), 2)
+	assert.Equal(t, len(apiKey.secrets), 1)
 	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
-	assert.Check(t, exists)
+	assert.Check(t, !exists)
 	_, exists = apiKey.secrets["TeraSinubeLightSaber"]
 	assert.Check(t, exists)
 	_, exists = apiKey.secrets["MasterYodaLightSaber"]
