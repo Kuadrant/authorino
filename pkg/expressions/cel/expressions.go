@@ -21,6 +21,7 @@ const RootRequestBinding = "request"
 const RootSourceBinding = "source"
 const RootDestinationBinding = "destination"
 const RootAuthBinding = "auth"
+const RootSecretKeysBinding = "keys"
 
 type Predicate struct {
 	program cel.Program
@@ -100,6 +101,7 @@ func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (
 		decls.NewConst(RootSourceBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 		decls.NewConst(RootDestinationBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
+		decls.NewConst(RootSecretKeysBinding, decls.NewListType(decls.String), nil),
 	)}, opts...)
 	envOpts = append(envOpts, ext.Strings())
 	env, env_err := cel.NewEnv(envOpts...)
@@ -149,11 +151,14 @@ func AuthJsonToCel(json string) (map[string]interface{}, error) {
 	if err := jsonpb.Unmarshal(strings.NewReader(json), &data); err != nil {
 		return nil, err
 	}
-	metadata := data.GetFields()[RootMetadataBinding]
-	request := data.GetFields()[RootRequestBinding]
-	source := data.GetFields()[RootSourceBinding]
-	destination := data.GetFields()[RootDestinationBinding]
-	auth := data.GetFields()[RootAuthBinding]
+
+	fields := data.GetFields()
+
+	metadata := fields[RootMetadataBinding]
+	request := fields[RootRequestBinding]
+	source := fields[RootSourceBinding]
+	destination := fields[RootDestinationBinding]
+	auth := fields[RootAuthBinding]
 
 	input := map[string]interface{}{
 		RootMetadataBinding:    metadata,
@@ -163,4 +168,40 @@ func AuthJsonToCel(json string) (map[string]interface{}, error) {
 		RootAuthBinding:        auth,
 	}
 	return input, nil
+}
+
+type KeySelectorExpression struct {
+	program cel.Program
+	source  string
+}
+
+func NewKeySelectorExpression(source string) (*KeySelectorExpression, error) {
+	program, err := Compile(source, cel.ListType(cel.StringType))
+	if err != nil {
+		return nil, err
+	}
+	return &KeySelectorExpression{
+		program: program,
+		source:  source,
+	}, nil
+}
+
+func (e *KeySelectorExpression) ResolveFor(jsonData string) (any, error) {
+	data := structpb.Struct{}
+	if err := jsonpb.Unmarshal(strings.NewReader(jsonData), &data); err != nil {
+		return nil, err
+	}
+
+	fields := data.GetFields()
+
+	input := map[string]any{
+		RootSecretKeysBinding: fields[RootSecretKeysBinding],
+	}
+
+	result, _, err := e.program.Eval(input)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Value(), nil
 }
