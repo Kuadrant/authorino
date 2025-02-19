@@ -205,7 +205,7 @@ func (a *APIKey) getValuesFromSecret(ctx context.Context, secret k8s.Secret) []s
 	// Convert evaluated result to a slice of strings
 	selectedKeys, ok := convertToStringSlice(evaluated)
 	if !ok {
-		logger.Error(fmt.Errorf("unexpected type for resolved key"), "expected string or []string", "value", evaluated)
+		logger.Error(fmt.Errorf("unexpected type for resolved key"), "expected []string", "value", evaluated)
 		return nil
 	}
 
