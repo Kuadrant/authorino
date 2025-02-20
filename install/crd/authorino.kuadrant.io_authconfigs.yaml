@@ -72,8 +72,8 @@ spec:
             type: object
           spec:
             description: Specifies the desired state of the AuthConfig resource, i.e.
-              the authencation/authorization scheme to be applied to protect the matching
-              service hosts.
+              the authentication/authorization scheme to be applied to protect the
+              matching service hosts.
             properties:
               authentication:
                 additionalProperties:
@@ -2374,8 +2374,8 @@ spec:
             type: object
           spec:
             description: Specifies the desired state of the AuthConfig resource, i.e.
-              the authencation/authorization scheme to be applied to protect the matching
-              service hosts.
+              the authentication/authorization scheme to be applied to protect the
+              matching service hosts.
             properties:
               authentication:
                 additionalProperties:
