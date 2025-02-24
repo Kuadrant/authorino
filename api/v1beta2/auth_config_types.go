@@ -106,7 +106,7 @@ type AuthConfig struct {
 	Status AuthConfigStatus `json:"status,omitempty"`
 }
 
-// Specifies the desired state of the AuthConfig resource, i.e. the authencation/authorization scheme to be applied to protect the matching service hosts.
+// Specifies the desired state of the AuthConfig resource, i.e. the authentication/authorization scheme to be applied to protect the matching service hosts.
 type AuthConfigSpec struct {
 	// The list of public host names of the services protected by this authentication/authorization scheme.
 	// Authorino uses the requested host to lookup for the corresponding authentication/authorization configs to enforce.
