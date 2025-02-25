@@ -32,8 +32,9 @@ func TestNewApiKeyIdentityAllNamespaces(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "", "", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "", "", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
 
+	assert.NilError(t, err)
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "")
@@ -51,8 +52,9 @@ func TestNewApiKeyIdentitySingleNamespace(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "ns1", "", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "ns1", "", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
 
+	assert.NilError(t, err)
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "ns1")
@@ -70,8 +72,9 @@ func TestNewApiKeyIdentityMultipleKeySelectors(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "ns1", "['no_op','api_key_2']", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "ns1", "['no_op','api_key_2']", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, context.TODO())
 
+	assert.NilError(t, err)
 	assert.Equal(t, apiKey.Name, "jedi")
 	assert.Equal(t, apiKey.LabelSelectors.String(), "planet=coruscant")
 	assert.Equal(t, apiKey.Namespace, "ns1")
@@ -95,7 +98,8 @@ func TestCallSuccess(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil)
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	assert.NilError(t, err)
 	auth, err := apiKey.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
@@ -111,9 +115,10 @@ func TestCallNoApiKeyFail(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", fmt.Errorf("something went wrong getting the API Key"))
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	assert.NilError(t, err)
 
-	_, err := apiKey.Call(pipelineMock, context.TODO())
+	_, err = apiKey.Call(pipelineMock, context.TODO())
 
 	assert.Error(t, err, "something went wrong getting the API Key")
 }
@@ -127,17 +132,19 @@ func TestCallInvalidApiKeyFail(t *testing.T) {
 	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ASithLightSaber", nil)
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
-	_, err := apiKey.Call(pipelineMock, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	assert.NilError(t, err)
+	_, err = apiKey.Call(pipelineMock, context.TODO())
 
 	assert.Error(t, err, "the API Key provided is invalid")
 }
 
 func TestLoadSecretsSuccess(t *testing.T) {
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("X-API-KEY", selector, "", "", nil, testAPIKeyK8sClient, nil)
+	apiKey, err := NewApiKeyIdentity("X-API-KEY", selector, "", "", nil, testAPIKeyK8sClient, nil)
+	assert.NilError(t, err)
 
-	err := apiKey.loadSecrets(context.TODO())
+	err = apiKey.loadSecrets(context.TODO())
 	assert.NilError(t, err)
 	assert.Equal(t, len(apiKey.secrets), 2)
 
@@ -152,10 +159,17 @@ func TestLoadSecretsSuccess(t *testing.T) {
 
 func TestLoadSecretsFail(t *testing.T) {
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("X-API-KEY", selector, "", "", nil, &flawedAPIkeyK8sClient{}, context.TODO())
+	apiKey, err := NewApiKeyIdentity("X-API-KEY", selector, "", "", nil, &flawedAPIkeyK8sClient{}, context.TODO())
+	assert.NilError(t, err)
 
-	err := apiKey.loadSecrets(context.TODO())
+	err = apiKey.loadSecrets(context.TODO())
 	assert.Error(t, err, "something terribly wrong happened")
+}
+
+func TestCELCompileFail(t *testing.T) {
+	selector, _ := k8s_labels.Parse("planet=coruscant")
+	_, err := NewApiKeyIdentity("X-API-KEY", selector, "", "stringLiteral", nil, testAPIKeyK8sClient, context.TODO())
+	assert.Assert(t, err != nil)
 }
 
 func BenchmarkAPIKeyAuthn(b *testing.B) {
@@ -166,9 +180,9 @@ func BenchmarkAPIKeyAuthn(b *testing.B) {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil).MinTimes(1)
 	selector, _ := k8s_labels.Parse("planet=coruscant")
-	apiKey := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	apiKey, err := NewApiKeyIdentity("jedi", selector, "", "", authCredMock, testAPIKeyK8sClient, context.TODO())
+	assert.NilError(b, err)
 
-	var err error
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err = apiKey.Call(pipelineMock, context.TODO())

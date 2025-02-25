@@ -41,7 +41,7 @@ type APIKey struct {
 	k8sClient k8s_client.Reader
 }
 
-func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, keySelectorExpression string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, keySelectorExpression string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) (*APIKey, error) {
 	if keySelectorExpression == "" {
 		keySelectorExpression = defaultKeySelectorExpression
 	}
@@ -51,7 +51,7 @@ func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespac
 	expr, err := cel.NewKeySelectorExpression(keySelectorExpression)
 	if err != nil {
 		logger.Error(err, "failed to create key selector expression")
-		return nil
+		return nil, err
 	}
 
 	apiKey := &APIKey{
@@ -66,7 +66,7 @@ func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespac
 	if err := apiKey.loadSecrets(context.TODO()); err != nil {
 		logger.Error(err, credentialsFetchingErrorMsg)
 	}
-	return apiKey
+	return apiKey, nil
 }
 
 // loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted API keys
