@@ -15,13 +15,19 @@ to define authentication and authorization rules directly in their network polic
 Rather than defining `AuthConfig` resources directly, users can define an `AuthPolicy`, and Kuadrant will automatically
 generate the corresponding `AuthConfig` for Authorino to consume.
 
-Key details about `AuthPolicy` as an `AuthConfig` Consumer:
+### Key Details About `AuthPolicy` as an `AuthConfig` Consumer
 
 - **Same Specification**: The spec schema of `AuthPolicy` is effectively the same as `AuthConfig`.
 - **Automatic Hostname Handling**: Unlike `AuthConfig`, `AuthPolicy` does not explicitly define `spec.host`. Instead, hostnames are
 inferred from the Kubernetes network object in `spec.targetRef` and the route selectors in the policy.
 - **Authorino Integration**: Kuadrant translates `AuthPolicy` into an `AuthConfig`, which is then processed by Authorino to enforce
 authentication and authorization.
+
+### Authorino Features Not Available via Kuadrant
+Some Authorino-specific features may not be available when using Authorino through Kuadrant:
+
+- [Sharding](./sharding.md)
+- [Host Override via Context Extension](./host-override.md)
 
 For more details on enforcing authentication and authorization with Kuadrant, see the
 [Kuadrant Auth documentation](https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth/).
