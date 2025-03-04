@@ -101,18 +101,6 @@ The following defines a JSON object to be injected as an added HTTP header into 
 2. a dynamic value `request-time`, from Envoy-supplied contextual data present in the Authorization JSON; and
 3. a greeting message `geeting-message` that interpolates a dynamic value read from an annotation of the Kubernetes `Secret` resource that represents the API key used to authenticate into a static string.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

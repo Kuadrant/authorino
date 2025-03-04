@@ -104,18 +104,6 @@ The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.or
 
 [^5]: You can also set [`use_remote_address: true`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-use-remote-address) in the Envoy route configuration, so the proxy will append its IP address instead of run in transparent mode. This setting will also ensure real remote address of the client connection passed in the [`x-envoy-external-address`](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#config-http-conn-man-headers-x-envoy-external-address) HTTP header, which can be used to simplify the read-only policy in remote environment.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

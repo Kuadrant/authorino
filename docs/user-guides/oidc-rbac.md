@@ -113,18 +113,6 @@ In this example, the Keycloak realm defines a few users and 2 realm roles: 'memb
 | /resources/{id} | DELETE           | admin  |
 | /admin[/*]      | *                | admin  |
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 Apply the AuthConfig:
 
 ```sh

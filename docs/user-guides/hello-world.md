@@ -91,18 +91,6 @@ Authorino does not know about the `talker-api.127.0.0.1.nip.io` host, hence the 
 
 Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced:
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl -n hello-world apply -f https://raw.githubusercontent.com/kuadrant/authorino-examples/main/hello-world/authconfig.yaml
 # authconfig.authorino.kuadrant.io/talker-api-protection created

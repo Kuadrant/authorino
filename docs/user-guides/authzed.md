@@ -215,18 +215,6 @@ EOF
 
 Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 Store the shared token for Authorino to authenticate with the SpiceDB instance in a Service:
 
 ```sh

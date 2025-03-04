@@ -138,18 +138,6 @@ EOF
 
 Create the Authorino `AuthConfig` custom resource declaring the auth rules to be enforced:
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

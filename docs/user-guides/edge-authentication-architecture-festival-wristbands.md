@@ -142,18 +142,6 @@ EOF
 
 Create the config:
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl -n edge apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3
@@ -223,18 +211,6 @@ kubectl -n internal port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 ```
 
 ### Create the `AuthConfig`
-
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
 
 ```sh
 kubectl -n internal apply -f -<<EOF

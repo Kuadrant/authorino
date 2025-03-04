@@ -117,18 +117,6 @@ In both cases, the path of the HTTP request is used as cache key. I.e., whenever
 
 The cached values will be visible in the response returned by the Talker API in `x-authz-data` header injected by Authorino. This way, we can tell when an existing value in the cache was used and when a new one was generated and stored.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3
