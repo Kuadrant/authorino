@@ -242,18 +242,6 @@ kubectl create namespace myapp
 
 ### With a valid `AuthConfig`
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        For this and other example AuthConfigs below, if you create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead, the output of the commands shall differ. The requested AuthPolicy may be initially accepted, but its state will turn ready or not ready depending on whether the corresponding AuthConfig requested by Kuadrant is accepted or rejected, according to the validating webhook rules. Check the state of the resources to confirm.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl -n myapp apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

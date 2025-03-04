@@ -109,18 +109,6 @@ Create an Authorino `AuthConfig` custom resource declaring the auth rules to be 
 
 An annotation `auth-data/username` will be read from the Kubernetes API Key secret and passed as dynamic metadata `{ "ext_auth_data": { "username": «annotations.auth-data/username» } }`.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

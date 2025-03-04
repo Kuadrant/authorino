@@ -119,18 +119,6 @@ In cases of asynchronous user-managed permission control, the first request to t
 
 Whenever an RPT with proper permissions is obtained by Authorino, the RPT is supplied back to the API consumer, so it can be used in subsequent requests thus skipping new negotiations of UMA tickets.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

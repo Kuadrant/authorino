@@ -117,18 +117,6 @@ The config trusts access tokens issued by a Keycloak realm as well as API keys l
 
 Without normalizing identity claims from these two different sources, the policy would have to handle the differences of data formats with additional ifs-and-elses. Instead, the config here uses the `identity.extendedProperties` option to ensure a custom `roles` (Array) claim is always present in the identity object. In the case of Keycloak ID tokens, the value is extracted from the `realm_access.roles` claim; for API key-resolved objects, the custom claim is set to the static value `["admin"]`.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 ```sh
 kubectl apply -f -<<EOF
 apiVersion: authorino.kuadrant.io/v1beta3

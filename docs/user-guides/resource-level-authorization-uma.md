@@ -108,18 +108,6 @@ This example of resource-level authorization leverages part of Keycloak's User-M
 
 The Keycloak server also provides the identities. The `sub` claim of the Keycloak-issued ID tokens must match the owner of the requested resource, identified by the URI of the request.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 Create a required secret that will be used by Authorino to initiate the authentication with the UMA registry.
 
 ```sh
