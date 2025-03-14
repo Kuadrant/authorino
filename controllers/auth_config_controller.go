@@ -261,7 +261,12 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if err != nil {
 				return nil, err
 			}
-			translatedIdentity.APIKey = identity_evaluators.NewApiKeyIdentity(identityCfgName, selector, namespace, authCred, r.Client, ctxWithLogger)
+
+			if apiKeyIdentity, err := identity_evaluators.NewApiKeyIdentity(identityCfgName, selector, namespace, string(identity.ApiKey.KeySelector), authCred, r.Client, ctxWithLogger); err != nil {
+				return nil, err
+			} else {
+				translatedIdentity.APIKey = apiKeyIdentity
+			}
 
 		// MTLS
 		case api.X509ClientCertificateAuthentication:

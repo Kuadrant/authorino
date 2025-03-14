@@ -355,6 +355,23 @@ type ApiKeyAuthenticationSpec struct {
 	// +optional
 	// +kubebuilder:default:=false
 	AllNamespaces bool `json:"allNamespaces,omitempty"`
+
+	// A Common Expression Language (CEL) expression that evaluates to a list of string keys, such as `["custom_key1", "custom_key2"]`,
+	// within the selected Kubernetes secret that contains valid API credentials.
+	//
+	// The keys of the selected Kubernetes secret are available for evaluation in the following structure:
+	// `{"keys": ["api_key", "custom_key1", "custom_key2"]}`.
+	//
+	// For example, to select keys that start with "custom", use the following CEL expression:
+	// `"keys.filter(k, k.startsWith('custom'))"`
+	//
+	// Authorino will attempt to authenticate using any matching key. If this field is omitted or empty, the default `["api_key"]` will be used.
+	// If no match is found, the Kubernetes secret is not considered a valid Authorino API Key secret and will be ignored.
+	//
+	// String expressions are supported: https://pkg.go.dev/github.com/google/cel-go/ext#Strings
+	//
+	// +optional
+	KeySelector CelExpression `json:"keySelector,omitempty"`
 }
 
 // Settings to fetch the JSON Web Key Set (JWKS) for the JWT authentication.
