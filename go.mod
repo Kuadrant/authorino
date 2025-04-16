@@ -1,6 +1,6 @@
 module github.com/kuadrant/authorino
 
-go 1.22.5
+go 1.23.6
 
 require (
 	github.com/authzed/authzed-go v0.7.0
