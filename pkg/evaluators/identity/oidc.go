@@ -10,7 +10,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
-	goidc "github.com/coreos/go-oidc"
+	gooidc "github.com/coreos/go-oidc/v3/oidc"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 type OIDC struct {
 	auth.AuthCredentials
 	Endpoint  string `yaml:"endpoint"`
-	provider  *goidc.Provider
+	provider  *gooidc.Provider
 	refresher workers.Worker
 }
 
@@ -54,10 +54,10 @@ func (oidc *OIDC) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (inter
 	}
 }
 
-func (oidc *OIDC) getProvider(ctx gocontext.Context, force bool) *goidc.Provider {
+func (oidc *OIDC) getProvider(ctx gocontext.Context, force bool) *gooidc.Provider {
 	if oidc.provider == nil || force {
 		endpoint := oidc.Endpoint
-		if provider, err := goidc.NewProvider(gocontext.TODO(), endpoint); err != nil {
+		if provider, err := gooidc.NewProvider(gocontext.TODO(), endpoint); err != nil {
 			log.FromContext(ctx).Error(err, msg_oidcProviderConfigRefreshError, "endpoint", endpoint)
 		} else {
 			log.FromContext(ctx).V(1).Info(msg_oidcProviderConfigRefreshSuccess, "endpoint", endpoint)
@@ -68,7 +68,7 @@ func (oidc *OIDC) getProvider(ctx gocontext.Context, force bool) *goidc.Provider
 	return oidc.provider
 }
 
-func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx gocontext.Context, claims *interface{}) (*goidc.IDToken, error) {
+func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx gocontext.Context, claims *interface{}) (*gooidc.IDToken, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -87,14 +87,14 @@ func (oidc *OIDC) decodeAndVerifyToken(accessToken string, ctx gocontext.Context
 	return idToken, nil
 }
 
-func (oidc *OIDC) verifyToken(accessToken string, ctx gocontext.Context) (*goidc.IDToken, error) {
+func (oidc *OIDC) verifyToken(accessToken string, ctx gocontext.Context) (*gooidc.IDToken, error) {
 	provider := oidc.getProvider(ctx, false)
 
 	if provider == nil {
 		return nil, fmt.Errorf(msg_oidcProviderConfigMissingError)
 	}
 
-	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
+	tokenVerifierConfig := &gooidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
 	if idToken, err := provider.Verifier(tokenVerifierConfig).Verify(ctx, accessToken); err != nil {
 		return nil, err
 	} else {
