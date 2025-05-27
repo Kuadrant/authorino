@@ -5,7 +5,7 @@
 Minimum requirements to contribute to Authorino are:
 
 - [Golang v1.23+](https://golang.org)
-- [Docker](https://docker.com)
+- [Docker](https://docker.com) or [Podman](https://podman.io)
 
 Authorino's code was originally bundled using the [Operator SDK](https://sdk.operatorframework.io/) (v1.9.0).
 

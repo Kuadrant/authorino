@@ -4,6 +4,12 @@ SHELL = /bin/bash
 # Use vi as default editor
 EDITOR ?= vi
 
+# Container Engine to be used for building image and with kind
+CONTAINER_ENGINE ?= docker
+ifeq (podman,$(CONTAINER_ENGINE))
+	CONTAINER_ENGINE_EXTRA_FLAGS ?= --load
+endif
+
 # Set version and image tag
 ifeq ($(VERSION),)
 VERSION = $(shell git rev-parse --abbrev-ref HEAD)
@@ -15,9 +21,9 @@ using_semantic_version := $(shell [[ $(VERSION) =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?
 ifdef using_semantic_version
 IMAGE_TAG=v$(VERSION)
 else
-IMAGE_TAG=local
+IMAGE_TAG=dev
 endif
-IMAGE_REPO ?= authorino
+IMAGE_REPO ?= localhost/authorino
 AUTHORINO_IMAGE ?= $(IMAGE_REPO):$(IMAGE_TAG)
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -138,7 +144,12 @@ build: generate ## Builds the manager binary
 docker-build:git_sha=$(shell git rev-parse HEAD)
 docker-build:dirty=$(shell $(PROJECT_DIR)/hack/check-git-dirty.sh || echo "unknown")
 docker-build: ## Builds an image based on the current branch
-	docker build --build-arg version=$(VERSION) --build-arg git_sha=$(git_sha) --build-arg dirty=$(dirty) -t $(AUTHORINO_IMAGE) .
+	$(CONTAINER_ENGINE) build \
+	  --build-arg version=$(VERSION) \
+		--build-arg git_sha=$(git_sha) \
+		--build-arg dirty=$(dirty) \
+		$(CONTAINER_ENGINE_EXTRA_FLAGS) \
+		-t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
@@ -269,7 +280,12 @@ cluster: kind ## Starts a local Kubernetes cluster using Kind
 	$(KIND) create cluster --name $(KIND_CLUSTER_NAME)
 
 local-build: kind docker-build ## Builds an image based on the current branch and pushes it to the registry into the local Kubernetes cluster started with Kind
-	$(KIND) load docker-image $(AUTHORINO_IMAGE) --name $(KIND_CLUSTER_NAME)
+	$(eval TMP_DIR := $(shell mktemp -d))
+	$(CONTAINER_ENGINE) save -o $(TMP_DIR)/image.tar $(AUTHORINO_IMAGE) \
+		&& KIND_EXPERIMENTAL_PROVIDER=$(CONTAINER_ENGINE) $(KIND) load image-archive $(TMP_DIR)/image.tar --name $(KIND_CLUSTER_NAME) ; \
+		EXITVAL=$$? ; \
+		rm -rf $(TMP_DIR) ;\
+		exit $${EXITVAL}
 
 local-setup: cluster cert-manager local-build install-operator install namespace deploy user-apps ## Sets up a test/dev local Kubernetes server using Kind, loaded up with a freshly built Authorino image and apps
 	kubectl -n $(NAMESPACE) wait --timeout=300s --for=condition=Available deployments --all

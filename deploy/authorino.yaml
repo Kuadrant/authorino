@@ -13,7 +13,7 @@ spec:
 
   evaluatorCacheSize: 1 # (in mb)
 
-  image: authorino:local
+  image: localhost/authorino:dev
   imagePullPolicy: IfNotPresent
 
   logLevel: debug
