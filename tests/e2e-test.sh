@@ -13,6 +13,7 @@ authconfig=${AUTHCONFIG:-"$(dirname $(realpath $0))/${authconfig_version}/authco
 authconfig_invalid=${AUTHCONFIG_INVALID:-"$(dirname $(realpath $0))/${authconfig_version}/authconfig-invalid.yaml"}
 verbose=${VERBOSE}
 timeout=${TIMEOUT:-"600"}
+tls_enabled=${TLS_ENABLED:-"true"}
 
 HOSTNAME="talker-api.127.0.0.1.nip.io"
 IP_IN="109.69.200.56" # IT
@@ -275,7 +276,11 @@ send_anonymous_requests $IP_OUT "
     GET / => 403"
 
 # Test #43 done
-send_requests "https" "authorino-authorino-oidc" "8083" $IP_IN "" "
+protocol="http"
+if [[ "$tls_enabled" == "true" ]]; then
+  protocol="https"
+fi
+send_requests $protocol "authorino-authorino-oidc" "8083" $IP_IN "" "
     GET /authorino/e2e-test/wristband/.well-known/openid-configuration => 200
     GET /authorino/e2e-test/wristband/.well-known/openid-connect/certs => 200
     GET /authorino/e2e-test/invalid/.well-known/openid-configuration => 404
