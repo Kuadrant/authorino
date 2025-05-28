@@ -6,7 +6,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/evaluators/response"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 

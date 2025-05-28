@@ -13,7 +13,7 @@ import (
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	jose "github.com/go-jose/go-jose/v4"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
@@ -194,7 +194,7 @@ func TestWristbandCall(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	identityConfigMock := mock_auth.NewMockIdentityConfigEvaluator(ctrl)
-	identityConfigMock.EXPECT().GetOIDC()
+	identityConfigMock.EXPECT().GetOpenIdConfig()
 	pipelineMock.EXPECT().GetResolvedIdentity().Return(identityConfigMock, nil)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(string(authJSON))
 	encodedWristband, err := wristbandIssuer.Call(pipelineMock, context.TODO())

@@ -1103,7 +1103,7 @@ The same pattern works for other types of evaluators. Find below the list of all
 |-----------------------------------------------|---------------------------------|
 | `authentication.apiKey`                       | IDENTITY_APIKEY                 |
 | `authentication.kubernetesTokenReview`        | IDENTITY_KUBERNETES             |
-| `authentication.jwt`                          | IDENTITY_OIDC                   |
+| `authentication.jwt`                          | IDENTITY_JWT                    |
 | `authentication.oauth2Introspection`          | IDENTITY_OAUTH2                 |
 | `authentication.x509`                         | IDENTITY_MTLS                   |
 | `authentication.plain`                        | IDENTITY_PLAIN                  |

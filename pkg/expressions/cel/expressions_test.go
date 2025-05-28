@@ -6,7 +6,7 @@ import (
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"gotest.tools/assert"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 )
 
 func TestPredicate(t *testing.T) {

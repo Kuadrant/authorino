@@ -5,8 +5,8 @@ import (
 
 	mock_metrics "github.com/kuadrant/authorino/pkg/metrics/mocks"
 
-	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
