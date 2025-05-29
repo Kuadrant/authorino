@@ -31,7 +31,7 @@ type JWTAuthentication struct {
 	verifier JWTVerifier
 }
 
-func NewJWTAuthentication(ctx gocontext.Context, verifier JWTVerifier, creds auth.AuthCredentials) *JWTAuthentication {
+func NewJWTAuthentication(verifier JWTVerifier, creds auth.AuthCredentials) *JWTAuthentication {
 	return &JWTAuthentication{
 		AuthCredentials: creds,
 		verifier:        verifier,

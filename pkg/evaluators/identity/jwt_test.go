@@ -45,7 +45,7 @@ func TestJWTAuthenticationCall(t *testing.T) {
 
 	jwtVerifier := mock_identity.NewMockJWTVerifier(ctrl)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
 	const issuer = "http://keycloak:8080/auth/realms/kuadrant"
 	const rawToken = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ5cm0tSWpweGRfd3dzVmZPR1FUWWE2NHVmdEVlOHY3VG5sQzFMLUl4ZUlJIn0.eyJleHAiOjIxNDU4NjU3NzMsImlhdCI6MTY1OTA4ODE3MywianRpIjoiZDI0ODliMWEtYjY0Yi00MzRhLWJhNmItMmQ4OGIyY2I1ZWE3IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrOjgwODAvYXV0aC9yZWFsbXMva3VhZHJhbnQiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiMWEwYjZjNmUtNDdmNy00ZjI1LWEyNjYtYzg3MzZhOTkxODQ0IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGVtbyIsInNlc3Npb25fc3RhdGUiOiIxMTdkMTc1Ni1mM2RlLTRjM2MtOWEwZS0zYjU5Mzc2YmI0ZTgiLCJhY3IiOiIxIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwibWVtYmVyIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctaWRlbnRpdHktcHJvdmlkZXJzIiwidmlldy1yZWFsbSIsIm1hbmFnZS1pZGVudGl0eS1wcm92aWRlcnMiLCJpbXBlcnNvbmF0aW9uIiwicmVhbG0tYWRtaW4iLCJjcmVhdGUtY2xpZW50IiwibWFuYWdlLXVzZXJzIiwicXVlcnktcmVhbG1zIiwidmlldy1hdXRob3JpemF0aW9uIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LXVzZXJzIiwibWFuYWdlLWV2ZW50cyIsIm1hbmFnZS1yZWFsbSIsInZpZXctZXZlbnRzIiwidmlldy11c2VycyIsInZpZXctY2xpZW50cyIsIm1hbmFnZS1hdXRob3JpemF0aW9uIiwibWFuYWdlLWNsaWVudHMiLCJxdWVyeS1ncm91cHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyJdfX0sInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6IjExN2QxNzU2LWYzZGUtNGMzYy05YTBlLTNiNTkzNzZiYjRlOCIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwibmFtZSI6IlBldGVyIFdobyIsInByZWZlcnJlZF91c2VybmFtZSI6InBldGVyIiwiZ2l2ZW5fbmFtZSI6IlBldGVyIiwiZmFtaWx5X25hbWUiOiJXaG8iLCJlbWFpbCI6InBldGVyQGt1YWRyYW50LmlvIn0.Yy2aWR6_u0NBLx8x--OToYipfQ1f1KcC8zedsKDiymcbBiAaxrBQmaV2JC1PQVEgyxwmyMk0Rao2MdKGWk6pXB9mTUF5FX-pS8mkPIMUt1UVGJgzq7WR9KfRqdZSzRtFQHoDmTeA1-msayMYTAD8xtUH4JYRNbIXjY2cEtn8LjuLpQVR3DR4_ARMrEYXiDBS3rmmFKHdipqU7ozwJ_gtpZv8vfeiO3mUPyQLJKQ-nKpe_Z5z7tm_Ewh5MN2oBfn_0pcdANB3pe2RclGAm-YHlyNDTnAZL2Y1gdCmwzwigk7AJcgWtPqnRzvEQ9zRBxQRai5W5aNKYTxuKIG8k9N05w"
@@ -69,7 +69,7 @@ func TestOIDCProviderVerifierUnknownHost(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), "http://unreachable-server", 0)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -91,7 +91,7 @@ func TestOIDCProviderVerifierNotFound(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 0)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -113,7 +113,7 @@ func TestOIDCProviderVerifierInternalError(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 0)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -139,7 +139,7 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 3) // refresh every 3 seconds
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 	defer evaluator.Clean(context.Background())
 
 	verifier, _ := jwtVerifier.(*oidcProviderVerifier)
@@ -211,7 +211,7 @@ func TestJWKSVerifierTokenExpired(t *testing.T) {
 
 	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost))
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
 	const rawToken = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJuUnlneVU2Zk5MTk1ZRWVDcjR6WGVQeVZFUUZSODVCWEtad3Q4cHZsTllvIn0.eyJleHAiOjE3NDg1MTIyMTYsImlhdCI6MTc0ODUxMTkxNiwianRpIjoiODJhOGViYTctYTAzYi00YzM5LTkxYjEtOTU1OTNiODgxMTFmIiwiaXNzIjoiaHR0cDovL2tleWNsb2FrOjgwODAvcmVhbG1zL2t1YWRyYW50IiwiYXVkIjpbInJlYWxtLW1hbmFnZW1lbnQiLCJhY2NvdW50Il0sInN1YiI6ImY2ZjZlYTlhLTU3YmMtNGJjYS1hYTFiLTk2ODdkNzIyMDgxNyIsInR5cCI6IkJlYXJlciIsImF6cCI6ImRlbW8iLCJzZXNzaW9uX3N0YXRlIjoiOGJjMTBlNjMtNDhkYy00ZWJhLTllMTgtZDlkMWQyZWU4NTRiIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwibWVtYmVyIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctaWRlbnRpdHktcHJvdmlkZXJzIiwidmlldy1yZWFsbSIsIm1hbmFnZS1pZGVudGl0eS1wcm92aWRlcnMiLCJpbXBlcnNvbmF0aW9uIiwicmVhbG0tYWRtaW4iLCJjcmVhdGUtY2xpZW50IiwibWFuYWdlLXVzZXJzIiwicXVlcnktcmVhbG1zIiwidmlldy1hdXRob3JpemF0aW9uIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LXVzZXJzIiwibWFuYWdlLWV2ZW50cyIsIm1hbmFnZS1yZWFsbSIsInZpZXctZXZlbnRzIiwidmlldy11c2VycyIsInZpZXctY2xpZW50cyIsIm1hbmFnZS1hdXRob3JpemF0aW9uIiwibWFuYWdlLWNsaWVudHMiLCJxdWVyeS1ncm91cHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiI4YmMxMGU2My00OGRjLTRlYmEtOWUxOC1kOWQxZDJlZTg1NGIiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiam9obiIsImdpdmVuX25hbWUiOiJKb2huIiwiZmFtaWx5X25hbWUiOiJEb2UiLCJlbWFpbCI6ImpvaG5Aa3VhZHJhbnQuaW8ifQ.vMlILMmxjadto_CHahbNdSQwhVIJil2pnCwA5dKEZlrYeLnTo1zrptVsGFzyvTSwiB6d0SozoGBqVRU7L6amFcd9KBxk-4dfDhMcKn6NfqBzuYs6NR20i7wknOsUgtdn5O7DmHYjKkNs1Kr55JG6htCLlHRXa4O6wun6qWC3Gp03aLS5n7a0vxPlnPDNszy-QXT4iXeED5n7eJ1s0CVZrD6pZ4fmYWaDWW8PUj25hOBukR6bRwKGN0qioGGYQtgVq491AsvG3cp083nlGfVj9hAEWDtwvuuokmCHCWPTbsppT1CNUcYXODl4QK95VUi7NK66NAbjVc9uD69awei-1A"
 
@@ -230,7 +230,7 @@ func TestJWKSVerifierMalformedJWT(t *testing.T) {
 
 	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost))
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(context.TODO(), jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)

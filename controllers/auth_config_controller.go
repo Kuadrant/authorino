@@ -257,7 +257,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			} else {
 				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
 			}
-			translatedIdentity.JWTAuthentication = identity_evaluators.NewJWTAuthentication(ctxWithLogger, jwtVerifier, authCred)
+			translatedIdentity.JWTAuthentication = identity_evaluators.NewJWTAuthentication(jwtVerifier, authCred)
 
 		// apiKey
 		case api.ApiKeyAuthentication:
