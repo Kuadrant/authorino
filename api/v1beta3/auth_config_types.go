@@ -358,7 +358,8 @@ type ApiKeyAuthenticationSpec struct {
 }
 
 // Settings to fetch the JSON Web Key Set (JWKS) for the JWT authentication.
-// +kubebuilder:validation:XValidation:rule="!(has(self.jwksUrl) && self.jwksUrl != '' && has(self.issuerUrl) && self.issuerUrl != '')",message="Use one of: jwksUrl, issuerUrl"
+//
+//	+kubebuilder:validation:XValidation:rule="!(has(self.jwksUrl) && self.jwksUrl != '' && has(self.issuerUrl) && self.issuerUrl != '')",message="Use one of: jwksUrl, issuerUrl"
 type JwtAuthenticationSpec struct {
 	// URL of the JSON Web Key Set (JWKS) endpoint.
 	// Use it for non-OpenID Connect (OIDC) JWT authentication, where the JWKS URL is known beforehand.
@@ -545,7 +546,8 @@ type OAuth2ClientAuthentication struct {
 }
 
 // Settings of the OpendID Connect UserInfo linked to an OIDC-enabled JWT authentication config of this same AuthConfig.
-// +kubebuilder:validation:XValidation:rule="!(has(self.identitySource) && self.identitySource != '' && has(self.userInfoUrl) && self.userInfoUrl != '')",message="Use one of: identitySource, userInfoUrl"
+//
+//	+kubebuilder:validation:XValidation:rule="!(has(self.identitySource) && self.identitySource != '' && has(self.userInfoUrl) && self.userInfoUrl != '')",message="Use one of: identitySource, userInfoUrl"
 type UserInfoMetadataSpec struct {
 	// Name of an OIDC JWT authentication rule whose obtained configuration includes an "userinfo_endpoint" claim.
 	// One of: identitySource, userInfoUrl
