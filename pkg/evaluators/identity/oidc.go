@@ -2,7 +2,7 @@ package identity
 
 import (
 	gocontext "context"
-	"fmt"
+	"errors"
 	"net/url"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -91,7 +91,7 @@ func (oidc *OIDC) verifyToken(accessToken string, ctx gocontext.Context) (*goidc
 	provider := oidc.getProvider(ctx, false)
 
 	if provider == nil {
-		return nil, fmt.Errorf(msg_oidcProviderConfigMissingError)
+		return nil, errors.New(msg_oidcProviderConfigMissingError)
 	}
 
 	tokenVerifierConfig := &goidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}

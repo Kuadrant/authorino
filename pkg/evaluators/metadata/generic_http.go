@@ -61,7 +61,9 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	// parse the response as json
 	if strings.Contains(strings.Join(resp.Header["Content-Type"], ";"), "application/json") {
@@ -90,7 +92,9 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	}
 
 	// parse the response as text
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 	str, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

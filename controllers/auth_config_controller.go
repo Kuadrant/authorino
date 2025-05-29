@@ -232,7 +232,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			oauth2Identity := identity.OAuth2TokenIntrospection
 
 			secret := &v1.Secret{}
-			if err := r.Client.Get(ctx, types.NamespacedName{
+			if err := r.Get(ctx, types.NamespacedName{
 				Namespace: authConfig.Namespace,
 				Name:      oauth2Identity.Credentials.Name},
 				secret); err != nil {
@@ -338,7 +338,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		// uma
 		case api.UmaResourceMetadata:
 			secret := &v1.Secret{}
-			if err := r.Client.Get(ctx, types.NamespacedName{
+			if err := r.Get(ctx, types.NamespacedName{
 				Namespace: authConfig.Namespace,
 				Name:      metadata.Uma.Credentials.Name},
 				secret); err != nil {
@@ -426,7 +426,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if opa.External != nil {
 				externalRegistry := opa.External
 				if externalRegistry.SharedSecret != nil {
-					if err := r.Client.Get(ctx, types.NamespacedName{
+					if err := r.Get(ctx, types.NamespacedName{
 						Namespace: authConfig.Namespace,
 						Name:      externalRegistry.SharedSecret.Name},
 						secret); err != nil {
@@ -525,7 +525,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			secret := &v1.Secret{}
 			var sharedSecret string
 			if secretRef := authzed.SharedSecret; secretRef != nil {
-				if err := r.Client.Get(ctx, types.NamespacedName{Namespace: authConfig.Namespace, Name: secretRef.Name}, secret); err != nil {
+				if err := r.Get(ctx, types.NamespacedName{Namespace: authConfig.Namespace, Name: secretRef.Name}, secret); err != nil {
 					return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 				}
 				sharedSecret = string(secret.Data[secretRef.Key])
@@ -576,7 +576,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				headerSuccessResponse.Metrics,
 			)
 
-			injectCache(headerSuccessResponse.Cache, translatedResponse)
+			if err := injectCache(headerSuccessResponse.Cache, translatedResponse); err != nil {
+				return nil, err
+			}
 			if err := injectResponseConfig(ctx, authConfig, headerSuccessResponse.SuccessResponseSpec, r, translatedResponse); err != nil {
 				return nil, err
 			}
@@ -598,7 +600,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				successResponse.Metrics,
 			)
 
-			injectCache(successResponse.Cache, translatedResponse)
+			if err := injectCache(successResponse.Cache, translatedResponse); err != nil {
+				return nil, err
+			}
 			if err := injectResponseConfig(ctx, authConfig, successResponse, r, translatedResponse); err != nil {
 				return nil, err
 			}
@@ -698,7 +702,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 				Namespace: authConfig.Namespace,
 				Name:      signingKeyRef.Name,
 			}
-			if err := r.Client.Get(ctx, secretName, secret); err != nil {
+			if err := r.Get(ctx, secretName, secret); err != nil {
 				return err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			} else {
 				if signingKey, err := response_evaluators.NewSigningKey(
@@ -909,7 +913,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	if sharedSecretRef := http.SharedSecret; sharedSecretRef != nil {
 		secret := &v1.Secret{}
 		if sharedSecretRef != nil {
-			if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+			if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 			sharedSecret = string(secret.Data[sharedSecretRef.Key])
@@ -920,7 +924,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	oauth2TokenForceFetch := false
 	if oauth2Config := http.OAuth2; oauth2Config != nil {
 		secret := &v1.Secret{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: oauth2Config.ClientSecret.Name}, secret); err != nil {
+		if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: oauth2Config.ClientSecret.Name}, secret); err != nil {
 			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 		}
 		clientSecret := string(secret.Data[oauth2Config.ClientSecret.Key])
@@ -1064,9 +1068,9 @@ func buildPredicates(authConfig *api.AuthConfig, patterns []api.PatternExpressio
 func buildJSONExpressionPatterns(authConfig *api.AuthConfig, pattern api.PatternExpressionOrRef) ([]jsonexp.Expression, error) {
 	expressionsToAdd := api.PatternExpressions{}
 	expressions := make([]jsonexp.Expression, len(expressionsToAdd))
-	if expressionsByRef, found := authConfig.Spec.NamedPatterns[pattern.PatternRef.Name]; found {
+	if expressionsByRef, found := authConfig.Spec.NamedPatterns[pattern.Name]; found {
 		expressionsToAdd = append(expressionsToAdd, expressionsByRef...)
-	} else if pattern.PatternExpression.Operator != "" {
+	} else if pattern.Operator != "" {
 		expressionsToAdd = append(expressionsToAdd, pattern.PatternExpression)
 	} else if pattern.Predicate != "" {
 		if predicate, err := cel.NewPredicate(pattern.Predicate); err != nil {

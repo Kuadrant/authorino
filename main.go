@@ -446,8 +446,9 @@ func startExtAuthServerGRPC(authConfigIndex index.Index, opts authServerOptions)
 
 	grpcServerOpts := []grpc.ServerOption{
 		grpc.MaxConcurrentStreams(gRPCMaxConcurrentStreams),
-		grpc.ChainStreamInterceptor(grpc_prometheus.StreamServerInterceptor, otel_grpc.StreamServerInterceptor()),
-		grpc.ChainUnaryInterceptor(grpc_prometheus.UnaryServerInterceptor, otel_grpc.UnaryServerInterceptor()),
+		grpc.ChainStreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.ChainUnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StatsHandler(otel_grpc.NewServerHandler()),
 	}
 
 	tlsEnabled := opts.tlsCertPath != "" && opts.tlsCertKeyPath != ""
@@ -542,15 +543,6 @@ func listen(port int) (net.Listener, error) {
 		return nil, err
 	} else {
 		return lis, nil
-	}
-}
-
-func fetchEnv(key string, def interface{}) string {
-	val, ok := os.LookupEnv(key)
-	if !ok {
-		return fmt.Sprint(def)
-	} else {
-		return val
 	}
 }
 
