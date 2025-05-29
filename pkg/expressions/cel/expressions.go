@@ -3,9 +3,7 @@ package cel
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
@@ -53,10 +51,6 @@ func (p *Predicate) Matches(json string) (bool, error) {
 type Expression struct {
 	program cel.Program
 	source  string
-}
-
-type StringExpression struct {
-	expression Expression
 }
 
 func NewExpression(source string) (*Expression, error) {
@@ -146,7 +140,7 @@ func ValueToJSON(val ref.Val) (string, error) {
 // todo this should eventually be sourced as proper proto from the pipeline
 func AuthJsonToCel(json string) (map[string]interface{}, error) {
 	data := structpb.Struct{}
-	if err := jsonpb.Unmarshal(strings.NewReader(json), &data); err != nil {
+	if err := protojson.Unmarshal([]byte(json), &data); err != nil {
 		return nil, err
 	}
 	metadata := data.GetFields()[RootMetadataBinding]

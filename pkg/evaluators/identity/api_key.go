@@ -2,7 +2,7 @@ package identity
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -82,8 +82,7 @@ func (a *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{
 			}
 		}
 	}
-	err := fmt.Errorf(invalidApiKeyMsg)
-	return nil, err
+	return nil, errors.New(invalidApiKeyMsg)
 }
 
 // impl:K8sSecretBasedIdentityConfigEvaluator

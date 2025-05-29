@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,7 +27,7 @@ const (
 	cookieHeaderNotSetMsg             = "the Cookie header is not set"
 )
 
-var errNotFound = fmt.Errorf(credentialNotFoundMsg)
+var errNotFound = errors.New(credentialNotFoundMsg)
 
 // AuthCredentials interface represents the methods needed to fetch credentials from input
 type AuthCredentials interface {
@@ -70,7 +71,7 @@ func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoy_auth.AttributeCont
 	case inQuery:
 		return getCredFromQuery(httpReq.GetPath(), c.KeySelector)
 	default:
-		return "", fmt.Errorf(credentialLocationNotSupportedMsg)
+		return "", errors.New(credentialLocationNotSupportedMsg)
 	}
 }
 

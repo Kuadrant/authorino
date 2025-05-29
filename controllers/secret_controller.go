@@ -41,7 +41,7 @@ func (r *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	logger := r.Logger.WithValues("secret", req.NamespacedName)
 
 	secret := v1.Secret{}
-	if err := r.Client.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
+	if err := r.Get(ctx, req.NamespacedName, &secret); err != nil && !errors.IsNotFound(err) {
 		// could not get the resource but not because of a 404 Not found, some error must have happened
 		return ctrl.Result{}, err
 	} else if errors.IsNotFound(err) || !Watched(&secret.ObjectMeta, r.LabelSelector) {

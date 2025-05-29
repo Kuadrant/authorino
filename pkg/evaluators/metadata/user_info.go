@@ -4,6 +4,7 @@ import (
 	gocontext "context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -91,7 +92,9 @@ func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Co
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	// parse the response
 	var claims map[string]interface{}

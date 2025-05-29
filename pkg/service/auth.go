@@ -471,8 +471,8 @@ func admissionReviewFromPayload(payload []byte) *v1.AdmissionReview {
 	r := v1.AdmissionReview{}
 	err := json.Unmarshal(payload, &r)
 	if err == nil &&
-		r.TypeMeta.Kind == "AdmissionReview" &&
-		r.TypeMeta.APIVersion == "admission.k8s.io/v1" &&
+		r.Kind == "AdmissionReview" &&
+		r.APIVersion == "admission.k8s.io/v1" &&
 		r.Request != nil {
 		return &r
 	}

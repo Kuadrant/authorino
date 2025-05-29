@@ -13,7 +13,9 @@ func TestStartWorker(t *testing.T) {
 	worker, err := StartWorker(context.TODO(), 2, func() {
 		val += 1
 	})
-	defer worker.Stop()
+	defer func(worker Worker) {
+		_ = worker.Stop()
+	}(worker)
 	assert.NilError(t, err)
 
 	assert.Equal(t, val, 0)
