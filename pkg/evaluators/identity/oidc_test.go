@@ -89,7 +89,9 @@ func TestOidcProviderRefreshDisabled(t *testing.T) {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 0, context.TODO())
-	defer evaluator.Clean(context.Background())
+	defer func(evaluator *OIDC) {
+		_ = evaluator.Clean(context.Background())
+	}(evaluator)
 	time.Sleep(2 * time.Second)
 
 	assert.Equal(t, 1, count)
@@ -112,7 +114,9 @@ func TestOidcProviderRefresh(t *testing.T) {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 
 	evaluator := NewOIDC(fmt.Sprintf("http://%v", oidcServerHost), authCredMock, 3, context.TODO())
-	defer evaluator.Clean(context.Background())
+	defer func(evaluator *OIDC) {
+		_ = evaluator.Clean(context.Background())
+	}(evaluator)
 
 	assert.Check(t, evaluator.refresher != nil)
 
