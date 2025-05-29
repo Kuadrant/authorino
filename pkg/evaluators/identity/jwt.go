@@ -11,7 +11,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
-	oidc "github.com/coreos/go-oidc/v3/oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 )
 
 const (
@@ -135,7 +135,9 @@ func (v *oidcProviderVerifier) GetOpenIdUrl(ctx gocontext.Context, claim string)
 	defer v.mu.RUnlock()
 
 	var claims map[string]interface{}
-	provider.Claims(&claims)
+	if err := provider.Claims(&claims); err != nil {
+		return nil, err
+	}
 
 	url, err := url.Parse(claims[claim].(string))
 	if err != nil {

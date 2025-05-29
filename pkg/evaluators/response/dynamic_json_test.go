@@ -5,9 +5,10 @@ import (
 	gojson "encoding/json"
 	"testing"
 
+	"gotest.tools/assert"
+
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/json"
-	"gotest.tools/assert"
 
 	"go.uber.org/mock/gomock"
 )
@@ -22,14 +23,6 @@ func TestDynamicJSONCall(t *testing.T) {
 	}
 
 	jsonResponseEvaluator := NewDynamicJSONResponse(jsonProperties)
-
-	type authData struct {
-		Auth struct {
-			Identity struct {
-				Username string `json:"username"`
-			} `json:"identity"`
-		} `json:"auth"`
-	}
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"auth":{"identity":{"username":"john"}}}`)
