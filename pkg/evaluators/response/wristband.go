@@ -13,7 +13,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/json"
 
 	jose "github.com/go-jose/go-jose/v4"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const DEFAULT_WRISTBAND_DURATION = int64(300)
@@ -51,12 +51,6 @@ func NewSigningKey(name string, algorithm string, singingKey []byte) (*jose.JSON
 	}
 
 	return signingKey, nil
-}
-
-type Claims map[string]interface{}
-
-func (c *Claims) Valid() error {
-	return nil
 }
 
 func NewWristbandConfig(issuer string, claims []json.JSONProperty, tokenDuration *int64, signingKeys []jose.JSONWebKey) (*Wristband, error) {
@@ -115,7 +109,7 @@ func (w *Wristband) Call(pipeline auth.AuthPipeline, ctx context.Context) (inter
 	exp := iat + int64(w.TokenDuration)
 
 	// claims
-	claims := Claims{
+	claims := jwt.MapClaims{
 		"iss": w.GetIssuer(),
 		"iat": iat,
 		"exp": exp,
