@@ -2,10 +2,17 @@ package identity
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
+	"github.com/google/cel-go/common/types"
+	"github.com/google/cel-go/common/types/ref"
+	"github.com/samber/lo"
+
 	"github.com/kuadrant/authorino/pkg/auth"
+	"github.com/kuadrant/authorino/pkg/expressions"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	k8s "k8s.io/api/core/v1"
@@ -15,36 +22,51 @@ import (
 )
 
 const (
-	apiKeySelector              = "api_key"
-	invalidApiKeyMsg            = "the API Key provided is invalid"
-	credentialsFetchingErrorMsg = "Something went wrong fetching the authorized credentials"
+	defaultKeySelectorExpression = `['api_key']`
+	invalidApiKeyMsg             = "the API Key provided is invalid"
+	credentialsFetchingErrorMsg  = "Something went wrong fetching the authorized credentials"
 )
 
 type APIKey struct {
 	auth.AuthCredentials
 
-	Name           string              `yaml:"name"`
-	LabelSelectors k8s_labels.Selector `yaml:"labelSelectors"`
-	Namespace      string              `yaml:"namespace"`
+	Name                  string              `yaml:"name"`
+	LabelSelectors        k8s_labels.Selector `yaml:"labelSelectors"`
+	Namespace             string              `yaml:"namespace"`
+	KeySelectorExpression expressions.Value   `yaml:"keySelector"`
 
+	// Map of API Key value to secret
 	secrets   map[string]k8s.Secret
 	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
-func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) *APIKey {
+func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, keySelectorExpression string, authCred auth.AuthCredentials, k8sClient k8s_client.Reader, ctx context.Context) (*APIKey, error) {
+	if keySelectorExpression == "" {
+		keySelectorExpression = defaultKeySelectorExpression
+	}
+
+	logger := log.FromContext(ctx).WithName("apikey")
+
+	expr, err := cel.NewKeySelectorExpression(keySelectorExpression)
+	if err != nil {
+		logger.Error(err, "failed to create key selector expression")
+		return nil, err
+	}
+
 	apiKey := &APIKey{
-		AuthCredentials: authCred,
-		Name:            name,
-		LabelSelectors:  labelSelectors,
-		Namespace:       namespace,
-		secrets:         make(map[string]k8s.Secret),
-		k8sClient:       k8sClient,
+		AuthCredentials:       authCred,
+		Name:                  name,
+		LabelSelectors:        labelSelectors,
+		Namespace:             namespace,
+		KeySelectorExpression: expr,
+		secrets:               make(map[string]k8s.Secret),
+		k8sClient:             k8sClient,
 	}
 	if err := apiKey.loadSecrets(context.TODO()); err != nil {
-		log.FromContext(ctx).WithName("apikey").Error(err, credentialsFetchingErrorMsg)
+		logger.Error(err, credentialsFetchingErrorMsg)
 	}
-	return apiKey
+	return apiKey, nil
 }
 
 // loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted API keys
@@ -62,7 +84,7 @@ func (a *APIKey) loadSecrets(ctx context.Context) error {
 	defer a.mutex.Unlock()
 
 	for _, secret := range secretList.Items {
-		a.appendK8sSecretBasedIdentity(secret)
+		a.appendK8sSecretBasedIdentity(ctx, secret)
 	}
 
 	return nil
@@ -97,28 +119,33 @@ func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) 
 		return
 	}
 
+	logger := log.FromContext(ctx).WithName("apikey")
+
+	// Get all current keys in the map that match the new secret name and namespace
+	currentKeysSecret := lo.PickBy(a.secrets, func(key string, current k8s.Secret) bool {
+		return current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName()
+	})
+
+	// get api keys from new secret
+	newAPIKeys := a.getValuesFromSecret(ctx, new)
+
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	logger := log.FromContext(ctx).WithName("apikey")
-
-	// updating existing
-	newAPIKeyValue := string(new.Data[apiKeySelector])
-	for oldAPIKeyValue, current := range a.secrets {
-		if current.GetNamespace() == new.GetNamespace() && current.GetName() == new.GetName() {
-			if oldAPIKeyValue != newAPIKeyValue {
-				a.appendK8sSecretBasedIdentity(new)
-				delete(a.secrets, oldAPIKeyValue)
-				logger.V(1).Info("api key updated")
-			} else {
-				logger.V(1).Info("api key unchanged")
-			}
-			return
+	for _, newKey := range newAPIKeys {
+		a.secrets[newKey] = new
+		if _, ok := currentKeysSecret[newKey]; !ok {
+			logger.V(1).Info("api key added")
+		} else {
+			logger.V(1).Info("api key secret updated")
 		}
 	}
 
-	if a.appendK8sSecretBasedIdentity(new) {
-		logger.V(1).Info("api key added")
+	// get difference between new and the old
+	staleKeys, _ := lo.Difference(lo.Keys(currentKeysSecret), newAPIKeys)
+	for _, newKey := range staleKeys {
+		delete(a.secrets, newKey)
+		logger.V(1).Info("stale api key deleted")
 	}
 }
 
@@ -134,7 +161,6 @@ func (a *APIKey) RevokeK8sSecretBasedIdentity(ctx context.Context, deleted k8s_t
 		if secret.GetNamespace() == deleted.Namespace && secret.GetName() == deleted.Name {
 			delete(a.secrets, key)
 			log.FromContext(ctx).WithName("apikey").V(1).Info("api key deleted")
-			return
 		}
 	}
 }
@@ -145,11 +171,71 @@ func (a *APIKey) withinScope(namespace string) bool {
 
 // Appends the K8s Secret to the cache of API keys
 // Caution! This function is not thread-safe. Make sure to acquire a lock before calling it.
-func (a *APIKey) appendK8sSecretBasedIdentity(secret k8s.Secret) bool {
-	value, isAPIKeySecret := secret.Data[apiKeySelector]
-	if isAPIKeySecret && len(value) > 0 {
-		a.secrets[string(value)] = secret
-		return true
+func (a *APIKey) appendK8sSecretBasedIdentity(ctx context.Context, secret k8s.Secret) bool {
+	values := a.getValuesFromSecret(ctx, secret)
+	for _, value := range values {
+		a.secrets[value] = secret
 	}
-	return false
+
+	// Was appended if length is greater than zero
+	return len(values) != 0
+}
+
+// getValuesFromSecret extracts the values from the secret based on APIKey KeySelector expression
+func (a *APIKey) getValuesFromSecret(ctx context.Context, secret k8s.Secret) []string {
+	logger := log.FromContext(ctx).WithName("apikey")
+
+	// Extract secret keys
+	secretKeys := lo.Keys(secret.Data)
+
+	// Prepare JSON for CEL evaluation
+	jsonBytes, err := json.Marshal(map[string][]string{cel.RootSecretKeysBinding: secretKeys})
+	if err != nil {
+		logger.Error(err, "failed to marshal secret keys to JSON")
+		return nil
+	}
+
+	// Evaluate CEL expression
+	evaluated, err := a.KeySelectorExpression.ResolveFor(string(jsonBytes))
+	if err != nil {
+		logger.Error(err, "failed to resolve key selector expression")
+		return nil
+	}
+
+	// Convert evaluated result to a slice of strings
+	selectedKeys, ok := convertToStringSlice(evaluated)
+	if !ok {
+		logger.Error(fmt.Errorf("unexpected type for resolved key"), "expected []string", "value", evaluated)
+		return nil
+	}
+
+	// Extract values for the selected keys
+	values := make([]string, 0, len(selectedKeys))
+	for _, key := range selectedKeys {
+		if v, exists := secret.Data[key]; exists && len(v) > 0 {
+			values = append(values, string(v))
+		}
+	}
+
+	return values
+}
+
+// Helper function to safely convert an interface{} of type []ref.Val to []string
+func convertToStringSlice(value any) ([]string, bool) {
+	items, ok := value.([]ref.Val)
+	if !ok {
+		return nil, false
+	}
+
+	out := make([]string, len(items))
+	for i, item := range items {
+		if item.Type() == types.StringType {
+			out[i] = item.Value().(string)
+		} else {
+			// unexpected type
+			return nil, false
+		}
+	}
+
+	return out, true
 }

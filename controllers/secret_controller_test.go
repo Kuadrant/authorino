@@ -91,10 +91,11 @@ func newSecretReconcilerTest(mockCtrl *gomock.Controller, secretLabels map[strin
 	fakeK8sClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(&secret).Build()
 
 	apiKeyLabelSelectors, _ := labels.Parse("target=echo-api")
+	apiKeyIdentity, _ := identity_evaluators.NewApiKeyIdentity("api-key", apiKeyLabelSelectors, "", "", auth.NewAuthCredential("", ""), fakeK8sClient, context.TODO())
 	indexedAuthConfig := &evaluators.AuthConfig{
 		Labels: map[string]string{"namespace": "authorino", "name": "api-protection"},
 		IdentityConfigs: []auth.AuthConfigEvaluator{&fakeAPIKeyIdentityConfig{
-			evaluator: identity_evaluators.NewApiKeyIdentity("api-key", apiKeyLabelSelectors, "", auth.NewAuthCredential("", ""), fakeK8sClient, context.TODO()),
+			evaluator: apiKeyIdentity,
 		}},
 	}
 	indexMock := mock_index.NewMockIndex(mockCtrl)
