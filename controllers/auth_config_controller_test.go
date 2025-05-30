@@ -13,7 +13,7 @@ import (
 	mock_index "github.com/kuadrant/authorino/pkg/index/mocks"
 	"github.com/kuadrant/authorino/pkg/log"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

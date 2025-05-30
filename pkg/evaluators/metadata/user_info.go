@@ -8,7 +8,6 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
-	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"go.opentelemetry.io/otel"
@@ -16,32 +15,61 @@ import (
 )
 
 type UserInfo struct {
-	OIDC *identity.OIDC `yaml:"oidc,omitempty"`
+	OpenIdConfig     auth.OpenIdConfigStore
+	UserInfoEndpoint string
 }
 
-func (userinfo *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context) (interface{}, error) {
-	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("userinfo"))
-	oidc := userinfo.OIDC
+func NewUserInfo(openIdConfigStore auth.OpenIdConfigStore, userInfoEndpoint string) *UserInfo {
+	return &UserInfo{
+		OpenIdConfig:     openIdConfigStore,
+		UserInfoEndpoint: userInfoEndpoint,
+	}
+}
 
-	// check if corresponding oidc identity was resolved
+func (u *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context) (interface{}, error) {
+	ctx := log.IntoContext(parentCtx, log.FromContext(parentCtx).WithName("userinfo"))
+
+	userInfoEndpoint := u.UserInfoEndpoint
+
 	resolvedIdentity, _ := pipeline.GetResolvedIdentity()
-	identityEvaluator, _ := resolvedIdentity.(auth.IdentityConfigEvaluator)
-	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC == nil || resolvedOIDC.Endpoint != oidc.Endpoint {
-		return nil, fmt.Errorf("missing identity for oidc issuer %v. skipping related userinfo metadata", oidc.Endpoint)
+	resolvedIdentityEvaluator, _ := resolvedIdentity.(auth.IdentityConfigEvaluator)
+
+	if u.OpenIdConfig != nil {
+		issuer, err := u.OpenIdConfig.GetOpenIdUrl(ctx, "issuer")
+		if err != nil {
+			return nil, err
+		}
+
+		// check if the resolved identity is also an oidc config whose userinfo endpoint matches the one of the userinfo metadata
+		// skip the useinfo metadata otherwise
+		if resolvedIdentityOidc := resolvedIdentityEvaluator.GetOpenIdConfig(); resolvedIdentityOidc != nil {
+			resolvedIdentityIssuer, err := resolvedIdentityOidc.GetOpenIdUrl(ctx, "issuer")
+			if err != nil {
+				return nil, err
+			}
+			if issuer.String() != resolvedIdentityIssuer.String() {
+				return nil, fmt.Errorf("missing identity for oidc issuer %v. skipping related userinfo metadata", issuer.String())
+			}
+		} else {
+			return nil, fmt.Errorf("missing identity for oidc issuer %v. skipping related userinfo metadata", issuer.String())
+		}
+
+		// use the userinfo endpoint from the associated openid config
+		userInfoUrl, err := u.OpenIdConfig.GetOpenIdUrl(ctx, "userinfo_endpoint")
+		if err != nil {
+			return nil, err
+		}
+		userInfoEndpoint = userInfoUrl.String()
 	}
 
-	// get access token from input
-	accessToken, err := oidc.GetCredentialsFromReq(pipeline.GetHttp())
+	// get access token from the request
+	accessToken, err := resolvedIdentityEvaluator.GetAuthCredentials().GetCredentialsFromReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}
 
 	// fetch user info
-	if userInfoURL, err := oidc.GetURL("userinfo_endpoint", ctx); err != nil {
-		return nil, err
-	} else {
-		return fetchUserInfo(userInfoURL.String(), accessToken, ctx)
-	}
+	return fetchUserInfo(userInfoEndpoint, accessToken, ctx)
 }
 
 func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Context) (interface{}, error) {

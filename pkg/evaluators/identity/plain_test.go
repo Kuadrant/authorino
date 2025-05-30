@@ -8,7 +8,7 @@ import (
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	j "github.com/kuadrant/authorino/pkg/json"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 

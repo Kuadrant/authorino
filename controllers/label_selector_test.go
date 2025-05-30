@@ -6,7 +6,7 @@ import (
 	mock_controllers "github.com/kuadrant/authorino/controllers/mocks"
 	mock_client "github.com/kuadrant/authorino/controllers/mocks/controller-runtime/client"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/event"

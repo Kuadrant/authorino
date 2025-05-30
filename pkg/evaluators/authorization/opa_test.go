@@ -14,8 +14,8 @@ import (
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/golang/mock/gomock"
 	"github.com/open-policy-agent/opa/rego"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 

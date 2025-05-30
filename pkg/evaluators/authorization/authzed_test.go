@@ -11,7 +11,7 @@ import (
 
 	authzedpb "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
 	"gotest.tools/assert"
 )

@@ -9,7 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/json"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 	is "gotest.tools/assert/cmp"
 	kubeAuthz "k8s.io/api/authorization/v1"

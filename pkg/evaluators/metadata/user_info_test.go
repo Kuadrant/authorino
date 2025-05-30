@@ -6,11 +6,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kuadrant/authorino/pkg/auth"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/httptest"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
@@ -27,7 +28,7 @@ var wellKnownOIDCConfig string = fmt.Sprintf(`{
 type userInfoTestData struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
-	newOIDC        *identity.OIDC
+	newOIDC        auth.OpenIdConfigStore
 	userInfo       UserInfo
 	authCredMock   *mock_auth.MockAuthCredentials
 	pipelineMock   *mock_auth.MockAuthPipeline
@@ -36,13 +37,13 @@ type userInfoTestData struct {
 
 func newUserInfoTestData(ctrl *gomock.Controller) userInfoTestData {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	newOIDC := identity.NewOIDC(fmt.Sprintf("http://%s", authServerHost), authCredMock, 0, context.TODO())
+	newOIDC := identity.NewJWTAuthentication(identity.NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%s", authServerHost), 0), authCredMock)
 	ctx, cancel := context.WithCancel(context.TODO())
 	return userInfoTestData{
 		ctx,
 		cancel,
 		newOIDC,
-		UserInfo{newOIDC},
+		UserInfo{newOIDC, ""},
 		authCredMock,
 		mock_auth.NewMockAuthPipeline(ctrl),
 		mock_auth.NewMockIdentityConfigEvaluator(ctrl),
@@ -66,10 +67,11 @@ func TestUserInfoCall(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
-	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
-	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
+	ta.idConfEvalMock.EXPECT().GetOpenIdConfig().Return(ta.newOIDC)
+	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
+	ta.idConfEvalMock.EXPECT().GetAuthCredentials().Return(ta.authCredMock)
+	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
 
 	obj, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 
@@ -84,10 +86,11 @@ func TestUserInfoCanceledContext(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
-	ta.idConfEvalMock.EXPECT().GetOIDC().Return(ta.newOIDC)
-	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
+	ta.idConfEvalMock.EXPECT().GetOpenIdConfig().Return(ta.newOIDC)
+	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
+	ta.idConfEvalMock.EXPECT().GetAuthCredentials().Return(ta.authCredMock)
+	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
 
 	ta.cancel()
 	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
@@ -100,10 +103,10 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	otherOidcEvaluator := identity.NewOIDC("http://wrongServer", ta.authCredMock, 0, context.TODO())
-	ta.idConfEvalMock.EXPECT().GetOIDC().Return(otherOidcEvaluator)
+	otherOidcEvaluator := identity.NewJWTAuthentication(identity.NewOIDCProviderVerifier(context.TODO(), "http://wrongServer", 0), ta.authCredMock)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
+	ta.idConfEvalMock.EXPECT().GetOpenIdConfig().Return(otherOidcEvaluator)
 
 	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
-	assert.Error(t, err, "missing identity for oidc issuer http://127.0.0.1:9002. skipping related userinfo metadata")
+	assert.Error(t, err, "missing openid connect configuration")
 }

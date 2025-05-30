@@ -17,7 +17,7 @@ import (
 
 const (
 	identityOAuth2     = "IDENTITY_OAUTH2"
-	identityOIDC       = "IDENTITY_OIDC"
+	identityJWT        = "IDENTITY_JWT"
 	identityMTLS       = "IDENTITY_MTLS"
 	identityHMAC       = "IDENTITY_HMAC"
 	identityAPIKey     = "IDENTITY_APIKEY"
@@ -33,14 +33,14 @@ type IdentityConfig struct {
 	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
 
-	OAuth2         *identity.OAuth2         `yaml:"oauth2,omitempty"`
-	OIDC           *identity.OIDC           `yaml:"oidc,omitempty"`
-	MTLS           *identity.MTLS           `yaml:"mtls,omitempty"`
-	HMAC           *identity.HMAC           `yaml:"hmac,omitempty"`
-	APIKey         *identity.APIKey         `yaml:"apiKey,omitempty"`
-	KubernetesAuth *identity.KubernetesAuth `yaml:"kubernetes,omitempty"`
-	Plain          *identity.Plain          `yaml:"plain,omitempty"`
-	Noop           *identity.Noop           `yaml:"noop,omitempty"`
+	OAuth2            *identity.OAuth2            `yaml:"oauth2,omitempty"`
+	JWTAuthentication *identity.JWTAuthentication `yaml:"oidc,omitempty"`
+	MTLS              *identity.MTLS              `yaml:"mtls,omitempty"`
+	HMAC              *identity.HMAC              `yaml:"hmac,omitempty"`
+	APIKey            *identity.APIKey            `yaml:"apiKey,omitempty"`
+	KubernetesAuth    *identity.KubernetesAuth    `yaml:"kubernetes,omitempty"`
+	Plain             *identity.Plain             `yaml:"plain,omitempty"`
+	Noop              *identity.Noop              `yaml:"noop,omitempty"`
 
 	ExtendedProperties []IdentityExtension `yaml:"extendedProperties"`
 }
@@ -49,8 +49,8 @@ func (config *IdentityConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator 
 	switch config.GetType() {
 	case identityOAuth2:
 		return config.OAuth2
-	case identityOIDC:
-		return config.OIDC
+	case identityJWT:
+		return config.JWTAuthentication
 	case identityMTLS:
 		return config.MTLS
 	case identityHMAC:
@@ -118,8 +118,8 @@ func (config *IdentityConfig) GetType() string {
 	switch {
 	case config.OAuth2 != nil:
 		return identityOAuth2
-	case config.OIDC != nil:
-		return identityOIDC
+	case config.JWTAuthentication != nil:
+		return identityJWT
 	case config.MTLS != nil:
 		return identityMTLS
 	case config.HMAC != nil:
@@ -162,18 +162,14 @@ func (config *IdentityConfig) Clean(ctx context.Context) error {
 
 func (config *IdentityConfig) getCleaner() auth.AuthConfigCleaner {
 	switch {
-	case config.OIDC != nil:
-		return config.OIDC
+	case config.JWTAuthentication != nil:
+		return config.JWTAuthentication
 	default:
 		return nil
 	}
 }
 
 // impl:IdentityConfigEvaluator
-
-func (config *IdentityConfig) GetOIDC() interface{} {
-	return config.OIDC
-}
 
 func (config *IdentityConfig) GetAuthCredentials() auth.AuthCredentials {
 	evaluator := config.GetAuthConfigEvaluator()
@@ -207,6 +203,10 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 	}
 
 	return extendedIdentityObject, nil
+}
+
+func (config *IdentityConfig) GetOpenIdConfig() auth.OpenIdConfigStore {
+	return config.JWTAuthentication
 }
 
 // impl:K8sSecretBasedIdentityConfigEvaluator

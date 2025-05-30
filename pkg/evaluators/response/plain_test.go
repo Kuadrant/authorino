@@ -9,7 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/json"
 	"gotest.tools/assert"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 )
 
 func TestPlainCallWithStaticValue(t *testing.T) {

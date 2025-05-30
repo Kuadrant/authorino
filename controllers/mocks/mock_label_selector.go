@@ -7,7 +7,7 @@ package mock_controllers
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockWatchedObject is a mock of WatchedObject interface.

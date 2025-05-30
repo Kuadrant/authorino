@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"net/url"
+
 	"golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -48,10 +50,14 @@ type ConditionalEvaluator interface {
 	GetConditions() jsonexp.Expression
 }
 
+type OpenIdConfigStore interface {
+	GetOpenIdUrl(ctx context.Context, claim string) (*url.URL, error)
+}
+
 type IdentityConfigEvaluator interface {
 	GetAuthCredentials() AuthCredentials
-	GetOIDC() interface{}
 	ResolveExtendedProperties(AuthPipeline) (interface{}, error)
+	GetOpenIdConfig() OpenIdConfigStore
 }
 
 type K8sSecretBasedIdentityConfigEvaluator interface {

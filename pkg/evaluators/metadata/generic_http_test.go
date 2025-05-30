@@ -14,7 +14,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/oauth2"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 

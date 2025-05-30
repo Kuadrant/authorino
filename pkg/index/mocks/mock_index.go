@@ -7,8 +7,8 @@ package mock_index
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
 	evaluators "github.com/kuadrant/authorino/pkg/evaluators"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockIndex is a mock of Index interface.

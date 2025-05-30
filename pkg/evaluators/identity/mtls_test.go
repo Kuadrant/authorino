@@ -24,7 +24,7 @@ import (
 	k8s_types "k8s.io/apimachinery/pkg/types"
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
