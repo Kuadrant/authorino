@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -97,9 +98,9 @@ func (opa *OPA) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface
 		if err != nil {
 			return nil, err
 		} else if len(results) == 0 {
-			return nil, fmt.Errorf(msg_opaPolicyInvalidResponseError)
+			return nil, errors.New(msg_opaPolicyInvalidResponseError)
 		} else if allowed, ok := results[0].Bindings[allowQuery].(bool); !ok || !allowed {
-			return nil, fmt.Errorf(unauthorizedErrorMsg)
+			return nil, errors.New(unauthorizedErrorMsg)
 		} else {
 			return results[0].Bindings, nil
 		}
@@ -216,7 +217,9 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
 	if resp, err := http.DefaultClient.Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
 	} else {
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(resp.Body)
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
