@@ -358,17 +358,26 @@ type ApiKeyAuthenticationSpec struct {
 }
 
 // Settings to fetch the JSON Web Key Set (JWKS) for the JWT authentication.
+//
+//	+kubebuilder:validation:XValidation:rule="!(has(self.jwksUrl) && self.jwksUrl != '' && has(self.issuerUrl) && self.issuerUrl != '')",message="Use one of: jwksUrl, issuerUrl"
 type JwtAuthenticationSpec struct {
-	// URL of the issuer of the JWT.
-	// If `jwksUrl` is omitted, Authorino will append the path to the OpenID Connect Well-Known Discovery endpoint
-	// (i.e. "/.well-known/openid-configuration") to this URL, to discover the OIDC configuration where to obtain
-	// the "jkws_uri" claim from.
-	// The value must coincide with the value of  the "iss" (issuer) claim of the discovered OpenID Connect configuration.
+	// URL of the JSON Web Key Set (JWKS) endpoint.
+	// Use it for non-OpenID Connect (OIDC) JWT authentication, where the JWKS URL is known beforehand.
+	// The JSON Web Keys (JWK) obtained from this endpoint are automatically cached and the caching updated whenever the kid of a JWT does not match any of the cached JWKs (https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys).
+	// One of: jwksUrl, issuerUrl
 	// +optional
-	IssuerUrl string `json:"issuerUrl"`
+	JwksUrl string `json:"jwksUrl,omitempty"`
 
-	// Decides how long to wait before refreshing the JWKS (in seconds).
-	// If omitted, Authorino will never refresh the JWKS.
+	// URL of the OpenID Connect (OIDC) token issuer endpoint.
+	// Use it for automatically discovering the JWKS URL from an OpenID Connect Discovery endpoint (https://openid.net/specs/openid-connect-discovery-1_0.html).
+	// The Well-Known Discovery path (i.e. "/.well-known/openid-configuration") is appended to this URL to fetch the OIDC configuration.
+	// One of: jwksUrl, issuerUrl
+	// +optional
+	IssuerUrl string `json:"issuerUrl,omitempty"`
+
+	// Decides how long the OIDC configuration will be cached.
+	// If omitted or set to zero, Authorino will never refresh the OIDC configuration.
+	// This configuration does not affect the caching of JSON Web Keys (JWK), which is always updated whenever the kid of a JWT does not match any of the cached JWKs (https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys)
 	// +optional
 	TTL int `json:"ttl,omitempty"`
 }
@@ -537,9 +546,17 @@ type OAuth2ClientAuthentication struct {
 }
 
 // Settings of the OpendID Connect UserInfo linked to an OIDC-enabled JWT authentication config of this same AuthConfig.
+//
+//	+kubebuilder:validation:XValidation:rule="!(has(self.identitySource) && self.identitySource != '' && has(self.userInfoUrl) && self.userInfoUrl != '')",message="Use one of: identitySource, userInfoUrl"
 type UserInfoMetadataSpec struct {
-	// The name of an OIDC-enabled JWT authentication config whose OpenID Connect configuration discovered includes the OIDC "userinfo_endpoint" claim.
-	IdentitySource string `json:"identitySource"`
+	// Name of an OIDC JWT authentication rule whose obtained configuration includes an "userinfo_endpoint" claim.
+	// One of: identitySource, userInfoUrl
+	IdentitySource string `json:"identitySource,omitempty"`
+
+	// The URL of the UserInfo endpoint.
+	// Use it for non-OIDC JWT authentication, where the UserInfo URL is known beforehand.
+	// One of: identitySource, userInfoUrl
+	UserInfoUrl string `json:"userInfoUrl,omitempty"`
 }
 
 // Settings of the User-Managed Access (UMA) source of resource data.

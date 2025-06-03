@@ -249,7 +249,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// oidc
 		case api.JwtAuthentication:
-			translatedIdentity.OIDC = identity_evaluators.NewOIDC(identity.Jwt.IssuerUrl, authCred, identity.Jwt.TTL, ctxWithLogger)
+			var jwtVerifier identity_evaluators.JWTVerifier
+			if identity.Jwt.IssuerUrl != "" {
+				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL)
+			} else if identity.Jwt.JwksUrl != "" {
+				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl)
+			} else {
+				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
+			}
+			translatedIdentity.JWTAuthentication = identity_evaluators.NewJWTAuthentication(jwtVerifier, authCred)
 
 		// apiKey
 		case api.ApiKeyAuthentication:
@@ -357,13 +365,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// user_info
 		case api.UserInfoMetadata:
-			translatedMetadata.UserInfo = &metadata_evaluators.UserInfo{}
-
-			if idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource); err != nil {
-				return nil, err
-			} else {
-				translatedMetadata.UserInfo.OIDC = idConfig.OIDC
+			var openIdConfigStore auth.OpenIdConfigStore
+			if metadata.UserInfo.IdentitySource != "" {
+				idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource)
+				if err != nil {
+					return nil, err
+				}
+				openIdConfigStore = idConfig.GetOpenIdConfig()
 			}
+			translatedMetadata.UserInfo = metadata_evaluators.NewUserInfo(openIdConfigStore, metadata.UserInfo.UserInfoUrl)
 
 		// generic http
 		case api.HttpMetadata:

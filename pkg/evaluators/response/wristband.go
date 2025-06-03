@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/auth"
-	"github.com/kuadrant/authorino/pkg/evaluators/identity"
 	"github.com/kuadrant/authorino/pkg/json"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -91,14 +90,22 @@ type Wristband struct {
 
 func (w *Wristband) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
 	// resolved identity
-	identityConfig, resolvedidentity := pipeline.GetResolvedIdentity()
+	resolvedIdentity, resolvedIdentityObject := pipeline.GetResolvedIdentity()
 
-	identityEvaluator, _ := identityConfig.(auth.IdentityConfigEvaluator)
-	if resolvedOIDC, _ := identityEvaluator.GetOIDC().(*identity.OIDC); resolvedOIDC != nil && resolvedOIDC.Endpoint == w.GetIssuer() {
-		return nil, nil
+	// skips the wristband generation if the resolved identity is an OIDC config with the same issuer
+	resolvedIdentityEvaluator, _ := resolvedIdentity.(auth.IdentityConfigEvaluator)
+	if resolvedIdentityOidc := resolvedIdentityEvaluator.GetOpenIdConfig(); resolvedIdentityOidc != nil {
+		resolvedIdentityIssuer, err := resolvedIdentityOidc.GetOpenIdUrl(ctx, "issuer")
+		if err != nil {
+			return nil, err
+		}
+		if resolvedIdentityIssuer.String() == w.GetIssuer() {
+			// if the resolved identity is an OIDC config with the same issuer, skip wristband generation
+			return nil, nil
+		}
 	}
 
-	idStr, _ := gojson.Marshal(resolvedidentity)
+	idStr, _ := gojson.Marshal(resolvedIdentityObject)
 	hash := sha256.New()
 	hash.Write(idStr)
 	sub := fmt.Sprintf("%x", hash.Sum(nil))

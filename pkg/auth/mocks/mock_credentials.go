@@ -11,7 +11,7 @@ import (
 	reflect "reflect"
 
 	envoy_service_auth_v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockAuthCredentials is a mock of AuthCredentials interface.

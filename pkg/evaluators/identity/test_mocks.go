@@ -11,7 +11,7 @@ import (
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 	k8s_fake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func mockK8sClient(initObjs ...k8s_runtime.Object) k8s_client.WithWatch {

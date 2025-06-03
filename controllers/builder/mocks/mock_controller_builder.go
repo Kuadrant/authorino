@@ -7,8 +7,8 @@ package mock_builder
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
 	builder "github.com/kuadrant/authorino/controllers/builder"
+	gomock "go.uber.org/mock/gomock"
 	builder0 "sigs.k8s.io/controller-runtime/pkg/builder"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 	predicate "sigs.k8s.io/controller-runtime/pkg/predicate"

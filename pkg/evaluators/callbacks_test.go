@@ -10,7 +10,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	"github.com/kuadrant/authorino/pkg/httptest"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
