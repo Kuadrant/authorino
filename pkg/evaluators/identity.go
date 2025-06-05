@@ -206,7 +206,10 @@ func (config *IdentityConfig) ResolveExtendedProperties(pipeline auth.AuthPipeli
 }
 
 func (config *IdentityConfig) GetOpenIdConfig() auth.OpenIdConfigStore {
-	return config.JWTAuthentication
+	if config.JWTAuthentication != nil {
+		return config.JWTAuthentication
+	}
+	return nil
 }
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
