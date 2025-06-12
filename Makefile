@@ -68,18 +68,18 @@ MOCKGEN ?= $(LOCALBIN)/mockgen
 BENCHSTAT ?= $(LOCALBIN)/benchstat
 
 ## Tool Versions
-KIND_VERSION ?= v0.21.0
+KIND_VERSION ?= v0.20.0
 KUSTOMIZE_VERSION ?= v5.5.0
 CONTROLLER_GEN_VERSION ?= v0.15.0
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-MOCKGEN_VERSION ?= v1.6.0
+MOCKGEN_VERSION ?= v0.5.2
 BENCHSTAT_VERSION ?= latest
 
 ## Versioned Binaries (the actual files that 'make' will check for)
 KIND_V_BINARY := $(LOCALBIN)/kind-$(KIND_VERSION)
 KUSTOMIZE_V_BINARY := $(LOCALBIN)/kustomize-$(KUSTOMIZE_VERSION)
-CONTROLLER_GEN_V_BINARY := $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+CONTROLLER_GEN_V_BINARY := $(LOCALBIN)/controller-gen-$(CONTROLLER_GEN_VERSION)
 ENVTEST_V_BINARY := $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 MOCKGEN_V_BINARY := $(LOCALBIN)/mockgen-$(MOCKGEN_VERSION)
 BENCHSTAT_V_BINARY := $(LOCALBIN)/benchstat-$(BENCHSTAT_VERSION)
@@ -102,7 +102,7 @@ $(ENVTEST_V_BINARY): $(LOCALBIN)
 .PHONY: mockgen
 mockgen: $(MOCKGEN_V_BINARY)
 $(MOCKGEN_V_BINARY): $(LOCALBIN) ## Installs mockgen in $PROJECT_DIR/bin
-	$(call go-install-tool,$(MOCKGEN),github.com/golang/mock/mockgen,$(MOCKGEN_VERSION))
+	$(call go-install-tool,$(MOCKGEN),go.uber.org/mock/mockgen,$(MOCKGEN_VERSION))
 
 .PHONY: benchstat
 benchstat: $(BENCHSTAT_V_BINARY)
