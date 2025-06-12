@@ -60,7 +60,6 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
-KUBECTL ?= kubectl
 KIND ?= $(LOCALBIN)/kind
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
@@ -69,52 +68,50 @@ MOCKGEN ?= $(LOCALBIN)/mockgen
 BENCHSTAT ?= $(LOCALBIN)/benchstat
 
 ## Tool Versions
-KIND_VERSION ?= v0.20.0
+KIND_VERSION ?= v0.21.0
 KUSTOMIZE_VERSION ?= v5.5.0
-CONTROLLER_TOOLS_VERSION ?= v0.15.0
+CONTROLLER_GEN_VERSION ?= v0.15.0
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-#ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
-ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 MOCKGEN_VERSION ?= v1.6.0
 BENCHSTAT_VERSION ?= latest
 
+## Versioned Binaries (the actual files that 'make' will check for)
+KIND_V_BINARY := $(LOCALBIN)/kind-$(KIND_VERSION)
+KUSTOMIZE_V_BINARY := $(LOCALBIN)/kustomize-$(KUSTOMIZE_VERSION)
+CONTROLLER_GEN_V_BINARY := $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+ENVTEST_V_BINARY := $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+MOCKGEN_V_BINARY := $(LOCALBIN)/mockgen-$(MOCKGEN_VERSION)
+BENCHSTAT_V_BINARY := $(LOCALBIN)/benchstat-$(BENCHSTAT_VERSION)
+
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
+kustomize: $(KUSTOMIZE_V_BINARY) ## Download kustomize locally if necessary.
+$(KUSTOMIZE_V_BINARY): $(LOCALBIN)
 	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5,$(KUSTOMIZE_VERSION))
 
 .PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
-
-.PHONY: setup-envtest
-setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
-	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
-	@$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path || { \
-		echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION)."; \
-		exit 1; \
-	}
+controller-gen: $(CONTROLLER_GEN_V_BINARY) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN_V_BINARY): $(LOCALBIN)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_GEN_VERSION))
 
 .PHONY: envtest
-envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
-$(ENVTEST): $(LOCALBIN)
+envtest: $(ENVTEST_V_BINARY) ## Download setup-envtest locally if necessary.
+$(ENVTEST_V_BINARY): $(LOCALBIN)
 	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
 
 .PHONY: mockgen
-mockgen: $(MOCKGEN)
-$(MOCKGEN): $(LOCALBIN) ## Installs mockgen in $PROJECT_DIR/bin
+mockgen: $(MOCKGEN_V_BINARY)
+$(MOCKGEN_V_BINARY): $(LOCALBIN) ## Installs mockgen in $PROJECT_DIR/bin
 	$(call go-install-tool,$(MOCKGEN),github.com/golang/mock/mockgen,$(MOCKGEN_VERSION))
 
 .PHONY: benchstat
-benchstat: $(BENCHSTAT)
-$(BENCHSTAT): $(LOCALBIN) ## Installs benchstat in $PROJECT_DIR/bin
+benchstat: $(BENCHSTAT_V_BINARY)
+$(BENCHSTAT_V_BINARY): $(LOCALBIN) ## Installs benchstat in $PROJECT_DIR/bin
 	$(call go-install-tool,$(BENCHSTAT),golang.org/x/perf/cmd/benchstat,$(BENCHSTAT_VERSION))
 
 .PHONY: kind
-kind: $(KIND)
-$(KIND): $(LOCALBIN)  ## Installs kind in $PROJECT_DIR/bin
+kind: $(KIND_V_BINARY)
+$(KIND_V_BINARY): $(LOCALBIN)  ## Installs kind in $PROJECT_DIR/bin
 	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
 
 ifeq ($(shell uname),Darwin)
@@ -133,7 +130,6 @@ endif
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
-echo "$(1) $(2) $(3)"
 @[ -f "$(1)-$(3)" ] || { \
 set -e; \
 package=$(2)@$(3) ;\
