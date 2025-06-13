@@ -54,29 +54,65 @@ help:
 
 ##@ Dependencies
 
-CONTROLLER_GEN = $(PROJECT_DIR)/bin/controller-gen
-controller-gen: ## Installs controller-gen in $PROJECT_DIR/bin
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0)
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
 
-KUSTOMIZE = $(PROJECT_DIR)/bin/kustomize
-kustomize: ## Installs kustomize in $PROJECT_DIR/bin
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@v5.5.0)
+## Tool Binaries
+KIND ?= $(LOCALBIN)/kind
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+MOCKGEN ?= $(LOCALBIN)/mockgen
+BENCHSTAT ?= $(LOCALBIN)/benchstat
 
-ENVTEST = $(PROJECT_DIR)/bin/setup-envtest
-envtest: ## Installs setup-envtest in $PROJECT_DIR/bin
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.16)
+## Tool Versions
+KIND_VERSION ?= v0.20.0
+KUSTOMIZE_VERSION ?= v5.5.0
+CONTROLLER_GEN_VERSION ?= v0.15.0
+#ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
+ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
+MOCKGEN_VERSION ?= v0.5.2
+BENCHSTAT_VERSION ?= latest
 
-MOCKGEN = $(PROJECT_DIR)/bin/mockgen
-mockgen: ## Installs mockgen in $PROJECT_DIR/bin
-	$(call go-get-tool,$(MOCKGEN),github.com/golang/mock/mockgen@v1.6.0)
+## Versioned Binaries (the actual files that 'make' will check for)
+KIND_V_BINARY := $(LOCALBIN)/kind-$(KIND_VERSION)
+KUSTOMIZE_V_BINARY := $(LOCALBIN)/kustomize-$(KUSTOMIZE_VERSION)
+CONTROLLER_GEN_V_BINARY := $(LOCALBIN)/controller-gen-$(CONTROLLER_GEN_VERSION)
+ENVTEST_V_BINARY := $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+MOCKGEN_V_BINARY := $(LOCALBIN)/mockgen-$(MOCKGEN_VERSION)
+BENCHSTAT_V_BINARY := $(LOCALBIN)/benchstat-$(BENCHSTAT_VERSION)
 
-BENCHSTAT = $(PROJECT_DIR)/bin/benchstat
-benchstat: ## Installs benchstat in $PROJECT_DIR/bin
-	$(call go-get-tool,$(BENCHSTAT),golang.org/x/perf/cmd/benchstat@latest)
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE_V_BINARY) ## Download kustomize locally if necessary.
+$(KUSTOMIZE_V_BINARY): $(LOCALBIN)
+	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5,$(KUSTOMIZE_VERSION))
 
-KIND = $(PROJECT_DIR)/bin/kind
-kind: ## Installs kind in $PROJECT_DIR/bin
-	$(call go-get-tool,$(KIND),sigs.k8s.io/kind@v0.20.0)
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN_V_BINARY) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN_V_BINARY): $(LOCALBIN)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_GEN_VERSION))
+
+.PHONY: envtest
+envtest: $(ENVTEST_V_BINARY) ## Download setup-envtest locally if necessary.
+$(ENVTEST_V_BINARY): $(LOCALBIN)
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
+
+.PHONY: mockgen
+mockgen: $(MOCKGEN_V_BINARY)
+$(MOCKGEN_V_BINARY): $(LOCALBIN) ## Installs mockgen in $PROJECT_DIR/bin
+	$(call go-install-tool,$(MOCKGEN),go.uber.org/mock/mockgen,$(MOCKGEN_VERSION))
+
+.PHONY: benchstat
+benchstat: $(BENCHSTAT_V_BINARY)
+$(BENCHSTAT_V_BINARY): $(LOCALBIN) ## Installs benchstat in $PROJECT_DIR/bin
+	$(call go-install-tool,$(BENCHSTAT),golang.org/x/perf/cmd/benchstat,$(BENCHSTAT_VERSION))
+
+.PHONY: kind
+kind: $(KIND_V_BINARY)
+$(KIND_V_BINARY): $(LOCALBIN)  ## Installs kind in $PROJECT_DIR/bin
+	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
 
 ifeq ($(shell uname),Darwin)
 SED=$(shell which gsed)
@@ -89,24 +125,20 @@ ifeq ($(SED),)
 	exit 1
 endif
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
-
-# go-get-tool will 'go install' any package $2 and install it to $1.
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
+# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
+# $1 - target path with name of binary
+# $2 - package url which can be installed
+# $3 - specific version of package
+define go-install-tool
+@[ -f "$(1)-$(3)" ] || { \
+set -e; \
+package=$(2)@$(3) ;\
+echo "Downloading $${package}" ;\
+rm -f $(1) || true ;\
+GOBIN=$(LOCALBIN) go install $${package} ;\
+mv $(1) $(1)-$(3) ;\
+} ;\
+ln -sf $(1)-$(3) $(1)
 endef
 
 ##@ Development
