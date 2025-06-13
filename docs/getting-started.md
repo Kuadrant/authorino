@@ -52,7 +52,7 @@ The above will install the latest build of the Authorino Operator and latest ver
 
 This step will also install [cert-manager](https://github.com/jetstack/cert-manager) in the cluster (required).
 
-Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://docs.kuadrant.io/latest/authorino-operator/#installing-via-olm).
+Alternatively, you can deploy the Authorino Operator using the Operator Lifecycle Manager bundles. For instructions, check out [Installing via OLM](https://github.com/Kuadrant/authorino-operator/blob/main/README.md#installing-via-olm).
 
 ### Step: Request an Authorino instance
 
