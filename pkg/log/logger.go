@@ -111,7 +111,7 @@ func IntoContext(ctx context.Context, log Logger) context.Context {
 
 // FromContext returns a logger with predefined values from a context.Context.
 func FromContext(ctx context.Context, keysAndValues ...interface{}) Logger {
-	var l logr.Logger = Log
+	var l = Log
 	if ctx != nil {
 		if logger, err := logr.FromContext(ctx); err == nil {
 			l = logger

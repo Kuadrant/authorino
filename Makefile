@@ -66,6 +66,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 MOCKGEN ?= $(LOCALBIN)/mockgen
 BENCHSTAT ?= $(LOCALBIN)/benchstat
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 KIND_VERSION ?= v0.20.0
@@ -75,6 +76,7 @@ CONTROLLER_GEN_VERSION ?= v0.15.0
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 MOCKGEN_VERSION ?= v0.5.2
 BENCHSTAT_VERSION ?= latest
+GOLANGCI_LINT_VERSION ?= v2.1.6
 
 ## Versioned Binaries (the actual files that 'make' will check for)
 KIND_V_BINARY := $(LOCALBIN)/kind-$(KIND_VERSION)
@@ -83,6 +85,7 @@ CONTROLLER_GEN_V_BINARY := $(LOCALBIN)/controller-gen-$(CONTROLLER_GEN_VERSION)
 ENVTEST_V_BINARY := $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 MOCKGEN_V_BINARY := $(LOCALBIN)/mockgen-$(MOCKGEN_VERSION)
 BENCHSTAT_V_BINARY := $(LOCALBIN)/benchstat-$(BENCHSTAT_VERSION)
+GOLANGCI_LINT_V_BINARY = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE_V_BINARY) ## Download kustomize locally if necessary.
@@ -113,6 +116,11 @@ $(BENCHSTAT_V_BINARY): $(LOCALBIN) ## Installs benchstat in $PROJECT_DIR/bin
 kind: $(KIND_V_BINARY)
 $(KIND_V_BINARY): $(LOCALBIN)  ## Installs kind in $PROJECT_DIR/bin
 	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
+
+.PHONY: golangci-lint
+golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
+$(GOLANGCI_LINT): $(LOCALBIN)
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 ifeq ($(shell uname),Darwin)
 SED=$(shell which gsed)
@@ -203,6 +211,18 @@ VERBOSE ?= 0
 e2e: ## Runs the end-to-end tests on a local environment setup
 	$(MAKE) local-setup NAMESPACE=authorino KIND_CLUSTER_NAME=authorino-e2e AUTHORINO_IMAGE=$(AUTHORINO_IMAGE) TLS_ENABLED=$(TLS_ENABLED) OPERATOR_BRANCH=$(OPERATOR_BRANCH) AUTHORINO_MANIFESTS=$(AUTHORINO_MANIFESTS) AUTHORINO_INSTANCE=$(AUTHORINO_INSTANCE) ENVOY_OVERLAY=$(ENVOY_OVERLAY) DEPLOY_KEYCLOAK=1 FF=1
 	NAMESPACE=authorino AUTHCONFIG_VERSION=$(AUTHCONFIG_VERSION) VERBOSE=$(VERBOSE) ./tests/e2e-test.sh
+
+.PHONY: lint
+lint: golangci-lint ## Run golangci-lint linter
+	$(GOLANGCI_LINT) run
+
+.PHONY: lint-fix
+lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
+	$(GOLANGCI_LINT) run --fix
+
+.PHONY: lint-config
+lint-config: golangci-lint ## Verify golangci-lint linter configuration
+	$(GOLANGCI_LINT) config verify
 
 ##@ Apps
 

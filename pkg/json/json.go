@@ -169,7 +169,7 @@ func StringifyJSON(data interface{}) (string, error) {
 }
 
 var extractJSONStr = func(json, arg string) string {
-	var sep string = " "
+	var sep = " "
 	var pos int64 = 0
 
 	if arg != "" {

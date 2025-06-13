@@ -7,12 +7,13 @@ import (
 	"time"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	mock_identity "github.com/kuadrant/authorino/pkg/evaluators/identity/mocks"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
-	oidc "github.com/coreos/go-oidc/v3/oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
@@ -140,7 +141,9 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 3) // refresh every 3 seconds
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
-	defer evaluator.Clean(context.Background())
+	defer func(evaluator *JWTAuthentication, ctx context.Context) {
+		_ = evaluator.Clean(ctx)
+	}(evaluator, context.Background())
 
 	verifier, _ := jwtVerifier.(*oidcProviderVerifier)
 	assert.Check(t, verifier.refresher != nil)
@@ -165,7 +168,9 @@ func TestOIDCProviderVerifierRefreshDisabled(t *testing.T) {
 	defer ctrl.Finish()
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 0) // refresh disabled
-	defer jwtVerifier.(*oidcProviderVerifier).Clean(context.Background())
+	defer func(verifier *oidcProviderVerifier, ctx context.Context) {
+		_ = verifier.Clean(ctx)
+	}(jwtVerifier.(*oidcProviderVerifier), context.Background())
 
 	time.Sleep(2 * time.Second)
 	assert.Equal(t, 1, count)
