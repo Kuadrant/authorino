@@ -3,8 +3,9 @@ package cel
 import (
 	"testing"
 
-	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"gotest.tools/assert"
+
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 
 	"go.uber.org/mock/gomock"
 )
@@ -13,12 +14,12 @@ func TestPredicate(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	predicate, err := NewPredicate(`auth`)
+	_, err := NewPredicate(`auth`)
 	assert.ErrorContains(t, err, "wanted bool output type")
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 
-	predicate, err = NewPredicate(`false == true`)
+	predicate, err := NewPredicate(`false == true`)
 	assert.NilError(t, err)
 
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"auth":{"identity":{"username":"john","evil": false}}}`)

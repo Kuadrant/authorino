@@ -4,6 +4,7 @@ import (
 	"bytes"
 	gocontext "context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -141,7 +142,9 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	return json.UnmashalJSONResponse(resp, &v, nil)
 }
@@ -175,7 +178,9 @@ func (uma *UMA) discover() error {
 	if resp, err := http.Get(uma.wellKnownConfigEndpoint()); err != nil {
 		return fmt.Errorf("failed to fetch uma config: %v", err)
 	} else {
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(resp.Body)
 
 		var p providerJSON
 		var rawClaims []byte
