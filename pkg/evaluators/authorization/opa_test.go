@@ -148,7 +148,9 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 	}
 
 	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, 0, context.TODO())
-	defer opa.Clean(context.Background())
+	defer func(opa *OPA) {
+		_ = opa.Clean(context.Background())
+	}(opa)
 
 	assert.NilError(t, err)
 	assert.Check(t, strings.Contains(opa.Rego, "GET"))

@@ -61,7 +61,9 @@ func TestMetadataCaching(t *testing.T) {
 	// With caching of metadata
 	cache := NewEvaluatorCache(&json.JSONValue{Static: "x"}, 2) // 2 seconds ttl
 	metadataConfig.Cache = cache
-	defer metadataConfig.Clean(context.TODO())
+	defer func(metadataConfig *MetadataConfig) {
+		_ = metadataConfig.Clean(context.Background())
+	}(&metadataConfig)
 
 	pipelineMock.EXPECT().GetAuthorizationJSON().Times(3).Return(`{}`) // twice at the upper level to resolve the cache key; another time by the Generic HTTP metadata evaluator
 

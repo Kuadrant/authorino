@@ -2,7 +2,7 @@ package authorization
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -21,7 +21,7 @@ func (j *JSONPatternMatching) Call(pipeline auth.AuthPipeline, ctx context.Conte
 		return false, err
 	}
 	if !authorized {
-		return false, fmt.Errorf(unauthorizedErrorMsg)
+		return false, errors.New(unauthorizedErrorMsg)
 	}
 	return true, nil
 }

@@ -28,7 +28,9 @@ type grpcServerMock struct {
 }
 
 func (s *grpcServerMock) Start() {
-	go s.server.Serve(s.listener)
+	go func() {
+		_ = s.server.Serve(s.listener)
+	}()
 }
 
 func (s *grpcServerMock) Close() {

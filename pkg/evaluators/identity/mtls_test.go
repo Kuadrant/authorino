@@ -24,7 +24,7 @@ import (
 	k8s_types "k8s.io/apimachinery/pkg/types"
 	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 
-	gomock "go.uber.org/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
@@ -350,7 +350,7 @@ func issueCertificate(subject pkix.Name, ca map[string][]byte, days int, extKeyU
 
 func encodeCertificate(cert []byte) []byte {
 	certPEM := new(bytes.Buffer)
-	pem.Encode(certPEM, &pem.Block{
+	_ = pem.Encode(certPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: cert,
 	})
@@ -359,7 +359,7 @@ func encodeCertificate(cert []byte) []byte {
 
 func encodePrivateKey(key *rsa.PrivateKey) []byte {
 	keyPEM := new(bytes.Buffer)
-	pem.Encode(keyPEM, &pem.Block{
+	_ = pem.Encode(keyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
