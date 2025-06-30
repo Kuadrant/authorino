@@ -15,17 +15,13 @@ env:
 
 jobs:
   prepare:
-    name: Prepare build metadata
+    name: Prepare build info
     runs-on: ubuntu-latest
     outputs:
-      tags: ${{ steps.meta.outputs.tags }}
-      labels: ${{ steps.meta.outputs.labels }}
       version: ${{ steps.build-info.outputs.version }}
       git_sha: ${{ steps.build-info.outputs.git_sha }}
       dirty: ${{ steps.build-info.outputs.dirty }}
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
       - name: Set Authorino build info
         id: build-info
         run: |
@@ -39,16 +35,6 @@ jobs:
           fi
           echo "git_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "dirty=false" >> $GITHUB_OUTPUT
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
 
   build:
     name: Build ${{ matrix.platform }}
@@ -86,7 +72,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          labels: ${{ needs.prepare.outputs.labels }}
+
           build-args: |
             version=${{ needs.prepare.outputs.version }}
             git_sha=${{ needs.prepare.outputs.git_sha }}
@@ -118,6 +104,16 @@ jobs:
           merge-multiple: true
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
       - name: Login to registry
         if: ${{ !env.ACT }}
         uses: docker/login-action@v3
@@ -129,7 +125,7 @@ jobs:
         if: ${{ !env.ACT }}
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(echo '${{ needs.prepare.outputs.tags }}' | tr '\n' ' ' | sed 's/^/-t /' | sed 's/ / -t /g') \
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino@sha256:%s ' *)
       - name: Inspect image
         if: ${{ !env.ACT }}
