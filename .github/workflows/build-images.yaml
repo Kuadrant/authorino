@@ -59,6 +59,16 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+      - name: Extract metadata for build
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
       - name: Login to registry
         if: ${{ !env.ACT }}
         uses: docker/login-action@v3
@@ -72,7 +82,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             version=${{ needs.prepare.outputs.version }}
             git_sha=${{ needs.prepare.outputs.git_sha }}
@@ -112,7 +122,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Login to registry
         if: ${{ !env.ACT }}
