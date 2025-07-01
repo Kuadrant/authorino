@@ -66,8 +66,7 @@ jobs:
           images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=raw,value=${{ github.sha }}
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Login to registry
         if: ${{ !env.ACT }}
@@ -88,6 +87,7 @@ jobs:
             git_sha=${{ needs.prepare.outputs.git_sha }}
             dirty=${{ needs.prepare.outputs.dirty }}
           outputs: type=image,name=${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino,push-by-digest=true,name-canonical=true,push=${{ !env.ACT }}
+          provenance: false
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
