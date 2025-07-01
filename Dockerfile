@@ -22,17 +22,18 @@ RUN CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=${version
 # https://catalog.redhat.com/software/containers/ubi9-minimal
 FROM registry.access.redhat.com/ubi9-minimal:latest
 
-# shadow-utils is required for `useradd`
+# Install shadow-utils (required for `useradd`), create user, and set up directories in one layer
 RUN PKGS="shadow-utils" \
     && microdnf --assumeyes install --nodocs $PKGS \
     && rpm --verify --nogroup --nouser $PKGS \
-    && microdnf -y clean all
-RUN useradd -u 1000 -s /bin/sh -m -d /home/authorino authorino
+    && microdnf -y clean all \
+    && useradd -u 1000 -s /bin/sh -m -d /home/authorino authorino
 
 WORKDIR /home/authorino/bin
 ENV PATH=/home/authorino/bin:$PATH
 COPY --from=builder /usr/bin/authorino ./authorino
 
+# Set permissions and prepare for non-root user in one layer
 RUN chown -R authorino:root /home/authorino \
     && chmod -R 750 /home/authorino
 USER authorino
