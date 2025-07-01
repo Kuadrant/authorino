@@ -83,7 +83,7 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 			method = object.get(input.context.request.http, "method", "")
 			path = object.get(input.context.request.http, "path", "")
 
-			allow {
+			allow if {
               method == "GET"
               path = "/allow"
           }`,
