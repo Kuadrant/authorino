@@ -16,8 +16,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
-	opaParser "github.com/open-policy-agent/opa/ast" //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
-	"github.com/open-policy-agent/opa/rego"          //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
+	opaParser "github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 
 	"go.opentelemetry.io/otel"
 	otel_propagation "go.opentelemetry.io/otel/propagation"
