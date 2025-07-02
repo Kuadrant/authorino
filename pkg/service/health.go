@@ -36,3 +36,8 @@ func (hs *HealthService) Check(_ context.Context, _ *healthpb.HealthCheckRequest
 func (hs *HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "Watch is not implemented")
 }
+
+// List the health of all available services (not yet implemented)
+func (hs *HealthService) List(_ context.Context, _ *healthpb.HealthListRequest) (*healthpb.HealthListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "List is not implemented")
+}

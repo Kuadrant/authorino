@@ -16,16 +16,16 @@ require (
 	github.com/google/cel-go v0.21.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/open-policy-agent/opa v1.4.0
-	github.com/prometheus/client_golang v1.21.1
+	github.com/open-policy-agent/opa v1.6.0
+	github.com/prometheus/client_golang v1.22.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/tidwall/gjson v1.14.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
 	go.opentelemetry.io/otel v1.40.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.35.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.35.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.36.0
 	go.opentelemetry.io/otel/sdk v1.40.0
 	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.25.0
@@ -44,6 +44,7 @@ require (
 require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -53,9 +54,7 @@ require (
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -63,6 +62,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.2 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.28 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
@@ -86,7 +86,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.2.4 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect

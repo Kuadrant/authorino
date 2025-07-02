@@ -142,7 +142,7 @@ spec:
       opa:
         rego: |
           now = time.now_ns() / 1000000000
-          allow if { true }
+          allow if true
         allValues: true
       priority: 1
 
