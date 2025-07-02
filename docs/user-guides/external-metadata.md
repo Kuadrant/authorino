@@ -164,7 +164,7 @@ spec:
         rego: |
           import input.context.request.http
 
-          allow {
+          allow if {
             http.method = "GET"
             split(http.path, "/") = [_, requested_country, _]
             lower(requested_country) == lower(object.get(input.auth.metadata.geo, "countryCode", ""))

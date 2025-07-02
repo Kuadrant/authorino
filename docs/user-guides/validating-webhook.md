@@ -178,7 +178,7 @@ spec:
 
           apiKey { authconfig.spec.authentication[_].apiKey }
 
-          allow { count(authconfig.spec.authentication) > 0; not forbidden }
+          allow if { count(authconfig.spec.authentication) > 0; not forbidden }
         allValues: true
 
     "apikey-authn-requires-k8s-role-binding":
@@ -201,7 +201,7 @@ spec:
       opa:
         rego: |
           invalid_ttl = input.auth.authorization.features.authconfig.spec.metadata[_].cache.ttl != 300
-          allow { not invalid_ttl }
+          allow if { not invalid_ttl }
 EOF
 ```
 

@@ -171,7 +171,7 @@ spec:
       opa:
         rego: |
           now = time.now_ns()
-          allow = true
+          allow if true
         allValues: true
       cache:
         key:
