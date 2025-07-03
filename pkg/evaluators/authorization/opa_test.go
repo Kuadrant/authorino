@@ -14,7 +14,7 @@ import (
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/rego" //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
