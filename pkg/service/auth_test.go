@@ -289,7 +289,7 @@ func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewForbidden(t *testing.
 	defer mockController.Finish()
 	authCred := auth.NewAuthCredential("", "")
 	identityConfig := &evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}}
-	authorizationPolicy, _ := authorization.NewOPAAuthorization("a-policy", `allow if false`, nil, false, 0, context.TODO())
+	authorizationPolicy, _ := authorization.NewOPAAuthorization("a-policy", `allow { false }`, nil, false, 0, context.TODO())
 	authorizationConfig := &evaluators.AuthorizationConfig{Name: "always-deny", OPA: authorizationPolicy}
 	authConfig := &evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{identityConfig},

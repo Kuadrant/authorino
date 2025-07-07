@@ -25,6 +25,6 @@ spec:
   authorization:
     multiple-authorization-methods:
       opa:
-        rego: allow if true
+        rego: allow { true }
       patternMatching:
         patterns: []

@@ -109,8 +109,8 @@ spec:
       opa:
         allValues: true
         rego: |
-          country = object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
-          allow if {
+          allow {
+            country := object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
             allowed_countries := ["ES", "FR", "IT"]
             allowed_countries[_] == country
           }
@@ -133,7 +133,7 @@ spec:
       - predicate: request.path.matches("^/greetings/\\d+$")
       opa:
         rego: |
-          allow if {
+          allow {
             resource_attrs := object.get(input.auth.metadata, "resource-info", [])[0]
             resource_owner := object.get(object.get(resource_attrs, "owner", {}), "id", "")
             resource_owner == input.auth.identity.sub
@@ -141,8 +141,10 @@ spec:
     timestamp:
       opa:
         rego: |
-          now = time.now_ns() / 1000000000
-          allow if true
+          allow {
+            now := time.now_ns() / 1000000000
+            true
+          }
         allValues: true
       priority: 1
 

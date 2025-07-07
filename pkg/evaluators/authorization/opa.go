@@ -149,7 +149,11 @@ func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValu
 	queries := []string{fmt.Sprintf(queryTemplate, allowQuery, allowQuery)}
 	var err error
 
-	if module, err = opaParser.ParseModule(policyFileName, policyContent); err != nil {
+	// Parse with v0 compatibility from the start
+	parserOpts := opaParser.ParserOptions{
+		RegoVersion: opaParser.RegoV0,
+	}
+	if module, err = opaParser.ParseModuleWithOpts(policyFileName, policyContent, parserOpts); err != nil {
 		return nil, err
 	}
 
@@ -167,6 +171,7 @@ func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValu
 	r := rego.New(
 		rego.Query(strings.Join(queries, ";")),
 		rego.ParsedModule(module),
+		rego.SetRegoVersion(opaParser.RegoV0), // Enable v0 compatibility
 	)
 
 	if regoPolicy, err := r.PrepareForEval(ctx); err != nil {
