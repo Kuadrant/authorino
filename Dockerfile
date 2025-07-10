@@ -1,7 +1,6 @@
 # Build the authorino binary
 # https://catalog.redhat.com/software/containers/ubi9/go-toolset
 FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.23 AS builder
-USER root
 WORKDIR /usr/src/authorino
 COPY ./ ./
 ARG version
@@ -16,7 +15,7 @@ ARG TARGETVARIANT
 ENV GOOS=${TARGETOS:-linux}
 ENV GOARCH=${TARGETARCH:-amd64}
 ENV GOARM=${TARGETVARIANT}
-RUN CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=${version} -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o /usr/bin/authorino main.go
+RUN CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=${version} -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o /tmp/authorino main.go
 
 # Use Red Hat minimal base image to package the binary
 # https://catalog.redhat.com/software/containers/ubi9-minimal
@@ -31,7 +30,7 @@ RUN PKGS="shadow-utils" \
 
 WORKDIR /home/authorino/bin
 ENV PATH=/home/authorino/bin:$PATH
-COPY --from=builder /usr/bin/authorino ./authorino
+COPY --from=builder /tmp/authorino ./authorino
 
 # Set permissions and prepare for non-root user in one layer
 RUN chown -R authorino:root /home/authorino \
