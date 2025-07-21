@@ -13,7 +13,7 @@ git checkout <git-ref>
 2. Create a new tag and named release `vX.Y.Z`. Push the tag to GitHub.
 
 ```shell
-git tag -a vX.Y.Z -m "vX.Y.Z"
+git tag -a vX.Y.Z -s -m "vX.Y.Z"
 git push origin vX.Y.Z
 ```
 
