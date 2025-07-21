@@ -4,9 +4,31 @@
 .gitmodules
 .dockerignore
 
+# Documentation and examples
 docs
 examples
-tmp
+*.md
+LICENSE
 
+# Build artifacts and temporary files
+tmp
+tests
+vendor
+bin
+cover.out
+*.log
+
+# IDE and editor files
 .idea
 .vscode
+.DS_Store
+
+# Kubernetes and deployment configs (not needed for binary build)
+config
+deploy
+install
+
+# Development and tooling
+hack
+Makefile
+PROJECT
