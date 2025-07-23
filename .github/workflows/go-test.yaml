@@ -15,20 +15,19 @@ jobs:
     name: Unit Tests
     strategy:
       matrix:
-        go-version: [1.23.x]
-        platform: [ubuntu-latest]
+        platform: [ ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: go.mod
         id: go
-      - name: Check out code
-        uses: actions/checkout@v3
       - name: Run make test
         run: |
           make test

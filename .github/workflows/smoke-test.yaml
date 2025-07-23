@@ -3,27 +3,28 @@ name: Smoke Tests
 on:
   workflow_run:
     workflows:
-    - Build and push image
+      - Build and push image
     types:
-    - completed
+      - completed
 
 jobs:
   on-success:
     name: Smoke Tests
     strategy:
       matrix:
-        go-version: [1.23.x]
-        platform: [ubuntu-latest]
+        platform: [ ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: go.mod
         id: go
       - name: Install jq
         run: sudo apt-get install jq

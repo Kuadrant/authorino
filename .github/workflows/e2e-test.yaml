@@ -13,25 +13,24 @@ jobs:
     name: End-to-end Tests
     strategy:
       matrix:
-        go-version: [1.23.x]
-        platform: [ubuntu-latest]
-        authconfig_version: [v1beta2, v1beta3]
+        platform: [ ubuntu-latest ]
+        authconfig_version: [ v1beta2, v1beta3 ]
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: go.mod
         id: go
       - name: Install jq
         run: sudo apt-get install jq
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.sha }}
       - name: Run make e2e
         env:
           OPERATOR_VERSION: ${{ github.event.inputs.operatorVersion }}
