@@ -15,7 +15,7 @@ ARG TARGETVARIANT
 ENV GOOS=${TARGETOS:-linux}
 ENV GOARCH=${TARGETARCH:-amd64}
 ENV GOARM=${TARGETVARIANT}
-RUN CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=${version} -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o /tmp/authorino main.go
+RUN CGO_ENABLED=0 go build -a -ldflags "-X main.version=${version} -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o /tmp/authorino main.go
 
 # Use Red Hat minimal base image to package the binary
 # https://catalog.redhat.com/software/containers/ubi9-minimal

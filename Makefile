@@ -179,7 +179,7 @@ run: generate manifests ## Runs the application against the Kubernetes cluster c
 build:git_sha=$(shell git rev-parse HEAD)
 build:dirty=$(shell $(PROJECT_DIR)/hack/check-git-dirty.sh || echo "unknown")
 build: generate ## Builds the manager binary
-	CGO_ENABLED=0 GO111MODULE=on go build -a -ldflags "-X main.version=$(VERSION) -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o bin/authorino main.go
+	CGO_ENABLED=0 go build -a -ldflags "-X main.version=$(VERSION) -X main.gitSHA=${git_sha} -X main.dirty=${dirty}" -o bin/authorino main.go
 
 docker-build:git_sha=$(shell git rev-parse HEAD)
 docker-build:dirty=$(shell $(PROJECT_DIR)/hack/check-git-dirty.sh || echo "unknown")
