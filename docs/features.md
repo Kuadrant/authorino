@@ -811,7 +811,7 @@ spec:
       priority: 1
       opa:
         rego: |
-          allow { true }
+          allow if true
   response:
     success:
       headers:
@@ -984,7 +984,7 @@ spec:
       - patternRef: a-pet
       opa:
         rego: |
-          allow { input.metadata["pets-info"].ownerid == input.auth.identity.userid }
+          allow if { input.metadata["pets-info"].ownerid == input.auth.identity.userid }
 ```
 
 x) combining literals and refs – concrete case: authentication required for selected operations:

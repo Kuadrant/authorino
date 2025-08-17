@@ -11,7 +11,7 @@ func NewDenyAllAuthorization(ctx context.Context, name, policyName string) auth.
 	if policyName == "" {
 		policyName = name
 	}
-	opaDenyAll, _ := authorization.NewOPAAuthorization(policyName, "allow = false", nil, false, 0, ctx)
+	opaDenyAll, _ := authorization.NewOPAAuthorization(policyName, "allow { false }", nil, false, 0, ctx)
 	return &AuthorizationConfig{
 		Name:     name,
 		Priority: 0,
