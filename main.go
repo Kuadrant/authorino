@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/yaml"
 
 	"github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/api/v1beta3"
@@ -124,6 +125,7 @@ type authServerOptions struct {
 	webhookServicePort             int
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
+	customMetricLabelsFile         string
 }
 
 type webhookServerOptions struct {
@@ -186,6 +188,7 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().IntVar(&opts.webhookServicePort, "webhook-service-port", 9443, "Port number of the webhook server")
 	cmd.PersistentFlags().BoolVar(&opts.enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmd.PersistentFlags().Int64Var(&opts.maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+	cmd.PersistentFlags().StringVar(&opts.customMetricLabelsFile, "custom-metric-labels-file", utils.EnvVar("CUSTOM_METRIC_LABELS_FILE", ""), "Path to a file containing custom metric labels (label_name:cel_expression pairs)")
 	registerCommonServerOptions(cmd, &opts.commonServerOptions)
 
 	return cmd
@@ -222,10 +225,41 @@ func registerCommonServerOptions(cmd *cobra.Command, opts *commonServerOptions) 
 	cmd.PersistentFlags().StringArrayVar(&opts.telemetry.tracingServiceTags, "tracing-service-tag", []string{}, "Fixed key=value tag to add to emitted traces")
 }
 
+func loadCustomMetricLabels(filepath string) (map[string]string, error) {
+	if filepath == "" {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read custom metric labels file: %w", err)
+	}
+
+	var config map[string]string
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse custom metric labels file: %w", err)
+	}
+
+	return config, nil
+}
+
 func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	opts := cmd.Context().Value(keyAuthServerOptions{}).(*authServerOptions)
 
 	setup(cmd, opts.log, opts.telemetry)
+
+	// load custom metric labels configuration
+	if customLabels, err := loadCustomMetricLabels(opts.customMetricLabelsFile); err != nil {
+		logger.Error(err, "Failed to load custom metric labels configuration")
+		os.Exit(1)
+	} else if customLabels != nil {
+		if err := metrics.InitCustomMetricLabels(customLabels); err != nil {
+			logger.Error(err, "Failed to initialize custom metric labels")
+			os.Exit(1)
+		}
+	}
+
+	service.InitializeMetrics()
 
 	// global options
 	evaluators.EvaluatorCacheSize = opts.evaluatorCacheSize

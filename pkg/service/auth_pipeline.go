@@ -17,6 +17,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
+	"github.com/prometheus/client_golang/prometheus"
 	gocontext "golang.org/x/net/context"
 )
 
@@ -24,18 +25,37 @@ var (
 	evaluatorMetricLabels = []string{"evaluator_type", "evaluator_name"}
 
 	// evaluator metrics
-	authServerEvaluatorTotalMetric     = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_total", "Total number of evaluations of individual authconfig rule performed by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorCancelledMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_cancelled", "Number of evaluations of individual authconfig rule cancelled by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorIgnoredMetric   = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_ignored", "Number of evaluations of individual authconfig rule ignored by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorDeniedMetric    = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_denied", "Number of denials from individual authconfig rule evaluated by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorDurationMetric  = metrics.NewAuthConfigDurationMetric("auth_server_evaluator_duration_seconds", "Response latency of individual authconfig rule evaluated by the auth server (in seconds).", evaluatorMetricLabels...)
+	authServerEvaluatorTotalMetric     *prometheus.CounterVec
+	authServerEvaluatorCancelledMetric *prometheus.CounterVec
+	authServerEvaluatorIgnoredMetric   *prometheus.CounterVec
+	authServerEvaluatorDeniedMetric    *prometheus.CounterVec
+	authServerEvaluatorDurationMetric  *prometheus.HistogramVec
 	// authconfig metrics
-	authServerAuthConfigTotalMetric          = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_total", "Total number of authconfigs enforced by the auth server, partitioned by authconfig.")
-	authServerAuthConfigResponseStatusMetric = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_response_status", "Response status of authconfigs sent by the auth server, partitioned by authconfig.", "status")
-	authServerAuthConfigDurationMetric       = metrics.NewAuthConfigDurationMetric("auth_server_authconfig_duration_seconds", "Response latency of authconfig enforced by the auth server (in seconds).")
+	authServerAuthConfigTotalMetric          *prometheus.CounterVec
+	authServerAuthConfigResponseStatusMetric *prometheus.CounterVec
+	authServerAuthConfigDurationMetric       *prometheus.HistogramVec
+
+	metricsInitialized = false
 )
 
-func init() {
+func InitializeMetrics() {
+	if metricsInitialized {
+		// Metrics already initialized, skip to avoid duplicate registration
+		return
+	}
+
+	// Metrics are created with label sets that depend on metrics.CustomMetricsEnabled at initialization.
+	// At reporting time, the code paths select between custom-label and default-label helpers accordingly.
+	authServerEvaluatorTotalMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_total", "Total number of evaluations of individual authconfig rule performed by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorCancelledMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_cancelled", "Number of evaluations of individual authconfig rule cancelled by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorIgnoredMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_ignored", "Number of evaluations of individual authconfig rule ignored by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorDeniedMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_denied", "Number of denials from individual authconfig rule evaluated by the auth server.", evaluatorMetricLabels...)
+	authServerEvaluatorDurationMetric = metrics.NewAuthConfigDurationMetric("auth_server_evaluator_duration_seconds", "Response latency of individual authconfig rule evaluated by the auth server (in seconds).", evaluatorMetricLabels...)
+	// authconfig metrics
+	authServerAuthConfigTotalMetric = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_total", "Total number of authconfigs enforced by the auth server, partitioned by authconfig.")
+	authServerAuthConfigResponseStatusMetric = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_response_status", "Response status of authconfigs sent by the auth server, partitioned by authconfig.", "status")
+	authServerAuthConfigDurationMetric = metrics.NewAuthConfigDurationMetric("auth_server_authconfig_duration_seconds", "Response latency of authconfig enforced by the auth server (in seconds).")
+
 	metrics.Register(
 		authServerEvaluatorTotalMetric,
 		authServerEvaluatorCancelledMetric,
@@ -46,6 +66,8 @@ func init() {
 		authServerAuthConfigResponseStatusMetric,
 		authServerAuthConfigDurationMetric,
 	)
+
+	metricsInitialized = true
 }
 
 type EvaluationResponse struct {
@@ -109,17 +131,31 @@ type AuthPipeline struct {
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
-	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
+
+	// Report metrics with custom labels if enabled
+	if metrics.CustomMetricsEnabled {
+		metrics.ReportMetricWithCustomLabels(authServerEvaluatorTotalMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
+	} else {
+		metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
+	}
 
 	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
+		if metrics.CustomMetricsEnabled {
+			metrics.ReportMetricWithCustomLabels(authServerEvaluatorCancelledMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
+		} else {
+			metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
+		}
 		return
 	}
 
 	if conditionalEv, ok := config.(auth.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
+			if metrics.CustomMetricsEnabled {
+				metrics.ReportMetricWithCustomLabels(authServerEvaluatorIgnoredMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
+			} else {
+				metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
+			}
 			return
 		}
 	}
@@ -128,7 +164,11 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels()...)
+			if metrics.CustomMetricsEnabled {
+				metrics.ReportMetricWithCustomLabels(authServerEvaluatorDeniedMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
+			} else {
+				metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels()...)
+			}
 
 			if failureCallback != nil {
 				failureCallback()
@@ -142,7 +182,11 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		}
 	}
 
-	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
+	if metrics.CustomMetricsEnabled {
+		metrics.ReportTimedMetricWithCustomLabels(authServerEvaluatorDurationMetric, evaluateFunc, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
+	} else {
+		metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
+	}
 }
 
 type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -452,6 +496,7 @@ func (pipeline *AuthPipeline) setCallbackObj(conf *evaluators.CallbackConfig, ob
 
 // Evaluate evaluates all steps of the auth pipeline (identity → metadata → policy enforcement)
 func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
+	InitializeMetrics()
 	result := auth.AuthResult{Code: rpc.OK}
 
 	if err := pipeline.evaluateConditions(pipeline.AuthConfig.Conditions); err != nil {
@@ -459,7 +504,11 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 		return result
 	}
 
-	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
+	if metrics.CustomMetricsEnabled {
+		metrics.ReportMetricWithCustomLabels(authServerAuthConfigTotalMetric, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
+	} else {
+		metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
+	}
 
 	authResult := make(chan auth.AuthResult)
 
@@ -498,19 +547,40 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 			authResult <- result
 		}
 
-		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
+		if metrics.CustomMetricsEnabled {
+			metrics.ReportTimedMetricWithCustomLabels(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
+		} else {
+			metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
+		}
 	}()
 
 	return <-authResult
 }
 
 func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
-	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
+	if metrics.CustomMetricsEnabled {
+		metrics.ReportMetricWithStatusAndCustomLabels(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
+	} else {
+		metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
+	}
 }
 
 func (pipeline *AuthPipeline) metricLabels() []string {
 	labels := pipeline.AuthConfig.Labels
 	return []string{labels["namespace"], labels["name"]}
+}
+
+// evaluatorMetricLabels extends metricLabels with evaluator-specific labels for custom metrics.
+// When evaluator-level metrics are disabled for a given object (and deep metrics are not enabled),
+// this returns empty placeholders to preserve the expected label cardinality.
+func (pipeline *AuthPipeline) evaluatorMetricLabels(obj metrics.Object) []string {
+	baseLabels := pipeline.metricLabels()
+	if obj != nil && (obj.MetricsEnabled() || metrics.DeepMetricsEnabled) {
+		baseLabels = append(baseLabels, obj.GetType(), obj.GetName())
+	} else {
+		baseLabels = append(baseLabels, "", "")
+	}
+	return baseLabels
 }
 
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {
