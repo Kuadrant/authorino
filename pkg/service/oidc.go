@@ -96,7 +96,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		requestLogger.Info("response sent", "status", statusCode)
 	}
 
-	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
+	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode), "")
 }
 
 func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) auth.WristbandIssuer {

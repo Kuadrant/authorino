@@ -132,30 +132,17 @@ type AuthPipeline struct {
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
 
-	// Report metrics with custom labels if enabled
-	if metrics.CustomMetricsEnabled {
-		metrics.ReportMetricWithCustomLabels(authServerEvaluatorTotalMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
-	} else {
-		metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
-	}
+	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 
 	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		if metrics.CustomMetricsEnabled {
-			metrics.ReportMetricWithCustomLabels(authServerEvaluatorCancelledMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
-		} else {
-			metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
-		}
+		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 		return
 	}
 
 	if conditionalEv, ok := config.(auth.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			if metrics.CustomMetricsEnabled {
-				metrics.ReportMetricWithCustomLabels(authServerEvaluatorIgnoredMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
-			} else {
-				metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
-			}
+			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 			return
 		}
 	}
@@ -164,11 +151,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			if metrics.CustomMetricsEnabled {
-				metrics.ReportMetricWithCustomLabels(authServerEvaluatorDeniedMetric, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
-			} else {
-				metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels()...)
-			}
+			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 
 			if failureCallback != nil {
 				failureCallback()
@@ -182,11 +165,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		}
 	}
 
-	if metrics.CustomMetricsEnabled {
-		metrics.ReportTimedMetricWithCustomLabels(authServerEvaluatorDurationMetric, evaluateFunc, pipeline.GetAuthorizationJSON(), pipeline.evaluatorMetricLabels(monitorable)...)
-	} else {
-		metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
-	}
+	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 }
 
 type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -504,11 +483,7 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 		return result
 	}
 
-	if metrics.CustomMetricsEnabled {
-		metrics.ReportMetricWithCustomLabels(authServerAuthConfigTotalMetric, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
-	} else {
-		metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
-	}
+	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 
 	authResult := make(chan auth.AuthResult)
 
@@ -547,40 +522,20 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 			authResult <- result
 		}
 
-		if metrics.CustomMetricsEnabled {
-			metrics.ReportTimedMetricWithCustomLabels(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
-		} else {
-			metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
-		}
+		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
 	}()
 
 	return <-authResult
 }
 
 func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
-	if metrics.CustomMetricsEnabled {
-		metrics.ReportMetricWithStatusAndCustomLabels(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.GetAuthorizationJSON(), pipeline.metricLabels()...)
-	} else {
-		metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
-	}
+	authJSON := pipeline.GetAuthorizationJSON()
+	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], authJSON, pipeline.metricLabels()...)
 }
 
 func (pipeline *AuthPipeline) metricLabels() []string {
 	labels := pipeline.AuthConfig.Labels
 	return []string{labels["namespace"], labels["name"]}
-}
-
-// evaluatorMetricLabels extends metricLabels with evaluator-specific labels for custom metrics.
-// When evaluator-level metrics are disabled for a given object (and deep metrics are not enabled),
-// this returns empty placeholders to preserve the expected label cardinality.
-func (pipeline *AuthPipeline) evaluatorMetricLabels(obj metrics.Object) []string {
-	baseLabels := pipeline.metricLabels()
-	if obj != nil && (obj.MetricsEnabled() || metrics.DeepMetricsEnabled) {
-		baseLabels = append(baseLabels, obj.GetType(), obj.GetName())
-	} else {
-		baseLabels = append(baseLabels, "", "")
-	}
-	return baseLabels
 }
 
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {

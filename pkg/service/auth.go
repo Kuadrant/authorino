@@ -231,7 +231,7 @@ func (a *AuthService) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		closeWithStatus(respStatusCode, resp, ctx, func() {
 			_, _ = resp.Write(respBody)
 		})
-	})
+	}, "")
 }
 
 // Check performs authorization check based on the attributes associated with the incoming request,
@@ -464,7 +464,7 @@ func buildEnvoyDynamicMetadata(data map[string]interface{}) (*structpb.Struct, e
 }
 
 func reportStatusMetric(rpcStatusCode rpc.Code) {
-	metrics.ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)])
+	metrics.ReportMetricWithStatus(authServerResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], "")
 }
 
 func admissionReviewFromPayload(payload []byte) *v1.AdmissionReview {
@@ -481,7 +481,7 @@ func admissionReviewFromPayload(payload []byte) *v1.AdmissionReview {
 
 // Writes the response status code to the raw HTTP external authorization and cancels the context
 func closeWithStatus(respStatusCode envoy_type.StatusCode, response http.ResponseWriter, ctx gocontext.Context, closingFunc func()) {
-	metrics.ReportMetric(httpServerHandledTotal, respStatusCode.String())
+	metrics.ReportMetric(httpServerHandledTotal, "", respStatusCode.String())
 	if respStatusCode != envoy_type.StatusCode_OK { // avoids 'http: superfluous response.WriteHeader call'
 		response.WriteHeader(int(respStatusCode))
 	}
