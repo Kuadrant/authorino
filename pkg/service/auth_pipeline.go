@@ -576,28 +576,36 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	// metadata
 	metadata := make(map[string]interface{})
 	for config, obj := range pipeline.getMetadataObjs() {
-		metadata[config.Name] = obj
+		if config != nil {
+			metadata[config.Name] = obj
+		}
 	}
 	authData["metadata"] = metadata
 
 	// authorization
 	authorization := make(map[string]interface{})
 	for config, obj := range pipeline.getAuthorizationObjs() {
-		authorization[config.Name] = obj
+		if config != nil {
+			authorization[config.Name] = obj
+		}
 	}
 	authData["authorization"] = authorization
 
 	// response
 	response := make(map[string]interface{})
 	for config, obj := range pipeline.getResponseObjs() {
-		response[config.Name] = obj
+		if config != nil {
+			response[config.Name] = obj
+		}
 	}
 	authData["response"] = response
 
 	// callbacks
 	callbacks := make(map[string]interface{})
 	for config, obj := range pipeline.getCallbackObjs() {
-		callbacks[config.Name] = obj
+		if config != nil {
+			callbacks[config.Name] = obj
+		}
 	}
 	if len(callbacks) > 0 {
 		authData["callbacks"] = callbacks
