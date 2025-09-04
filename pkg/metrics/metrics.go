@@ -3,13 +3,12 @@ package metrics
 import (
 	"fmt"
 	"maps"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	DeepMetricsEnabled = false
-)
+var DeepMetricsEnabled = false
 
 type Object interface {
 	GetType() string
@@ -21,25 +20,107 @@ func Register(metrics ...prometheus.Collector) {
 	prometheus.MustRegister(metrics...)
 }
 
-func NewCounterMetric(name, help string, labels ...string) *prometheus.CounterVec {
-	return prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: name,
-			Help: help,
-		},
-		labels,
-	)
+type DynamicCounter struct {
+	mu       sync.Mutex
+	counters map[string]prometheus.Counter
+	name     string
+	help     string
 }
 
-func NewDurationMetric(name, help string, labels ...string) *prometheus.HistogramVec {
-	return prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    name,
-			Help:    help,
-			Buckets: prometheus.LinearBuckets(0.001, 0.05, 20),
-		},
-		labels,
-	)
+func NewDynamicCounter(name, help string) *DynamicCounter {
+	return &DynamicCounter{
+		counters: make(map[string]prometheus.Counter),
+		name:     name,
+		help:     help,
+	}
+}
+
+func (dc *DynamicCounter) Inc(labels map[string]string) {
+	dc.mu.Lock()
+	defer dc.mu.Unlock()
+
+	key := fmt.Sprintf("%v", labels)
+	if c, ok := dc.counters[key]; ok {
+		c.Inc()
+		return
+	}
+
+	c := prometheus.NewCounter(prometheus.CounterOpts{
+		Name:        dc.name,
+		Help:        dc.help,
+		ConstLabels: labels,
+	})
+	c.Inc()
+	dc.counters[key] = c
+}
+
+func (dc *DynamicCounter) Describe(ch chan<- *prometheus.Desc) {
+	dc.mu.Lock()
+	defer dc.mu.Unlock()
+	for _, c := range dc.counters {
+		c.Describe(ch)
+	}
+}
+
+func (dc *DynamicCounter) Collect(ch chan<- prometheus.Metric) {
+	dc.mu.Lock()
+	defer dc.mu.Unlock()
+	for _, c := range dc.counters {
+		c.Collect(ch)
+	}
+}
+
+type DynamicHistogram struct {
+	mu      sync.Mutex
+	histos  map[string]prometheus.Histogram
+	name    string
+	help    string
+	buckets []float64
+}
+
+func NewDynamicHistogram(name, help string) *DynamicHistogram {
+	return &DynamicHistogram{
+		histos:  make(map[string]prometheus.Histogram),
+		name:    name,
+		help:    help,
+		buckets: prometheus.LinearBuckets(0.001, 0.05, 20),
+	}
+}
+
+func (dh *DynamicHistogram) Observe(labels map[string]string, value float64) {
+	dh.mu.Lock()
+	defer dh.mu.Unlock()
+
+	key := fmt.Sprintf("%v", labels)
+	if h, ok := dh.histos[key]; ok {
+		h.Observe(value)
+		return
+	}
+
+	h := prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:        dh.name,
+		Help:        dh.help,
+		Buckets:     dh.buckets,
+		ConstLabels: labels,
+	})
+	h.Observe(value)
+	dh.histos[key] = h
+}
+
+func (dh *DynamicHistogram) Describe(ch chan<- *prometheus.Desc) {
+	dh.mu.Lock()
+	defer dh.mu.Unlock()
+	for _, h := range dh.histos {
+		h.Describe(ch)
+	}
+}
+
+func (dh *DynamicHistogram) Collect(ch chan<- prometheus.Metric) {
+	dh.mu.Lock()
+	defer dh.mu.Unlock()
+	for _, h := range dh.histos {
+		h.Collect(ch)
+	}
 }
 
 func ReportMetric(metric *DynamicCounter, labels map[string]string) {
@@ -47,8 +128,10 @@ func ReportMetric(metric *DynamicCounter, labels map[string]string) {
 }
 
 func ReportMetricWithStatus(metric *DynamicCounter, status string, labels map[string]string) {
+	if labels == nil {
+		labels = make(map[string]string)
+	}
 	labels["status"] = status
-
 	ReportMetric(metric, labels)
 }
 
@@ -71,6 +154,9 @@ func ReportTimedMetric(metric *DynamicHistogram, f func(), labels map[string]str
 }
 
 func ReportTimedMetricWithStatus(metric *DynamicHistogram, f func(), status string, labels map[string]string) {
+	if labels == nil {
+		labels = make(map[string]string)
+	}
 	labels["status"] = status
 	ReportTimedMetric(metric, f, labels)
 }

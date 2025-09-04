@@ -82,7 +82,6 @@ type AuthPipeline struct {
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
-
 	monitorable, _ := config.(metrics.Object)
 
 	metrics.ReportMetricWithObject(metrics.Registry.GetAuthServerEvaluatorTotalMetric(), monitorable, pipeline.metricLabels())
@@ -486,6 +485,9 @@ func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
 
 func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	labels := maps.Clone(pipeline.AuthConfig.Labels)
+	if labels == nil {
+		labels = make(map[string]string)
+	}
 
 	// Check for custom labels via the heuristic path
 	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
@@ -549,36 +551,28 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	// metadata
 	metadata := make(map[string]interface{})
 	for config, obj := range pipeline.getMetadataObjs() {
-		if config != nil {
-			metadata[config.Name] = obj
-		}
+		metadata[config.Name] = obj
 	}
 	authData["metadata"] = metadata
 
 	// authorization
 	authorization := make(map[string]interface{})
 	for config, obj := range pipeline.getAuthorizationObjs() {
-		if config != nil {
-			authorization[config.Name] = obj
-		}
+		authorization[config.Name] = obj
 	}
 	authData["authorization"] = authorization
 
 	// response
 	response := make(map[string]interface{})
 	for config, obj := range pipeline.getResponseObjs() {
-		if config != nil {
-			response[config.Name] = obj
-		}
+		response[config.Name] = obj
 	}
 	authData["response"] = response
 
 	// callbacks
 	callbacks := make(map[string]interface{})
 	for config, obj := range pipeline.getCallbackObjs() {
-		if config != nil {
-			callbacks[config.Name] = obj
-		}
+		callbacks[config.Name] = obj
 	}
 	if len(callbacks) > 0 {
 		authData["callbacks"] = callbacks
