@@ -51,7 +51,7 @@ func (dc *DynamicCounter) Inc(labels map[string]string) {
 
 	if m, ok := dc.metrics[key]; ok {
 		// Increment existing
-		m.(prometheus.Counter).Inc()
+		m.Inc()
 		return
 	}
 

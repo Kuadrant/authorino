@@ -23,10 +23,6 @@ import (
 	gocontext "golang.org/x/net/context"
 )
 
-var (
-	evaluatorMetricLabels = []string{"evaluator_type", "evaluator_name"}
-)
-
 type EvaluationResponse struct {
 	Evaluator auth.AuthConfigEvaluator
 	Object    interface{}

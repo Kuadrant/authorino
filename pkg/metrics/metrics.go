@@ -10,9 +10,7 @@ import (
 )
 
 var (
-	DeepMetricsEnabled   = false
-	CustomMetricLabels   map[string]*cel.Expression
-	CustomMetricsEnabled = false
+	DeepMetricsEnabled = false
 )
 
 type Object interface {
@@ -25,25 +23,10 @@ func Register(metrics ...prometheus.Collector) {
 	prometheus.MustRegister(metrics...)
 }
 
-func InitCustomMetricLabels(labelsConfig map[string]string) error {
-	CustomMetricLabels = make(map[string]*cel.Expression)
-
-	for labelName, celExpr := range labelsConfig {
-		if expr, err := cel.NewExpression(celExpr); err != nil {
-			return fmt.Errorf("failed to compile CEL expression for label %s: %w", labelName, err)
-		} else {
-			CustomMetricLabels[labelName] = expr
-		}
-	}
-
-	CustomMetricsEnabled = len(CustomMetricLabels) > 0
-	return nil
-}
-
 func EvaluateCustomLabels(authJSON string) (map[string]string, error) {
 	customLabels := make(map[string]string)
 
-	for labelName, expr := range CustomMetricLabels {
+	for labelName, expr := range map[string]cel.Expression{} {
 		if value, err := expr.ResolveFor(authJSON); err != nil {
 			// Log error but don't fail the whole metric - use empty value
 			//customLabels[labelName] = ""
@@ -118,13 +101,6 @@ func ReportTimedMetricWithObject(metric *DynamicHistogram, f func(), obj Object,
 	} else {
 		f()
 	}
-}
-
-func extendLabelValuesWithStatus(status string, baseLabels ...string) []string {
-	labels := make([]string, len(baseLabels))
-	copy(labels, baseLabels)
-	labels = append(labels, status)
-	return labels
 }
 
 func extendLabelValuesWithObject(obj Object, baseLabels map[string]string) (map[string]string, error) {
