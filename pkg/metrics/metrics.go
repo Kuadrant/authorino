@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -45,7 +46,8 @@ func EvaluateCustomLabels(authJSON string) (map[string]string, error) {
 	for labelName, expr := range CustomMetricLabels {
 		if value, err := expr.ResolveFor(authJSON); err != nil {
 			// Log error but don't fail the whole metric - use empty value
-			customLabels[labelName] = ""
+			//customLabels[labelName] = ""
+			// ignore instead
 		} else if strValue, ok := value.(string); ok {
 			customLabels[labelName] = strValue
 		} else {
@@ -54,33 +56,6 @@ func EvaluateCustomLabels(authJSON string) (map[string]string, error) {
 	}
 
 	return customLabels, nil
-}
-
-// buildFinalLabels constructs the final label values by combining base labels with custom labels
-func buildFinalLabels(authJSON string, baseLabels ...string) []string {
-	labels := make([]string, len(baseLabels))
-	copy(labels, baseLabels)
-
-	// If custom metrics are enabled, append custom label values
-	if CustomMetricsEnabled && len(CustomMetricLabels) > 0 && authJSON != "" {
-		if customLabels, err := EvaluateCustomLabels(authJSON); err == nil {
-			// Append custom label values in consistent order
-			for labelName := range CustomMetricLabels {
-				if value, exists := customLabels[labelName]; exists {
-					labels = append(labels, value)
-				} else {
-					labels = append(labels, "")
-				}
-			}
-		} else {
-			// Append empty values for all custom labels if evaluation fails
-			for range CustomMetricLabels {
-				labels = append(labels, "")
-			}
-		}
-	}
-
-	return labels
 }
 
 func NewCounterMetric(name, help string, labels ...string) *prometheus.CounterVec {
@@ -104,27 +79,25 @@ func NewDurationMetric(name, help string, labels ...string) *prometheus.Histogra
 	)
 }
 
-func ReportMetric(metric *prometheus.CounterVec, authJSON string, labels ...string) {
-	finalLabels := buildFinalLabels(authJSON, labels...)
-	metric.WithLabelValues(finalLabels...).Inc()
+func ReportMetric(metric *DynamicCounter, labels map[string]string) {
+	metric.Inc(labels)
 }
 
-func ReportMetricWithStatus(metric *prometheus.CounterVec, status string, authJSON string, labels ...string) {
-	baseLabels := extendLabelValuesWithStatus(status, labels...)
-	ReportMetric(metric, authJSON, baseLabels...)
+func ReportMetricWithStatus(metric *DynamicCounter, status string, labels map[string]string) {
+	labels["status"] = status
+
+	ReportMetric(metric, labels)
 }
 
-func ReportMetricWithObject(metric *prometheus.CounterVec, obj Object, authJSON string, labels ...string) {
-	if extendedLabels, err := extendLabelValuesWithObject(obj, labels...); err == nil {
-		ReportMetric(metric, authJSON, extendedLabels...)
+func ReportMetricWithObject(metric *DynamicCounter, obj Object, labels map[string]string) {
+	if extendedLabels, err := extendLabelValuesWithObject(obj, labels); err == nil {
+		ReportMetric(metric, extendedLabels)
 	}
 }
 
-func ReportTimedMetric(metric *prometheus.HistogramVec, f func(), authJSON string, labels ...string) {
-	finalLabels := buildFinalLabels(authJSON, labels...)
-
+func ReportTimedMetric(metric *DynamicHistogram, f func(), labels map[string]string) {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(value float64) {
-		metric.WithLabelValues(finalLabels...).Observe(value)
+		metric.Observe(labels, value)
 	}))
 
 	defer func() {
@@ -134,14 +107,14 @@ func ReportTimedMetric(metric *prometheus.HistogramVec, f func(), authJSON strin
 	f()
 }
 
-func ReportTimedMetricWithStatus(metric *prometheus.HistogramVec, f func(), status string, authJSON string, labels ...string) {
-	baseLabels := extendLabelValuesWithStatus(status, labels...)
-	ReportTimedMetric(metric, f, authJSON, baseLabels...)
+func ReportTimedMetricWithStatus(metric *DynamicHistogram, f func(), status string, labels map[string]string) {
+	labels["status"] = status
+	ReportTimedMetric(metric, f, labels)
 }
 
-func ReportTimedMetricWithObject(metric *prometheus.HistogramVec, f func(), obj Object, authJSON string, labels ...string) {
-	if extendedLabels, err := extendLabelValuesWithObject(obj, labels...); err == nil {
-		ReportTimedMetric(metric, f, authJSON, extendedLabels...)
+func ReportTimedMetricWithObject(metric *DynamicHistogram, f func(), obj Object, labels map[string]string) {
+	if extendedLabels, err := extendLabelValuesWithObject(obj, labels); err == nil {
+		ReportTimedMetric(metric, f, extendedLabels)
 	} else {
 		f()
 	}
@@ -154,13 +127,14 @@ func extendLabelValuesWithStatus(status string, baseLabels ...string) []string {
 	return labels
 }
 
-func extendLabelValuesWithObject(obj Object, baseLabels ...string) ([]string, error) {
+func extendLabelValuesWithObject(obj Object, baseLabels map[string]string) (map[string]string, error) {
 	if obj == nil || (!obj.MetricsEnabled() && !DeepMetricsEnabled) {
 		return nil, fmt.Errorf("metrics are disabled")
 	}
 
-	labels := make([]string, len(baseLabels))
-	copy(labels, baseLabels)
-	labels = append(labels, obj.GetType(), obj.GetName())
+	labels := maps.Clone(baseLabels)
+	labels["evaluator_type"] = obj.GetType()
+	labels["evaluator_name"] = obj.GetName()
+
 	return labels, nil
 }

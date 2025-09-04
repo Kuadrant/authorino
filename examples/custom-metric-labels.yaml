@@ -1,0 +1,5 @@
+api_version: request.headers.api_version
+request_method: request.method
+request_path: request.path
+auth_kind: auth.identity.kind
+path: request.path

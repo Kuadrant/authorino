@@ -259,8 +259,6 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	service.InitializeMetrics()
-
 	// global options
 	evaluators.EvaluatorCacheSize = opts.evaluatorCacheSize
 	metrics.DeepMetricsEnabled = opts.deepMetricsEnabled
