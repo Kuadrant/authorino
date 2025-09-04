@@ -5,8 +5,6 @@ import (
 	"maps"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/kuadrant/authorino/pkg/expressions/cel"
 )
 
 var (
@@ -21,24 +19,6 @@ type Object interface {
 
 func Register(metrics ...prometheus.Collector) {
 	prometheus.MustRegister(metrics...)
-}
-
-func EvaluateCustomLabels(authJSON string) (map[string]string, error) {
-	customLabels := make(map[string]string)
-
-	for labelName, expr := range map[string]cel.Expression{} {
-		if value, err := expr.ResolveFor(authJSON); err != nil {
-			// Log error but don't fail the whole metric - use empty value
-			//customLabels[labelName] = ""
-			// ignore instead
-		} else if strValue, ok := value.(string); ok {
-			customLabels[labelName] = strValue
-		} else {
-			customLabels[labelName] = fmt.Sprintf("%v", value)
-		}
-	}
-
-	return customLabels, nil
 }
 
 func NewCounterMetric(name, help string, labels ...string) *prometheus.CounterVec {

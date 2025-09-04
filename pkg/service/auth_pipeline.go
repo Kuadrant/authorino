@@ -7,11 +7,10 @@ import (
 	"sort"
 	"sync"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -488,19 +487,28 @@ func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
 func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	labels := maps.Clone(pipeline.AuthConfig.Labels)
 
-	// TODO: get from heuiristic path instead
-	customLabels, err := metrics.EvaluateCustomLabels(pipeline.GetAuthorizationJSON())
-	if err != nil {
-		pipeline.Logger.Error(err, "failed to evaluate custom labels")
+	// Check for custom labels via the heuristic path
+	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
+	customLabels := filteredMetadata["io.kuadrant.metrics.labels"]
+	if customLabels != nil {
+		for k, v := range customLabels.Fields {
+			expr, err := cel.NewExpression(v.GetStringValue())
+			if err != nil {
+				pipeline.Logger.Error(err, "failed to parse custom label expression", "expression", v.String())
+				continue
+			}
+
+			if value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON()); err != nil {
+				pipeline.Logger.Error(err, "failed to evaluate custom label expression", "expression", v.String())
+			} else if strValue, ok := value.(string); ok {
+				labels[k] = strValue
+			} else {
+				labels[k] = fmt.Sprintf("%v", value)
+			}
+		}
 	}
 
-	maps.Insert(customLabels, maps.All(labels))
-	// TODO: randomly set different number of labels
-	for i := range rand.Int63nRange(0, 5) {
-		customLabels[fmt.Sprintf("rand%d", i)] = rand.String(10)
-	}
-
-	return customLabels
+	return labels
 }
 
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {
