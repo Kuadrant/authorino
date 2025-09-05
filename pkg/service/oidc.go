@@ -16,8 +16,8 @@ import (
 const OIDCBasePath = "/"
 
 var (
-	oidcServerTotalRequestsMetric  = metrics.NewAuthConfigCounterMetric("oidc_server_requests_total", "Number of get requests received on the OIDC (Festival Wristband) server.", "wristband", "path")
-	oidcServerResponseStatusMetric = metrics.NewCounterMetric("oidc_server_response_status", "Status of HTTP response sent by the OIDC (Festival Wristband) server.", "status")
+	oidcServerTotalRequestsMetric  = metrics.NewDynamicCounter("oidc_server_requests_total", "Number of get requests received on the OIDC (Festival Wristband) server.")
+	oidcServerResponseStatusMetric = metrics.NewDynamicCounter("oidc_server_response_status", "Status of HTTP response sent by the OIDC (Festival Wristband) server.")
 )
 
 func init() {
@@ -76,8 +76,14 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 				}
 				responseBody = err.Error()
 			}
+			labels := map[string]string{
+				"namespace":  authconfigNamespace,
+				"authconfig": authconfigName,
+				"wristband":  wristbandEvaluatorName,
+				"path":       pathMetric,
+			}
 
-			metrics.ReportMetric(oidcServerTotalRequestsMetric, authconfigNamespace, authconfigName, wristbandEvaluatorName, pathMetric)
+			metrics.ReportMetric(oidcServerTotalRequestsMetric, labels)
 		} else {
 			statusCode = http.StatusNotFound
 			responseBody = "Not found"
@@ -96,7 +102,7 @@ func (o *OidcService) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		requestLogger.Info("response sent", "status", statusCode)
 	}
 
-	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode))
+	metrics.ReportMetricWithStatus(oidcServerResponseStatusMetric, strconv.Itoa(statusCode), map[string]string{})
 }
 
 func (o *OidcService) findWristbandIssuer(realm string, wristbandConfigName string) auth.WristbandIssuer {
