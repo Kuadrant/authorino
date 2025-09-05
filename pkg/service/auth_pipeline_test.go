@@ -601,10 +601,13 @@ func TestPipelineMetricLabels(t *testing.T) {
 			"metadata_context": {
 				"filter_metadata": {
 					"io.kuadrant.metrics.labels": {
-						"methodLabel": "request.method",
-						"hostLabel": "request.host",
-						"staticLabel": "'foo'",
-						"unResolvableLabel": "auth.nonexistent.value"
+						"methodLabel": { "cel_expr": "request.method" },
+						"hostLabel": { "cel_expr": "request.host" },
+						"stringLabel": "foo",
+						"intLabel": 123,
+						"boolLabel": true,
+						"unResolvableLabel": { "cel_expr": "auth.nonexistent.value" },
+						"unsupportedNullLabel": null
 					}
 				}
 			},
@@ -631,7 +634,7 @@ func TestPipelineMetricLabels(t *testing.T) {
 
 	labels := pipeline.metricLabels()
 
-	assert.Equal(t, 5, len(labels))
+	assert.Equal(t, 7, len(labels))
 
 	// AuthConfig Labels
 	assert.Equal(t, "authorino", labels["namespace"])
@@ -640,6 +643,10 @@ func TestPipelineMetricLabels(t *testing.T) {
 	// Custom Labels
 	assert.Equal(t, "GET", labels["methodLabel"])
 	assert.Equal(t, "my-api", labels["hostLabel"])
-	assert.Equal(t, "foo", labels["staticLabel"])
+	assert.Equal(t, "foo", labels["stringLabel"])
+	assert.Equal(t, "123", labels["intLabel"])
+	assert.Equal(t, "true", labels["boolLabel"])
+	// Unsupported labels
 	assert.Equal(t, "", labels["unResolvableLabel"])
+	assert.Equal(t, "", labels["nullLabel"])
 }

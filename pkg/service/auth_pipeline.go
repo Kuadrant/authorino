@@ -7,6 +7,8 @@ import (
 	"sort"
 	"sync"
 
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -494,18 +496,37 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	customLabels := filteredMetadata["io.kuadrant.metrics.labels"]
 	if customLabels != nil {
 		for k, v := range customLabels.Fields {
-			expr, err := cel.NewExpression(v.GetStringValue())
-			if err != nil {
-				pipeline.Logger.Error(err, "failed to parse custom label expression", "expression", v.String())
-				continue
-			}
+			switch kind := v.Kind.(type) {
+			case *structpb.Value_StringValue:
+				// Just a plain string, treat it as already evaluated
+				labels[k] = kind.StringValue
 
-			if value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON()); err != nil {
-				pipeline.Logger.Error(err, "failed to evaluate custom label expression", "expression", v.String())
-			} else if strValue, ok := value.(string); ok {
-				labels[k] = strValue
-			} else {
-				labels[k] = fmt.Sprintf("%v", value)
+			case *structpb.Value_NumberValue:
+				labels[k] = fmt.Sprintf("%v", kind.NumberValue)
+
+			case *structpb.Value_BoolValue:
+				labels[k] = fmt.Sprintf("%v", kind.BoolValue)
+
+			case *structpb.Value_StructValue:
+				// Could be a CEL expression wrapper { "cel_expr": "<expr>" }
+				if celExprField, ok := kind.StructValue.Fields["cel_expr"]; ok {
+					if exprStr := celExprField.GetStringValue(); exprStr != "" {
+						expr, err := cel.NewExpression(exprStr)
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
+							continue
+						}
+						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
+							continue
+						}
+						labels[k] = fmt.Sprintf("%v", value)
+					}
+				}
+
+			default:
+				pipeline.Logger.V(1).Info("unexpected value kind", "kind", kind)
 			}
 		}
 	}
