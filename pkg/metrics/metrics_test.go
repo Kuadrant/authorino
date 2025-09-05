@@ -20,7 +20,6 @@ func TestReportMetricWithStatus(t *testing.T) {
 	metric := NewDynamicCounter("foo", "Foo metric")
 	ReportMetricWithStatus(metric, "OK", map[string]string{})
 	assert.Equal(t, float64(1), testutil.ToFloat64(metric))
-	//assert.Equal(t, float64(0), testutil.ToFloat64(metric.WithLabelValues("NOK")))
 }
 
 func TestReportMetricWithObject(t *testing.T) {
