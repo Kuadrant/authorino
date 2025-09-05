@@ -604,7 +604,7 @@ func TestPipelineMetricLabels(t *testing.T) {
 						"methodLabel": "request.method",
 						"hostLabel": "request.host",
 						"staticLabel": "'foo'",
-						"unResolvableLabel": "auth.nonexistent.label"
+						"unResolvableLabel": "auth.nonexistent.value"
 					}
 				}
 			},

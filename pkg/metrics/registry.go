@@ -1,11 +1,14 @@
 package metrics
 
 import (
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// A registry that can create dynamic metrics that allow different label sets
+// A registry that can create dynamic metrics that allow different label sets.
 type MetricRegistry struct {
+	mu         sync.RWMutex
 	counters   map[string]*DynamicCounter
 	histograms map[string]*DynamicHistogram
 }
@@ -20,21 +23,45 @@ func NewMetricRegistry() *MetricRegistry {
 // Dynamic counters
 
 func (r *MetricRegistry) GetOrCreateDynamicCounter(name, help string) *DynamicCounter {
+	r.mu.RLock()
+	if c, ok := r.counters[name]; ok {
+		r.mu.RUnlock()
+		return c
+	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if c, ok := r.counters[name]; ok {
 		return c
 	}
+
 	c := NewDynamicCounter(name, help)
 	prometheus.MustRegister(c)
 	r.counters[name] = c
 	return c
 }
 
+// -----------------------------------------------------------------------------
 // Dynamic histograms
+// -----------------------------------------------------------------------------
 
 func (r *MetricRegistry) GetOrCreateDynamicHistogram(name, help string) *DynamicHistogram {
+	r.mu.RLock()
+	if h, ok := r.histograms[name]; ok {
+		r.mu.RUnlock()
+		return h
+	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if h, ok := r.histograms[name]; ok {
 		return h
 	}
+
 	h := NewDynamicHistogram(name, help)
 	prometheus.MustRegister(h)
 	r.histograms[name] = h
