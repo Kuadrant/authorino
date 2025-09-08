@@ -498,8 +498,7 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 
 	// Check for custom labels via the heuristic path
 	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
-	customLabels := filteredMetadata["io.kuadrant.metrics.labels"]
-	if customLabels != nil {
+	if customLabels, ok := filteredMetadata["io.kuadrant.metrics.labels"]; ok {
 		for k, v := range customLabels.Fields {
 			switch kind := v.Kind.(type) {
 			case *structpb.Value_StringValue:
