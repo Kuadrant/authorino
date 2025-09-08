@@ -54,6 +54,10 @@ func (dc *DynamicCounter) Inc(labels map[string]string) {
 	dc.counters[key] = c
 }
 
+func (dc *DynamicCounter) Counters() map[string]prometheus.Counter {
+	return dc.counters
+}
+
 func (dc *DynamicCounter) Describe(ch chan<- *prometheus.Desc) {
 	dc.mu.Lock()
 	defer dc.mu.Unlock()

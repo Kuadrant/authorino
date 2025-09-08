@@ -1,28 +1,30 @@
-package metrics
+package service
 
 import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/kuadrant/authorino/pkg/metrics"
 )
 
 // A registry that can create dynamic metrics that allow different label sets.
 type MetricRegistry struct {
 	mu         sync.RWMutex
-	counters   map[string]*DynamicCounter
-	histograms map[string]*DynamicHistogram
+	counters   map[string]*metrics.DynamicCounter
+	histograms map[string]*metrics.DynamicHistogram
 }
 
 func NewMetricRegistry() *MetricRegistry {
 	return &MetricRegistry{
-		counters:   make(map[string]*DynamicCounter),
-		histograms: make(map[string]*DynamicHistogram),
+		counters:   make(map[string]*metrics.DynamicCounter),
+		histograms: make(map[string]*metrics.DynamicHistogram),
 	}
 }
 
 // Dynamic counters
 
-func (r *MetricRegistry) GetOrCreateDynamicCounter(name, help string) *DynamicCounter {
+func (r *MetricRegistry) GetOrCreateDynamicCounter(name, help string) *metrics.DynamicCounter {
 	r.mu.RLock()
 	if c, ok := r.counters[name]; ok {
 		r.mu.RUnlock()
@@ -37,7 +39,7 @@ func (r *MetricRegistry) GetOrCreateDynamicCounter(name, help string) *DynamicCo
 		return c
 	}
 
-	c := NewDynamicCounter(name, help)
+	c := metrics.NewDynamicCounter(name, help)
 	prometheus.MustRegister(c)
 	r.counters[name] = c
 	return c
@@ -47,7 +49,7 @@ func (r *MetricRegistry) GetOrCreateDynamicCounter(name, help string) *DynamicCo
 // Dynamic histograms
 // -----------------------------------------------------------------------------
 
-func (r *MetricRegistry) GetOrCreateDynamicHistogram(name, help string) *DynamicHistogram {
+func (r *MetricRegistry) GetOrCreateDynamicHistogram(name, help string) *metrics.DynamicHistogram {
 	r.mu.RLock()
 	if h, ok := r.histograms[name]; ok {
 		r.mu.RUnlock()
@@ -62,7 +64,7 @@ func (r *MetricRegistry) GetOrCreateDynamicHistogram(name, help string) *Dynamic
 		return h
 	}
 
-	h := NewDynamicHistogram(name, help)
+	h := metrics.NewDynamicHistogram(name, help)
 	prometheus.MustRegister(h)
 	r.histograms[name] = h
 	return h
@@ -72,21 +74,21 @@ func (r *MetricRegistry) GetOrCreateDynamicHistogram(name, help string) *Dynamic
 // Authconfig metrics
 // -----------------------------------------------------------------------------
 
-func (r *MetricRegistry) GetAuthServerAuthConfigTotalMetric() *DynamicCounter {
+func (r *MetricRegistry) GetAuthServerAuthConfigTotalMetric() *metrics.DynamicCounter {
 	return r.GetOrCreateDynamicCounter(
 		"auth_server_authconfig_total",
 		"Total number of authconfigs enforced by the auth server, partitioned by authconfig.",
 	)
 }
 
-func (r *MetricRegistry) GetAuthServerAuthConfigResponseStatusMetric() *DynamicCounter {
+func (r *MetricRegistry) GetAuthServerAuthConfigResponseStatusMetric() *metrics.DynamicCounter {
 	return r.GetOrCreateDynamicCounter(
 		"auth_server_authconfig_response_status",
 		"Response status of authconfigs sent by the auth server, partitioned by authconfig.",
 	)
 }
 
-func (r *MetricRegistry) GetAuthServerAuthConfigDurationMetric() *DynamicHistogram {
+func (r *MetricRegistry) GetAuthServerAuthConfigDurationMetric() *metrics.DynamicHistogram {
 	return r.GetOrCreateDynamicHistogram(
 		"auth_server_authconfig_duration_seconds",
 		"Response latency of authconfig enforced by the auth server (in seconds).",
@@ -97,35 +99,35 @@ func (r *MetricRegistry) GetAuthServerAuthConfigDurationMetric() *DynamicHistogr
 // Evaluator metrics
 // -----------------------------------------------------------------------------
 
-func (r *MetricRegistry) GetAuthServerEvaluatorTotalMetric() *DynamicCounter {
+func (r *MetricRegistry) GetAuthServerEvaluatorTotalMetric() *metrics.DynamicCounter {
 	return r.GetOrCreateDynamicCounter(
 		"auth_server_evaluator_total",
 		"Total number of evaluations of individual authconfig rule performed by the auth server.",
 	)
 }
 
-func (r *MetricRegistry) GetAuthServerEvaluatorCancelledMetric() *DynamicCounter {
+func (r *MetricRegistry) GetAuthServerEvaluatorCancelledMetric() *metrics.DynamicCounter {
 	return r.GetOrCreateDynamicCounter(
 		"auth_server_evaluator_cancelled",
 		"Number of evaluations of individual authconfig rule cancelled by the auth server.",
 	)
 }
 
-func (r *MetricRegistry) GetAuthServerEvaluatorIgnoredMetric() *DynamicCounter {
+func (r *MetricRegistry) GetAuthServerEvaluatorIgnoredMetric() *metrics.DynamicCounter {
 	return r.GetOrCreateDynamicCounter(
 		"auth_server_evaluator_ignored",
 		"Number of evaluations of individual authconfig rule ignored by the auth server.",
 	)
 }
 
-func (r *MetricRegistry) GetAuthServerEvaluatorDeniedMetric() *DynamicCounter {
+func (r *MetricRegistry) GetAuthServerEvaluatorDeniedMetric() *metrics.DynamicCounter {
 	return r.GetOrCreateDynamicCounter(
 		"auth_server_evaluator_denied",
 		"Number of denials from individual authconfig rule evaluated by the auth server.",
 	)
 }
 
-func (r *MetricRegistry) GetAuthServerEvaluatorDurationMetric() *DynamicHistogram {
+func (r *MetricRegistry) GetAuthServerEvaluatorDurationMetric() *metrics.DynamicHistogram {
 	return r.GetOrCreateDynamicHistogram(
 		"auth_server_evaluator_duration_seconds",
 		"Response latency of individual authconfig rule evaluated by the auth server (in seconds).",

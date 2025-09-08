@@ -86,17 +86,17 @@ type AuthPipeline struct {
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
 
-	metrics.ReportMetricWithObject(metrics.Registry.GetAuthServerEvaluatorTotalMetric(), monitorable, pipeline.metricLabels())
+	metrics.ReportMetricWithObject(Registry.GetAuthServerEvaluatorTotalMetric(), monitorable, pipeline.metricLabels())
 
 	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		metrics.ReportMetricWithObject(metrics.Registry.GetAuthServerEvaluatorCancelledMetric(), monitorable, pipeline.metricLabels())
+		metrics.ReportMetricWithObject(Registry.GetAuthServerEvaluatorCancelledMetric(), monitorable, pipeline.metricLabels())
 		return
 	}
 
 	if conditionalEv, ok := config.(auth.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			metrics.ReportMetricWithObject(metrics.Registry.GetAuthServerEvaluatorIgnoredMetric(), monitorable, pipeline.metricLabels())
+			metrics.ReportMetricWithObject(Registry.GetAuthServerEvaluatorIgnoredMetric(), monitorable, pipeline.metricLabels())
 			return
 		}
 	}
@@ -105,7 +105,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			metrics.ReportMetricWithObject(metrics.Registry.GetAuthServerEvaluatorDeniedMetric(), monitorable, pipeline.metricLabels())
+			metrics.ReportMetricWithObject(Registry.GetAuthServerEvaluatorDeniedMetric(), monitorable, pipeline.metricLabels())
 
 			if failureCallback != nil {
 				failureCallback()
@@ -119,7 +119,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		}
 	}
 
-	metrics.ReportTimedMetricWithObject(metrics.Registry.GetAuthServerEvaluatorDurationMetric(), evaluateFunc, monitorable, pipeline.metricLabels())
+	metrics.ReportTimedMetricWithObject(Registry.GetAuthServerEvaluatorDurationMetric(), evaluateFunc, monitorable, pipeline.metricLabels())
 }
 
 type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -436,7 +436,7 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 		return result
 	}
 
-	metrics.ReportMetric(metrics.Registry.GetAuthServerAuthConfigTotalMetric(), pipeline.metricLabels())
+	metrics.ReportMetric(Registry.GetAuthServerAuthConfigTotalMetric(), pipeline.metricLabels())
 
 	authResult := make(chan auth.AuthResult)
 
@@ -475,14 +475,14 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 			authResult <- result
 		}
 
-		metrics.ReportTimedMetric(metrics.Registry.GetAuthServerAuthConfigDurationMetric(), evaluateFunc, pipeline.metricLabels())
+		metrics.ReportTimedMetric(Registry.GetAuthServerAuthConfigDurationMetric(), evaluateFunc, pipeline.metricLabels())
 	}()
 
 	return <-authResult
 }
 
 func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
-	metrics.ReportMetricWithStatus(metrics.Registry.GetAuthServerAuthConfigResponseStatusMetric(), rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels())
+	metrics.ReportMetricWithStatus(Registry.GetAuthServerAuthConfigResponseStatusMetric(), rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels())
 }
 
 func (pipeline *AuthPipeline) metricLabels() map[string]string {

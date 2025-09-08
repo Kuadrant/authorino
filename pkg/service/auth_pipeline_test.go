@@ -638,7 +638,7 @@ func TestPipelineMetricLabels(t *testing.T) {
 
 	// AuthConfig Labels
 	assert.Equal(t, "authorino", labels["namespace"])
-	assert.Equal(t, "api-protection", labels["name"])
+	assert.Equal(t, "api-protection", labels["authconfig"])
 
 	// Custom Labels
 	assert.Equal(t, "GET", labels["methodLabel"])
