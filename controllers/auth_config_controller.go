@@ -662,7 +662,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		AuthorizationConfigs: interfacedAuthorizationConfigs,
 		ResponseConfigs:      interfacedResponseConfigs,
 		CallbackConfigs:      interfacedCallbackConfigs,
-		Labels:               map[string]string{"namespace": authConfig.Namespace, "name": authConfig.Name},
+		Labels:               map[string]string{"namespace": authConfig.Namespace, "authconfig": authConfig.Name},
 	}
 
 	// denyWith

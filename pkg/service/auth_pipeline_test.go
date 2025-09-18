@@ -628,7 +628,7 @@ func TestPipelineMetricLabels(t *testing.T) {
 	_ = gojson.Unmarshal([]byte(reqJSON), &request)
 
 	pipeline := newTestAuthPipeline(
-		evaluators.AuthConfig{Labels: map[string]string{"namespace": "authorino", "name": "api-protection"}},
+		evaluators.AuthConfig{Labels: map[string]string{"namespace": "authorino", "authconfig": "api-protection"}},
 		&request,
 	)
 

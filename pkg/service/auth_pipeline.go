@@ -515,11 +515,6 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	labels := maps.Clone(pipeline.AuthConfig.Labels)
 	if labels == nil {
 		labels = make(map[string]string)
-	} else {
-		if labels["name"] != "" {
-			labels["authconfig"] = labels["name"]
-			delete(labels, "name")
-		}
 	}
 
 	// Check for custom labels via the heuristic path
