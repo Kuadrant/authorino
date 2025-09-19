@@ -124,5 +124,5 @@ func (r *SecretReconciler) refreshK8sSecretBasedIdentity(ctx context.Context, au
 }
 
 func authConfigName(authConfig *evaluators.AuthConfig) string {
-	return types.NamespacedName{Namespace: authConfig.Labels["namespace"], Name: authConfig.Labels["name"]}.String()
+	return types.NamespacedName{Namespace: authConfig.Labels["namespace"], Name: authConfig.Labels["authconfig"]}.String()
 }

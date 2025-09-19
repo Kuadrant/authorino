@@ -594,3 +594,59 @@ func TestNewAuthorizationJSON(t *testing.T) {
 
 	assert.Equal(t, expectedAuthJSON, NewAuthorizationJSON(request, authPipeline))
 }
+
+func TestPipelineMetricLabels(t *testing.T) {
+	reqJSON := `{
+		"attributes": {
+			"metadata_context": {
+				"filter_metadata": {
+					"io.kuadrant.metrics.labels": {
+						"methodLabel": { "cel_expr": "request.method" },
+						"hostLabel": { "cel_expr": "request.host" },
+						"stringLabel": "foo",
+						"intLabel": 123,
+						"boolLabel": true,
+						"unResolvableLabel": { "cel_expr": "auth.nonexistent.value" },
+						"unsupportedNullLabel": null
+					}
+				}
+			},
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/operation",
+					"method": "GET",
+					"headers": {
+						"authorization": "Bearer n3ex87bye9238ry8"
+					}
+				}
+			}
+		}
+	}`
+
+	var request envoy_auth.CheckRequest
+	_ = gojson.Unmarshal([]byte(reqJSON), &request)
+
+	pipeline := newTestAuthPipeline(
+		evaluators.AuthConfig{Labels: map[string]string{"namespace": "authorino", "authconfig": "api-protection"}},
+		&request,
+	)
+
+	labels := pipeline.metricLabels()
+
+	assert.Equal(t, 7, len(labels))
+
+	// AuthConfig Labels
+	assert.Equal(t, "authorino", labels["namespace"])
+	assert.Equal(t, "api-protection", labels["authconfig"])
+
+	// Custom Labels
+	assert.Equal(t, "GET", labels["methodLabel"])
+	assert.Equal(t, "my-api", labels["hostLabel"])
+	assert.Equal(t, "foo", labels["stringLabel"])
+	assert.Equal(t, "123", labels["intLabel"])
+	assert.Equal(t, "true", labels["boolLabel"])
+	// Unsupported labels
+	assert.Equal(t, "", labels["unResolvableLabel"])
+	assert.Equal(t, "", labels["nullLabel"])
+}

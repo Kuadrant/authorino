@@ -3,12 +3,16 @@ package service
 import (
 	gojson "encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"sync"
+
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/evaluators"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -21,18 +25,16 @@ import (
 )
 
 var (
-	evaluatorMetricLabels = []string{"evaluator_type", "evaluator_name"}
-
 	// evaluator metrics
-	authServerEvaluatorTotalMetric     = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_total", "Total number of evaluations of individual authconfig rule performed by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorCancelledMetric = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_cancelled", "Number of evaluations of individual authconfig rule cancelled by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorIgnoredMetric   = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_ignored", "Number of evaluations of individual authconfig rule ignored by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorDeniedMetric    = metrics.NewAuthConfigCounterMetric("auth_server_evaluator_denied", "Number of denials from individual authconfig rule evaluated by the auth server.", evaluatorMetricLabels...)
-	authServerEvaluatorDurationMetric  = metrics.NewAuthConfigDurationMetric("auth_server_evaluator_duration_seconds", "Response latency of individual authconfig rule evaluated by the auth server (in seconds).", evaluatorMetricLabels...)
+	authServerEvaluatorTotalMetric     = metrics.NewDynamicCounter("auth_server_evaluator_total", "Total number of evaluations of individual authconfig rule performed by the auth server.")
+	authServerEvaluatorCancelledMetric = metrics.NewDynamicCounter("auth_server_evaluator_cancelled", "Number of evaluations of individual authconfig rule cancelled by the auth server.")
+	authServerEvaluatorIgnoredMetric   = metrics.NewDynamicCounter("auth_server_evaluator_ignored", "Number of evaluations of individual authconfig rule ignored by the auth server.")
+	authServerEvaluatorDeniedMetric    = metrics.NewDynamicCounter("auth_server_evaluator_denied", "Number of denials from individual authconfig rule evaluated by the auth server.")
+	authServerEvaluatorDurationMetric  = metrics.NewDynamicHistogram("auth_server_evaluator_duration_seconds", "Response latency of individual authconfig rule evaluated by the auth server (in seconds).")
 	// authconfig metrics
-	authServerAuthConfigTotalMetric          = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_total", "Total number of authconfigs enforced by the auth server, partitioned by authconfig.")
-	authServerAuthConfigResponseStatusMetric = metrics.NewAuthConfigCounterMetric("auth_server_authconfig_response_status", "Response status of authconfigs sent by the auth server, partitioned by authconfig.", "status")
-	authServerAuthConfigDurationMetric       = metrics.NewAuthConfigDurationMetric("auth_server_authconfig_duration_seconds", "Response latency of authconfig enforced by the auth server (in seconds).")
+	authServerAuthConfigTotalMetric          = metrics.NewDynamicCounter("auth_server_authconfig_total", "Total number of authconfigs enforced by the auth server, partitioned by authconfig.")
+	authServerAuthConfigResponseStatusMetric = metrics.NewDynamicCounter("auth_server_authconfig_response_status", "Response status of authconfigs sent by the auth server, partitioned by authconfig.")
+	authServerAuthConfigDurationMetric       = metrics.NewDynamicHistogram("auth_server_authconfig_duration_seconds", "Response latency of authconfig enforced by the auth server (in seconds).")
 )
 
 func init() {
@@ -109,17 +111,18 @@ type AuthPipeline struct {
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
-	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels()...)
+
+	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels())
 
 	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels()...)
+		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels())
 		return
 	}
 
 	if conditionalEv, ok := config.(auth.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels()...)
+			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels())
 			return
 		}
 	}
@@ -128,7 +131,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels()...)
+			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels())
 
 			if failureCallback != nil {
 				failureCallback()
@@ -142,7 +145,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		}
 	}
 
-	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels()...)
+	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels())
 }
 
 type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -459,7 +462,7 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 		return result
 	}
 
-	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels()...)
+	metrics.ReportMetric(authServerAuthConfigTotalMetric, pipeline.metricLabels())
 
 	authResult := make(chan auth.AuthResult)
 
@@ -498,19 +501,62 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 			authResult <- result
 		}
 
-		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels()...)
+		metrics.ReportTimedMetric(authServerAuthConfigDurationMetric, evaluateFunc, pipeline.metricLabels())
 	}()
 
 	return <-authResult
 }
 
 func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
-	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels()...)
+	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels())
 }
 
-func (pipeline *AuthPipeline) metricLabels() []string {
-	labels := pipeline.AuthConfig.Labels
-	return []string{labels["namespace"], labels["name"]}
+func (pipeline *AuthPipeline) metricLabels() map[string]string {
+	labels := maps.Clone(pipeline.AuthConfig.Labels)
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+
+	// Check for custom labels via the heuristic path
+	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
+	if customLabels, ok := filteredMetadata["io.kuadrant.metrics.labels"]; ok {
+		for k, v := range customLabels.Fields {
+			switch kind := v.Kind.(type) {
+			case *structpb.Value_StringValue:
+				// Just a plain string, treat it as already evaluated
+				labels[k] = kind.StringValue
+
+			case *structpb.Value_NumberValue:
+				labels[k] = fmt.Sprintf("%v", kind.NumberValue)
+
+			case *structpb.Value_BoolValue:
+				labels[k] = fmt.Sprintf("%v", kind.BoolValue)
+
+			case *structpb.Value_StructValue:
+				// Could be a CEL expression wrapper { "cel_expr": "<expr>" }
+				if celExprField, ok := kind.StructValue.Fields["cel_expr"]; ok {
+					if exprStr := celExprField.GetStringValue(); exprStr != "" {
+						expr, err := cel.NewExpression(exprStr)
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
+							continue
+						}
+						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
+							continue
+						}
+						labels[k] = fmt.Sprintf("%v", value)
+					}
+				}
+
+			default:
+				pipeline.Logger.V(1).Info("unexpected value kind", "kind", kind)
+			}
+		}
+	}
+
+	return labels
 }
 
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {
