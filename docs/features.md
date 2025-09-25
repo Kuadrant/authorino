@@ -296,7 +296,7 @@ spec:
   authorization:
     "read-only-access-if-authn-fails":
       when:
-      - predicate: has(auth.identity.anonymous) && auth.identity.anonymous
+      - predicate: auth.identity.anonymous?
       patternMatching:
         patterns:
         - predicate: request.method == 'GET'

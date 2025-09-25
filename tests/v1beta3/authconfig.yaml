@@ -37,9 +37,9 @@ spec:
         jwt-rbac:
           value: true
         roles:
-          expression: "has(auth.identity.realm_access) ? auth.identity.realm_access.roles : []"
+          expression: "auth.?identity.realm_access.roles.orValue([])"
         username:
-          expression: "has(auth.identity.preferred_username) ? auth.identity.preferred_username : 'unknown'"
+          expression: "auth.?identity.preferred_username.orValue('unknown')"
     oauth2-introspection:
       oauth2Introspection:
         credentialsRef:
@@ -53,9 +53,9 @@ spec:
         jwt-rbac:
           value: true
         roles:
-          expression: "has(auth.identity.realm_access) ? auth.identity.realm_access.roles : []"
+          expression: "auth.?identity.realm_access.roles.orValue([])"
         username:
-          expression: "has(auth.identity.preferred_username) ? auth.identity.preferred_username : 'unknown'"
+          expression: "auth.?identity.preferred_username.orValue('unknown')"
       cache:
         key:
           expression: request.headers["authorization"]

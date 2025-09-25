@@ -95,7 +95,7 @@ func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (
 		decls.NewConst(RootDestinationBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
 	)}, opts...)
-	envOpts = append(envOpts, ext.Strings())
+	envOpts = append(envOpts, ext.Strings(), cel.OptionalTypes())
 	env, env_err := cel.NewEnv(envOpts...)
 	if env_err != nil {
 		return nil, env_err
