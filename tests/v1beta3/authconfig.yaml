@@ -103,14 +103,14 @@ spec:
     allowed-methods:
       opa:
         externalPolicy:
-          url: https://raw.githubusercontent.com/guicassolato/authorino-opa/main/allowed-methods.rego
+          url: https://raw.githubusercontent.com/KevFan/authorino-opa/refs/heads/opa-v1/allowed-methods.rego
           ttl: 300
     geofence:
       opa:
         allValues: true
         rego: |
-          country = object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
           allow {
+            country := object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
             allowed_countries := ["ES", "FR", "IT"]
             allowed_countries[_] == country
           }
@@ -141,8 +141,10 @@ spec:
     timestamp:
       opa:
         rego: |
-          now = time.now_ns() / 1000000000
-          allow = true
+          allow {
+            now := time.now_ns() / 1000000000
+            true
+          }
         allValues: true
       priority: 1
 

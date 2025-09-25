@@ -177,7 +177,7 @@ spec:
             rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat(" ",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
           }
 
-          allow {
+          allow if {
             permissions := object.get(io.jwt.decode(rpt)[1], "authorization", { "permissions": [] }).permissions
             permissions[i]
             permissions[i].rsid = resource_id
