@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build-info.outputs.version }}
+      version_tag: ${{ steps.build-info.outputs.version_tag }}
       git_sha: ${{ steps.build-info.outputs.git_sha }}
       dirty: ${{ steps.build-info.outputs.dirty }}
     steps:
@@ -28,10 +29,13 @@ jobs:
           if [[ ${GITHUB_REF_NAME/\//-} =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
             tag=${GITHUB_REF_NAME/\//-}
             echo "version=${tag#v}" >> $GITHUB_OUTPUT
+            echo "version_tag=${tag}" >> $GITHUB_OUTPUT
           elif [[ ${GITHUB_REF_NAME/\//-} == "main" ]]; then
             echo "version=latest" >> $GITHUB_OUTPUT
+            echo "version_tag=latest" >> $GITHUB_OUTPUT
           else
             echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "version_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
           echo "git_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "dirty=false" >> $GITHUB_OUTPUT
@@ -108,7 +112,7 @@ jobs:
         with:
           images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
           tags: |
-            type=ref,event=branch
+            type=raw,value=${{ github.ref_name }},enable={{is_not_default_branch}}
             type=raw,value=${{ github.sha }}
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Login to registry
@@ -127,4 +131,4 @@ jobs:
       - name: Inspect image
         if: ${{ !env.ACT }}
         run: |
-          docker buildx imagetools inspect ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino:${{ needs.prepare.outputs.version }}
+          docker buildx imagetools inspect ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino:${{ needs.prepare.outputs.version_tag }}
