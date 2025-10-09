@@ -745,8 +745,16 @@ type WrappedSuccessResponseSpec struct {
 	DynamicMetadata map[string]SuccessResponseSpec `json:"dynamicMetadata,omitempty"`
 }
 
+// +kubebuilder:validation:Enum:=AppendOrAdd;MissingAdd;ReplaceOrAdd;Replace
+type ResponseHeaderAction string
+
 type HeaderSuccessResponseSpec struct {
 	SuccessResponseSpec `json:",omitempty"`
+
+	// Action to be applied to the response header depending on whether the header already exists or not.
+	// +optional
+	// +kubebuilder:default:=AppendOrAdd
+	Action ResponseHeaderAction `json:"action,omitempty"`
 }
 
 // Settings of the success custom response item.

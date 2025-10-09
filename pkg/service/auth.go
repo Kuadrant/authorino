@@ -417,7 +417,7 @@ func (a *AuthService) logAuthResult(result auth.AuthResult, ctx gocontext.Contex
 	}
 }
 
-func buildResponseHeaders(headers []map[string]string) []*envoy_core.HeaderValueOption {
+func buildResponseHeaders(headers []map[string]auth.HeaderValue) []*envoy_core.HeaderValueOption {
 	responseHeaders := make([]*envoy_core.HeaderValueOption, 0)
 
 	for _, headerMap := range headers {
@@ -425,8 +425,9 @@ func buildResponseHeaders(headers []map[string]string) []*envoy_core.HeaderValue
 			responseHeaders = append(responseHeaders, &envoy_core.HeaderValueOption{
 				Header: &envoy_core.HeaderValue{
 					Key:   key,
-					Value: value,
+					Value: value.Value,
 				},
+				AppendAction: envoy_core.HeaderValueOption_HeaderAppendAction(value.Action),
 			})
 		}
 	}
@@ -434,16 +435,16 @@ func buildResponseHeaders(headers []map[string]string) []*envoy_core.HeaderValue
 	return responseHeaders
 }
 
-func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string]string) []*envoy_core.HeaderValueOption {
-	var headers []map[string]string
+func buildResponseHeadersWithReason(authReason string, extraHeaders []map[string]auth.HeaderValue) []*envoy_core.HeaderValueOption {
+	var headers []map[string]auth.HeaderValue
 
 	if extraHeaders != nil {
 		headers = extraHeaders
 	} else {
-		headers = make([]map[string]string, 0)
+		headers = make([]map[string]auth.HeaderValue, 0)
 	}
 
-	headers = append(headers, map[string]string{X_EXT_AUTH_REASON_HEADER: authReason})
+	headers = append(headers, map[string]auth.HeaderValue{X_EXT_AUTH_REASON_HEADER: {Value: authReason}})
 
 	return buildResponseHeaders(headers)
 }

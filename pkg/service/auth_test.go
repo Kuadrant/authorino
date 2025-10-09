@@ -51,7 +51,7 @@ func TestSuccessResponse(t *testing.T) {
 	resp = service.successResponse(auth.AuthResult{}, nil).GetOkResponse()
 	assert.Equal(t, len(resp.GetHeaders()), 0)
 
-	headers := []map[string]string{{"X-Custom-Header": "some-value"}}
+	headers := []map[string]auth.HeaderValue{{"X-Custom-Header": {Value: "some-value"}}}
 	resp = service.successResponse(auth.AuthResult{Headers: headers}, nil).GetOkResponse()
 	assert.Equal(t, getHeader(resp.GetHeaders(), "X-Custom-Header"), "some-value")
 }
@@ -62,7 +62,7 @@ func TestDeniedResponse(t *testing.T) {
 	}
 
 	var resp *envoy_auth.DeniedHttpResponse
-	var extraHeaders []map[string]string
+	var extraHeaders []map[string]auth.HeaderValue
 
 	resp = service.deniedResponse(auth.AuthResult{Code: rpc.FAILED_PRECONDITION, Message: "Invalid request"}).GetDeniedResponse()
 	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_BadRequest)
@@ -72,7 +72,7 @@ func TestDeniedResponse(t *testing.T) {
 	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_NotFound)
 	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Service not found")
 
-	extraHeaders = []map[string]string{{"WWW-Authenticate": "Bearer"}}
+	extraHeaders = []map[string]auth.HeaderValue{{"WWW-Authenticate": {Value: "Bearer"}}}
 	resp = service.deniedResponse(auth.AuthResult{Code: rpc.UNAUTHENTICATED, Message: "Unauthenticated", Headers: extraHeaders}).GetDeniedResponse()
 	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_Unauthorized)
 	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Unauthenticated")
@@ -82,7 +82,7 @@ func TestDeniedResponse(t *testing.T) {
 	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_Forbidden)
 	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Unauthorized")
 
-	extraHeaders = []map[string]string{{"Location": "http://my-app.io/login"}}
+	extraHeaders = []map[string]auth.HeaderValue{{"Location": {Value: "http://my-app.io/login"}}}
 	resp = service.deniedResponse(auth.AuthResult{Code: rpc.UNAUTHENTICATED, Status: envoy_type.StatusCode_Found, Message: "Please login", Headers: extraHeaders}).GetDeniedResponse()
 	assert.Equal(t, resp.Status.Code, envoy_type.StatusCode_Found)
 	assert.Equal(t, getHeader(resp.GetHeaders(), X_EXT_AUTH_REASON_HEADER), "Please login")
@@ -251,12 +251,12 @@ func TestAuthServiceRawHTTPAuthorization_WithHeaders(t *testing.T) {
 	defer mockController.Finish()
 
 	authConfig := mockAnonymousAccessAuthConfig()
-	authConfig.ResponseConfigs = []auth.AuthConfigEvaluator{&evaluators.ResponseConfig{
-		Name:       "x-auth-data",
-		Wrapper:    "httpHeader",
-		WrapperKey: "x-auth-data",
-		DynamicJSON: &response.DynamicJSON{
-			Properties: []json.JSONProperty{{Name: "headers", Value: &json.JSONValue{Pattern: "context.request.http.headers"}}},
+	authConfig.ResponseConfigs = []auth.AuthConfigEvaluator{&evaluators.HeaderSuccessResponseEvaluator{
+		ResponseConfig: &evaluators.ResponseConfig{
+			Name:       "x-auth-data",
+			DynamicJSON: &response.DynamicJSON{
+				Properties: []json.JSONProperty{{Name: "headers", Value: &json.JSONValue{Pattern: "context.request.http.headers"}}},
+			},
 		},
 	}}
 	indexMock := mock_index.NewMockIndex(mockController)

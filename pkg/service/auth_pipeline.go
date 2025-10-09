@@ -83,7 +83,7 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 		Identity:      make(map[*evaluators.IdentityConfig]interface{}),
 		Metadata:      make(map[*evaluators.MetadataConfig]interface{}),
 		Authorization: make(map[*evaluators.AuthorizationConfig]interface{}),
-		Response:      make(map[*evaluators.ResponseConfig]interface{}),
+		Response:      make(map[evaluators.ResponseEvaluator]interface{}),
 		Callbacks:     make(map[*evaluators.CallbackConfig]interface{}),
 		Logger:        logger,
 		mu:            sync.RWMutex{},
@@ -101,7 +101,7 @@ type AuthPipeline struct {
 	Identity      map[*evaluators.IdentityConfig]interface{}
 	Metadata      map[*evaluators.MetadataConfig]interface{}
 	Authorization map[*evaluators.AuthorizationConfig]interface{}
-	Response      map[*evaluators.ResponseConfig]interface{}
+	Response      map[evaluators.ResponseEvaluator]interface{}
 	Callbacks     map[*evaluators.CallbackConfig]interface{}
 
 	Logger log.Logger
@@ -341,7 +341,7 @@ func (pipeline *AuthPipeline) evaluateResponseConfigs() {
 		}()
 
 		for resp := range respChannel {
-			conf, _ := resp.Evaluator.(*evaluators.ResponseConfig)
+			conf, _ := resp.Evaluator.(evaluators.ResponseEvaluator)
 			obj := resp.Object
 
 			if resp.Success() {
@@ -433,11 +433,17 @@ func (pipeline *AuthPipeline) setAuthorizationObj(conf *evaluators.Authorization
 	pipeline.Authorization[conf] = obj
 }
 
-func (pipeline *AuthPipeline) getResponseObjs() map[*evaluators.ResponseConfig]interface{} {
-	return getObjs(pipeline.Response, pipeline)
+func (pipeline *AuthPipeline) getResponseObjs() map[evaluators.ResponseEvaluator]interface{} {
+	pipeline.mu.RLock()
+	defer pipeline.mu.RUnlock()
+	objs := make(map[evaluators.ResponseEvaluator]interface{})
+	for conf, obj := range pipeline.Response {
+		objs[conf] = obj
+	}
+	return objs
 }
 
-func (pipeline *AuthPipeline) setResponseObj(conf *evaluators.ResponseConfig, obj interface{}) {
+func (pipeline *AuthPipeline) setResponseObj(conf evaluators.ResponseEvaluator, obj interface{}) {
 	pipeline.mu.Lock()
 	defer pipeline.mu.Unlock()
 	pipeline.Response[conf] = obj
@@ -488,8 +494,16 @@ func (pipeline *AuthPipeline) Evaluate() auth.AuthResult {
 				} else {
 					// phase 4: response
 					pipeline.evaluateResponseConfigs()
-					responseHeaders, responseMetadata := evaluators.WrapResponses(pipeline.Response)
-					result.Headers = []map[string]string{responseHeaders}
+					responseHeaders := make(map[string]auth.HeaderValue, 0)
+					responseMetadata := make(map[string]any, 0)
+					for ev, obj := range pipeline.Response {
+						if _, ok := ev.(*evaluators.HeaderSuccessResponseEvaluator); ok {
+							responseHeaders[ev.GetKey()] = obj.(auth.HeaderValue)
+							continue
+						}
+						responseMetadata[ev.GetKey()] = obj
+					}
+					result.Headers = []map[string]auth.HeaderValue{responseHeaders}
 					result.Metadata = responseMetadata
 				}
 			}
@@ -611,7 +625,7 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 	// response
 	response := make(map[string]interface{})
 	for config, obj := range pipeline.getResponseObjs() {
-		response[config.Name] = obj
+		response[config.GetResponseConfig().Name] = obj
 	}
 	authData["response"] = response
 
@@ -646,11 +660,11 @@ func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, deny
 		}
 
 		if len(denyWith.Headers) > 0 {
-			headers := make([]map[string]string, 0)
+			headers := make([]map[string]auth.HeaderValue, 0)
 			for _, header := range denyWith.Headers {
 				resolved, _ := header.Value.ResolveFor(authJSON)
 				value, _ := json.StringifyJSON(resolved)
-				headers = append(headers, map[string]string{header.Name: value})
+				headers = append(headers, map[string]auth.HeaderValue{header.Name: {Value: value}})
 			}
 			authResult.Headers = headers
 		}

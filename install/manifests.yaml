@@ -4849,6 +4849,17 @@ spec:
                             required:
                             - plain
                           properties:
+                            action:
+                              default: AppendOrAdd
+                              description: Action to be applied to the response header
+                                depending on whether the header already exists or
+                                not.
+                              enum:
+                              - AppendOrAdd
+                              - MissingAdd
+                              - ReplaceOrAdd
+                              - Replace
+                              type: string
                             cache:
                               description: |-
                                 Caching options for the resolved object returned when applying this config.

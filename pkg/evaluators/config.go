@@ -27,13 +27,13 @@ type AuthConfig struct {
 	DenyWith
 }
 
-func (config *AuthConfig) GetChallengeHeaders() []map[string]string {
-	challengeHeaders := make([]map[string]string, 0)
+func (config *AuthConfig) GetChallengeHeaders() []map[string]auth.HeaderValue {
+	challengeHeaders := make([]map[string]auth.HeaderValue, 0)
 
 	for _, authConfig := range config.IdentityConfigs {
 		if idConfig, ok := authConfig.(*IdentityConfig); ok {
 			challenge := fmt.Sprintf("%v realm=\"%v\"", idConfig.GetAuthCredentials().GetCredentialsKeySelector(), idConfig.Name)
-			challengeHeaders = append(challengeHeaders, map[string]string{"WWW-Authenticate": challenge})
+			challengeHeaders = append(challengeHeaders, map[string]auth.HeaderValue{"WWW-Authenticate": {Value: challenge}})
 		}
 	}
 

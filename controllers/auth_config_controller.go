@@ -577,15 +577,27 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if err != nil {
 				return nil, err
 			}
-			translatedResponse := evaluators.NewResponseConfig(
-				responseName,
-				headerSuccessResponse.Priority,
-				predicates,
-				"httpHeader",
-				headerSuccessResponse.Key,
-				headerSuccessResponse.Metrics,
-			)
-
+			translatedResponse := &evaluators.HeaderSuccessResponseEvaluator{
+				ResponseConfig: &evaluators.ResponseConfig{
+					Name:       responseName,
+					Priority:   headerSuccessResponse.Priority,
+					Conditions: predicates,
+					Metrics: 	  headerSuccessResponse.Metrics,
+				},
+				Key:    headerSuccessResponse.Key,
+			}
+			switch headerSuccessResponse.Action {
+			case "AppendOrAdd":
+				translatedResponse.Action = auth.HeaderAction_AppendOrAdd
+			case "MissingAdd":
+				translatedResponse.Action = auth.HeaderAction_MissingAdd
+			case "ReplaceOrAdd":
+				translatedResponse.Action = auth.HeaderAction_ReplaceOrAdd
+			case "Replace":
+				translatedResponse.Action = auth.HeaderAction_Replace
+			default:
+				return nil, fmt.Errorf("unknown header action %v", headerSuccessResponse.Action)
+			}
 			if err := injectCache(headerSuccessResponse.Cache, translatedResponse); err != nil {
 				return nil, err
 			}
@@ -601,15 +613,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if err != nil {
 				return nil, err
 			}
-			translatedResponse := evaluators.NewResponseConfig(
-				responseName,
-				successResponse.Priority,
-				predicates,
-				"envoyDynamicMetadata",
-				successResponse.Key,
-				successResponse.Metrics,
-			)
-
+			translatedResponse := &evaluators.DynamicMetadataSuccessResponseEvaluator{
+				ResponseConfig: &evaluators.ResponseConfig{
+					Name:       responseName,
+					Priority:   successResponse.Priority,
+					Conditions: predicates,
+					Metrics: 	  successResponse.Metrics,
+				},
+				Key:    successResponse.Key,
+			}
 			if err := injectCache(successResponse.Cache, translatedResponse); err != nil {
 				return nil, err
 			}
@@ -699,7 +711,7 @@ func valueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
 	return strValue, nil
 }
 
-func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, successResponse api.SuccessResponseSpec, r *AuthConfigReconciler, translatedResponse *evaluators.ResponseConfig) error {
+func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, successResponse api.SuccessResponseSpec, r *AuthConfigReconciler, translatedResponse evaluators.ResponseEvaluator) error {
 	switch successResponse.GetMethod() {
 	// wristband
 	case api.WristbandAuthResponse:
@@ -747,7 +759,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 		); err != nil {
 			return err
 		} else {
-			translatedResponse.Wristband = authorinoWristband
+			translatedResponse.GetResponseConfig().Wristband = authorinoWristband
 		}
 
 	// dynamic json
@@ -766,14 +778,14 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 			}
 		}
 
-		translatedResponse.DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
+		translatedResponse.GetResponseConfig().DynamicJSON = response_evaluators.NewDynamicJSONResponse(jsonProperties)
 
 	// plain
 	case api.PlainAuthResponse:
 		if value, err := valueFrom((*api.ValueOrSelector)(successResponse.Plain)); err != nil {
 			return err
 		} else {
-			translatedResponse.Plain = &response_evaluators.Plain{
+			translatedResponse.GetResponseConfig().Plain = &response_evaluators.Plain{
 				Value: value,
 			}
 		}
@@ -784,7 +796,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 	return nil
 }
 
-func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) error {
+func injectCache(cache *api.EvaluatorCaching, translatedResponse evaluators.ResponseEvaluator) error {
 	if cache != nil {
 		ttl := cache.TTL
 		if ttl == 0 {
@@ -793,10 +805,7 @@ func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.Res
 		if key, err := getJsonFromStaticDynamic(&cache.Key); err != nil {
 			return err
 		} else {
-			translatedResponse.Cache = evaluators.NewEvaluatorCache(
-				key,
-				ttl,
-			)
+			translatedResponse.SetCache(evaluators.NewEvaluatorCache(key, ttl))
 		}
 	}
 	return nil

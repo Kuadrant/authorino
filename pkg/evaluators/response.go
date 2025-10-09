@@ -15,40 +15,133 @@ const (
 	responseWristband = "RESPONSE_WRISTBAND"
 	responseJSON      = "RESPONSE_JSON"
 	responsePlain     = "RESPONSE_PLAIN"
-
-	HTTP_HEADER_WRAPPER            = "httpHeader"
-	ENVOY_DYNAMIC_METADATA_WRAPPER = "envoyDynamicMetadata"
-
-	DEFAULT_WRAPPER = HTTP_HEADER_WRAPPER
 )
 
-func NewResponseConfig(name string, priority int, conditions jsonexp.Expression, wrapper string, wrapperKey string, metricsEnabled bool) *ResponseConfig {
-	responseConfig := ResponseConfig{
-		Name:       name,
-		Priority:   priority,
-		Conditions: conditions,
-		Wrapper:    DEFAULT_WRAPPER,
-		WrapperKey: name,
-		Metrics:    metricsEnabled,
-	}
+type ResponseEvaluator interface {
+	GetResponseConfig() *ResponseConfig
+	GetName() string
+	GetType() string
+	GetKey() string
+	SetCache(EvaluatorCache)
+}
 
-	if wrapper != "" {
-		responseConfig.Wrapper = wrapper
-	}
+type HeaderSuccessResponseEvaluator struct {
+	*ResponseConfig
+	Key    string
+	Action auth.HeaderAction
+}
 
-	if wrapperKey != "" {
-		responseConfig.WrapperKey = wrapperKey
+func (e *HeaderSuccessResponseEvaluator) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+	obj, err := e.ResponseConfig.Call(pipeline, ctx)
+	if err != nil {
+		return obj, err
 	}
+	return e.wrapObjectAsHeaderValue(obj), nil
+}
 
-	return &responseConfig
+func (e *HeaderSuccessResponseEvaluator) GetName() string {
+	return e.ResponseConfig.GetName()
+}
+
+func (e *HeaderSuccessResponseEvaluator) GetType() string {
+	return e.ResponseConfig.GetType()
+}
+
+func (e *HeaderSuccessResponseEvaluator) GetPriority() int {
+	return e.ResponseConfig.GetPriority()
+}
+
+func (e *HeaderSuccessResponseEvaluator) GetConditions() jsonexp.Expression {
+	return e.ResponseConfig.GetConditions()
+}
+
+func (e *HeaderSuccessResponseEvaluator) GetWristbandIssuer() auth.WristbandIssuer {
+	return e.ResponseConfig.GetWristbandIssuer()
+}
+
+func (e *HeaderSuccessResponseEvaluator) MetricsEnabled() bool {
+	return e.ResponseConfig.MetricsEnabled()
+}
+
+func (e *HeaderSuccessResponseEvaluator) GetResponseConfig() *ResponseConfig {
+	return e.ResponseConfig
+}
+
+func (e *HeaderSuccessResponseEvaluator) GetKey() string {
+	if e.Key != "" {
+		return e.Key
+	}
+	return e.ResponseConfig.Name
+}
+
+func (e *HeaderSuccessResponseEvaluator) SetCache(cache EvaluatorCache) {
+	e.Cache = cache
+}
+
+func (e *HeaderSuccessResponseEvaluator) wrapObjectAsHeaderValue(obj any) auth.HeaderValue {
+	var value string
+	switch e.GetType() {
+	case responseJSON, responseWristband:
+		j, _ := json.StringifyJSON(obj)
+		value = j
+	default:
+		value = fmt.Sprintf("%v", obj)
+	}
+	return auth.HeaderValue{Value: value, Action: e.Action}
+}
+
+type DynamicMetadataSuccessResponseEvaluator struct {
+	*ResponseConfig
+	Key string
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
+	return e.ResponseConfig.Call(pipeline, ctx)
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetName() string {
+	return e.ResponseConfig.GetName()
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetType() string {
+	return e.ResponseConfig.GetType()
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetPriority() int {
+	return e.ResponseConfig.GetPriority()
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetConditions() jsonexp.Expression {
+	return e.ResponseConfig.GetConditions()
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetWristbandIssuer() auth.WristbandIssuer {
+	return e.ResponseConfig.GetWristbandIssuer()
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) MetricsEnabled() bool {
+	return e.ResponseConfig.MetricsEnabled()
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetResponseConfig() *ResponseConfig {
+	return e.ResponseConfig
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) GetKey() string {
+	if e.Key != "" {
+		return e.Key
+	}
+	return e.ResponseConfig.Name
+}
+
+func (e *DynamicMetadataSuccessResponseEvaluator) SetCache(cache EvaluatorCache) {
+	e.Cache = cache
 }
 
 type ResponseConfig struct {
 	Name       string             `yaml:"name"`
 	Priority   int                `yaml:"priority"`
 	Conditions jsonexp.Expression `yaml:"conditions"`
-	Wrapper    string             `yaml:"wrapper"`
-	WrapperKey string             `yaml:"wrapperKey"`
 	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
 
@@ -147,30 +240,4 @@ func (config *ResponseConfig) GetWristbandIssuer() auth.WristbandIssuer {
 
 func (config *ResponseConfig) MetricsEnabled() bool {
 	return config.Metrics
-}
-
-func (config *ResponseConfig) WrapObjectAsHeaderValue(obj any) string {
-	switch config.GetType() {
-	case responseJSON, responseWristband:
-		j, _ := json.StringifyJSON(obj)
-		return j
-	default:
-		return fmt.Sprintf("%v", obj)
-	}
-}
-
-func WrapResponses(responses map[*ResponseConfig]interface{}) (responseHeaders map[string]string, responseMetadata map[string]interface{}) {
-	responseHeaders = make(map[string]string)
-	responseMetadata = make(map[string]interface{})
-
-	for responseConfig, authObj := range responses {
-		switch responseConfig.Wrapper {
-		case HTTP_HEADER_WRAPPER:
-			responseHeaders[responseConfig.WrapperKey] = responseConfig.WrapObjectAsHeaderValue(authObj)
-		case ENVOY_DYNAMIC_METADATA_WRAPPER:
-			responseMetadata[responseConfig.WrapperKey] = authObj
-		}
-	}
-
-	return responseHeaders, responseMetadata
 }

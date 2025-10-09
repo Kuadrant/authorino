@@ -89,7 +89,7 @@ type AuthResult struct {
 	// auth check result
 	Message string `json:"message,omitempty"`
 	// Headers are other HTTP headers to inject in the response
-	Headers []map[string]string `json:"headers,omitempty"`
+	Headers []map[string]HeaderValue `json:"headers,omitempty"`
 	// Metadata are Envoy dynamic metadata content
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 	// Body in the response of the request
@@ -101,4 +101,18 @@ type AuthResult struct {
 // resource or it has failed (deny access)
 func (result *AuthResult) Success() bool {
 	return result.Code == rpc.OK
+}
+
+type HeaderAction int
+
+const ( // Must match order of github.com/envoyproxy/go-control-plane/envoy/config/core/v3#HeaderValueOption_HeaderAppendAction
+	HeaderAction_AppendOrAdd HeaderAction = iota
+	HeaderAction_MissingAdd
+	HeaderAction_ReplaceOrAdd
+	HeaderAction_Replace
+)
+
+type HeaderValue struct {
+	Value  string
+	Action HeaderAction
 }
