@@ -13,33 +13,16 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 
 	kubeAuthz "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	kubeAuthzClient "k8s.io/client-go/kubernetes/typed/authorization/v1"
-	"k8s.io/client-go/rest"
+	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type kubernetesSubjectAccessReviewer interface {
-	SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface
-}
-
-func NewKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes) (*KubernetesAuthz, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func NewKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes, k8sClient k8s_client.Client) *KubernetesAuthz {
 	return &KubernetesAuthz{
 		User:                user,
 		AuthorizationGroups: authorizationGroups,
 		ResourceAttributes:  resourceAttributes,
-		authorizer:          k8sClient.AuthorizationV1(),
-	}, nil
+		k8sClient:           k8sClient,
+	}
 }
 
 type KubernetesAuthzResourceAttributes struct {
@@ -55,8 +38,7 @@ type KubernetesAuthz struct {
 	User                expressions.Value
 	AuthorizationGroups expressions.Value
 	ResourceAttributes  *KubernetesAuthzResourceAttributes
-
-	authorizer kubernetesSubjectAccessReviewer
+	k8sClient           k8s_client.Client
 }
 
 func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (interface{}, error) {
@@ -145,11 +127,10 @@ func (k *KubernetesAuthz) Call(pipeline auth.AuthPipeline, ctx gocontext.Context
 
 	log.FromContext(ctx).WithName("kubernetesauthz").V(1).Info("calling kubernetes subject access review api", "subjectaccessreview", subjectAccessReview)
 
-	if result, err := k.authorizer.SubjectAccessReviews().Create(ctx, &subjectAccessReview, metav1.CreateOptions{}); err != nil {
+	if err := k.k8sClient.Create(ctx, &subjectAccessReview); err != nil {
 		return false, err
-	} else {
-		return parseSubjectAccessReviewResult(result)
 	}
+	return parseSubjectAccessReviewResult(&subjectAccessReview)
 }
 
 func parseSubjectAccessReviewResult(subjectAccessReview *kubeAuthz.SubjectAccessReview) (bool, error) {

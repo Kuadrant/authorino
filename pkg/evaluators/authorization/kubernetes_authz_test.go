@@ -13,62 +13,41 @@ import (
 	"gotest.tools/assert"
 	is "gotest.tools/assert/cmp"
 	kubeAuthz "k8s.io/api/authorization/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeAuthzClient "k8s.io/client-go/kubernetes/typed/authorization/v1"
+	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-type subjectAccessReviewTestClient interface {
-	SetRequest(kubeAuthz.SubjectAccessReviewSpec)
-	GetRequest() kubeAuthz.SubjectAccessReviewSpec
-}
-
-type subjectAccessReviews struct {
-	client subjectAccessReviewTestClient
-	kubeAuthz.SubjectAccessReviewStatus
-}
-
-func (t *subjectAccessReviews) Create(ctx context.Context, subjectAccessReview *kubeAuthz.SubjectAccessReview, opts metav1.CreateOptions) (*kubeAuthz.SubjectAccessReview, error) {
-	// copies the actual request data back so it can be inspected
-	t.client.SetRequest(subjectAccessReview.Spec)
-
-	return &kubeAuthz.SubjectAccessReview{
-		Spec: subjectAccessReview.Spec,
-		Status: kubeAuthz.SubjectAccessReviewStatus{
-			Allowed: t.Allowed,
-			Reason:  t.Reason,
-		},
-	}, nil
-}
-
 type k8sAuthorizationClientMock struct {
-	request kubeAuthz.SubjectAccessReviewSpec
-	kubeAuthz.SubjectAccessReviewStatus
+	k8s_client.Client
+	request                           kubeAuthz.SubjectAccessReviewSpec
+	subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus
+	lastCreatedSubjectAccessReview    *kubeAuthz.SubjectAccessReview
 }
 
-func (client *k8sAuthorizationClientMock) SubjectAccessReviews() kubeAuthzClient.SubjectAccessReviewInterface {
-	return &subjectAccessReviews{
-		client,
-		client.SubjectAccessReviewStatus,
+func (client *k8sAuthorizationClientMock) Create(ctx context.Context, obj k8s_client.Object, opts ...k8s_client.CreateOption) error {
+	if sar, ok := obj.(*kubeAuthz.SubjectAccessReview); ok {
+		client.request = *sar.Spec.DeepCopy()
+		client.lastCreatedSubjectAccessReview = sar
+		sar.Status = client.subjectAccessReviewResponseStatus
 	}
-}
-
-func (client *k8sAuthorizationClientMock) SetRequest(req kubeAuthz.SubjectAccessReviewSpec) {
-	client.request = *req.DeepCopy()
+	return nil
 }
 
 func (client *k8sAuthorizationClientMock) GetRequest() kubeAuthz.SubjectAccessReviewSpec {
 	return client.request
 }
 
-func newKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes, subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus) *KubernetesAuthz {
+func newKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes, subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus) (*KubernetesAuthz, *k8sAuthorizationClientMock) {
+	mockClient := &k8sAuthorizationClientMock{
+		Client:                            fake.NewClientBuilder().Build(),
+		subjectAccessReviewResponseStatus: subjectAccessReviewResponseStatus,
+	}
 	return &KubernetesAuthz{
 		User:                user,
 		AuthorizationGroups: authorizationGroups,
 		ResourceAttributes:  resourceAttributes,
-
-		// mock the authorizer so we can control the response
-		authorizer: &k8sAuthorizationClientMock{SubjectAccessReviewStatus: subjectAccessReviewResponseStatus},
-	}
+		k8sClient:           mockClient,
+	}, mockClient
 }
 
 func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
@@ -81,11 +60,10 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
-	kubernetesAuth := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, nil, kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""})
+	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, nil, kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""})
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
-	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
-	requestData := client.GetRequest()
+	requestData := mockClient.GetRequest()
 	assert.Equal(t, requestData.User, "john")
 	assert.DeepEqual(t, requestData.Groups, []string{"group1", "group2"})
 	assert.Equal(t, requestData.NonResourceAttributes.Path, "/hello")
@@ -105,11 +83,10 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
-	kubernetesAuth := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, nil, nil, kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"})
+	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, nil, nil, kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"})
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
-	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
-	requestData := client.GetRequest()
+	requestData := mockClient.GetRequest()
 	assert.Equal(t, requestData.User, "john")
 	assert.Assert(t, is.Len(requestData.Groups, 0))
 	assert.Equal(t, requestData.NonResourceAttributes.Path, "/hello")
@@ -126,14 +103,13 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john", "groups":["group1","group2"]}}}`)
 
-	kubernetesAuth := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}}, kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""})
+	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}}, kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""})
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, authorized.(bool))
 	assert.NilError(t, err)
 
-	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
-	requestData := client.GetRequest()
+	requestData := mockClient.GetRequest()
 	assert.Equal(t, requestData.User, "john")
 	assert.DeepEqual(t, requestData.Groups, []string{"group1", "group2"})
 	assert.Equal(t, requestData.ResourceAttributes.Namespace, "default")
@@ -146,14 +122,13 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`)
 
-	kubernetesAuth := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Static: []string{"group1", "group2"}}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}}, kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"})
+	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Static: []string{"group1", "group2"}}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}}, kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"})
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, !authorized.(bool))
 	assert.ErrorContains(t, err, "not authorized: some-reason")
 
-	client, _ := kubernetesAuth.authorizer.(subjectAccessReviewTestClient)
-	requestData := client.GetRequest()
+	requestData := mockClient.GetRequest()
 	assert.Equal(t, requestData.User, "john")
 	assert.DeepEqual(t, requestData.Groups, []string{"group1", "group2"})
 	assert.Equal(t, requestData.ResourceAttributes.Namespace, "default")

@@ -7,7 +7,7 @@ import (
 )
 
 type envVar interface {
-	string | int | int64 | bool
+	string | int | int64 | bool | float32 | float64
 }
 
 func EnvVar[T envVar](key string, def T) T {
@@ -26,6 +26,12 @@ func EnvVar[T envVar](key string, def T) T {
 			return any(v).(T)
 		case reflect.Bool:
 			v, _ := strconv.ParseBool(val)
+			return any(v).(T)
+		case reflect.Float32:
+			v, _ := strconv.ParseFloat(val, 32)
+			return any(v).(T)
+		case reflect.Float64:
+			v, _ := strconv.ParseFloat(val, 64)
 			return any(v).(T)
 		}
 		return any(nil).(T)

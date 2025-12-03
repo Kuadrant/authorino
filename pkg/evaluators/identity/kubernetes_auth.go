@@ -9,46 +9,21 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 
 	authv1 "k8s.io/api/authentication/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	authenticationv1 "k8s.io/client-go/kubernetes/typed/authentication/v1"
-	"k8s.io/client-go/rest"
+	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type kubernetesTokenReviewer interface {
-	TokenReviews() authenticationv1.TokenReviewInterface
-}
-
-type kubernetesAuthDetails struct {
-	audiences     []string
-	authenticator kubernetesTokenReviewer
-	serviceToken  string
-}
 
 type KubernetesAuth struct {
 	auth.AuthCredentials
-	kubernetesAuthDetails
+	audiences []string
+	k8sClient k8s_client.Client
 }
 
-func NewKubernetesAuthIdentity(authCred auth.AuthCredentials, audiences []string) (*KubernetesAuth, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func NewKubernetesAuthIdentity(authCred auth.AuthCredentials, audiences []string, k8sClient k8s_client.Client) *KubernetesAuth {
 	return &KubernetesAuth{
-		authCred,
-		kubernetesAuthDetails{
-			audiences,
-			k8sClient.AuthenticationV1(),
-			config.BearerToken,
-		},
-	}, nil
+		AuthCredentials: authCred,
+		audiences:       audiences,
+		k8sClient:       k8sClient,
+	}
 }
 
 func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (interface{}, error) {
@@ -60,7 +35,7 @@ func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx gocontext.C
 	if reqToken, err := kubeAuth.GetCredentialsFromReq(request); err != nil {
 		return nil, err
 	} else {
-		tr := authv1.TokenReview{
+		tr := &authv1.TokenReview{
 			Spec: authv1.TokenReviewSpec{
 				Token:     reqToken,
 				Audiences: kubeAuth.audiencesWithDefault(request.Host),
@@ -69,11 +44,10 @@ func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx gocontext.C
 
 		log.FromContext(ctx).WithName("kubernetesauth").V(1).Info("calling kubernetes token review api", "tokenreview", tr)
 
-		if result, err := kubeAuth.authenticator.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{}); err != nil {
+		if err := kubeAuth.k8sClient.Create(ctx, tr); err != nil {
 			return nil, err
-		} else {
-			return parseTokenReviewResult(result)
 		}
+		return parseTokenReviewResult(tr)
 	}
 }
 

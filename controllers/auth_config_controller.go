@@ -44,7 +44,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -60,8 +59,8 @@ const (
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
+	NewClient                   func() (client.Client, error)
 	Logger                      logr.Logger
-	Scheme                      *runtime.Scheme
 	Index                       index.Index
 	AllowSupersedingHostSubsets bool
 	StatusReport                *StatusReportMap
@@ -95,7 +94,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
-		if err := r.cleanConfigs(resourceId, ctx); err != nil {
+		if err := r.cleanConfigs(ctx, resourceId); err != nil {
 			logger.Error(err, failedToCleanConfig)
 		}
 
@@ -109,7 +108,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// we need to either create it or update it in the index
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
-		if err := r.cleanConfigs(resourceId, ctx); err != nil {
+		if err := r.cleanConfigs(ctx, resourceId); err != nil {
 			logger.Error(err, failedToCleanConfig)
 		}
 
@@ -148,7 +147,7 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
-func (r *AuthConfigReconciler) cleanConfigs(resourceId string, ctx context.Context) error {
+func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId string) error {
 	if hosts := r.Index.FindKeys(resourceId); len(hosts) > 0 {
 		// no need to clean for all the hosts as the config should be the same
 		if authConfig := r.Index.Get(hosts[0]); authConfig != nil {
@@ -285,11 +284,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// kubernetes auth
 		case api.KubernetesTokenReviewAuthentication:
-			if k8sAuthConfig, err := identity_evaluators.NewKubernetesAuthIdentity(authCred, identity.KubernetesTokenReview.Audiences); err != nil {
-				return nil, err
-			} else {
-				translatedIdentity.KubernetesAuth = k8sAuthConfig
+			tokenReviewClient, err := r.NewClient()
+			if err != nil {
+				return nil, fmt.Errorf("failed to create token review client: %w", err)
 			}
+			translatedIdentity.KubernetesAuth = identity_evaluators.NewKubernetesAuthIdentity(authCred, identity.KubernetesTokenReview.Audiences, tokenReviewClient)
 
 		case api.PlainIdentityAuthentication:
 			if identity.Plain.Expression != "" {
@@ -524,10 +523,11 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				// use deprecated Groups property otherwise
 				authorinoGroups = &json.JSONValue{Static: authorization.KubernetesSubjectAccessReview.Groups}
 			}
-			translatedAuthorization.KubernetesAuthz, err = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorinoGroups, authorinoResourceAttributes)
+			sarClient, err := r.NewClient()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create subject access review client: %w", err)
 			}
+			translatedAuthorization.KubernetesAuthz = authorization_evaluators.NewKubernetesAuthz(authorinoUser, authorinoGroups, authorinoResourceAttributes, sarClient)
 
 		case api.SpiceDBAuthorization:
 			authzed := authorization.SpiceDB
@@ -922,12 +922,10 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 	var sharedSecret string
 	if sharedSecretRef := http.SharedSecret; sharedSecretRef != nil {
 		secret := &v1.Secret{}
-		if sharedSecretRef != nil {
-			if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
-				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
-			}
-			sharedSecret = string(secret.Data[sharedSecretRef.Key])
+		if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sharedSecretRef.Name}, secret); err != nil {
+			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 		}
+		sharedSecret = string(secret.Data[sharedSecretRef.Key])
 	}
 
 	var oauth2ClientCredentialsConfig *oauth2.ClientCredentials

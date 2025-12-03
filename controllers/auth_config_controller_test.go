@@ -147,7 +147,6 @@ func newTestAuthConfigReconciler(client client.WithWatch, i index.Index) *AuthCo
 	return &AuthConfigReconciler{
 		Client:       client,
 		Logger:       log.WithName("test").WithName("authconfigreconciler"),
-		Scheme:       nil,
 		Index:        i,
 		StatusReport: NewStatusReportMap(),
 	}
