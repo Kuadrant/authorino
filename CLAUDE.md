@@ -200,7 +200,7 @@ Both are registered in the scheme and controllers handle both versions.
 ## Dependencies
 
 Built with:
-- Go 1.24.6
+- Go 1.25.3
 - controller-runtime v0.16.3
 - Kubernetes client-go v0.28.3
 - Envoy go-control-plane v1.32.4

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: authconfigs.authorino.kuadrant.io
 spec:
   group: authorino.kuadrant.io
@@ -299,7 +299,6 @@ spec:
                               description: |-
                                 Name of the referent.
                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                           type: object
                           x-kubernetes-map-type: atomic
@@ -1669,7 +1668,6 @@ spec:
                               description: |-
                                 Name of the referent.
                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                           type: object
                           x-kubernetes-map-type: atomic
@@ -2854,7 +2852,6 @@ spec:
                               description: |-
                                 Name of the referent.
                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                           type: object
                           x-kubernetes-map-type: atomic
@@ -4415,7 +4412,6 @@ spec:
                               description: |-
                                 Name of the referent.
                                 More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                           type: object
                           x-kubernetes-map-type: atomic
@@ -5475,6 +5471,14 @@ metadata:
   name: authorino-manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - authorino.kuadrant.io
   resources:
   - authconfigs
@@ -5503,11 +5507,3 @@ rules:
   - get
   - list
   - update
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
