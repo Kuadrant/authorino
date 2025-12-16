@@ -190,7 +190,6 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().IntVar(&opts.webhookServicePort, "webhook-service-port", 9443, "Port number of the webhook server")
 	cmd.PersistentFlags().BoolVar(&opts.enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmd.PersistentFlags().Int64Var(&opts.maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
-	cmd.PersistentFlags().Int64Var(&opts.maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
 	cmd.PersistentFlags().Float32Var(&opts.kubeClientQPS, "kube-client-qps", utils.EnvVar("KUBE_CLIENT_QPS", float32(20)), "QPS limit for each client sending requests to the kube-apiserver")
 	cmd.PersistentFlags().IntVar(&opts.kubeClientBurst, "kube-client-burst", utils.EnvVar("KUBE_CLIENT_BURST", 30), "Burst limit for each client sending requests to the kube-apiserver")
 
