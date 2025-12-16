@@ -21,13 +21,11 @@ type k8sAuthorizationClientMock struct {
 	k8s_client.Client
 	request                           kubeAuthz.SubjectAccessReviewSpec
 	subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus
-	lastCreatedSubjectAccessReview    *kubeAuthz.SubjectAccessReview
 }
 
-func (client *k8sAuthorizationClientMock) Create(ctx context.Context, obj k8s_client.Object, opts ...k8s_client.CreateOption) error {
+func (client *k8sAuthorizationClientMock) Create(_ context.Context, obj k8s_client.Object, _ ...k8s_client.CreateOption) error {
 	if sar, ok := obj.(*kubeAuthz.SubjectAccessReview); ok {
 		client.request = *sar.Spec.DeepCopy()
-		client.lastCreatedSubjectAccessReview = sar
 		sar.Status = client.subjectAccessReviewResponseStatus
 	}
 	return nil
@@ -37,17 +35,13 @@ func (client *k8sAuthorizationClientMock) GetRequest() kubeAuthz.SubjectAccessRe
 	return client.request
 }
 
-func newKubernetesAuthz(user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes, subjectAccessReviewResponseStatus kubeAuthz.SubjectAccessReviewStatus) (*KubernetesAuthz, *k8sAuthorizationClientMock) {
-	mockClient := &k8sAuthorizationClientMock{
-		Client:                            fake.NewClientBuilder().Build(),
-		subjectAccessReviewResponseStatus: subjectAccessReviewResponseStatus,
-	}
+func newKubernetesAuthz(mockClient *k8sAuthorizationClientMock, user expressions.Value, authorizationGroups expressions.Value, resourceAttributes *KubernetesAuthzResourceAttributes) *KubernetesAuthz {
 	return &KubernetesAuthz{
 		User:                user,
 		AuthorizationGroups: authorizationGroups,
 		ResourceAttributes:  resourceAttributes,
 		k8sClient:           mockClient,
-	}, mockClient
+	}
 }
 
 func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
@@ -60,7 +54,11 @@ func TestKubernetesAuthzNonResource_Allowed(t *testing.T) {
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
-	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, nil, kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""})
+	mockClient := &k8sAuthorizationClientMock{
+		Client:                            fake.NewClientBuilder().Build(),
+		subjectAccessReviewResponseStatus: kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""},
+	}
+	kubernetesAuth := newKubernetesAuthz(mockClient, &json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, nil)
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	requestData := mockClient.GetRequest()
@@ -83,7 +81,11 @@ func TestKubernetesAuthzNonResource_Denied(t *testing.T) {
 	request := &envoy_auth.AttributeContext_HttpRequest{Method: "GET", Path: "/hello"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
-	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, nil, nil, kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"})
+	mockClient := &k8sAuthorizationClientMock{
+		Client:                            fake.NewClientBuilder().Build(),
+		subjectAccessReviewResponseStatus: kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"},
+	}
+	kubernetesAuth := newKubernetesAuthz(mockClient, &json.JSONValue{Pattern: "auth.identity.username"}, nil, nil)
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	requestData := mockClient.GetRequest()
@@ -103,7 +105,11 @@ func TestKubernetesAuthzResource_Allowed(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john", "groups":["group1","group2"]}}}`)
 
-	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}}, kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""})
+	mockClient := &k8sAuthorizationClientMock{
+		Client:                            fake.NewClientBuilder().Build(),
+		subjectAccessReviewResponseStatus: kubeAuthz.SubjectAccessReviewStatus{Allowed: true, Reason: ""},
+	}
+	kubernetesAuth := newKubernetesAuthz(mockClient, &json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Pattern: "auth.identity.groups"}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}})
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, authorized.(bool))
@@ -122,7 +128,11 @@ func TestKubernetesAuthzResource_Denied(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(`{"context":{"request":{"http":{"method":"GET","path":"/hello"}}},"auth":{"identity":{"username":"john"}}}`)
 
-	kubernetesAuth, mockClient := newKubernetesAuthz(&json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Static: []string{"group1", "group2"}}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}}, kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"})
+	mockClient := &k8sAuthorizationClientMock{
+		Client:                            fake.NewClientBuilder().Build(),
+		subjectAccessReviewResponseStatus: kubeAuthz.SubjectAccessReviewStatus{Allowed: false, Reason: "some-reason"},
+	}
+	kubernetesAuth := newKubernetesAuthz(mockClient, &json.JSONValue{Pattern: "auth.identity.username"}, &json.JSONValue{Static: []string{"group1", "group2"}}, &KubernetesAuthzResourceAttributes{Namespace: &json.JSONValue{Static: "default"}})
 	authorized, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, !authorized.(bool))
