@@ -60,7 +60,7 @@ func (f *LogMode) String() string {
 }
 
 // ToLogMode converts a string to a log mode.
-// Use either 'production' for `LogModeProd` or 'development' for `LogModeDev`.
+// Valid modes are: "production", "development".
 func ToLogMode(mode string) LogMode {
 	switch strings.ToLower(mode) {
 	case "production":
@@ -68,7 +68,7 @@ func ToLogMode(mode string) LogMode {
 	case "development":
 		return LogModeDev
 	default:
-		panic("unknown log mode")
+		panic("unknown log mode: " + mode + "; valid modes are: production, development")
 	}
 }
 
