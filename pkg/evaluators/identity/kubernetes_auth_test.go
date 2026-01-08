@@ -11,8 +11,8 @@ import (
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 	authv1 "k8s.io/api/authentication/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	authenticationv1 "k8s.io/client-go/kubernetes/typed/authentication/v1"
+	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 type kubernetesTokenReviewDataMock struct {
@@ -21,15 +21,15 @@ type kubernetesTokenReviewDataMock struct {
 	audiences     []string
 }
 
-type kubernetesTokenReviewsMock struct {
+type kubernetesAuthenticationClientMock struct {
+	k8s_client.Client
 	kubernetesTokenReviewDataMock
 }
 
-func (t *kubernetesTokenReviewsMock) Create(ctx context.Context, tokenReview *authv1.TokenReview, opts metav1.CreateOptions) (*authv1.TokenReview, error) {
-	if t.authenticated {
-		return &authv1.TokenReview{
-			Spec: tokenReview.Spec,
-			Status: authv1.TokenReviewStatus{
+func (client *kubernetesAuthenticationClientMock) Create(ctx context.Context, obj k8s_client.Object, opts ...k8s_client.CreateOption) error {
+	if tr, ok := obj.(*authv1.TokenReview); ok {
+		if client.authenticated {
+			tr.Status = authv1.TokenReviewStatus{
 				Authenticated: true,
 				User: authv1.UserInfo{
 					Username: "system:serviceaccount:authorino:api-consumer",
@@ -40,45 +40,24 @@ func (t *kubernetesTokenReviewsMock) Create(ctx context.Context, tokenReview *au
 						"system:authenticated",
 					},
 				},
-				Audiences: t.audiences,
-			},
-		}, nil
-	} else {
-		return &authv1.TokenReview{
-			Spec: tokenReview.Spec,
-			Status: authv1.TokenReviewStatus{
+				Audiences: client.audiences,
+			}
+		} else {
+			tr.Status = authv1.TokenReviewStatus{
 				User:      authv1.UserInfo{},
-				Audiences: t.audiences,
+				Audiences: client.audiences,
 				Error:     "[invalid bearer token, token lookup failed]",
-			},
-		}, nil
+			}
+		}
 	}
+	return nil
 }
 
-type kubernetesAuthenticationClientMock struct {
-	kubernetesTokenReviewDataMock
-}
-
-func (client *kubernetesAuthenticationClientMock) TokenReviews() authenticationv1.TokenReviewInterface {
-	return &kubernetesTokenReviewsMock{
-		kubernetesTokenReviewDataMock{
-			client.requestToken,
-			client.authenticated,
-			client.audiences,
-		},
-	}
-}
-
-func newKubernetesAuthMock(authCreds *mock_auth.MockAuthCredentials, audiences []string, token kubernetesTokenReviewDataMock) *KubernetesAuth {
-	authenticator := &kubernetesAuthenticationClientMock{token}
-
+func newKubernetesAuthMock(mockClient *kubernetesAuthenticationClientMock, authCreds *mock_auth.MockAuthCredentials, audiences []string) *KubernetesAuth {
 	return &KubernetesAuth{
-		authCreds,
-		kubernetesAuthDetails{
-			audiences,
-			authenticator,
-			"whatever-token-mounted-in-/var/run/secrets/kubernetes.io/serviceaccount/token",
-		},
+		AuthCredentials: authCreds,
+		audiences:       audiences,
+		k8sClient:       mockClient,
 	}
 }
 
@@ -96,7 +75,11 @@ func TestKubernetesTokenReviewWithOpaqueToken(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
-	kubernetesAuth := newKubernetesAuthMock(authCredsMock, []string{}, kubernetesTokenReviewDataMock{requestToken, true, []string{"echo-api"}})
+	mockClient := &kubernetesAuthenticationClientMock{
+		Client:                        fake.NewClientBuilder().Build(),
+		kubernetesTokenReviewDataMock: kubernetesTokenReviewDataMock{requestToken, true, []string{"echo-api"}},
+	}
+	kubernetesAuth := newKubernetesAuthMock(mockClient, authCredsMock, []string{})
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
@@ -119,7 +102,11 @@ func TestKubernetesTokenReviewWithJWT(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
-	kubernetesAuth := newKubernetesAuthMock(authCredsMock, []string{}, kubernetesTokenReviewDataMock{requestToken, true, []string{"echo-api"}})
+	mockClient := &kubernetesAuthenticationClientMock{
+		Client:                        fake.NewClientBuilder().Build(),
+		kubernetesTokenReviewDataMock: kubernetesTokenReviewDataMock{requestToken, true, []string{"echo-api"}},
+	}
+	kubernetesAuth := newKubernetesAuthMock(mockClient, authCredsMock, []string{})
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
@@ -141,7 +128,11 @@ func TestKubernetesTokenReviewUnauthenticatedToken(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
-	kubernetesAuth := newKubernetesAuthMock(authCredsMock, []string{}, kubernetesTokenReviewDataMock{requestToken, false, []string{"echo-api"}})
+	mockClient := &kubernetesAuthenticationClientMock{
+		Client:                        fake.NewClientBuilder().Build(),
+		kubernetesTokenReviewDataMock: kubernetesTokenReviewDataMock{requestToken, false, []string{"echo-api"}},
+	}
+	kubernetesAuth := newKubernetesAuthMock(mockClient, authCredsMock, []string{})
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)
@@ -162,7 +153,11 @@ func TestKubernetesTokenReviewAudiencesMatch(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
-	kubernetesAuth := newKubernetesAuthMock(authCredsMock, []string{"custom-audience"}, kubernetesTokenReviewDataMock{requestToken, true, []string{"custom-audience"}})
+	mockClient := &kubernetesAuthenticationClientMock{
+		Client:                        fake.NewClientBuilder().Build(),
+		kubernetesTokenReviewDataMock: kubernetesTokenReviewDataMock{requestToken, true, []string{"custom-audience"}},
+	}
+	kubernetesAuth := newKubernetesAuthMock(mockClient, authCredsMock, []string{"custom-audience"})
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.NilError(t, err)
@@ -184,7 +179,11 @@ func TestKubernetesTokenReviewAudiencesUnmatch(t *testing.T) {
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
 	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
 
-	kubernetesAuth := newKubernetesAuthMock(authCredsMock, []string{"expected-audience"}, kubernetesTokenReviewDataMock{requestToken, false, []string{"custom-audience"}})
+	mockClient := &kubernetesAuthenticationClientMock{
+		Client:                        fake.NewClientBuilder().Build(),
+		kubernetesTokenReviewDataMock: kubernetesTokenReviewDataMock{requestToken, false, []string{"custom-audience"}},
+	}
+	kubernetesAuth := newKubernetesAuthMock(mockClient, authCredsMock, []string{"expected-audience"})
 	ret, err := kubernetesAuth.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, ret == nil)

@@ -27,7 +27,9 @@ import (
 	"os"
 	"time"
 
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -124,6 +126,8 @@ type authServerOptions struct {
 	webhookServicePort             int
 	enableLeaderElection           bool
 	maxHttpRequestBodySize         int64
+	kubeClientQPS                  float32
+	kubeClientBurst                int
 }
 
 type webhookServerOptions struct {
@@ -186,6 +190,9 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().IntVar(&opts.webhookServicePort, "webhook-service-port", 9443, "Port number of the webhook server")
 	cmd.PersistentFlags().BoolVar(&opts.enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
 	cmd.PersistentFlags().Int64Var(&opts.maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
+	cmd.PersistentFlags().Float32Var(&opts.kubeClientQPS, "kube-client-qps", utils.EnvVar("KUBE_CLIENT_QPS", float32(20)), "QPS limit for each client sending requests to the kube-apiserver")
+	cmd.PersistentFlags().IntVar(&opts.kubeClientBurst, "kube-client-burst", utils.EnvVar("KUBE_CLIENT_BURST", 30), "Burst limit for each client sending requests to the kube-apiserver")
+
 	registerCommonServerOptions(cmd, &opts.commonServerOptions)
 
 	return cmd
@@ -241,6 +248,19 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	// starts the oidc discovery server
 	startOIDCServer(index, *opts)
 
+	restConfig := ctrl.GetConfigOrDie()
+
+	// Factory for creating non-cached k8s clients with dedicated rate limiting.
+	// We use non-cached clients for TokenReview/SubjectAccessReview because:
+	// 1. These are CREATE operations that don't benefit from caching
+	// 2. We want an isolated rate limiting buckets separate from reconciler operations
+	newClient := func() (client.Client, error) {
+		config := rest.CopyConfig(restConfig)
+		config.QPS = opts.kubeClientQPS
+		config.Burst = opts.kubeClientBurst
+		return client.New(config, client.Options{Scheme: scheme})
+	}
+
 	baseManagerOptions := ctrl.Options{
 		Scheme:                 scheme,
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: opts.webhookServicePort}),
@@ -253,7 +273,7 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	}
 
 	// sets up the reconciliation manager
-	mgr, err := setupManager(baseManagerOptions)
+	mgr, err := setupManager(restConfig, baseManagerOptions)
 	if err != nil {
 		logger.Error(err, "failed to setup reconciliation manager")
 		os.Exit(1)
@@ -265,11 +285,11 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	// sets up the authconfig reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
 		Client:                      mgr.GetClient(),
+		NewClient:                   newClient,
 		Index:                       index,
 		AllowSupersedingHostSubsets: opts.allowSupersedingHostSubsets,
 		StatusReport:                statusReport,
 		Logger:                      controllerLogger.WithName("authconfig"),
-		Scheme:                      mgr.GetScheme(),
 		LabelSelector:               controllers.ToLabelSelector(opts.watchedAuthConfigLabelSelector),
 		Namespace:                   opts.watchNamespace,
 	}
@@ -315,7 +335,7 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	statusUpdaterOptions.HealthProbeBindAddress = "0" // disabled so it does not clash with the reconciliation manager
 	statusUpdaterOptions.LeaderElection = opts.enableLeaderElection
 	statusUpdaterOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
-	statusUpdateManager, err := setupManager(statusUpdaterOptions)
+	statusUpdateManager, err := setupManager(restConfig, statusUpdaterOptions)
 	if err != nil {
 		logger.Error(err, "failed to setup status update manager")
 		os.Exit(1)
@@ -345,7 +365,7 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 	setup(cmd, opts.log, opts.telemetry)
 
 	// sets up the webhook manager
-	mgr, err := setupManager(ctrl.Options{
+	mgr, err := setupManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: opts.metricsAddr},
 		HealthProbeBindAddress: opts.healthProbeAddr,
@@ -412,12 +432,12 @@ func setupTelemetryServices(opts telemetryOptions) {
 	otel.SetTextMapPropagator(otel_propagation.NewCompositeTextMapPropagator(otel_propagation.TraceContext{}, otel_propagation.Baggage{}))
 }
 
-func setupManager(options ctrl.Options) (ctrl.Manager, error) {
+func setupManager(config *rest.Config, options ctrl.Options) (ctrl.Manager, error) {
 	if options.Metrics.BindAddress != "0" {
 		options.Metrics.ExtraHandlers = map[string]http.Handler{"/server-metrics": promhttp.Handler()}
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	mgr, err := ctrl.NewManager(config, options)
 	if err != nil {
 		return nil, err
 	}
