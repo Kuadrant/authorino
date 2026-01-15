@@ -192,7 +192,7 @@ docker-build: ## Builds an image based on the current branch
 		-t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path 1.21.2 --os linux))' go test ./... -coverprofile cover.out -race
 
 BENCHMARKS_FILE=benchmarks.out
 benchmarks: generate manifests envtest benchstat ## Runs the test with benchmarks
