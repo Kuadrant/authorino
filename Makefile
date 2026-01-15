@@ -198,7 +198,7 @@ docker-build: ## Builds an image based on the current branch
 		-t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./api/... ./controllers/... ./pkg/... -coverprofile cover.out
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./api/... ./controllers/... ./pkg/... -coverprofile cover.out -race
 
 test-cel: generate manifests envtest ## Runs CEL validation tests
 	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./tests/cel/...
