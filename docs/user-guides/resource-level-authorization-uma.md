@@ -208,11 +208,11 @@ spec:
             resource_owner == identity.sub
           }
 
-          allow { get;    collection_endpoint }
-          allow { post;   collection_endpoint }
-          allow { get;    resource_endpoint; identity_owns_the_resource }
-          allow { put;    resource_endpoint; identity_owns_the_resource }
-          allow { delete; resource_endpoint; identity_owns_the_resource }
+          allow if { get;    collection_endpoint }
+          allow if { post;   collection_endpoint }
+          allow if { get;    resource_endpoint; identity_owns_the_resource }
+          allow if { put;    resource_endpoint; identity_owns_the_resource }
+          allow if { delete; resource_endpoint; identity_owns_the_resource }
 EOF
 ```
 
