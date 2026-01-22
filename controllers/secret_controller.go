@@ -95,12 +95,6 @@ func (r *SecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *SecretReconciler) eachAuthConfigsWithK8sSecretBasedIdentity(f func(*evaluators.AuthConfig)) {
-	for authConfig := range r.getAuthConfigsWithK8sSecretBasedIdentity() {
-		f(authConfig)
-	}
-}
-
 func (r *SecretReconciler) getAuthConfigsWithK8sSecretBasedIdentity() authConfigSet {
 	authConfigs := make(authConfigSet)
 	var s struct{}
