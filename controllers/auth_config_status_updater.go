@@ -8,9 +8,13 @@ import (
 
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/log"
+	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	k8score "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,21 +36,36 @@ type AuthConfigStatusUpdater struct {
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
 
 func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := trace.NewSpan(ctx, "authconfig.status", "authconfig_status.reconcile")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("authconfig.namespace", req.Namespace),
+		attribute.String("authconfig.name", req.Name),
+		attribute.String("authconfig.resource_id", req.String()),
+	)
+
 	logger := u.Logger.WithValues("authconfig", req.NamespacedName)
 
 	authConfig := api.AuthConfig{}
 	if err := u.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
 		// could not get the resource but not because of a 404 Not found (some error must have happened)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get authconfig")
 		return ctrl.Result{}, err
 	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, u.LabelSelector) {
 		// could not find the resource: 404 Not found (resource must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		// skip status update
+		span.AddEvent("authconfig.deleted_or_unwatched")
 		return ctrl.Result{}, nil
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to update its status
+		span.AddEvent("authconfig.updating_status")
 		if err := u.updateAuthConfigStatus(log.IntoContext(ctx, logger), req.String(), &authConfig); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to update status")
 			return ctrl.Result{Requeue: true}, nil
 		} else {
 			return ctrl.Result{}, nil
@@ -55,6 +74,15 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, resourceId string, authConfig *api.AuthConfig) (err error) {
+	ctx, span := trace.NewSpan(ctx, "authconfig.status", "authconfig_status.update")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("authconfig.resource_id", resourceId),
+		attribute.String("authconfig.namespace", authConfig.Namespace),
+		attribute.String("authconfig.name", authConfig.Name),
+	)
+
 	logger := log.FromContext(ctx)
 
 	var reason, message string
@@ -64,37 +92,67 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, re
 		reason = report.Reason
 		message = report.Message
 		linkedHosts = report.LinkedHosts
+		span.SetAttributes(
+			attribute.String("authconfig.status_reason", reason),
+			attribute.Int("authconfig.linked_hosts_count", len(linkedHosts)),
+		)
+	} else {
+		span.AddEvent("authconfig.no_status_report_available")
 	}
 	looseHosts := utils.SubtractSlice(authConfig.Spec.Hosts, linkedHosts)
 
+	span.SetAttributes(
+		attribute.Int("authconfig.loose_hosts_count", len(looseHosts)),
+		attribute.Int("authconfig.total_hosts_count", len(authConfig.Spec.Hosts)),
+	)
+
 	// available
 	changed := updateStatusAvailable(authConfig, len(linkedHosts) > 0)
+	if changed {
+		span.AddEvent("authconfig.status_available_changed")
+	}
 
 	// ready
 	ready := len(looseHosts) == 0 && reason == api.StatusReasonReconciled
-	changed = updateStatusReady(authConfig, ready, reason, message) || changed
+	readyChanged := updateStatusReady(authConfig, ready, reason, message)
+	changed = readyChanged || changed
+	if readyChanged {
+		span.AddEvent("authconfig.status_ready_changed", oteltrace.WithAttributes(attribute.Bool("ready", ready)))
+	}
 
 	// summary
-	changed = updateStatusSummary(authConfig, linkedHosts) || changed
+	summaryChanged := updateStatusSummary(authConfig, linkedHosts)
+	changed = summaryChanged || changed
+	if summaryChanged {
+		span.AddEvent("authconfig.status_summary_changed")
+	}
+
+	span.SetAttributes(attribute.Bool("authconfig.status_changed", changed))
 
 	if !authConfig.Status.Ready() {
 		err = fmt.Errorf("resource not ready")
+		span.AddEvent("authconfig.not_ready")
 	}
 
 	if !changed {
 		logger.V(1).Info("resource status did not change")
+		span.AddEvent("authconfig.status_unchanged")
 		return // to save an update request
 	}
 
 	logger.V(1).Info("resource status changed", "authconfig/status", authConfig.Status)
+	span.AddEvent("authconfig.persisting_status")
 
 	if updateErr := u.Status().Update(ctx, authConfig); updateErr != nil {
 		logger.Error(updateErr, "failed to update the resource")
+		span.RecordError(updateErr)
+		span.SetStatus(codes.Error, "failed to persist status update")
 		err = updateErr
 		return
 	}
 
 	logger.Info("resource status updated")
+	span.AddEvent("authconfig.status_persisted")
 
 	return
 }
