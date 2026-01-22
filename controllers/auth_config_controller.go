@@ -38,6 +38,8 @@ import (
 	"github.com/kuadrant/authorino/pkg/oauth2"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-logr/logr"
@@ -80,7 +82,6 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.reconcile")
 	defer span.End()
 
-	// Add span attributes for observability
 	resourceId := req.String()
 	span.SetAttributes(
 		attribute.String("authconfig.namespace", req.Namespace),
@@ -124,6 +125,20 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		span.AddEvent("authconfig.deindexed")
 		logger.Info("resource de-indexed")
 	} else {
+		// Extract trace context from CR annotations and add as a LINK (not parent)
+		// Since reconciliation is event-driven and asynchronous, we use a link rather than
+		// a parent-child relationship to connect the operator trace with the operation that
+		// created/updated the CR
+		carrier := propagation.MapCarrier(authConfig.Annotations)
+		linkCtx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+		linkSpanCtx := oteltrace.SpanFromContext(linkCtx).SpanContext()
+
+		if linkSpanCtx.IsValid() {
+			span.AddLink(oteltrace.Link{
+				SpanContext: linkSpanCtx,
+			})
+		}
+
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the index
 		span.SetAttributes(
