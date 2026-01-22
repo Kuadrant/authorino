@@ -36,10 +36,14 @@ import (
 	"github.com/kuadrant/authorino/pkg/jsonexp"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"
+	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,11 +77,22 @@ type AuthConfigReconciler struct {
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.reconcile")
+	defer span.End()
+
+	// Add span attributes for observability
+	resourceId := req.String()
+	span.SetAttributes(
+		attribute.String("authconfig.namespace", req.Namespace),
+		attribute.String("authconfig.name", req.Name),
+		attribute.String("authconfig.resource_id", resourceId),
+	)
+
 	if err := r.bootstrapIndex(ctx); err != nil {
 		r.Logger.Error(err, "failed to bootstrap the index")
+		span.RecordError(err)
 	}
 
-	resourceId := req.String()
 	logger := r.Logger.WithValues("authconfig", resourceId)
 	reportReconciled := true
 
@@ -88,13 +103,17 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	authConfig := api.AuthConfig{}
 	if err := r.Get(ctx, req.NamespacedName, &authConfig); err != nil && !errors.IsNotFound(err) {
 		// could not get the resource but not because of a 404 Not found (some error must have happened)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get authconfig")
 		return ctrl.Result{}, err
 	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
 		// could not find the resource: 404 Not found (resource must have been deleted)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
+		span.AddEvent("authconfig.deleted_or_unwatched")
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
 		if err := r.cleanConfigs(ctx, resourceId); err != nil {
+			span.RecordError(err)
 			logger.Error(err, failedToCleanConfig)
 		}
 
@@ -102,25 +121,38 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		r.Index.Delete(resourceId)
 		r.StatusReport.Clear(resourceId)
 		reportReconciled = false
+		span.AddEvent("authconfig.deindexed")
 		logger.Info("resource de-indexed")
 	} else {
 		// resource found and it is to be watched by this controller
 		// we need to either create it or update it in the index
+		span.SetAttributes(
+			attribute.Int("authconfig.hosts_count", len(authConfig.Spec.Hosts)),
+			attribute.StringSlice("authconfig.hosts", authConfig.Spec.Hosts),
+		)
+		span.AddEvent("authconfig.found")
 
 		// clean all async workers of the config, i.e. shuts down channels and goroutines
 		if err := r.cleanConfigs(ctx, resourceId); err != nil {
 			logger.Error(err, failedToCleanConfig)
+			span.RecordError(err)
 		}
 
 		translatedAuthConfig, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
 			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), []string{})
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to translate authconfig")
 			return ctrl.Result{}, err
 		}
 
 		// delete unused hosts from the index
-		for _, host := range utils.SubtractSlice(r.Index.FindKeys(resourceId), authConfig.Spec.Hosts) {
-			r.Index.DeleteKey(resourceId, host)
+		unusedHosts := utils.SubtractSlice(r.Index.FindKeys(resourceId), authConfig.Spec.Hosts)
+		if len(unusedHosts) > 0 {
+			span.AddEvent("authconfig.deleting_unused_hosts", oteltrace.WithAttributes(attribute.StringSlice("hosts", unusedHosts)))
+			for _, host := range unusedHosts {
+				r.Index.DeleteKey(resourceId, host)
+			}
 		}
 
 		linkedHosts, looseHosts, err = r.addToIndex(log.IntoContext(ctx, logger), req.Namespace, resourceId, translatedAuthConfig, authConfig.Spec.Hosts)
@@ -128,16 +160,27 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if len(looseHosts) > 0 {
 			r.StatusReport.Set(resourceId, api.StatusReasonHostsNotLinked, "one or more hosts are not linked to the resource", linkedHosts)
 			reportReconciled = false
+			span.AddEvent("authconfig.hosts_not_linked", oteltrace.WithAttributes(
+				attribute.StringSlice("linked_hosts", linkedHosts),
+				attribute.StringSlice("loose_hosts", looseHosts)))
 		}
 
 		if err != nil {
 			r.StatusReport.Set(resourceId, api.StatusReasonCachingError, err.Error(), linkedHosts)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "caching error")
 			return ctrl.Result{}, err
 		}
+
+		span.SetAttributes(
+			attribute.Int("authconfig.linked_hosts_count", len(linkedHosts)),
+			attribute.Int("authconfig.loose_hosts_count", len(looseHosts)),
+		)
 	}
 
 	if len(linkedHosts) > 0 {
 		logger.Info("resource reconciled")
+		span.AddEvent("authconfig.reconciled", oteltrace.WithAttributes(attribute.Int("linked_hosts_count", len(linkedHosts))))
 	}
 
 	if reportReconciled {
@@ -148,16 +191,37 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId string) error {
+	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.clean_configs")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("authconfig.resource_id", resourceId))
+
 	if hosts := r.Index.FindKeys(resourceId); len(hosts) > 0 {
+		span.SetAttributes(attribute.Int("authconfig.hosts_to_clean", len(hosts)))
 		// no need to clean for all the hosts as the config should be the same
 		if authConfig := r.Index.Get(hosts[0]); authConfig != nil {
-			return authConfig.Clean(ctx)
+			if err := authConfig.Clean(ctx); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to clean authconfig")
+				return err
+			}
+			span.AddEvent("authconfig.cleaned")
 		}
+	} else {
+		span.AddEvent("authconfig.no_hosts_to_clean")
 	}
 	return nil
 }
 
 func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (*evaluators.AuthConfig, error) {
+	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.translate")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("authconfig.namespace", authConfig.Namespace),
+		attribute.String("authconfig.name", authConfig.Name),
+	)
+
 	var ctxWithLogger context.Context
 
 	identityConfigs := make([]evaluators.IdentityConfig, 0)
@@ -183,6 +247,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		extendedProperties := make([]evaluators.IdentityExtension, 0)
 		for propertyName, property := range identity.Defaults {
 			if value, err := valueFrom(&property); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to build identity default property")
 				return nil, err
 			} else {
 				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, false))
@@ -190,6 +256,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		}
 		for propertyName, property := range identity.Overrides {
 			if value, err := valueFrom(&property); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to build identity override property")
 				return nil, err
 			} else {
 				extendedProperties = append(extendedProperties, evaluators.NewIdentityExtension(propertyName, value, true))
@@ -198,6 +266,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		predicates, err := buildPredicates(authConfig, identity.Conditions, jsonexp.All)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to build identity predicates")
 			return nil, err
 		}
 		translatedIdentity := &evaluators.IdentityConfig{
@@ -215,6 +285,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 			key, err := getJsonFromStaticDynamic(&identity.Cache.Key)
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to build identity cache key")
 				return nil, err
 			}
 			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
@@ -235,6 +307,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				Namespace: authConfig.Namespace,
 				Name:      oauth2Identity.Credentials.Name},
 				secret); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to get OAuth2 credentials secret")
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
@@ -349,6 +423,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				Namespace: authConfig.Namespace,
 				Name:      metadata.Uma.Credentials.Name},
 				secret); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to get UMA credentials secret")
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
@@ -357,6 +433,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
 			); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to create UMA metadata evaluator")
 				return nil, err
 			} else {
 				translatedMetadata.UMA = uma
@@ -368,6 +446,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if metadata.UserInfo.IdentitySource != "" {
 				idConfig, err := findIdentityConfigByName(identityConfigs, metadata.UserInfo.IdentitySource)
 				if err != nil {
+					span.RecordError(err)
+					span.SetStatus(codes.Error, "failed to find identity config for userinfo")
 					return nil, err
 				}
 				openIdConfigStore = idConfig.GetOpenIdConfig()
@@ -670,6 +750,8 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if denyWith := responseConfig.Unauthenticated; denyWith != nil {
 			value, err := buildAuthorinoDenyWithValues(denyWith)
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to build unauthenticated deny values")
 				return nil, err
 			}
 			translatedAuthConfig.Unauthenticated = value
@@ -677,11 +759,22 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		if denyWith := responseConfig.Unauthorized; denyWith != nil {
 			value, err := buildAuthorinoDenyWithValues(denyWith)
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to build unauthorized deny values")
 				return nil, err
 			}
 			translatedAuthConfig.Unauthorized = value
 		}
 	}
+
+	span.SetAttributes(
+		attribute.Int("authconfig.identity_count", len(interfacedIdentityConfigs)),
+		attribute.Int("authconfig.metadata_count", len(interfacedMetadataConfigs)),
+		attribute.Int("authconfig.authorization_count", len(interfacedAuthorizationConfigs)),
+		attribute.Int("authconfig.response_count", len(interfacedResponseConfigs)),
+		attribute.Int("authconfig.callback_count", len(interfacedCallbackConfigs)),
+	)
+	span.AddEvent("authconfig.translated")
 
 	return translatedAuthConfig, nil
 }
@@ -803,6 +896,16 @@ func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.Res
 }
 
 func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace, resourceId string, authConfig *evaluators.AuthConfig, hosts []string) (linkedHosts, looseHosts []string, err error) {
+	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.add_to_index")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("authconfig.namespace", resourceNamespace),
+		attribute.String("authconfig.resource_id", resourceId),
+		attribute.Int("authconfig.hosts_count", len(hosts)),
+		attribute.StringSlice("authconfig.hosts", hosts),
+	)
+
 	logger := log.FromContext(ctx)
 	linkedHosts = []string{}
 	looseHosts = []string{}
@@ -812,15 +915,32 @@ func (r *AuthConfigReconciler) addToIndex(ctx context.Context, resourceNamespace
 		if r.hostTaken(host, resourceId) {
 			looseHosts = append(looseHosts, host)
 			logger.Info("host already taken", "host", host)
+			span.AddEvent("authconfig.host_collision", oteltrace.WithAttributes(attribute.String("host", host)))
 			continue
 		}
 
 		// add to the index
 		if err = r.Index.Set(resourceId, host, *authConfig, true); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to set authconfig in index")
 			return
 		}
 
 		linkedHosts = append(linkedHosts, host)
+		span.AddEvent("authconfig.host_linked", oteltrace.WithAttributes(attribute.String("host", host)))
+	}
+
+	span.SetAttributes(
+		attribute.Int("authconfig.linked_hosts_count", len(linkedHosts)),
+		attribute.Int("authconfig.loose_hosts_count", len(looseHosts)),
+	)
+
+	if len(looseHosts) > 0 {
+		span.AddEvent("authconfig.index_partial", oteltrace.WithAttributes(
+			attribute.StringSlice("linked_hosts", linkedHosts),
+			attribute.StringSlice("loose_hosts", looseHosts)))
+	} else {
+		span.AddEvent("authconfig.indexed")
 	}
 
 	return
@@ -836,10 +956,14 @@ func (r *AuthConfigReconciler) supersedeHostSubset(host, supersetResourceId stri
 }
 
 func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
+	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.bootstrap_index")
+	defer span.End()
+
 	r.indexBootstrap.Lock()
 	defer r.indexBootstrap.Unlock()
 
 	if !r.Index.Empty() {
+		span.AddEvent("authconfig.index_already_bootstrapped")
 		return nil
 	}
 
@@ -849,16 +973,22 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		listOptions = append(listOptions, client.MatchingLabelsSelector{Selector: r.LabelSelector})
 	}
 	if err := r.List(ctx, &authConfigList, listOptions...); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to list authconfigs")
 		return err
 	}
 
 	count := len(authConfigList.Items)
+	span.SetAttributes(attribute.Int("authconfig.total_count", count))
+
 	if count == 0 {
+		span.AddEvent("authconfig.no_authconfigs_found")
 		return nil
 	}
 
 	logger := r.Logger.WithName("bootstrap")
 	logger.Info("building the index", "count", count)
+	span.AddEvent("authconfig.bootstrap_started", oteltrace.WithAttributes(attribute.Int("count", count)))
 
 	sort.Sort(authConfigList.Items)
 
@@ -868,6 +998,7 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		DenyWith:             evaluators.DenyWith{Unauthorized: &evaluators.DenyWithValues{Code: 503, Message: &json.JSONValue{Static: "Busy"}}},
 	}
 
+	bootstrappedCount := 0
 	for _, authConfig := range authConfigList.Items {
 		if len(authConfig.Status.Summary.HostsReady) == 0 { // unfortunately we cannot use arbitrary field selectors for custom resources yet - https://github.com/kubernetes/kubernetes/issues/51046
 			continue
@@ -885,9 +1016,15 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		)
 
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to add authconfig to index during bootstrap")
 			return err
 		}
+		bootstrappedCount++
 	}
+
+	span.SetAttributes(attribute.Int("authconfig.bootstrapped_count", bootstrappedCount))
+	span.AddEvent("authconfig.bootstrap_completed", oteltrace.WithAttributes(attribute.Int("bootstrapped_count", bootstrappedCount)))
 
 	return nil
 }
