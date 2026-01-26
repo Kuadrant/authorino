@@ -1430,4 +1430,66 @@ Integration with an OpenTelemetry collector can be enabled by supplying the `--t
 
 The additional `--tracing-service-tags` command-line flag allow to specify fixed agent-level key-value tags for the trace signals emitted by Authorino (e.g. `authorino server --tracing-service-endpoint=... --tracing-service-tag=key1=value1 --tracing-service-tag=key2=value2`).
 
+#### Data plane tracing
+
 Traces related to authorization requests are additionally tagged with the [`authorino.request_id`](#request-id) attribute.
+
+#### Control plane tracing
+
+When OpenTelemetry integration is enabled, Authorino emits trace spans for control plane operations, specifically for the reconciliation of AuthConfig and Secret resources.
+
+**AuthConfig reconciliation traces** include:
+
+- Span name: `authconfig.reconcile`
+- Span attributes:
+  - `authconfig.namespace`: The namespace of the AuthConfig
+  - `authconfig.name`: The name of the AuthConfig
+  - `authconfig.resource_id`: The namespaced name (namespace/name)
+  - `authconfig.hosts_count`: Number of hosts configured
+  - `authconfig.hosts`: List of hosts protected by this AuthConfig
+- Span events tracking reconciliation stages:
+  - `authconfig.found`: AuthConfig resource was successfully retrieved
+  - `authconfig.deleted_or_unwatched`: AuthConfig was deleted or no longer matches label selectors
+  - `authconfig.deindexed`: AuthConfig removed from the index
+  - `authconfig.deleting_unused_hosts`: Removing hosts no longer in the spec
+  - `authconfig.indexed`: AuthConfig successfully added/updated in the index
+
+**AuthConfig status update traces** include:
+
+- Span name: `authconfig.update_status`
+- Span attributes include namespace, name, and resource ID
+- Span events track status update operations
+
+**Secret reconciliation traces** include:
+
+- Span name: `secret.reconcile`
+- Span attributes:
+  - `secret.namespace`: The namespace of the Secret
+  - `secret.name`: The name of the Secret
+  - `secret.affected_authconfigs`: Number of AuthConfigs affected by this Secret change
+- Span events:
+  - `secret.found`: Secret resource was successfully retrieved
+  - `secret.deleted_or_unwatched`: Secret was deleted or no longer matches label selectors
+  - `secret.revoked_from_authconfigs`: Secret-based identities revoked from affected AuthConfigs
+  - `secret.refreshed_in_authconfigs`: Secret-based identities refreshed in affected AuthConfigs
+
+##### Linking parent traces for AuthConfig
+
+Authorino supports linking AuthConfig reconciliation traces to parent operations by extracting W3C Trace Context from AuthConfig resource annotations.
+
+When an AuthConfig is created or updated with W3C Trace Context annotations (`traceparent` and optionally `tracestate`), the reconciliation span will include a trace link to the originating operation. This creates a connection (via span link, not parent-child relationship, since reconciliation is asynchronous and event-driven) that allows you to correlate external operations with the resulting reconciliation activity in your distributed tracing system.
+
+To link a parent trace to AuthConfig reconciliation, add W3C Trace Context annotations to the AuthConfig resource:
+
+```yaml
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: my-api-protection
+  annotations:
+    traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+spec:
+  # ... AuthConfig spec
+```
+
+When Authorino reconciles this resource, it will extract the trace context from the annotations and create a span link, allowing you to see the connection between your deployment operation and the subsequent reconciliation in your tracing backend (e.g., Jaeger, Tempo).
