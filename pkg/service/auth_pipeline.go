@@ -152,6 +152,7 @@ type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocont
 
 func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
 	ctx, cancel := gocontext.WithCancel(pipeline.Context)
+	defer cancel()
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
 

@@ -29,7 +29,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0
 	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.25.0
-	golang.org/x/net v0.47.0
 	golang.org/x/oauth2 v0.28.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a
 	google.golang.org/grpc v1.71.1
@@ -68,6 +67,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
 )
 
