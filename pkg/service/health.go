@@ -6,9 +6,8 @@ package service
    - https://github.com/grpc/grpc/blob/master/doc/health-checking.md */
 
 import (
+	"context"
 	"log"
-
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
