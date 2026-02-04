@@ -74,7 +74,7 @@ KUSTOMIZE_VERSION ?= v5.5.0
 CONTROLLER_GEN_VERSION ?= v0.19.0
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-MOCKGEN_VERSION ?= v0.5.2
+MOCKGEN_VERSION ?= v0.6.0
 BENCHSTAT_VERSION ?= latest
 GOLANGCI_LINT_VERSION ?= v2.1.6
 
