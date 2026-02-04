@@ -1,9 +1,8 @@
 package auth
 
 import (
+	"context"
 	"net/url"
-
-	"golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/jsonexp"
 

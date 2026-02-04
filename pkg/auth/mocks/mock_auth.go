@@ -10,14 +10,14 @@
 package mock_auth
 
 import (
+	context "context"
 	url "net/url"
 	reflect "reflect"
 
-	v3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	auth "github.com/kuadrant/authorino/pkg/auth"
 	jsonexp "github.com/kuadrant/authorino/pkg/jsonexp"
 	gomock "go.uber.org/mock/gomock"
-	context "golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
@@ -90,10 +90,10 @@ func (mr *MockAuthPipelineMockRecorder) GetAuthorizationJSON() *gomock.Call {
 }
 
 // GetHttp mocks base method.
-func (m *MockAuthPipeline) GetHttp() *v3.AttributeContext_HttpRequest {
+func (m *MockAuthPipeline) GetHttp() *authv3.AttributeContext_HttpRequest {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHttp")
-	ret0, _ := ret[0].(*v3.AttributeContext_HttpRequest)
+	ret0, _ := ret[0].(*authv3.AttributeContext_HttpRequest)
 	return ret0
 }
 
@@ -104,10 +104,10 @@ func (mr *MockAuthPipelineMockRecorder) GetHttp() *gomock.Call {
 }
 
 // GetRequest mocks base method.
-func (m *MockAuthPipeline) GetRequest() *v3.CheckRequest {
+func (m *MockAuthPipeline) GetRequest() *authv3.CheckRequest {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRequest")
-	ret0, _ := ret[0].(*v3.CheckRequest)
+	ret0, _ := ret[0].(*authv3.CheckRequest)
 	return ret0
 }
 

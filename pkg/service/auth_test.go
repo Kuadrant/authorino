@@ -2,13 +2,13 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
 
 	gohttptest "net/http/httptest"
 
-	"golang.org/x/net/context"
 	"gotest.tools/assert"
 
 	"github.com/kuadrant/authorino/pkg/auth"

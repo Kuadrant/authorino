@@ -1,6 +1,7 @@
 package service
 
 import (
+	gocontext "context"
 	gojson "encoding/json"
 	"fmt"
 	"maps"
@@ -21,7 +22,6 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
-	gocontext "golang.org/x/net/context"
 )
 
 var (
@@ -152,6 +152,7 @@ type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocont
 
 func (pipeline *AuthPipeline) evaluateAuthConfigs(authConfigs []auth.AuthConfigEvaluator, respChannel *chan EvaluationResponse, evaluate authConfigEvaluationStrategy) {
 	ctx, cancel := gocontext.WithCancel(pipeline.Context)
+	defer cancel()
 	waitGroup := new(sync.WaitGroup)
 	waitGroup.Add(len(authConfigs))
 

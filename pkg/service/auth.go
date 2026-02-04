@@ -1,6 +1,7 @@
 package service
 
 import (
+	gocontext "context"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -9,8 +10,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	gocontext "golang.org/x/net/context"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
