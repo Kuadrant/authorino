@@ -49,23 +49,6 @@ kubectl -n keycloak apply -f https://raw.githubusercontent.com/kuadrant/authorin
 
 The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
 
-<table>
-  <thead>
-    <tr>
-      <th>Using Kuadrant</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❺.</p>
-        <p>At step ❺, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
-        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.</p>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 <br/>
 
 ## ❶ Install the Authorino Operator (cluster admin required)
@@ -133,18 +116,6 @@ This example implements a policy that only users bound to the `admin` role can s
 The config trusts access tokens issued by a Keycloak realm as well as API keys labeled specifically to a selected group (`friends`). The roles of the identities handled by Keycloak are managed in Keycloak, as _realm roles_. Particularly, users `john` and `peter` are bound to the `member` role, while user `jane` is bound to roles `member` and `admin`. As for the users authenticating with API key, they are all bound to the `admin` role.
 
 Without normalizing identity claims from these two different sources, the policy would have to handle the differences of data formats with additional ifs-and-elses. Instead, the config here uses the `identity.extendedProperties` option to ensure a custom `roles` (Array) claim is always present in the identity object. In the case of Keycloak ID tokens, the value is extracted from the `realm_access.roles` claim; for API key-resolved objects, the custom claim is set to the static value `["admin"]`.
-
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
 
 ```sh
 kubectl apply -f -<<EOF
