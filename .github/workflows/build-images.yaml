@@ -113,7 +113,7 @@ jobs:
           images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
           tags: |
             type=raw,value=${{ github.ref_name }},enable={{is_not_default_branch}}
-            type=raw,value=${{ github.sha }}
+            type=raw,value=${{ github.sha }},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Login to registry
         if: ${{ !env.ACT }}
