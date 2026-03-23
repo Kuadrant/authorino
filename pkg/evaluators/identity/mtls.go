@@ -24,18 +24,22 @@ type MTLS struct {
 	Name           string
 	LabelSelectors k8s_labels.Selector
 	Namespace      string
+	HeaderName     string // HTTP header name for XFCC (e.g., "x-forwarded-client-cert")
+	AttributePath  string // Attribute path in CheckRequest (for advanced use cases)
 
 	rootCerts map[string]*x509.Certificate
 	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
-func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
+func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, headerName string, attributePath string, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
 	mtls := &MTLS{
 		AuthCredentials: &auth.AuthCredential{KeySelector: "Basic"},
 		Name:            name,
 		LabelSelectors:  labelSelectors,
 		Namespace:       namespace,
+		HeaderName:      headerName,
+		AttributePath:   attributePath,
 		rootCerts:       make(map[string]*x509.Certificate),
 		k8sClient:       k8sClient,
 	}
@@ -70,19 +74,37 @@ func (m *MTLS) loadSecrets(ctx context.Context) error {
 }
 
 func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	urlEncodedCert := pipeline.GetRequest().Attributes.Source.GetCertificate()
-	if urlEncodedCert == "" {
-		return nil, fmt.Errorf("client certificate is missing")
+	var pemEncodedCert string
+	var err error
+
+	// Extract certificate based on configured source
+	if m.HeaderName != "" {
+		// Extract from HTTP header (XFCC)
+		pemEncodedCert, err = m.extractFromHeader(pipeline)
+		if err != nil {
+			return nil, err
+		}
+	} else if m.AttributePath != "" {
+		// Extract from custom attribute path
+		pemEncodedCert, err = m.extractFromAttribute(pipeline)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Default: extract from source.certificate (backward compatibility)
+		pemEncodedCert, err = m.extractFromSourceCertificate(pipeline)
+		if err != nil {
+			return nil, err
+		}
 	}
-	pemEncodedCert, err := url.QueryUnescape(urlEncodedCert)
-	if err != nil {
-		return nil, fmt.Errorf("invalid client certificate")
-	}
+
+	// Decode PEM certificate
 	cert := decodeCertificate([]byte(pemEncodedCert))
 	if cert == nil {
 		return nil, fmt.Errorf("invalid client certificate")
 	}
 
+	// Validate certificate against trusted CAs
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -96,6 +118,44 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 	}
 
 	return cert.Subject, nil
+}
+
+// extractFromHeader extracts the certificate from an HTTP header (e.g., XFCC)
+func (m *MTLS) extractFromHeader(pipeline auth.AuthPipeline) (string, error) {
+	headers := pipeline.GetHttp().GetHeaders()
+	headerValue, err := getXFCCHeaderFromRequest(headers, m.HeaderName)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract XFCC header: %w", err)
+	}
+
+	pemCert, err := extractClientCertFromXFCC(headerValue)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract certificate from XFCC: %w", err)
+	}
+
+	return pemCert, nil
+}
+
+// extractFromAttribute extracts the certificate from a custom attribute path
+func (m *MTLS) extractFromAttribute(_ auth.AuthPipeline) (string, error) {
+	// For future implementation: use AttributePath to navigate CheckRequest
+	// For now, this is a placeholder for advanced use cases
+	return "", fmt.Errorf("custom attribute path extraction not yet implemented")
+}
+
+// extractFromSourceCertificate extracts the certificate from source.certificate (default/legacy behavior)
+func (m *MTLS) extractFromSourceCertificate(pipeline auth.AuthPipeline) (string, error) {
+	urlEncodedCert := pipeline.GetRequest().Attributes.Source.GetCertificate()
+	if urlEncodedCert == "" {
+		return "", fmt.Errorf("client certificate is missing")
+	}
+
+	pemEncodedCert, err := url.QueryUnescape(urlEncodedCert)
+	if err != nil {
+		return "", fmt.Errorf("invalid client certificate")
+	}
+
+	return pemEncodedCert, nil
 }
 
 // impl:K8sSecretBasedIdentityConfigEvaluator

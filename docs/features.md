@@ -224,6 +224,31 @@ Trusted root CA secrets must be created in the same namespace of the `AuthConfig
 
 Client certificates must include x509 v3 extension specifying 'Client Authentication' extended key usage.
 
+#### Certificate source
+
+By default, Authorino extracts the client certificate from the TLS connection attributes (`source.certificate` in the Envoy CheckRequest). However, in scenarios where a gateway terminates TLS and forwards the client certificate in an HTTP header (e.g., `X-Forwarded-Client-Cert`), you can configure Authorino to extract the certificate from the header instead:
+
+```yaml
+spec:
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: my-ca
+        source:
+          header: x-forwarded-client-cert  # Extract from XFCC header
+```
+
+The certificate in the header must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate against the trusted CAs.
+
+**Security considerations for XFCC header extraction:**
+- The gateway must strip any XFCC headers from client requests to prevent spoofing
+- For production deployments, configure the gateway to validate certificates at the TLS level in addition to Authorino's application-level validation (defense in depth)
+- Only use XFCC header extraction when the gateway is trusted to populate the header correctly
+
+#### Identity object
+
 The identity object resolved out of a client x509 certificate is equal to the subject field of the certificate, and it serializes as JSON within the Authorization JSON usually as follows:
 
 ```jsonc

@@ -415,6 +415,30 @@ type X509ClientCertificateAuthenticationSpec struct {
 	// +optional
 	// +kubebuilder:default:=false
 	AllNamespaces bool `json:"allNamespaces,omitempty"`
+
+	// Source of the client certificate. Defaults to the certificate from the TLS connection attributes.
+	// +optional
+	Source *X509CertificateSource `json:"source,omitempty"`
+}
+
+// Defines where to extract the client certificate from.
+//
+//	+kubebuilder:validation:XValidation:rule="!(has(self.header) && self.header != '' && has(self.attribute) && self.attribute != '')",message="Use one of: header, attribute"
+type X509CertificateSource struct {
+	// Name of the HTTP header containing the client certificate.
+	// The certificate must be PEM-encoded and URL-encoded (e.g. X-Forwarded-Client-Cert).
+	// Use this option when Authorino is deployed behind a proxy that terminates TLS and forwards
+	// the client certificate in an HTTP header (e.g. Envoy with XFCC).
+	// One of: header, attribute
+	// +optional
+	Header string `json:"header,omitempty"`
+
+	// Path to the certificate in the Envoy CheckRequest attributes.
+	// Use this option for advanced use cases where the certificate is available in a non-standard attribute path.
+	// When omitted and no header is specified, defaults to "source.certificate" for backward compatibility.
+	// One of: header, attribute
+	// +optional
+	Attribute string `json:"attribute,omitempty"`
 }
 
 // Settings to extract the identity object from the context.

@@ -94,7 +94,7 @@ func TestNewMTLSIdentity(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "", "", "", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, mtls.Name, "mtls")
 	assert.Equal(t, mtls.LabelSelectors.String(), "app=all")
@@ -112,7 +112,7 @@ func TestNewMTLSIdentitySingleNamespace(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, mtls.Name, "mtls")
 	assert.Equal(t, mtls.LabelSelectors.String(), "app=all")
@@ -128,7 +128,7 @@ func TestNewMTLSIdentitySingleNamespace(t *testing.T) {
 
 func TestMTLSGetK8sSecretLabelSelectors(t *testing.T) {
 	selector, _ := k8s_labels.Parse("app=test")
-	mtls := NewMTLSIdentity("mtls", selector, "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "", "", "", testMTLSK8sClient, context.TODO())
 	assert.Equal(t, mtls.GetK8sSecretLabelSelectors().String(), "app=test")
 }
 
@@ -136,7 +136,7 @@ func TestMTLSAddK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
@@ -163,7 +163,7 @@ func TestMTLSRevokeK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
@@ -192,7 +192,7 @@ func TestCall(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// john (ca: pets)
@@ -227,7 +227,7 @@ func TestCallUnknownAuthority(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// niko (ca: books)
@@ -248,7 +248,7 @@ func TestCallMissingClientCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -266,7 +266,7 @@ func TestCallInvalidClientCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -286,7 +286,7 @@ func TestCallExpiredClientCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// bob (ca: pets / client cert expired on 2023-01-16)
@@ -307,7 +307,7 @@ func TestExtendedKeyUsageMismatch(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// tony (ca: pets / extKeyUsage: server auth)
@@ -321,6 +321,151 @@ func TestExtendedKeyUsageMismatch(t *testing.T) {
 	obj, err := mtls.Call(pipeline, context.TODO())
 	assert.Check(t, obj == nil)
 	assert.ErrorContains(t, err, "certificate specifies an incompatible key usage")
+}
+
+func TestCallWithXFCCHeader(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	// Create MTLS evaluator configured to extract from XFCC header
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// john (ca: pets) - certificate in XFCC header
+	xfccValue := `Hash=468ed33be74eee6556d90c0149c1309e9ba61d6425303443c0748a02dd8de688;Cert="` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `";Subject="CN=john,L=London,C=UK"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+
+	// aisha (ca: cars) - certificate in XFCC header
+	xfccValue = `Hash=abc123;Cert="` + url.QueryEscape(string(testCerts["aisha"]["tls.crt"])) + `";Subject="CN=aisha,L=Islamabad,O=ACME Inc.,OU=Engineering,C=PK"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err = mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"},{"Type":[2,5,4,3],"Value":"aisha"}],"ExtraNames":null}`)
+}
+
+func TestCallWithXFCCHeaderCertInChainField(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// Certificate in Chain field (fallback when Cert is not present)
+	xfccValue := `Hash=abc;Chain="` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+}
+
+func TestCallWithXFCCHeaderMissing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// XFCC header not present
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "header x-forwarded-client-cert not found")
+}
+
+func TestCallWithXFCCHeaderInvalidCert(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// Invalid certificate in XFCC header
+	xfccValue := `Hash=abc;Cert="invalid-cert-data"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "invalid client certificate")
+}
+
+func TestCallWithXFCCHeaderUnknownAuthority(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// niko (ca: books) - not trusted in ns1
+	xfccValue := `Hash=abc;Cert="` + url.QueryEscape(string(testCerts["niko"]["tls.crt"])) + `"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "certificate signed by unknown authority")
+}
+
+func TestCallWithCustomXFCCHeaderName(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	// Use custom header name
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-custom-client-cert", "", testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	xfccValue := `Cert="` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-custom-client-cert": xfccValue,
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
 }
 
 func issueCertificate(subject pkix.Name, ca map[string][]byte, days int, extKeyUsage []x509.ExtKeyUsage) ([]byte, []byte) {
