@@ -361,6 +361,44 @@ func TestCallWithXFCCHeader(t *testing.T) {
 	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"},{"Type":[2,5,4,3],"Value":"aisha"}],"ExtraNames":null}`)
 }
 
+func TestCallWithXFCCHeaderCaseInsensitive(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+	// Create MTLS evaluator configured to extract from XFCC header
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", nil, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// john (ca: pets) - certificate in XFCC header with mixed case keys
+	xfccValue := `hash=468ed33be74eee6556d90c0149c1309e9ba61d6425303443c0748a02dd8de688;cert="` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `";subject="CN=john,L=London,C=UK"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+
+	// aisha (ca: cars) - certificate in XFCC header with different mixed case
+	xfccValue = `HASH=abc123;CERT="` + url.QueryEscape(string(testCerts["aisha"]["tls.crt"])) + `";SUBJECT="CN=aisha,L=Islamabad,O=ACME Inc.,OU=Engineering,C=PK"`
+
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{
+		Headers: map[string]string{
+			"x-forwarded-client-cert": xfccValue,
+		},
+	})
+	obj, err = mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"},{"Type":[2,5,4,3],"Value":"aisha"}],"ExtraNames":null}`)
+}
+
 func TestCallWithXFCCHeaderCertInChainField(t *testing.T) {
 	var data []byte
 

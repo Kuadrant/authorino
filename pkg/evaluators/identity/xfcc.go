@@ -10,13 +10,13 @@ import (
 // https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert
 const (
 	xfccHeaderName = "x-forwarded-client-cert"
-	xfccFieldBy    = "By"
-	xfccFieldHash  = "Hash"
-	xfccFieldCert  = "Cert"
-	xfccFieldChain = "Chain"
-	xfccFieldSubj  = "Subject"
-	xfccFieldURI   = "URI"
-	xfccFieldDNS   = "DNS"
+	xfccFieldBy    = "by"
+	xfccFieldHash  = "hash"
+	xfccFieldCert  = "cert"
+	xfccFieldChain = "chain"
+	xfccFieldSubj  = "subject"
+	xfccFieldURI   = "uri"
+	xfccFieldDNS   = "dns"
 )
 
 // xfccElement represents a single element in the XFCC header
@@ -124,7 +124,7 @@ func parseXFCCElement(elementStr string) (xfccElement, error) {
 		}
 
 		// Assign to appropriate field
-		switch key {
+		switch strings.ToLower(key) {
 		case xfccFieldBy:
 			element.By = value
 		case xfccFieldHash:
