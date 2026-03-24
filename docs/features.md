@@ -237,10 +237,24 @@ spec:
           matchLabels:
             app: my-ca
         source:
-          header: x-forwarded-client-cert  # Extract from XFCC header
+          xfcc: x-forwarded-client-cert  # Name of the XFCC header
 ```
 
-The certificate in the header must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate against the trusted CAs.
+Alternatively, use a CEL expression for advanced certificate extraction:
+
+```yaml
+spec:
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: my-ca
+        source:
+          expression: source.certificate  # Extract from CheckRequest attributes
+```
+
+When using `source.xfcc`, the certificate in the header must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate against the trusted CAs.
 
 **Security considerations for XFCC header extraction:**
 - The gateway must strip any XFCC headers from client requests to prevent spoofing

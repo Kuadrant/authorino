@@ -423,22 +423,22 @@ type X509ClientCertificateAuthenticationSpec struct {
 
 // Defines where to extract the client certificate from.
 //
-//	+kubebuilder:validation:XValidation:rule="!(has(self.header) && self.header != '' && has(self.attribute) && self.attribute != '')",message="Use one of: header, attribute"
+//	+kubebuilder:validation:XValidation:rule="!(has(self.xfcc) && self.xfcc != '' && has(self.expression) && self.expression != '')",message="Use one of: xfcc, expression"
 type X509CertificateSource struct {
-	// Name of the HTTP header containing the client certificate.
-	// The certificate must be PEM-encoded and URL-encoded (e.g. X-Forwarded-Client-Cert).
-	// Use this option when Authorino is deployed behind a proxy that terminates TLS and forwards
-	// the client certificate in an HTTP header (e.g. Envoy with XFCC).
-	// One of: header, attribute
+	// Name of the X-Forwarded-Client-Cert (XFCC) HTTP header containing the client certificate.
+	// Use this option when Authorino is deployed behind a proxy that terminates TLS and forwards the client certificate
+	// in an HTTP header using Envoy's XFCC standard (https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert).
+	// One of: xfcc, expression
 	// +optional
-	Header string `json:"header,omitempty"`
+	Xfcc string `json:"xfcc,omitempty"`
 
-	// Path to the certificate in the Envoy CheckRequest attributes.
+	// CEL expression that resolves to the certificate in PEM format, usually extracted from the Envoy CheckRequest attributes.
 	// Use this option for advanced use cases where the certificate is available in a non-standard attribute path.
-	// When omitted and no header is specified, defaults to "source.certificate" for backward compatibility.
-	// One of: header, attribute
+	// The certificate must be in PEM format and URL-encoded.
+	// When omitted and no XFCC header is specified, defaults to "source.certificate" for backward compatibility.
+	// One of: xfcc, expression
 	// +optional
-	Attribute string `json:"attribute,omitempty"`
+	Expression CelExpression `json:"expression,omitempty"`
 }
 
 // Settings to extract the identity object from the context.

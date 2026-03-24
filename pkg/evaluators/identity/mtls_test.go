@@ -16,6 +16,7 @@ import (
 	"time"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	k8s "k8s.io/api/core/v1"
@@ -94,7 +95,7 @@ func TestNewMTLSIdentity(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "", "", nil, testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, mtls.Name, "mtls")
 	assert.Equal(t, mtls.LabelSelectors.String(), "app=all")
@@ -112,7 +113,7 @@ func TestNewMTLSIdentitySingleNamespace(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, mtls.Name, "mtls")
 	assert.Equal(t, mtls.LabelSelectors.String(), "app=all")
@@ -128,7 +129,7 @@ func TestNewMTLSIdentitySingleNamespace(t *testing.T) {
 
 func TestMTLSGetK8sSecretLabelSelectors(t *testing.T) {
 	selector, _ := k8s_labels.Parse("app=test")
-	mtls := NewMTLSIdentity("mtls", selector, "", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "", "", nil, testMTLSK8sClient, context.TODO())
 	assert.Equal(t, mtls.GetK8sSecretLabelSelectors().String(), "app=test")
 }
 
@@ -136,7 +137,7 @@ func TestMTLSAddK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
@@ -163,7 +164,7 @@ func TestMTLSRevokeK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 
 	assert.Equal(t, len(mtls.rootCerts), 2)
 
@@ -192,7 +193,7 @@ func TestCall(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// john (ca: pets)
@@ -227,7 +228,7 @@ func TestCallUnknownAuthority(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// niko (ca: books)
@@ -248,7 +249,7 @@ func TestCallMissingClientCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -266,7 +267,7 @@ func TestCallInvalidClientCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	pipeline.EXPECT().GetRequest().Return(&envoy_auth.CheckRequest{
@@ -286,7 +287,7 @@ func TestCallExpiredClientCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// bob (ca: pets / client cert expired on 2023-01-16)
@@ -307,7 +308,7 @@ func TestExtendedKeyUsageMismatch(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// tony (ca: pets / extKeyUsage: server auth)
@@ -331,7 +332,7 @@ func TestCallWithXFCCHeader(t *testing.T) {
 
 	selector, _ := k8s_labels.Parse("app=all")
 	// Create MTLS evaluator configured to extract from XFCC header
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// john (ca: pets) - certificate in XFCC header
@@ -406,7 +407,7 @@ func TestCallWithXFCCHeaderCertInChainField(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// Certificate in Chain field (fallback when Cert is not present)
@@ -428,7 +429,7 @@ func TestCallWithXFCCHeaderMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// XFCC header not present
@@ -445,7 +446,7 @@ func TestCallWithXFCCHeaderInvalidCert(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// Invalid certificate in XFCC header
@@ -466,7 +467,7 @@ func TestCallWithXFCCHeaderUnknownAuthority(t *testing.T) {
 	defer ctrl.Finish()
 
 	selector, _ := k8s_labels.Parse("app=all")
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-forwarded-client-cert", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	// niko (ca: books) - not trusted in ns1
@@ -490,7 +491,7 @@ func TestCallWithCustomXFCCHeaderName(t *testing.T) {
 
 	selector, _ := k8s_labels.Parse("app=all")
 	// Use custom header name
-	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-custom-client-cert", "", testMTLSK8sClient, context.TODO())
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "x-custom-client-cert", nil, testMTLSK8sClient, context.TODO())
 	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
 
 	xfccValue := `Cert="` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `"`
@@ -504,6 +505,186 @@ func TestCallWithCustomXFCCHeaderName(t *testing.T) {
 	assert.NilError(t, err)
 	data, _ = json.Marshal(obj)
 	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+}
+
+func TestCallWithExpression(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	// Create CEL expression to extract certificate from authorization JSON
+	expression, err := cel.NewExpression("source.certificate")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// john (ca: pets) - certificate in authorization JSON at source.certificate
+	authJSON := `{"source":{"certificate":"` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+
+	// aisha (ca: cars) - certificate in authorization JSON
+	authJSON = `{"source":{"certificate":"` + url.QueryEscape(string(testCerts["aisha"]["tls.crt"])) + `"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err = mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"},{"Type":[2,5,4,3],"Value":"aisha"}],"ExtraNames":null}`)
+}
+
+func TestCallWithExpressionCustomPath(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	// Create CEL expression to extract from custom path
+	expression, err := cel.NewExpression("request.http.headers['x-ssl-client-cert']")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// Certificate in custom header location
+	authJSON := `{"request":{"http":{"headers":{"x-ssl-client-cert":"` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `"}}}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+}
+
+func TestCallWithExpressionMissingCert(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	expression, err := cel.NewExpression("source.certificate")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// Certificate field missing from authorization JSON
+	authJSON := `{"source":{}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	// CEL expression returns "no such key" error when the field is missing
+	assert.ErrorContains(t, err, "failed to obtain the client certificate")
+}
+
+func TestCallWithExpressionInvalidCert(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	expression, err := cel.NewExpression("source.certificate")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// Invalid certificate data
+	authJSON := `{"source":{"certificate":"invalid-cert-data"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "invalid client certificate")
+}
+
+func TestCallWithExpressionUnknownAuthority(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	expression, err := cel.NewExpression("source.certificate")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// niko (ca: books) - not trusted in ns1
+	authJSON := `{"source":{"certificate":"` + url.QueryEscape(string(testCerts["niko"]["tls.crt"])) + `"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "certificate signed by unknown authority")
+}
+
+func TestCallWithExpressionExpiredCert(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	expression, err := cel.NewExpression("source.certificate")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// bob (ca: pets / client cert expired)
+	authJSON := `{"source":{"certificate":"` + url.QueryEscape(string(testCerts["bob"]["tls.crt"])) + `"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.Check(t, obj == nil)
+	assert.ErrorContains(t, err, "certificate has expired or is not yet valid")
+}
+
+func TestCallWithExpressionComplexPath(t *testing.T) {
+	var data []byte
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	selector, _ := k8s_labels.Parse("app=all")
+
+	// Create CEL expression with conditional logic to choose between two sources
+	expression, err := cel.NewExpression("has(metadata.tls_cert) ? metadata.tls_cert : source.certificate")
+	assert.NilError(t, err)
+
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", expression, testMTLSK8sClient, context.TODO())
+	pipeline := mock_auth.NewMockAuthPipeline(ctrl)
+
+	// Certificate in metadata (preferred path)
+	authJSON := `{"metadata":{"tls_cert":"` + url.QueryEscape(string(testCerts["john"]["tls.crt"])) + `"},"source":{"certificate":"` + url.QueryEscape(string(testCerts["aisha"]["tls.crt"])) + `"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err := mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	// Should use john's cert from metadata, not aisha's from source
+	assert.Equal(t, string(data), `{"Country":["UK"],"Organization":null,"OrganizationalUnit":null,"Locality":["London"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"john","Names":[{"Type":[2,5,4,6],"Value":"UK"},{"Type":[2,5,4,7],"Value":"London"},{"Type":[2,5,4,3],"Value":"john"}],"ExtraNames":null}`)
+
+	// Certificate only in source (fallback path)
+	authJSON = `{"source":{"certificate":"` + url.QueryEscape(string(testCerts["aisha"]["tls.crt"])) + `"}}`
+
+	pipeline.EXPECT().GetAuthorizationJSON().Return(authJSON)
+	obj, err = mtls.Call(pipeline, context.TODO())
+	assert.NilError(t, err)
+	data, _ = json.Marshal(obj)
+	// Should use aisha's cert from source
+	assert.Equal(t, string(data), `{"Country":["PK"],"Organization":["ACME Inc."],"OrganizationalUnit":["Engineering"],"Locality":["Islamabad"],"Province":null,"StreetAddress":null,"PostalCode":null,"SerialNumber":"","CommonName":"aisha","Names":[{"Type":[2,5,4,6],"Value":"PK"},{"Type":[2,5,4,7],"Value":"Islamabad"},{"Type":[2,5,4,10],"Value":"ACME Inc."},{"Type":[2,5,4,11],"Value":"Engineering"},{"Type":[2,5,4,3],"Value":"aisha"}],"ExtraNames":null}`)
 }
 
 func issueCertificate(subject pkix.Name, ca map[string][]byte, days int, extKeyUsage []x509.ExtKeyUsage) ([]byte, []byte) {
