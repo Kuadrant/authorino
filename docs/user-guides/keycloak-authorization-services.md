@@ -166,15 +166,15 @@ spec:
       opa:
         rego: |
           pat := http.send({"url":"http://talker-api:523b92b6-625d-4e1e-a313-77e7a8ae4e88@keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method": "post","headers":{"Content-Type":"application/x-www-form-urlencoded"},"raw_body":"grant_type=client_credentials"}).body.access_token
-          resource_id := http.send({"url":concat("",["http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/resource_set?uri=",input.context.request.http.path]),"method":"get","headers":{"Authorization":concat(" ",["Bearer ",pat])}}).body[0]
+          resource_id := http.send({"url":concat("",["http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/resource_set?uri=",input.context.request.http.path]),"method":"get","headers":{"Authorization":concat("",["Bearer ",pat])}}).body[0]
           scope := lower(input.context.request.http.method)
           access_token := trim_prefix(input.context.request.http.headers.authorization, "Bearer ")
 
           default rpt = ""
           rpt = access_token { object.get(input.auth.identity, "authorization", {}).permissions }
           else = rpt_str {
-            ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat(" ",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
-            rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat(" ",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
+            ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat("",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
+            rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat("",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
           }
 
           allow {
