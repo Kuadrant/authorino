@@ -95,8 +95,8 @@ func splitXFCCElements(header string) []string {
 func parseXFCCElement(elementStr string) (xfccElement, error) {
 	element := xfccElement{}
 
-	// Split by semicolon to get key=value pairs
-	pairs := strings.Split(elementStr, ";")
+	// Split by semicolon, respecting quoted values
+	pairs := splitXFCCPairs(elementStr)
 
 	for _, pair := range pairs {
 		pair = strings.TrimSpace(pair)
@@ -104,14 +104,14 @@ func parseXFCCElement(elementStr string) (xfccElement, error) {
 			continue
 		}
 
-		// Split key=value
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) != 2 {
+		// Split key=value, respecting quoted values
+		key, value, ok := splitKeyValue(pair)
+		if !ok {
 			continue
 		}
 
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
 
 		// Remove quotes from value if present
 		if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
@@ -138,6 +138,63 @@ func parseXFCCElement(elementStr string) (xfccElement, error) {
 	}
 
 	return element, nil
+}
+
+// splitXFCCPairs splits an XFCC element string by semicolons,
+// respecting quoted values that may contain semicolons
+func splitXFCCPairs(s string) []string {
+	var pairs []string
+	var current strings.Builder
+	inQuotes := false
+
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+
+		switch ch {
+		case '"':
+			inQuotes = !inQuotes
+			current.WriteByte(ch)
+		case ';':
+			if inQuotes {
+				// Semicolon inside quotes - part of the value
+				current.WriteByte(ch)
+			} else {
+				// Semicolon outside quotes - separator
+				if current.Len() > 0 {
+					pairs = append(pairs, current.String())
+					current.Reset()
+				}
+			}
+		default:
+			current.WriteByte(ch)
+		}
+	}
+
+	// Add the last pair
+	if current.Len() > 0 {
+		pairs = append(pairs, current.String())
+	}
+
+	return pairs
+}
+
+// splitKeyValue splits a key=value pair, respecting quoted values that may contain equal signs.
+// Returns the key, value, and true if successfully split; otherwise returns empty strings and false.
+func splitKeyValue(s string) (key, value string, ok bool) {
+	inQuotes := false
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+
+		if ch == '"' {
+			inQuotes = !inQuotes
+		} else if ch == '=' && !inQuotes {
+			// First equals sign outside quotes - this is the separator
+			return s[:i], s[i+1:], true
+		}
+	}
+
+	// No equals sign found outside quotes
+	return "", "", false
 }
 
 // extractClientCertFromXFCC extracts the client certificate from XFCC header

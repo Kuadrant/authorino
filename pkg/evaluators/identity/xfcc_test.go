@@ -246,6 +246,145 @@ func TestSplitXFCCElements(t *testing.T) {
 	}
 }
 
+func TestSplitKeyValue(t *testing.T) {
+	tests := []struct {
+		name      string
+		s         string
+		wantKey   string
+		wantValue string
+		wantOk    bool
+	}{
+		{
+			name:      "simple key value",
+			s:         "Hash=abc",
+			wantKey:   "Hash",
+			wantValue: "abc",
+			wantOk:    true,
+		},
+		{
+			name:      "equals in quoted value",
+			s:         `Cert="data=with=equals"`,
+			wantKey:   "Cert",
+			wantValue: `"data=with=equals"`,
+			wantOk:    true,
+		},
+		{
+			name:      "multiple equals in quoted value",
+			s:         `Subject="CN=test,OU=dev,O=company"`,
+			wantKey:   "Subject",
+			wantValue: `"CN=test,OU=dev,O=company"`,
+			wantOk:    true,
+		},
+		{
+			name:      "unquoted value with equals",
+			s:         "Subject=CN=test",
+			wantKey:   "Subject",
+			wantValue: "CN=test",
+			wantOk:    true,
+		},
+		{
+			name:      "no equals sign",
+			s:         "NoEqualsHere",
+			wantKey:   "",
+			wantValue: "",
+			wantOk:    false,
+		},
+		{
+			name:      "empty string",
+			s:         "",
+			wantKey:   "",
+			wantValue: "",
+			wantOk:    false,
+		},
+		{
+			name:      "only equals",
+			s:         "=",
+			wantKey:   "",
+			wantValue: "",
+			wantOk:    true,
+		},
+		{
+			name:      "equals at start",
+			s:         "=value",
+			wantKey:   "",
+			wantValue: "value",
+			wantOk:    true,
+		},
+		{
+			name:      "equals at end",
+			s:         "key=",
+			wantKey:   "key",
+			wantValue: "",
+			wantOk:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, value, ok := splitKeyValue(tt.s)
+			assert.Equal(t, ok, tt.wantOk)
+			if tt.wantOk {
+				assert.Equal(t, key, tt.wantKey)
+				assert.Equal(t, value, tt.wantValue)
+			}
+		})
+	}
+}
+
+func TestSplitXFCCPairs(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want []string
+	}{
+		{
+			name: "simple pairs",
+			s:    `Hash=abc;Cert=xyz`,
+			want: []string{"Hash=abc", "Cert=xyz"},
+		},
+		{
+			name: "semicolon in quoted value",
+			s:    `Hash=abc;Cert="xyz;123";Subject="CN=test"`,
+			want: []string{"Hash=abc", `Cert="xyz;123"`, `Subject="CN=test"`},
+		},
+		{
+			name: "multiple semicolons in quoted value",
+			s:    `Hash=abc;Cert="a;b;c;d";Subject="test"`,
+			want: []string{"Hash=abc", `Cert="a;b;c;d"`, `Subject="test"`},
+		},
+		{
+			name: "no quotes",
+			s:    `Hash=abc;Subject=CN=test`,
+			want: []string{"Hash=abc", "Subject=CN=test"},
+		},
+		{
+			name: "mixed quoted and unquoted",
+			s:    `Hash=abc;Cert="xyz";URI=spiffe://test`,
+			want: []string{"Hash=abc", `Cert="xyz"`, "URI=spiffe://test"},
+		},
+		{
+			name: "empty string",
+			s:    "",
+			want: []string{},
+		},
+		{
+			name: "trailing semicolon",
+			s:    `Hash=abc;Cert="xyz";`,
+			want: []string{"Hash=abc", `Cert="xyz"`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := splitXFCCPairs(tt.s)
+			assert.Equal(t, len(got), len(tt.want))
+			for i := range got {
+				assert.Equal(t, got[i], tt.want[i])
+			}
+		})
+	}
+}
+
 func TestParseXFCCElement(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -285,6 +424,40 @@ func TestParseXFCCElement(t *testing.T) {
 			name:    "empty",
 			element: "",
 			want:    xfccElement{},
+		},
+		{
+			name:    "semicolon in quoted value",
+			element: `Hash=abc;Cert="xyz;123";Subject="CN=test;OU=dev"`,
+			want: xfccElement{
+				Hash:    "abc",
+				Cert:    "xyz;123",
+				Subject: "CN=test;OU=dev",
+			},
+		},
+		{
+			name:    "complex quoted value with multiple special chars",
+			element: `Hash=abc;Cert="data;with=semicolon,and=comma";Subject="CN=test"`,
+			want: xfccElement{
+				Hash:    "abc",
+				Cert:    "data;with=semicolon,and=comma",
+				Subject: "CN=test",
+			},
+		},
+		{
+			name:    "equals in quoted value",
+			element: `Hash=abc;Subject="CN=test,OU=dev,O=ACME Inc."`,
+			want: xfccElement{
+				Hash:    "abc",
+				Subject: "CN=test,OU=dev,O=ACME Inc.",
+			},
+		},
+		{
+			name:    "multiple equals in quoted cert value",
+			element: `Cert="data=with=multiple=equals";Subject="CN=user"`,
+			want: xfccElement{
+				Cert:    "data=with=multiple=equals",
+				Subject: "CN=user",
+			},
 		},
 	}
 
