@@ -33,7 +33,6 @@ type xfccElement struct {
 
 // parseXFCCHeader parses the X-Forwarded-Client-Cert header value
 // Returns a slice of xfccElement, one per certificate element
-// According to design decision: if multiple certificates present, only the first is used
 func parseXFCCHeader(headerValue string) ([]xfccElement, error) {
 	if headerValue == "" {
 		return nil, fmt.Errorf("XFCC header is empty")
@@ -41,7 +40,7 @@ func parseXFCCHeader(headerValue string) ([]xfccElement, error) {
 
 	// XFCC header elements are comma-separated
 	// Each element has semicolon-delimited key=value pairs
-	elements := []xfccElement{}
+	var elements []xfccElement
 
 	// Split by comma to get individual certificate elements
 	parts := splitXFCCElements(headerValue)
@@ -52,10 +51,6 @@ func parseXFCCHeader(headerValue string) ([]xfccElement, error) {
 			return nil, fmt.Errorf("failed to parse XFCC element: %w", err)
 		}
 		elements = append(elements, element)
-	}
-
-	if len(elements) == 0 {
-		return nil, fmt.Errorf("no valid XFCC elements found")
 	}
 
 	return elements, nil
