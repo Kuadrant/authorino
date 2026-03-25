@@ -423,20 +423,27 @@ type X509ClientCertificateAuthenticationSpec struct {
 
 // Defines where to extract the client certificate from.
 //
-//	+kubebuilder:validation:XValidation:rule="!(has(self.xfcc) && self.xfcc != '' && has(self.expression) && self.expression != '')",message="Use one of: xfcc, expression"
+//	+kubebuilder:validation:XValidation:rule="(has(self.xfcc) && self.xfcc != '' ? 1 : 0) + (has(self.clientCertHeader) && self.clientCertHeader != '' ? 1 : 0) + (has(self.expression) && self.expression != '' ? 1 : 0) <= 1",message="Use one of: xfcc, clientCertHeader, expression"
 type X509CertificateSource struct {
 	// Name of the X-Forwarded-Client-Cert (XFCC) HTTP header containing the client certificate.
 	// Use this option when Authorino is deployed behind a proxy that terminates TLS and forwards the client certificate
 	// in an HTTP header using Envoy's XFCC standard (https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert).
-	// One of: xfcc, expression
+	// One of: xfcc, clientCertHeader, expression
 	// +optional
 	Xfcc string `json:"xfcc,omitempty"`
+
+	// Name of the HTTP header containing the client certificate as defined in RFC 9440.
+	// Use this option when the certificate is forwarded in the Client-Cert header format (https://datatracker.ietf.org/doc/rfc9440/).
+	// The certificate must be in DER format, base64-encoded, and delimited by colons (:base64_cert:) as specified in the RFC.
+	// One of: xfcc, clientCertHeader, expression
+	// +optional
+	ClientCertHeader string `json:"clientCertHeader,omitempty"`
 
 	// CEL expression that resolves to the certificate in PEM format, usually extracted from the Envoy CheckRequest attributes.
 	// Use this option for advanced use cases where the certificate is available in a non-standard attribute path.
 	// The certificate must be in PEM format and URL-encoded.
-	// When omitted and no XFCC header is specified, defaults to "source.certificate" for backward compatibility.
-	// One of: xfcc, expression
+	// When omitted and no other source is specified, defaults to "source.certificate" for backward compatibility.
+	// One of: xfcc, clientCertHeader, expression
 	// +optional
 	Expression CelExpression `json:"expression,omitempty"`
 }

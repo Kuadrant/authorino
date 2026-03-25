@@ -237,10 +237,24 @@ spec:
           matchLabels:
             app: my-ca
         source:
-          xfcc: x-forwarded-client-cert  # Name of the XFCC header
+          xfcc: x-forwarded-client-cert  # Envoy XFCC header format
 ```
 
-Alternatively, use a CEL expression for advanced certificate extraction:
+Alternatively, use RFC 9440 Client-Cert header:
+
+```yaml
+spec:
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: my-ca
+        source:
+          clientCertHeader: client-cert  # RFC 9440 format
+```
+
+Or use a CEL expression for advanced certificate extraction:
 
 ```yaml
 spec:
@@ -254,12 +268,15 @@ spec:
           expression: source.certificate  # Extract from CheckRequest attributes
 ```
 
-When using `source.xfcc`, the certificate in the header must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate against the trusted CAs.
+**Certificate format requirements:**
+- `source.xfcc`: Certificate must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate.
+- `source.clientCertHeader`: Certificate must be in DER format, base64-encoded, and delimited by colons (`:base64_cert:`) as specified in [RFC 9440](https://datatracker.ietf.org/doc/rfc9440/).
+- `source.expression`: Certificate must be in PEM format and URL-encoded.
 
-**Security considerations for XFCC header extraction:**
-- The gateway must strip any XFCC headers from client requests to prevent spoofing
+**Security considerations for header-based extraction:**
+- The gateway must strip client-supplied certificate headers to prevent spoofing
 - For production deployments, configure the gateway to validate certificates at the TLS level in addition to Authorino's application-level validation (defense in depth)
-- Only use XFCC header extraction when the gateway is trusted to populate the header correctly
+- Only use header-based extraction when the gateway is trusted to populate the headers correctly
 
 #### Identity object
 

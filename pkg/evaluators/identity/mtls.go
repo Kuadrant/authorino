@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -22,27 +23,29 @@ import (
 type MTLS struct {
 	auth.AuthCredentials
 
-	Name           string
-	LabelSelectors k8s_labels.Selector
-	Namespace      string
-	XFCCHeader     string            // name of the XFCC HTTP header name (e.g., "x-forwarded-client-cert")
-	Expression     expressions.Value // CEL expression for extracting the certificate from the auhtorization JSON
+	Name             string
+	LabelSelectors   k8s_labels.Selector
+	Namespace        string
+	XFCCHeader       string            // name of the XFCC HTTP header (e.g., "x-forwarded-client-cert")
+	ClientCertHeader string            // name of the Client-Cert HTTP header (RFC 9440)
+	Expression       expressions.Value // CEL expression for extracting the certificate from the authorization JSON
 
 	rootCerts map[string]*x509.Certificate
 	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
-func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, xfccHeader string, expression expressions.Value, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
+func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, xfccHeader string, clientCertHeader string, expression expressions.Value, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
 	mtls := &MTLS{
-		AuthCredentials: &auth.AuthCredential{KeySelector: "Basic"},
-		Name:            name,
-		LabelSelectors:  labelSelectors,
-		Namespace:       namespace,
-		XFCCHeader:      xfccHeader,
-		Expression:      expression,
-		rootCerts:       make(map[string]*x509.Certificate),
-		k8sClient:       k8sClient,
+		AuthCredentials:  &auth.AuthCredential{KeySelector: "Basic"},
+		Name:             name,
+		LabelSelectors:   labelSelectors,
+		Namespace:        namespace,
+		XFCCHeader:       xfccHeader,
+		ClientCertHeader: clientCertHeader,
+		Expression:       expression,
+		rootCerts:        make(map[string]*x509.Certificate),
+		k8sClient:        k8sClient,
 	}
 	if err := mtls.loadSecrets(context.TODO()); err != nil {
 		log.FromContext(ctx).WithName("mtls").Error(err, credentialsFetchingErrorMsg)
@@ -80,13 +83,19 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 
 	// Extract certificate based on configured source
 	if m.XFCCHeader != "" {
-		// Extract from XFCC header
+		// Extract from XFCC header (Envoy format)
 		pemEncodedCert, err = m.extractFromXFCCHeader(pipeline)
 		if err != nil {
 			return nil, err
 		}
+	} else if m.ClientCertHeader != "" {
+		// Extract from Client-Cert header (RFC 9440)
+		pemEncodedCert, err = m.extractFromClientCertHeader(pipeline)
+		if err != nil {
+			return nil, err
+		}
 	} else if m.Expression != nil {
-		// Extract from cel expression
+		// Extract from CEL expression
 		pemEncodedCert, err = m.extractFromExpression(pipeline)
 		if err != nil {
 			return nil, err
@@ -121,7 +130,7 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 	return cert.Subject, nil
 }
 
-// extractFromXFCCHeader extracts the certificate from an HTTP header (e.g., XFCC)
+// extractFromXFCCHeader extracts the certificate from an XFCC HTTP header (Envoy format)
 func (m *MTLS) extractFromXFCCHeader(pipeline auth.AuthPipeline) (string, error) {
 	headers := pipeline.GetHttp().GetHeaders()
 	headerValue, err := getXFCCHeaderFromRequest(headers, m.XFCCHeader)
@@ -132,6 +141,26 @@ func (m *MTLS) extractFromXFCCHeader(pipeline auth.AuthPipeline) (string, error)
 	pemCert, err := extractClientCertFromXFCC(headerValue)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract certificate from XFCC: %w", err)
+	}
+
+	return pemCert, nil
+}
+
+// extractFromClientCertHeader extracts the certificate from a Client-Cert HTTP header (RFC 9440)
+func (m *MTLS) extractFromClientCertHeader(pipeline auth.AuthPipeline) (string, error) {
+	headers := pipeline.GetHttp().GetHeaders()
+
+	// Client-Cert header name is case-insensitive
+	headerName := strings.ToLower(m.ClientCertHeader)
+	headerValue, ok := headers[headerName]
+	if !ok {
+		return "", fmt.Errorf("header %s not found in request", m.ClientCertHeader)
+	}
+
+	// RFC 9440: Extract and convert DER certificate to PEM
+	pemCert, err := extractClientCertFromRFC9440(headerValue)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract certificate from Client-Cert header: %w", err)
 	}
 
 	return pemCert, nil
