@@ -374,7 +374,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			var clientCertHeader string
 			var expression expressions.Value
 			if source := identity.X509ClientCertificate.Source; source != nil {
-				xfccHeader = source.Xfcc
+				xfccHeader = source.XfccHeader
 				clientCertHeader = source.ClientCertHeader
 				if celExpr := source.Expression; celExpr != "" {
 					expression, err = cel.NewExpression(string(celExpr))

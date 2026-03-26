@@ -237,7 +237,7 @@ spec:
           matchLabels:
             app: my-ca
         source:
-          xfcc: x-forwarded-client-cert  # Envoy XFCC header format
+          xfccHeader: x-forwarded-client-cert  # Envoy XFCC header format
 ```
 
 Alternatively, use RFC 9440 Client-Cert header:
@@ -269,7 +269,7 @@ spec:
 ```
 
 **Certificate format requirements:**
-- `source.xfcc`: Certificate must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate.
+- `source.xfccHeader`: Certificate must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate.
 - `source.clientCertHeader`: Certificate must be in DER format, base64-encoded, and delimited by colons (`:base64_cert:`) as specified in [RFC 9440](https://datatracker.ietf.org/doc/rfc9440/).
 - `source.expression`: Certificate must be in PEM format and URL-encoded.
 

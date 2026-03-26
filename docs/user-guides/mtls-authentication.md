@@ -470,7 +470,7 @@ spec:
             app: talker-api
         # Configure certificate extraction from XFCC header
         source:
-          xfcc: x-forwarded-client-cert
+          xfccHeader: x-forwarded-client-cert
   authorization:
     "acme":
       patternMatching:
