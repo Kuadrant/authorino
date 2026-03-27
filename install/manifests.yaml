@@ -3077,10 +3077,8 @@ spec:
                           type: object
                           x-kubernetes-validations:
                           - message: 'Use one of: xfccHeader, clientCertHeader, expression'
-                            rule: '(has(self.xfccHeader) && self.xfccHeader != ''''
-                              ? 1 : 0) + (has(self.clientCertHeader) && self.clientCertHeader
-                              != '''' ? 1 : 0) + (has(self.expression) && self.expression
-                              != '''' ? 1 : 0) <= 1'
+                            rule: '(has(self.xfccHeader) ? 1 : 0) + (has(self.clientCertHeader)
+                              ? 1 : 0) + (has(self.expression) ? 1 : 0) <= 1'
                       required:
                       - selector
                       type: object
