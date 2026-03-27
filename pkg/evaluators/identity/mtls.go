@@ -181,7 +181,11 @@ func (m *MTLS) extractFromExpression(pipeline auth.AuthPipeline) (string, error)
 
 // extractFromSourceCertificate extracts the certificate from source.certificate (default/legacy behavior)
 func (m *MTLS) extractFromSourceCertificate(pipeline auth.AuthPipeline) (string, error) {
-	urlEncodedCert := pipeline.GetRequest().Attributes.Source.GetCertificate()
+	req := pipeline.GetRequest()
+	if req == nil || req.Attributes == nil || req.Attributes.Source == nil {
+		return "", fmt.Errorf("client certificate is missing")
+	}
+	urlEncodedCert := req.Attributes.Source.GetCertificate()
 	if urlEncodedCert == "" {
 		return "", fmt.Errorf("client certificate is missing")
 	}
