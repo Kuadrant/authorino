@@ -196,6 +196,16 @@ data:
               - name: envoy.filters.http.router
                 typed_config: {}
               use_remote_address: true
+              # The following XFCC options are not required for the default mTLS setup (steps ❻-❽).
+              # They are included here to enable the XFCC header extraction example in step ❾.
+              # Envoy will forward client certificate details in the X-Forwarded-Client-Cert header,
+              # but Authorino will still extract certificates from TLS attributes by default.
+              forward_client_cert_details: SANITIZE_SET
+              set_current_client_cert_details:
+                subject: true
+                uri: true
+                dns: true
+                cert: true
       clusters:
       - name: authorino
         connect_timeout: 0.25s
@@ -435,7 +445,63 @@ curl -k --cert /tmp/niko.crt --key /tmp/niko.key -H 'Content-Type: application/j
 # x-ext-auth-reason: x509: certificate signed by unknown authority
 ```
 
-## ❾ Revoke an entire chain of certificates
+## ❾ Alternative: Extract certificate from XFCC header
+
+In some deployment scenarios, the gateway terminates TLS and forwards the client certificate to Authorino via the `X-Forwarded-Client-Cert` (XFCC) HTTP header. This is common when using Istio Gateway or Envoy Gateway with client certificate validation enabled.
+
+The Envoy configuration in step ❺ already includes XFCC header forwarding (`forward_client_cert_details: SANITIZE_SET`). By default, Authorino extracts certificates from the TLS connection attributes, but you can configure it to read from the XFCC header instead.
+
+Update the AuthConfig to specify the certificate source:
+
+```sh
+kubectl apply -f -<<EOF
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: talker-api-protection
+spec:
+  hosts:
+  - talker-api.127.0.0.1.nip.io
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: talker-api
+        # Configure certificate extraction from XFCC header
+        source:
+          xfccHeader: x-forwarded-client-cert
+  authorization:
+    "acme":
+      patternMatching:
+        patterns:
+        - selector: auth.identity.Organization
+          operator: incl
+          value: ACME Inc.
+EOF
+```
+
+Test that authentication still works with the XFCC header as the certificate source:
+
+```sh
+curl -k --cert /tmp/aisha.crt --key /tmp/aisha.key https://talker-api.127.0.0.1.nip.io:8443 -i
+# HTTP/1.1 200 OK
+```
+
+The certificate is now being extracted from the XFCC header populated by Envoy, rather than from the TLS connection attributes.
+
+<details markdown="1">
+  <summary><strong>Note:</strong> XFCC header security considerations</summary>
+
+  When using XFCC header extraction, ensure that:
+  - The gateway strips any XFCC headers from client requests to prevent spoofing
+  - The gateway validates client certificates at the TLS level for defense in depth
+  - Only trusted proxies can inject XFCC headers
+
+  For production deployments with enhanced security, configure the gateway to perform TLS client certificate validation in addition to Authorino's application-level validation.
+</details>
+
+## ❿ Revoke an entire chain of certificates
 
 ```sh
 kubectl delete secret/talker-api-ca

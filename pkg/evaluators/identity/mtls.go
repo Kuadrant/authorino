@@ -7,9 +7,11 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
+	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	k8s "k8s.io/api/core/v1"
@@ -21,23 +23,29 @@ import (
 type MTLS struct {
 	auth.AuthCredentials
 
-	Name           string
-	LabelSelectors k8s_labels.Selector
-	Namespace      string
+	Name             string
+	LabelSelectors   k8s_labels.Selector
+	Namespace        string
+	XFCCHeader       string            // name of the XFCC HTTP header (e.g., "x-forwarded-client-cert")
+	ClientCertHeader string            // name of the Client-Cert HTTP header (RFC 9440)
+	Expression       expressions.Value // CEL expression for extracting the certificate from the authorization JSON
 
 	rootCerts map[string]*x509.Certificate
 	mutex     sync.RWMutex
 	k8sClient k8s_client.Reader
 }
 
-func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
+func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, xfccHeader string, clientCertHeader string, expression expressions.Value, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
 	mtls := &MTLS{
-		AuthCredentials: &auth.AuthCredential{KeySelector: "Basic"},
-		Name:            name,
-		LabelSelectors:  labelSelectors,
-		Namespace:       namespace,
-		rootCerts:       make(map[string]*x509.Certificate),
-		k8sClient:       k8sClient,
+		AuthCredentials:  &auth.AuthCredential{KeySelector: "Basic"},
+		Name:             name,
+		LabelSelectors:   labelSelectors,
+		Namespace:        namespace,
+		XFCCHeader:       xfccHeader,
+		ClientCertHeader: clientCertHeader,
+		Expression:       expression,
+		rootCerts:        make(map[string]*x509.Certificate),
+		k8sClient:        k8sClient,
 	}
 	if err := mtls.loadSecrets(context.TODO()); err != nil {
 		log.FromContext(ctx).WithName("mtls").Error(err, credentialsFetchingErrorMsg)
@@ -70,19 +78,43 @@ func (m *MTLS) loadSecrets(ctx context.Context) error {
 }
 
 func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	urlEncodedCert := pipeline.GetRequest().Attributes.Source.GetCertificate()
-	if urlEncodedCert == "" {
-		return nil, fmt.Errorf("client certificate is missing")
+	var pemEncodedCert string
+	var err error
+
+	// Extract certificate based on configured source
+	if m.XFCCHeader != "" {
+		// Extract from XFCC header (Envoy format)
+		pemEncodedCert, err = m.extractFromXFCCHeader(pipeline)
+		if err != nil {
+			return nil, err
+		}
+	} else if m.ClientCertHeader != "" {
+		// Extract from Client-Cert header (RFC 9440)
+		pemEncodedCert, err = m.extractFromClientCertHeader(pipeline)
+		if err != nil {
+			return nil, err
+		}
+	} else if m.Expression != nil {
+		// Extract from CEL expression
+		pemEncodedCert, err = m.extractFromExpression(pipeline)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Default: extract from source.certificate (backward compatibility)
+		pemEncodedCert, err = m.extractFromSourceCertificate(pipeline)
+		if err != nil {
+			return nil, err
+		}
 	}
-	pemEncodedCert, err := url.QueryUnescape(urlEncodedCert)
-	if err != nil {
-		return nil, fmt.Errorf("invalid client certificate")
-	}
+
+	// Decode PEM certificate
 	cert := decodeCertificate([]byte(pemEncodedCert))
 	if cert == nil {
 		return nil, fmt.Errorf("invalid client certificate")
 	}
 
+	// Validate certificate against trusted CAs
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -96,6 +128,68 @@ func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{
 	}
 
 	return cert.Subject, nil
+}
+
+// extractFromXFCCHeader extracts the certificate from an XFCC HTTP header (Envoy format)
+func (m *MTLS) extractFromXFCCHeader(pipeline auth.AuthPipeline) (string, error) {
+	headers := pipeline.GetHttp().GetHeaders()
+	headerValue, err := getXFCCHeaderFromRequest(headers, m.XFCCHeader)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract XFCC header: %w", err)
+	}
+
+	pemCert, err := extractClientCertFromXFCC(headerValue)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract certificate from XFCC: %w", err)
+	}
+
+	return pemCert, nil
+}
+
+// extractFromClientCertHeader extracts the certificate from a Client-Cert HTTP header (RFC 9440)
+func (m *MTLS) extractFromClientCertHeader(pipeline auth.AuthPipeline) (string, error) {
+	headers := pipeline.GetHttp().GetHeaders()
+
+	// Client-Cert header name is case-insensitive
+	headerName := strings.ToLower(m.ClientCertHeader)
+	headerValue, ok := headers[headerName]
+	if !ok {
+		return "", fmt.Errorf("header %s not found in request", m.ClientCertHeader)
+	}
+
+	// RFC 9440: Extract and convert DER certificate to PEM
+	pemCert, err := extractClientCertFromRFC9440(headerValue)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract certificate from Client-Cert header: %w", err)
+	}
+
+	return pemCert, nil
+}
+
+// extractFromExpression extracts the certificate from a CEL expression
+func (m *MTLS) extractFromExpression(pipeline auth.AuthPipeline) (string, error) {
+	cert, err := m.Expression.ResolveFor(pipeline.GetAuthorizationJSON())
+	if err != nil {
+		return "", fmt.Errorf("failed to obtain the client certificate: %w", err)
+	}
+	urlEncodedCert, ok := cert.(string)
+	if !ok || urlEncodedCert == "" {
+		return "", fmt.Errorf("invalid client certificate")
+	}
+	return urlDecodeCertificate(urlEncodedCert)
+}
+
+// extractFromSourceCertificate extracts the certificate from source.certificate (default/legacy behavior)
+func (m *MTLS) extractFromSourceCertificate(pipeline auth.AuthPipeline) (string, error) {
+	req := pipeline.GetRequest()
+	if req == nil || req.Attributes == nil || req.Attributes.Source == nil {
+		return "", fmt.Errorf("client certificate is missing")
+	}
+	urlEncodedCert := req.Attributes.Source.GetCertificate()
+	if urlEncodedCert == "" {
+		return "", fmt.Errorf("client certificate is missing")
+	}
+	return urlDecodeCertificate(urlEncodedCert)
 }
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
@@ -186,4 +280,13 @@ func decodeCertificate(encodedCert []byte) (cert *x509.Certificate) {
 		}
 	}
 	return cert
+}
+
+func urlDecodeCertificate(urlEncodedCert string) (string, error) {
+	pemEncodedCert, err := url.QueryUnescape(urlEncodedCert)
+	if err != nil {
+		return "", fmt.Errorf("invalid client certificate")
+	}
+
+	return pemEncodedCert, nil
 }

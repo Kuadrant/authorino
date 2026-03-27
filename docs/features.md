@@ -224,6 +224,62 @@ Trusted root CA secrets must be created in the same namespace of the `AuthConfig
 
 Client certificates must include x509 v3 extension specifying 'Client Authentication' extended key usage.
 
+#### Certificate source
+
+By default, Authorino extracts the client certificate from the TLS connection attributes (`source.certificate` in the Envoy CheckRequest). However, in scenarios where a gateway terminates TLS and forwards the client certificate in an HTTP header (e.g., `X-Forwarded-Client-Cert`), you can configure Authorino to extract the certificate from the header instead:
+
+```yaml
+spec:
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: my-ca
+        source:
+          xfccHeader: x-forwarded-client-cert  # Envoy XFCC header format
+```
+
+Alternatively, use RFC 9440 Client-Cert header:
+
+```yaml
+spec:
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: my-ca
+        source:
+          clientCertHeader: client-cert  # RFC 9440 format
+```
+
+Or use a CEL expression for advanced certificate extraction:
+
+```yaml
+spec:
+  authentication:
+    "mtls":
+      x509:
+        selector:
+          matchLabels:
+            app: my-ca
+        source:
+          expression: source.certificate  # Extract from CheckRequest attributes
+```
+
+**Certificate format requirements:**
+- `source.xfccHeader`: Certificate must be PEM-encoded and URL-encoded, following the [Envoy XFCC header format](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#x-forwarded-client-cert). Authorino validates only the leaf certificate.
+- `source.clientCertHeader`: Certificate must be in DER format, base64-encoded, and delimited by colons (`:base64_cert:`) as specified in [RFC 9440](https://datatracker.ietf.org/doc/rfc9440/).
+- `source.expression`: Certificate must be in PEM format and URL-encoded.
+
+**Security considerations for header-based extraction:**
+- The gateway must strip client-supplied certificate headers to prevent spoofing
+- For production deployments, configure the gateway to validate certificates at the TLS level in addition to Authorino's application-level validation (defense in depth)
+- Only use header-based extraction when the gateway is trusted to populate the headers correctly
+
+#### Identity object
+
 The identity object resolved out of a client x509 certificate is equal to the subject field of the certificate, and it serializes as JSON within the Authorization JSON usually as follows:
 
 ```jsonc

@@ -369,7 +369,21 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if err != nil {
 				return nil, err
 			}
-			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identityCfgName, selector, namespace, r.Client, ctxWithLogger)
+			// Extract source configuration for certificate extraction
+			var xfccHeader string
+			var clientCertHeader string
+			var expression expressions.Value
+			if source := identity.X509ClientCertificate.Source; source != nil {
+				xfccHeader = source.XfccHeader
+				clientCertHeader = source.ClientCertHeader
+				if celExpr := source.Expression; celExpr != "" {
+					expression, err = cel.NewExpression(string(celExpr))
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+			translatedIdentity.MTLS = identity_evaluators.NewMTLSIdentity(identityCfgName, selector, namespace, xfccHeader, clientCertHeader, expression, r.Client, ctxWithLogger)
 
 		// kubernetes auth
 		case api.KubernetesTokenReviewAuthentication:
