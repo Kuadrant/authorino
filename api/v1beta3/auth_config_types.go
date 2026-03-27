@@ -423,7 +423,7 @@ type X509ClientCertificateAuthenticationSpec struct {
 
 // Defines where to extract the client certificate from.
 //
-//	+kubebuilder:validation:XValidation:rule="(has(self.xfccHeader) && self.xfccHeader != '' ? 1 : 0) + (has(self.clientCertHeader) && self.clientCertHeader != '' ? 1 : 0) + (has(self.expression) && self.expression != '' ? 1 : 0) <= 1",message="Use one of: xfccHeader, clientCertHeader, expression"
+//	+kubebuilder:validation:XValidation:rule="(has(self.xfccHeader) ? 1 : 0) + (has(self.clientCertHeader) ? 1 : 0) + (has(self.expression) ? 1 : 0) <= 1",message="Use one of: xfccHeader, clientCertHeader, expression"
 type X509CertificateSource struct {
 	// Name of the X-Forwarded-Client-Cert (XFCC) HTTP header containing the client certificate.
 	// Use this option when Authorino is deployed behind a proxy that terminates TLS and forwards the client certificate
