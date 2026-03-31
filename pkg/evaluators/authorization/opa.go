@@ -116,6 +116,13 @@ func (opa *OPA) Clean(_ context.Context) error {
 	return opa.ExternalSource.cleanupRefresher()
 }
 
+// GetRego returns the current Rego policy in a thread-safe manner
+func (opa *OPA) GetRego() string {
+	opa.mu.RLock()
+	defer opa.mu.RUnlock()
+	return opa.Rego
+}
+
 func (opa *OPA) updateRego(rego string, ctx context.Context, force bool) (bool, error) {
 	opa.mu.Lock()
 	defer opa.mu.Unlock()

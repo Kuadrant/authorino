@@ -153,11 +153,11 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 	}(opa)
 
 	assert.NilError(t, err)
-	assert.Check(t, strings.Contains(opa.Rego, "GET"))
+	assert.Check(t, strings.Contains(opa.GetRego(), "GET"))
 	assert.Check(t, opa.ExternalSource.refresher != nil)
 
 	time.Sleep(4 * time.Second)
-	assert.Check(t, strings.Contains(opa.Rego, "POST"))
+	assert.Check(t, strings.Contains(opa.GetRego(), "POST"))
 }
 
 func TestOPAClean(t *testing.T) {
