@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -126,11 +127,15 @@ func TestOIDCProviderVerifierInternalError(t *testing.T) {
 }
 
 func TestOIDCProviderVerifierRefresh(t *testing.T) {
+	var mu sync.Mutex
 	count := 0
 	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
 		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
+			mu.Lock()
 			count += 1
-			return oidcServerMockResponse(count)
+			currentCount := count
+			mu.Unlock()
+			return oidcServerMockResponse(currentCount)
 		},
 	})
 	defer authServer.Close()
@@ -149,9 +154,13 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 	assert.Check(t, verifier.refresher != nil)
 
 	time.Sleep(4 * time.Second)
-	assert.Equal(t, 2, count)
+	mu.Lock()
+	currentCount := count
+	mu.Unlock()
+	assert.Equal(t, 2, currentCount)
 	verifier, _ = jwtVerifier.(*oidcProviderVerifier)
-	assert.Equal(t, fmt.Sprintf("http://%v/auth?count=2", oidcServerHost), verifier.provider.Endpoint().AuthURL)
+	provider := verifier.GetProvider()
+	assert.Equal(t, fmt.Sprintf("http://%v/auth?count=2", oidcServerHost), provider.Endpoint().AuthURL)
 }
 
 func TestOIDCProviderVerifierRefreshDisabled(t *testing.T) {

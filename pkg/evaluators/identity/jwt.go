@@ -155,6 +155,13 @@ func (v *oidcProviderVerifier) Clean(ctx gocontext.Context) error {
 	return v.refresher.Stop()
 }
 
+// GetProvider returns the current OIDC provider in a thread-safe manner
+func (v *oidcProviderVerifier) GetProvider() *oidc.Provider {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.provider
+}
+
 func (v *oidcProviderVerifier) getOpenIdProvider(ctx gocontext.Context, force bool) *oidc.Provider {
 	v.mu.Lock()
 	defer v.mu.Unlock()
