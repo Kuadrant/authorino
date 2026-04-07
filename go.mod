@@ -9,7 +9,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/eko/gocache v1.2.0
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
-	github.com/go-jose/go-jose/v4 v4.0.5
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-logr/logr v1.4.2
 	github.com/gogo/googleapis v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -124,7 +124,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.54.0
 	go.opentelemetry.io/otel/trace v1.35.0
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
