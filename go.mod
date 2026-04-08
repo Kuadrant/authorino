@@ -9,7 +9,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/eko/gocache v1.2.0
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0
-	github.com/go-jose/go-jose/v4 v4.1.3
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-logr/logr v1.4.3
 	github.com/gogo/googleapis v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
