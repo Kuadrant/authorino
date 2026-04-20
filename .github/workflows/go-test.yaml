@@ -31,6 +31,9 @@ jobs:
       - name: Run make test
         run: |
           make test
+      - name: Run CEL validation tests
+        run: |
+          make test-cel
       - name: Run test benchmarks
         run: |
           make benchmarks
