@@ -578,10 +578,21 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 		case api.KubernetesSubjectAccessReviewAuthorization:
-			user := authorization.KubernetesSubjectAccessReview.User
-			authorinoUser, err := valueFrom(user)
-			if err != nil {
-				return nil, err
+			// The `user` field on kubernetesSubjectAccessReview is optional:
+			// omitting it is a valid way to request a group-only or self-SAR
+			// check. Guard against the nil pointer here so we don't segfault
+			// the controller's Reconcile (authorino then keeps crash-looping
+			// on every AuthConfig event). NewKubernetesAuthz + jsonValueToStr
+			// already treat a nil expressions.Value as "no user", which maps
+			// to SubjectAccessReviewSpec.User == "" and the Kubernetes API
+			// evaluates it as expected.
+			var authorinoUser expressions.Value
+			if user := authorization.KubernetesSubjectAccessReview.User; user != nil {
+				var err error
+				authorinoUser, err = valueFrom(user)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			var authorinoResourceAttributes *authorization_evaluators.KubernetesAuthzResourceAttributes
