@@ -556,6 +556,27 @@ authorization:
 
 An array of `groups` (optional) can as well be set. When defined, it will be used in the `SubjectAccessReview` request.
 
+**Important:** At least one of `user`, `groups`, or `authorizationGroups` must be specified in the AuthConfig. The API will reject configurations where all three fields are omitted.
+
+> [!WARNING] Dynamic expressions for user and groups
+> When using dynamic expressions (e.g., CEL) to set the values of `user` or `groups` (via `authorizationGroups`), be aware that these expressions may evaluate to empty values for specific requests. If both `user` and `groups`/`authorizationGroups` resolve to empty values simultaneously at runtime, the Kubernetes API may reject the SubjectAccessReview request and Authorino will deny access. To avoid this, consider declaring additional authorization rules to short-circuit the evaluation when values would be empty. E.g.:
+>
+> ```yaml
+> authorization:
+>   "deny-if-no-user-or-groups":
+>     patternMatching:
+>       patterns:
+>       - predicate: auth.identity.username != "" && size(auth.identity.groups) > 0
+>     priority: 0
+>   "kubernetes-rbac":
+>     kubernetesSubjectAccessReview:
+>       user:
+>         expression: auth.identity.username
+>       authorizationGroups:
+>         expression: auth.identity.groups
+>     priority: 1
+> ```
+
 ### SpiceDB ([`authorization.spicedb`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#SpiceDBAuthorizationSpec))
 
 Check permission requests via gRPC with an external Google Zanzibar-inspired [SpiceDB](https://authzed.com) server, by Authzed.

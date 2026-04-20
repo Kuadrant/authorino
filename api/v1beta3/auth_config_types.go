@@ -662,16 +662,28 @@ type ExternalOpaPolicy struct {
 }
 
 // Parameters of the Kubernetes SubjectAccessReview request.
+// +kubebuilder:validation:XValidation:rule="has(self.user) || size(self.groups) > 0 || has(self.authorizationGroups)",message="At least one of user, groups, or authorizationGroups must be specified"
 type KubernetesSubjectAccessReviewAuthorizationSpec struct {
 	// User to check for authorization in the Kubernetes RBAC.
-	// Omit it to check for group authorization only.
+	// Omit it to check for group authorization only (requires groups or authorizationGroups to be specified).
+	//
+	// WARNING: when using dynamic expressions (e.g., with CEL) to set the value of this field,
+	// the expression may evaluate to an empty string for specific requests. If both user and groups/authorizationGroups
+	// resolve to empty values simultaneously at runtime, the Kubernetes API may reject the SubjectAccessReview
+	// and Authorino will deny access.
 	User *ValueOrSelector `json:"user,omitempty"`
 
 	// Groups the user must be a member of or, if `user` is omitted, the groups to check for authorization in the Kubernetes RBAC.
 	// Deprecated: Use authorizationGroups instead.
 	Groups []string `json:"groups,omitempty"`
 
-	// Groups to check for existing permission in the Kubernetes RBAC alternatively to a specific user. This is typically obtained from a list of groups the user is a member of. Must be a static list of group names or dynamically resolve to one from the Authorization JSON.
+	// Groups to check for existing permission in the Kubernetes RBAC alternatively to a specific user.
+	// This is typically obtained from a list of groups the user is a member of.
+	// Must be a static list of group names or dynamically resolve to one from the Authorization JSON.
+	//
+	// WARNING: when using dynamic expressions to set groups, the expression may evaluate to an empty list
+	// for specific requests. If both user and groups/authorizationGroups resolve to empty values simultaneously
+	// at runtime, the Kubernetes API may reject the SubjectAccessReview and Authorino will deny access.
 	AuthorizationGroups *ValueOrSelector `json:"authorizationGroups,omitempty"`
 
 	// Use resourceAttributes to check permissions on Kubernetes resources.
