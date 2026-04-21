@@ -14,7 +14,7 @@ import (
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/open-policy-agent/opa/rego" //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
+	"github.com/open-policy-agent/opa/v1/rego"
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
@@ -22,9 +22,12 @@ import (
 const (
 	opaExtHttpServerMockAddr string = "127.0.0.1:9007"
 	opaInlineRegoDataMock    string = `
-		method = object.get(input.context.request.http, "method", "")
-		path = object.get(input.context.request.http, "path", "")
-		allow { method == "GET"; path = "/allow" }`
+		method = object.get(input.context.request.http, "method", "") { true }
+		path = object.get(input.context.request.http, "path", "") { true }
+		allow {
+			method == "GET"
+			path == "/allow"
+		}`
 )
 
 func TestOPAInlineRego(t *testing.T) {
@@ -83,7 +86,7 @@ func TestOPAWithPackageInRego(t *testing.T) {
 }
 
 func TestOPAExternalUrlJsonResponse(t *testing.T) {
-	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod = object.get(input.context.request.http, \"method\", \"\")\npath = object.get(input.context.request.http, \"path\", \"\")\n\nallow { method == \"GET\"; path = \"/allow\" }"}}`
+	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod = object.get(input.context.request.http, \"method\", \"\") { true }\npath = object.get(input.context.request.http, \"path\", \"\") { true }\nallow {\n\tmethod == \"GET\"\n\tpath == \"/allow\"\n}"}}`
 
 	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
 		"/rego": func() httptest.HttpServerMockResponse {
@@ -130,7 +133,13 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 		"/rego": func() httptest.HttpServerMockResponse {
 			var rego string
 			if changed {
-				rego = opaInlineRegoDataMock + `allow { method == "POST"; path = "/allow" }`
+				rego = `
+		method = object.get(input.context.request.http, "method", "") { true }
+		path = object.get(input.context.request.http, "path", "") { true }
+		allow {
+			method == "POST"
+			path == "/allow"
+		}`
 			} else {
 				rego = opaInlineRegoDataMock
 				changed = true
