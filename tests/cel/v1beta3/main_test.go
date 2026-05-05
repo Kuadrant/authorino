@@ -28,8 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -39,43 +37,31 @@ var k8sClient client.Client
 
 func TestMain(m *testing.M) {
 	scheme := runtime.NewScheme()
-	var restConfig *rest.Config
-	var testEnv *envtest.Environment
-	var err error
 
 	utilruntime.Must(v1beta3.AddToScheme(scheme))
 
 	// Add core APIs in case we refer secrets, services and configmaps
 	utilruntime.Must(corev1.AddToScheme(scheme))
 
-	// If one wants to use a local cluster, a KUBECONFIG envvar should be passed,
-	// otherwise testenv will be used
-	kubeconfig := os.Getenv("KUBECONFIG")
-	if kubeconfig != "" {
-		restConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to get restConfig from BuildConfigFromFlags: %v", err))
-		}
-	} else {
-		// The version used here MUST reflect the available versions at
-		// controller-runtime repo: https://raw.githubusercontent.com/kubernetes-sigs/controller-tools/HEAD/envtest-releases.yaml
-		// K8S_VERSION environment variable can be used by setup-envtest (in the Makefile)
-		// to download a specific Kubernetes version. If not set, the latest GA will be used.
-		testEnv = &envtest.Environment{
-			Scheme:                scheme,
-			ErrorIfCRDPathMissing: true,
-			CRDInstallOptions: envtest.CRDInstallOptions{
-				Paths: []string{
-					filepath.Join("..", "..", "..", "install", "crd"),
-				},
-				CleanUpAfterUse: true,
+	// The version used here MUST reflect the available versions at
+	// controller-runtime repo: https://raw.githubusercontent.com/kubernetes-sigs/controller-tools/HEAD/envtest-releases.yaml
+	// K8S_VERSION environment variable can be used by setup-envtest (in the Makefile)
+	// to download a specific Kubernetes version. If not set, the latest GA will be used.
+	testEnv := &envtest.Environment{
+		Scheme:                scheme,
+		UseExistingCluster:    new(bool), // false - always use envtest
+		ErrorIfCRDPathMissing: true,
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				filepath.Join("..", "..", "..", "install", "crd"),
 			},
-		}
+			CleanUpAfterUse: true,
+		},
+	}
 
-		restConfig, err = testEnv.Start()
-		if err != nil {
-			panic(fmt.Sprintf("Error initializing test environment: %v", err))
-		}
+	restConfig, err := testEnv.Start()
+	if err != nil {
+		panic(fmt.Sprintf("Error initializing test environment: %v", err))
 	}
 
 	k8sClient, err = client.New(restConfig, client.Options{
@@ -86,10 +72,9 @@ func TestMain(m *testing.M) {
 	}
 
 	rc := m.Run()
-	if testEnv != nil {
-		if err := testEnv.Stop(); err != nil {
-			panic(fmt.Sprintf("error stopping test environment: %v", err))
-		}
+
+	if err := testEnv.Stop(); err != nil {
+		panic(fmt.Sprintf("error stopping test environment: %v", err))
 	}
 
 	os.Exit(rc)

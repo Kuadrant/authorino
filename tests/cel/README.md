@@ -37,9 +37,6 @@ KUBEBUILDER_ASSETS=$(bin/setup-envtest use -p path 1.28.3) go test ./tests/cel/.
 
 # Run with a specific Kubernetes version
 K8S_VERSION=1.28.0 go test ./tests/cel/... -v
-
-# Run against a real cluster (instead of envtest)
-KUBECONFIG=~/.kube/config go test ./tests/cel/... -v
 ```
 
 ### Run Specific Test
@@ -80,7 +77,6 @@ Failed validation (expected):
 
 ## Environment Variables
 
-- **`KUBECONFIG`**: Path to kubeconfig file. If set, tests run against a real cluster instead of envtest
 - **`K8S_VERSION`**: Kubernetes version for envtest (e.g., `1.28.0`). Defaults to latest GA version
 - **`ENVTEST_K8S_VERSION`**: Alternative name for `K8S_VERSION`
 
