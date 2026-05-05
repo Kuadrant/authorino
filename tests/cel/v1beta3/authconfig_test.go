@@ -25,16 +25,18 @@ import (
 	"github.com/kuadrant/authorino/api/v1beta3"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// TestKubernetesSubjectAccessReviewCELValidation tests the CEL validation rule
-// that requires at least one of user, groups, or authorizationGroups to be specified
-// in the kubernetesSubjectAccessReview authorization configuration.
+// TestKubernetesSubjectAccessReviewCELValidation tests the CEL validation rules
+// for the kubernetesSubjectAccessReview authorization configuration.
 //
-// The validation rule is:
-//
-//	has(self.user) || size(self.groups) > 0 || has(self.authorizationGroups)
+// The validation rules are:
+//  1. At least one of user, groups, or authorizationGroups must be specified:
+//     has(self.user) || has(self.groups) || has(self.authorizationGroups)
+//  2. If groups is specified, it must not be empty:
+//     has(self.groups) ? size(self.groups) > 0 : true
 func TestKubernetesSubjectAccessReviewCELValidation(t *testing.T) {
 	ctx := context.Background()
 
@@ -150,6 +152,10 @@ func TestKubernetesSubjectAccessReviewCELValidation(t *testing.T) {
 				ac.Spec.Authorization["k8s-sar"].KubernetesSubjectAccessReview.AuthorizationGroups = nil
 			},
 			wantErrors: []string{
+				// Note: Empty slices are omitted during JSON marshaling (omitempty tag),
+				// so has(self.groups) returns false and the first validation rule fails.
+				// The second rule (size check) only triggers when groups is explicitly
+				// set to [] in raw YAML/JSON (which we can't easily test via Go client).
 				"At least one of user, groups, or authorizationGroups must be specified",
 			},
 		},
@@ -231,4 +237,117 @@ func TestKubernetesSubjectAccessReviewCELValidation(t *testing.T) {
 			}
 		})
 	}
+
+	// Test explicit empty groups array using unstructured to bypass omitempty marshaling
+	t.Run("invalid - explicit empty groups array via unstructured (no user or authorizationGroups)", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create an unstructured object with explicit groups: []
+		u := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "authorino.kuadrant.io/v1beta3",
+				"kind":       "AuthConfig",
+				"metadata": map[string]interface{}{
+					"name":      fmt.Sprintf("test-sar-%v", time.Now().UnixNano()),
+					"namespace": metav1.NamespaceDefault,
+				},
+				"spec": map[string]interface{}{
+					"hosts": []interface{}{"test.example.com"},
+					"authentication": map[string]interface{}{
+						"api-key": map[string]interface{}{
+							"plain": map[string]interface{}{
+								"selector": "context.request.http.headers.x-user-name",
+							},
+						},
+					},
+					"authorization": map[string]interface{}{
+						"k8s-sar": map[string]interface{}{
+							"kubernetesSubjectAccessReview": map[string]interface{}{
+								"groups": []interface{}{}, // Explicit empty array
+								"resourceAttributes": map[string]interface{}{
+									"namespace": map[string]interface{}{
+										"value": "default",
+									},
+									"verb": map[string]interface{}{
+										"value": "get",
+									},
+									"resource": map[string]interface{}{
+										"value": "secrets",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := k8sClient.Create(ctx, u)
+
+		if err == nil {
+			t.Fatalf("Expected validation error for explicit empty groups array, but creation succeeded")
+		}
+
+		// Should trigger the second validation rule about empty groups
+		if !celErrorStringMatches(err.Error(), "'groups' must not be empty") {
+			t.Errorf("Expected error containing \"'groups' must not be empty\", got: %v", err)
+		}
+	})
+
+	// Test explicit empty groups array with user present using unstructured
+	t.Run("invalid - explicit empty groups array via unstructured (user specified)", func(t *testing.T) {
+		ctx := context.Background()
+
+		u := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "authorino.kuadrant.io/v1beta3",
+				"kind":       "AuthConfig",
+				"metadata": map[string]interface{}{
+					"name":      fmt.Sprintf("test-sar-%v", time.Now().UnixNano()),
+					"namespace": metav1.NamespaceDefault,
+				},
+				"spec": map[string]interface{}{
+					"hosts": []interface{}{"test.example.com"},
+					"authentication": map[string]interface{}{
+						"api-key": map[string]interface{}{
+							"plain": map[string]interface{}{
+								"selector": "context.request.http.headers.x-user-name",
+							},
+						},
+					},
+					"authorization": map[string]interface{}{
+						"k8s-sar": map[string]interface{}{
+							"kubernetesSubjectAccessReview": map[string]interface{}{
+								"user": map[string]interface{}{
+									"selector": "auth.identity.username",
+								},
+								"groups": []interface{}{}, // Explicit empty array (should be invalid even with user)
+								"resourceAttributes": map[string]interface{}{
+									"namespace": map[string]interface{}{
+										"value": "default",
+									},
+									"verb": map[string]interface{}{
+										"value": "get",
+									},
+									"resource": map[string]interface{}{
+										"value": "secrets",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := k8sClient.Create(ctx, u)
+
+		if err == nil {
+			t.Fatalf("Expected validation error for explicit empty groups array, but creation succeeded")
+		}
+
+		if !celErrorStringMatches(err.Error(), "'groups' must not be empty") {
+			t.Errorf("Expected error containing \"'groups' must not be empty\", got: %v", err)
+		}
+	})
 }

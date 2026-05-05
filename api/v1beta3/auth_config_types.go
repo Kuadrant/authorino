@@ -662,7 +662,8 @@ type ExternalOpaPolicy struct {
 }
 
 // Parameters of the Kubernetes SubjectAccessReview request.
-// +kubebuilder:validation:XValidation:rule="has(self.user) || (has(self.groups) && size(self.groups) > 0) || has(self.authorizationGroups)",message="At least one of user, groups, or authorizationGroups must be specified"
+// +kubebuilder:validation:XValidation:rule="has(self.user) || has(self.groups) || has(self.authorizationGroups)",message="At least one of user, groups, or authorizationGroups must be specified"
+// +kubebuilder:validation:XValidation:rule="has(self.groups) ? size(self.groups) > 0 : true",message="'groups' must not be empty"
 type KubernetesSubjectAccessReviewAuthorizationSpec struct {
 	// User to check for authorization in the Kubernetes RBAC.
 	// Omit it to check for group authorization only (requires groups or authorizationGroups to be specified).
