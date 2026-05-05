@@ -3019,7 +3019,8 @@ spec:
                       x-kubernetes-validations:
                       - message: At least one of user, groups, or authorizationGroups
                           must be specified
-                        rule: has(self.user) || size(self.groups) > 0 || has(self.authorizationGroups)
+                        rule: has(self.user) || (has(self.groups) && size(self.groups)
+                          > 0) || has(self.authorizationGroups)
                     metrics:
                       default: false
                       description: Whether this config should generate individual
