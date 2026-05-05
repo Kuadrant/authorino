@@ -39,6 +39,13 @@ type WellKnownAttributes struct {
 	Auth *AuthAttributes `json:"auth,omitempty"`
 }
 
+// GRPCAttributes contains gRPC-specific request metadata extracted from the
+// request path. Only populated for gRPC requests with a valid /Service/Method path.
+type GRPCAttributes struct {
+	Service string `json:"service,omitempty"`
+	Method  string `json:"method,omitempty"`
+}
+
 type RequestAttributes struct {
 	// Request ID corresponding to x-request-id header value
 	Id string `json:"id,omitempty"`
@@ -70,6 +77,8 @@ type RequestAttributes struct {
 	Body string `json:"body,omitempty"`
 	// The HTTP request body in bytes. This is sometimes used instead of body depending on the proxy configuration. e.g. 1234
 	RawBody []byte `json:"raw_body,omitempty"`
+	// gRPC service and method extracted from the request path (only for gRPC requests)
+	GRPC *GRPCAttributes `json:"grpc,omitempty"`
 	// This is analogous to request.headers, however these contents are not sent to the upstream server. It provides an
 	// extension mechanism for sending additional information to the auth service without modifying the proto definition.
 	// It maps to the internal opaque context in the proxy filter chain. (Requires additional configuration in the proxy.)
@@ -141,6 +150,12 @@ func newRequestAttributes(attributes *envoyauth.AttributeContext) *RequestAttrib
 	httpRequest := request.GetHttp()
 	urlParsed, _ := url.Parse(httpRequest.Path)
 	headers := httpRequest.GetHeaders()
+
+	var grpcAttrs *GRPCAttributes
+	if isGRPCRequest(headers) {
+		grpcAttrs = parseGRPCPath(urlParsed.Path)
+	}
+
 	return &RequestAttributes{
 		Id:                httpRequest.Id,
 		Time:              request.Time,
@@ -157,6 +172,7 @@ func newRequestAttributes(attributes *envoyauth.AttributeContext) *RequestAttrib
 		Size:              httpRequest.GetSize(),
 		Body:              httpRequest.GetBody(),
 		RawBody:           httpRequest.GetRawBody(),
+		GRPC:              grpcAttrs,
 		ContextExtensions: attributes.GetContextExtensions(),
 	}
 }
@@ -197,4 +213,26 @@ func newAuthAttributes(authData map[string]interface{}) *AuthAttributes {
 		}
 	}
 	return authAttributes
+}
+
+// isGRPCRequest returns true if the request has a content-type header starting
+// with "application/grpc".
+func isGRPCRequest(headers map[string]string) bool {
+	return strings.HasPrefix(headers["content-type"], "application/grpc")
+}
+
+// parseGRPCPath extracts gRPC service and method from a path in /Service/Method
+// format. Returns nil if the path does not match the expected format.
+func parseGRPCPath(path string) *GRPCAttributes {
+	if !strings.HasPrefix(path, "/") {
+		return nil
+	}
+	parts := strings.Split(path[1:], "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return nil
+	}
+	return &GRPCAttributes{
+		Service: parts[0],
+		Method:  parts[1],
+	}
 }
