@@ -82,6 +82,7 @@ ENVTEST_K8S_VERSION ?= $(K8S_VERSION)
 MOCKGEN_VERSION ?= v0.6.0
 BENCHSTAT_VERSION ?= latest
 GOLANGCI_LINT_VERSION ?= v2.1.6
+GO_VERSION ?= $(shell awk '/^go / {print $$2}' go.mod)
 
 ## Versioned Binaries (the actual files that 'make' will check for)
 KIND_V_BINARY := $(LOCALBIN)/kind-$(KIND_VERSION)
@@ -197,14 +198,14 @@ docker-build: ## Builds an image based on the current branch
 		-t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./api/... ./controllers/... ./pkg/... -coverprofile cover.out
 
 test-cel: generate manifests envtest ## Runs CEL validation tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' go test ./tests/cel/v1beta3/... -v
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./tests/cel/...
 
 BENCHMARKS_FILE=benchmarks.out
 benchmarks: generate manifests envtest benchstat ## Runs the test with benchmarks
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' go test ./... -bench=. -run=^Benchmark -count=10 -cpu=1,4,10 -benchmem | tee $(BENCHMARKS_FILE)
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./... -bench=. -run=^Benchmark -count=10 -cpu=1,4,10 -benchmem | tee $(BENCHMARKS_FILE)
 	$(MAKE) report-benchmarks
 
 report-benchmarks:
