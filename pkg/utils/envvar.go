@@ -29,7 +29,7 @@ func EnvVar[T envVar](key string, def T) T {
 			return any(v).(T)
 		case reflect.Float32:
 			v, _ := strconv.ParseFloat(val, 32)
-			return any(v).(T)
+			return any(float32(v)).(T)
 		case reflect.Float64:
 			v, _ := strconv.ParseFloat(val, 64)
 			return any(v).(T)
