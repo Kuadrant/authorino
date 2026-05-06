@@ -2836,11 +2836,14 @@ spec:
                       description: Authorization by Kubernetes SubjectAccessReview
                       properties:
                         authorizationGroups:
-                          description: Groups to check for existing permission in
-                            the Kubernetes RBAC alternatively to a specific user.
-                            This is typically obtained from a list of groups the user
-                            is a member of. Must be a static list of group names or
-                            dynamically resolve to one from the Authorization JSON.
+                          description: |-
+                            Groups to check for existing permission in the Kubernetes RBAC alternatively to a specific user.
+                            This is typically obtained from a list of groups the user is a member of.
+                            Must be a static list of group names or dynamically resolve to one from the Authorization JSON.
+
+                            WARNING: when using dynamic expressions to set groups, the expression may evaluate to an empty list
+                            for specific requests. If both user and groups/authorizationGroups resolve to empty values simultaneously
+                            at runtime, the Kubernetes API may reject the SubjectAccessReview and Authorino will deny access.
                           properties:
                             expression:
                               description: |-
@@ -2990,7 +2993,12 @@ spec:
                         user:
                           description: |-
                             User to check for authorization in the Kubernetes RBAC.
-                            Omit it to check for group authorization only.
+                            Omit it to check for group authorization only (requires groups or authorizationGroups to be specified).
+
+                            WARNING: when using dynamic expressions (e.g., with CEL) to set the value of this field,
+                            the expression may evaluate to an empty string for specific requests. If both user and groups/authorizationGroups
+                            resolve to empty values simultaneously at runtime, the Kubernetes API may reject the SubjectAccessReview
+                            and Authorino will deny access.
                           properties:
                             expression:
                               description: |-
@@ -3008,6 +3016,12 @@ spec:
                               x-kubernetes-preserve-unknown-fields: true
                           type: object
                       type: object
+                      x-kubernetes-validations:
+                      - message: At least one of user, groups, or authorizationGroups
+                          must be specified
+                        rule: has(self.user) || has(self.groups) || has(self.authorizationGroups)
+                      - message: '''groups'' must not be empty'
+                        rule: 'has(self.groups) ? size(self.groups) > 0 : true'
                     metrics:
                       default: false
                       description: Whether this config should generate individual
