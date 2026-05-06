@@ -47,6 +47,26 @@ func TestFetchEnvVarBool(t *testing.T) {
 	assert.Equal(t, EnvVar("AUTHORINO_TEST_ENV_VAR_OTHER", false), false)
 }
 
+func TestFetchEnvVarFloat32(t *testing.T) {
+	_ = os.Setenv("AUTHORINO_TEST_ENV_VAR", "3.14")
+	defer func() {
+		_ = os.Unsetenv("AUTHORINO_TEST_ENV_VAR")
+	}()
+
+	assert.Equal(t, EnvVar("AUTHORINO_TEST_ENV_VAR", float32(0)), float32(3.14))
+	assert.Equal(t, EnvVar("AUTHORINO_TEST_ENV_VAR_OTHER", float32(1.5)), float32(1.5))
+}
+
+func TestFetchEnvVarFloat64(t *testing.T) {
+	_ = os.Setenv("AUTHORINO_TEST_ENV_VAR", "3.14")
+	defer func() {
+		_ = os.Unsetenv("AUTHORINO_TEST_ENV_VAR")
+	}()
+
+	assert.Equal(t, EnvVar("AUTHORINO_TEST_ENV_VAR", float64(0)), float64(3.14))
+	assert.Equal(t, EnvVar("AUTHORINO_TEST_ENV_VAR_OTHER", float64(1.5)), float64(1.5))
+}
+
 func TestFetchEnvVarInvalid(t *testing.T) {
 	_ = os.Setenv("AUTHORINO_TEST_ENV_VAR", "NaN")
 	defer func() {
