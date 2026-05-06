@@ -292,11 +292,20 @@ func (s *AuthenticationSpec) GetMethod() AuthenticationMethod {
 	return UnknownAuthenticationMethod
 }
 
+// Defines where credentials are extracted from in the request.
+// When omitted, defaults to the HTTP Authorization header with the Bearer prefix.
+// +kubebuilder:validation:MaxProperties=1
 type Credentials struct {
-	AuthorizationHeader *Prefixed     `json:"authorizationHeader,omitempty"`
-	CustomHeader        *CustomHeader `json:"customHeader,omitempty"`
-	QueryString         *Named        `json:"queryString,omitempty"`
-	Cookie              *Named        `json:"cookie,omitempty"`
+	// Extract the credential from the HTTP Authorization header.
+	// The prefix specifies the authentication scheme to strip from the header value (e.g. "Bearer", "APIKEY", "Basic").
+	// Defaults to "Bearer" when prefix is omitted.
+	AuthorizationHeader *Prefixed `json:"authorizationHeader,omitempty"`
+	// Extract the credential from a custom HTTP header specified by name.
+	CustomHeader *CustomHeader `json:"customHeader,omitempty"`
+	// Extract the credential from a query string parameter specified by name.
+	QueryString *Named `json:"queryString,omitempty"`
+	// Extract the credential from a cookie specified by name.
+	Cookie *Named `json:"cookie,omitempty"`
 }
 
 func (c *Credentials) GetType() CredentialsType {
@@ -449,14 +458,18 @@ type X509CertificateSource struct {
 }
 
 // Settings to extract the identity object from the context.
+//
+//	+kubebuilder:validation:XValidation:rule="has(self.selector) != has(self.expression)",message="Use exactly one of: selector, expression"
 type PlainIdentitySpec struct {
 	// Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
 	// Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
 	// The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+	// Use alternatively to 'expression'.
 	Selector string `json:"selector,omitempty"`
 
 	// A Common Expression Language (CEL) expression that evaluates to a value that represents an identity.
 	// String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+	// Use alternatively to 'selector'.
 	Expression CelExpression `json:"expression,omitempty"`
 }
 
@@ -488,6 +501,9 @@ type MetadataMethodSpec struct {
 }
 
 // Settings of the external HTTP request
+//
+//	+kubebuilder:validation:XValidation:rule="has(self.url) != has(self.urlExpression)",message="Use exactly one of: url, urlExpression"
+//	+kubebuilder:validation:XValidation:rule="!has(self.body) || !has(self.bodyParameters)",message="Use one of: body, bodyParameters"
 type HttpEndpointSpec struct {
 	// Endpoint URL of the HTTP service.
 	// The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
@@ -634,6 +650,8 @@ type PatternMatchingAuthorizationSpec struct {
 }
 
 // Settings of the Open Policy Agent (OPA) authorization.
+//
+//	+kubebuilder:validation:XValidation:rule="has(self.rego) != has(self.externalPolicy)",message="Use exactly one of: rego, externalPolicy"
 type OpaAuthorizationSpec struct {
 	// Authorization policy as a Rego language document.
 	// The Rego document must include the "allow" condition, set by Authorino to "false" by default (i.e. requests are unauthorized unless changed).
