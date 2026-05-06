@@ -595,6 +595,59 @@ func TestNewAuthorizationJSON(t *testing.T) {
 	assert.Equal(t, expectedAuthJSON, NewAuthorizationJSON(request, authPipeline))
 }
 
+func TestNewAuthorizationJSONWithGRPC(t *testing.T) {
+	grpcRequest := `{
+		"attributes": {
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/UserService/GetUser",
+					"method": "POST",
+					"headers": {
+						"content-type": "application/grpc"
+					}
+				}
+			}
+		}
+	}`
+
+	request := &envoy_auth.CheckRequest{}
+	_ = gojson.Unmarshal([]byte(grpcRequest), request)
+
+	authPipeline := map[string]any{
+		"identity": "leeloo",
+	}
+
+	authJSON := NewAuthorizationJSON(request, authPipeline)
+
+	var result map[string]any
+	_ = gojson.Unmarshal([]byte(authJSON), &result)
+
+	requestObj := result["request"].(map[string]any)
+	grpcObj, ok := requestObj["grpc"].(map[string]any)
+	assert.Check(t, ok, "grpc field should be present in request")
+	assert.Equal(t, "UserService", grpcObj["service"])
+	assert.Equal(t, "GetUser", grpcObj["method"])
+}
+
+func TestNewAuthorizationJSONWithoutGRPC(t *testing.T) {
+	request := &envoy_auth.CheckRequest{}
+	_ = gojson.Unmarshal([]byte(rawRequest), request)
+
+	authPipeline := map[string]any{
+		"identity": "leeloo",
+	}
+
+	authJSON := NewAuthorizationJSON(request, authPipeline)
+
+	var result map[string]any
+	_ = gojson.Unmarshal([]byte(authJSON), &result)
+
+	requestObj := result["request"].(map[string]any)
+	_, ok := requestObj["grpc"]
+	assert.Check(t, !ok, "grpc field should be absent for non-gRPC requests")
+}
+
 func TestPipelineMetricLabels(t *testing.T) {
 	reqJSON := `{
 		"attributes": {
