@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	gojson "encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -827,7 +828,20 @@ func valueFrom(user *api.ValueOrSelector) (expressions.Value, error) {
 			return nil, err
 		}
 	} else {
-		strValue = &json.JSONValue{Static: user.Value, Pattern: user.Selector}
+		var staticValue interface{}
+		if len(user.Value.Raw) > 0 {
+			if err := gojson.Unmarshal(user.Value.Raw, &staticValue); err != nil {
+				return nil, err
+			}
+			if obj, ok := staticValue.(map[string]interface{}); ok && len(obj) == 1 {
+				if unwrapped, found := obj["string"]; found {
+					staticValue = unwrapped
+				}
+			}
+		} else {
+			staticValue = user.Value.Object
+		}
+		strValue = &json.JSONValue{Static: staticValue, Pattern: user.Selector}
 	}
 	return strValue, nil
 }

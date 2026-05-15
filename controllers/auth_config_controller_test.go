@@ -10,6 +10,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
+	"github.com/kuadrant/authorino/pkg/json"
 	mock_index "github.com/kuadrant/authorino/pkg/index/mocks"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -37,6 +38,18 @@ func TestMain(m *testing.M) {
 	})
 	defer authServer.Close()
 	os.Exit(m.Run())
+}
+
+func TestValueFromUnwrapsStringValue(t *testing.T) {
+	value, err := valueFrom(&api.ValueOrSelector{
+		Value: runtime.RawExtension{Raw: []byte(`{"string":"application/json"}`)},
+	})
+
+	assert.NilError(t, err)
+
+	jsonValue, ok := value.(*json.JSONValue)
+	assert.Assert(t, ok)
+	assert.Equal(t, jsonValue.Static, "application/json")
 }
 
 func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
