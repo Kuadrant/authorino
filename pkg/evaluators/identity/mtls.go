@@ -70,7 +70,11 @@ func (m *MTLS) loadSecrets(ctx context.Context) error {
 }
 
 func (m *MTLS) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	urlEncodedCert := pipeline.GetRequest().Attributes.Source.GetCertificate()
+	req := pipeline.GetRequest()
+	if req == nil || req.Attributes == nil || req.Attributes.Source == nil {
+		return nil, fmt.Errorf("client certificate is missing")
+	}
+	urlEncodedCert := req.Attributes.Source.GetCertificate()
 	if urlEncodedCert == "" {
 		return nil, fmt.Errorf("client certificate is missing")
 	}
