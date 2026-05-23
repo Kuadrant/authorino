@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI assistants and coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -189,7 +189,7 @@ Authorino reads `Attributes.Http.Host` from Envoy's CheckRequest or `host` from 
 - OIDC/UMA configs are cached at reconciliation-time
 - JWKs are cached and auto-refreshed based on `spec.authentication.jwt.ttl`
 - Rego policies are precompiled at reconciliation-time
-- Each evaluator can use `spec..cache` for instance-level caching
+- Each evaluator can use `spec.*.cache` for instance-level caching
 
 ### Testing
 
@@ -238,7 +238,7 @@ Built with:
 
 ## Contribution Guide
 
-See the full Developer's Guide in @docs/contributing.md for
+See the full Developer's Guide in [docs/contributing.md](docs/contributing.md) for
 step-by-step instructions on setting up your development environment, running
 tests, generating code, and submitting changes. Quick highlights:
 
