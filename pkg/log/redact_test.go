@@ -429,3 +429,154 @@ func containsSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+func TestAddRemoveSensitiveField(t *testing.T) {
+	// Save original state
+	originalFields := GetSensitiveFields()
+	defer func() {
+		// Restore original state
+		sensitiveFieldsMu.Lock()
+		sensitiveFields = originalFields
+		sensitiveFieldsMu.Unlock()
+	}()
+
+	// Add a custom field
+	AddSensitiveField("custom_token")
+
+	// Test that it's now redacted
+	data := "custom_token=secret123&other=value"
+	result := RedactedFormData(data)
+
+	parsed, _ := url.ParseQuery(result)
+	if !contains(parsed.Get("custom_token"), "REDACTED") {
+		t.Errorf("custom_token should be redacted after adding")
+	}
+	if parsed.Get("other") != "value" {
+		t.Errorf("other field should be preserved")
+	}
+
+	// Remove the custom field
+	RemoveSensitiveField("custom_token")
+
+	// Test that it's no longer redacted
+	result2 := RedactedFormData(data)
+	parsed2, _ := url.ParseQuery(result2)
+	if parsed2.Get("custom_token") != "secret123" {
+		t.Errorf("custom_token should not be redacted after removal, got %v", parsed2.Get("custom_token"))
+	}
+}
+
+func TestAddRemoveSensitiveHeader(t *testing.T) {
+	// Save original state
+	originalHeaders := GetSensitiveHeaders()
+	defer func() {
+		// Restore original state
+		sensitiveHeadersMu.Lock()
+		sensitiveHeaders = originalHeaders
+		sensitiveHeadersMu.Unlock()
+	}()
+
+	// Add a custom header
+	AddSensitiveHeader("X-Custom-Token")
+
+	// Test that it's now redacted
+	headers := map[string][]string{
+		"X-Custom-Token": {"secret123"},
+		"Content-Type":   {"application/json"},
+	}
+	result := RedactedHeaders(headers)
+
+	if result["X-Custom-Token"][0] != "***REDACTED***" {
+		t.Errorf("X-Custom-Token should be redacted after adding")
+	}
+	if result["Content-Type"][0] != "application/json" {
+		t.Errorf("Content-Type should be preserved")
+	}
+
+	// Remove the custom header
+	RemoveSensitiveHeader("X-Custom-Token")
+
+	// Test that it's no longer redacted
+	result2 := RedactedHeaders(headers)
+	if result2["X-Custom-Token"][0] != "secret123" {
+		t.Errorf("X-Custom-Token should not be redacted after removal, got %v", result2["X-Custom-Token"][0])
+	}
+}
+
+func TestCaseInsensitiveSensitiveFields(t *testing.T) {
+	// Save original state
+	originalFields := GetSensitiveFields()
+	defer func() {
+		sensitiveFieldsMu.Lock()
+		sensitiveFields = originalFields
+		sensitiveFieldsMu.Unlock()
+	}()
+
+	// Add field in mixed case
+	AddSensitiveField("MyCustomToken")
+
+	// Test that it matches in various cases
+	testCases := []string{
+		"mycustomtoken=secret",
+		"MyCustomToken=secret",
+		"MYCUSTOMTOKEN=secret",
+	}
+
+	for _, tc := range testCases {
+		result := RedactedFormData(tc)
+		if contains(result, "secret") {
+			t.Errorf("Field should be redacted regardless of case: %s", tc)
+		}
+	}
+}
+
+func TestConcurrentAccess(t *testing.T) {
+	// Save original state
+	originalFields := GetSensitiveFields()
+	originalHeaders := GetSensitiveHeaders()
+	defer func() {
+		sensitiveFieldsMu.Lock()
+		sensitiveFields = originalFields
+		sensitiveFieldsMu.Unlock()
+		sensitiveHeadersMu.Lock()
+		sensitiveHeaders = originalHeaders
+		sensitiveHeadersMu.Unlock()
+	}()
+
+	// Test concurrent reads and writes
+	done := make(chan bool)
+
+	// Writer goroutines
+	for i := 0; i < 10; i++ {
+		go func(n int) {
+			for j := 0; j < 100; j++ {
+				if n%2 == 0 {
+					AddSensitiveField("test")
+					AddSensitiveHeader("test")
+				} else {
+					RemoveSensitiveField("test")
+					RemoveSensitiveHeader("test")
+				}
+			}
+			done <- true
+		}(i)
+	}
+
+	// Reader goroutines
+	for i := 0; i < 10; i++ {
+		go func() {
+			for j := 0; j < 100; j++ {
+				_ = GetSensitiveFields()
+				_ = GetSensitiveHeaders()
+				_ = RedactedFormData("test=value")
+				_ = RedactedHeaders(map[string][]string{"Test": {"value"}})
+			}
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < 20; i++ {
+		<-done
+	}
+}
