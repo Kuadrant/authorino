@@ -269,6 +269,16 @@ func RedactedAuthorizationJSON(authJSON string) interface{} {
 		if identity, ok := auth["identity"].(map[string]interface{}); ok {
 			redactSensitiveIdentityFields(identity)
 		}
+
+		// Redact metadata in auth.metadata
+		// Structure is {"name1": obj1, "name2": obj2, ...}
+		if metadata, ok := auth["metadata"].(map[string]interface{}); ok {
+			for _, metadataObj := range metadata {
+				if metadataMap, ok := metadataObj.(map[string]interface{}); ok {
+					redactSensitiveIdentityFields(metadataMap)
+				}
+			}
+		}
 	}
 
 	return data
