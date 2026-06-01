@@ -240,7 +240,7 @@ func (pipeline *AuthPipeline) evaluateIdentityConfigs() EvaluationResponse {
 				} else {
 					pipeline.setIdentityObj(conf, extendedObj)
 
-					logger.Info("identity validated", "config", conf, "object", extendedObj)
+					logger.Info("identity validated", "config", conf, "object", log.RedactedIdentityObject(extendedObj))
 					return resp
 				}
 			} else {
