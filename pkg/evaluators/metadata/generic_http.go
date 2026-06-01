@@ -159,12 +159,12 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 	if logger := log.FromContext(ctx).WithName("http").V(1); logger.Enabled() {
 		logData := []interface{}{
 			"method", method,
-			"url", endpoint,
-			"headers", req.Header,
+			"url", log.RedactedURLString(endpoint),
+			"headers", log.RedactedHeaders(req.Header),
 		}
 		if requestBody != nil {
 			if b, ok := requestBody.(*bytes.Buffer); ok {
-				logData = append(logData, "body", b.String())
+				logData = append(logData, "body", log.RedactedRequestBody(b.String(), contentType))
 			}
 		}
 		logger.Info("sending request", logData...)
