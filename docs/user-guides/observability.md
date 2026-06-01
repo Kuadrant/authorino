@@ -1143,9 +1143,65 @@ spec:
 
 ### Sensitive data output to the logs
 
-Authorino will never output HTTP headers and query string parameters to `info` log messages, as such values usually include sensitive data (e.g. access tokens, API keys and Authorino Festival Wristbands). However, `debug` log messages may include such sensitive information and those are not redacted.
+Authorino will never output HTTP headers and query string parameters to `info` log messages, as such values usually include sensitive data (e.g. access tokens, API keys and Authorino Festival Wristbands).
 
-Therefore, **DO NOT USE `debug` LOG LEVEL IN PRODUCTION**! Instead, use either `info` or `error`.
+For `debug` log messages, Authorino automatically redacts sensitive information to prevent credential leakage (CWE-532). The following data is redacted by default:
+
+**Redacted form fields:**
+- `token`, `access_token`, `refresh_token`, `id_token`
+- `client_secret`, `password`, `secret`
+- `api_key`, `apikey`
+
+**Redacted HTTP headers:**
+- `Authorization`, `Cookie`
+- `X-API-Key`, `APIKey`
+
+**Additionally redacted:**
+- URL credentials (userinfo in URLs like `https://user:pass@example.com`)
+- Kubernetes TokenReview tokens
+- Complete request bodies for JSON and other content types (form-encoded data has specific fields redacted)
+
+#### Customizing redaction
+
+You can customize which fields and headers are redacted using command-line flags:
+
+```bash
+# Add custom sensitive fields to redact
+--log-redact-add-field=custom_token
+--log-redact-add-field=tenant_secret
+
+# Add custom sensitive headers to redact
+--log-redact-add-header=X-Custom-Auth
+--log-redact-add-header=X-Internal-Token
+
+# Remove fields from default redaction list (use with caution)
+--log-redact-remove-field=api_key
+
+# Remove headers from default redaction list (use with caution)
+--log-redact-remove-header=cookie
+```
+
+**Important notes:**
+
+1. **Field and header matching is case-insensitive**: Adding `MyCustomToken` will redact `mycustomtoken`, `MyCustomToken`, and `MYCUSTOMTOKEN`.
+
+2. **Flags can be repeated**: Use multiple `--log-redact-add-field` flags to add multiple custom fields.
+
+3. **Redacted values are replaced with** `***REDACTED***` in the logs.
+
+4. **Use debug logging carefully**: Even with redaction, debug logs expose more internal details than info logs. Use `debug` level only for troubleshooting and switch back to `info` or `error` for production.
+
+**Example of redacted debug log output:**
+
+Before redaction:
+```
+sending token introspection request url=https://client:secret@oauth.example.com/introspect data=token=user_token_123&grant_type=client_credentials
+```
+
+After redaction:
+```
+sending token introspection request url=https://***REDACTED***:***REDACTED***@oauth.example.com/introspect data=token=***REDACTED***&grant_type=client_credentials
+```
 
 ### Log messages printed by Authorino
 
