@@ -3,6 +3,7 @@ package log
 import (
 	"net/url"
 	"strings"
+	"sync"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/protobuf/proto"
@@ -10,6 +11,80 @@ import (
 )
 
 const redacted = "***REDACTED***"
+
+var (
+	// Global configuration for sensitive fields and headers
+	sensitiveFieldsMu sync.RWMutex
+	sensitiveFields   = map[string]bool{
+		"token":         true,
+		"access_token":  true,
+		"refresh_token": true,
+		"id_token":      true,
+		"client_secret": true,
+		"password":      true,
+		"secret":        true,
+		"api_key":       true,
+		"apikey":        true,
+	}
+
+	sensitiveHeadersMu sync.RWMutex
+	sensitiveHeaders   = map[string]bool{
+		"authorization": true,
+		"cookie":        true,
+		"x-api-key":     true,
+		"apikey":        true,
+	}
+)
+
+// AddSensitiveField adds a field name to the list of sensitive fields to redact
+func AddSensitiveField(field string) {
+	sensitiveFieldsMu.Lock()
+	defer sensitiveFieldsMu.Unlock()
+	sensitiveFields[strings.ToLower(field)] = true
+}
+
+// RemoveSensitiveField removes a field name from the list of sensitive fields
+func RemoveSensitiveField(field string) {
+	sensitiveFieldsMu.Lock()
+	defer sensitiveFieldsMu.Unlock()
+	delete(sensitiveFields, strings.ToLower(field))
+}
+
+// AddSensitiveHeader adds a header name to the list of sensitive headers to redact
+func AddSensitiveHeader(header string) {
+	sensitiveHeadersMu.Lock()
+	defer sensitiveHeadersMu.Unlock()
+	sensitiveHeaders[strings.ToLower(header)] = true
+}
+
+// RemoveSensitiveHeader removes a header name from the list of sensitive headers
+func RemoveSensitiveHeader(header string) {
+	sensitiveHeadersMu.Lock()
+	defer sensitiveHeadersMu.Unlock()
+	delete(sensitiveHeaders, strings.ToLower(header))
+}
+
+// GetSensitiveFields returns a copy of the current sensitive fields map
+func GetSensitiveFields() map[string]bool {
+	sensitiveFieldsMu.RLock()
+	defer sensitiveFieldsMu.RUnlock()
+	copy := make(map[string]bool, len(sensitiveFields))
+	for k, v := range sensitiveFields {
+		copy[k] = v
+	}
+	return copy
+}
+
+// GetSensitiveHeaders returns a copy of the current sensitive headers map
+func GetSensitiveHeaders() map[string]bool {
+	sensitiveHeadersMu.RLock()
+	defer sensitiveHeadersMu.RUnlock()
+	copy := make(map[string]bool, len(sensitiveHeaders))
+	for k, v := range sensitiveHeaders {
+		copy[k] = v
+	}
+	return copy
+}
 
 // RedactedURL returns a URL string with the userinfo (credentials) redacted
 func RedactedURL(u *url.URL) string {
@@ -38,22 +113,18 @@ func RedactedFormData(data string) string {
 		return redacted
 	}
 
-	// Redact common sensitive fields
-	sensitiveFields := []string{
-		"token",
-		"access_token",
-		"refresh_token",
-		"id_token",
-		"client_secret",
-		"password",
-		"secret",
-		"api_key",
-		"apikey",
+	// Redact configured sensitive fields
+	sensitiveFieldsMu.RLock()
+	fieldsToRedact := make(map[string]bool, len(sensitiveFields))
+	for k, v := range sensitiveFields {
+		fieldsToRedact[k] = v
 	}
+	sensitiveFieldsMu.RUnlock()
 
-	for _, field := range sensitiveFields {
-		if values.Has(field) {
-			values.Set(field, redacted)
+	// Check each field in the values (case-insensitive)
+	for fieldName := range values {
+		if fieldsToRedact[strings.ToLower(fieldName)] {
+			values.Set(fieldName, redacted)
 		}
 	}
 
@@ -80,16 +151,17 @@ func RedactedHeaders(headers map[string][]string) map[string][]string {
 		return nil
 	}
 
-	redactedHeaders := make(map[string][]string, len(headers))
-	sensitiveHeaders := map[string]bool{
-		"authorization": true,
-		"cookie":        true,
-		"x-api-key":     true,
-		"apikey":        true,
+	// Get configured sensitive headers
+	sensitiveHeadersMu.RLock()
+	headersToRedact := make(map[string]bool, len(sensitiveHeaders))
+	for k, v := range sensitiveHeaders {
+		headersToRedact[k] = v
 	}
+	sensitiveHeadersMu.RUnlock()
 
+	redactedHeaders := make(map[string][]string, len(headers))
 	for k, v := range headers {
-		if sensitiveHeaders[strings.ToLower(k)] {
+		if headersToRedact[strings.ToLower(k)] {
 			redactedHeaders[k] = []string{redacted}
 		} else {
 			redactedHeaders[k] = v
@@ -105,16 +177,17 @@ func RedactedStringMapHeaders(headers map[string]string) map[string]string {
 		return nil
 	}
 
-	redactedHeaders := make(map[string]string, len(headers))
-	sensitiveHeaders := map[string]bool{
-		"authorization": true,
-		"cookie":        true,
-		"x-api-key":     true,
-		"apikey":        true,
+	// Get configured sensitive headers
+	sensitiveHeadersMu.RLock()
+	headersToRedact := make(map[string]bool, len(sensitiveHeaders))
+	for k, v := range sensitiveHeaders {
+		headersToRedact[k] = v
 	}
+	sensitiveHeadersMu.RUnlock()
 
+	redactedHeaders := make(map[string]string, len(headers))
 	for k, v := range headers {
-		if sensitiveHeaders[strings.ToLower(k)] {
+		if headersToRedact[strings.ToLower(k)] {
 			redactedHeaders[k] = redacted
 		} else {
 			redactedHeaders[k] = v
