@@ -388,7 +388,7 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx gocontext
 	logger.Info("incoming authorization request", "object", reducedReq) // info
 
 	if logger.V(1).Enabled() {
-		logger.V(1).Info("incoming authorization request", "object", &reqAttrs) // debug
+		logger.V(1).Info("incoming authorization request", "object", log.RedactedAttributeContext(reqAttrs)) // debug
 	}
 }
 
