@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	authv1 "k8s.io/api/authentication/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestRedactedURL(t *testing.T) {
@@ -418,6 +420,155 @@ func TestRedactedRequestBody(t *testing.T) {
 	}
 }
 
+func TestRedactedIdentityObject(t *testing.T) {
+	tests := []struct {
+		name             string
+		identity         interface{}
+		shouldNotContain []string
+		checkFn          func(*testing.T, interface{})
+	}{
+		{
+			name: "Kubernetes Secret with data and annotation",
+			identity: map[string]interface{}{
+				"kind":       "Secret",
+				"apiVersion": "v1",
+				"metadata": map[string]interface{}{
+					"name":      "api-key-1",
+					"namespace": "default",
+					"annotations": map[string]interface{}{
+						"kubectl.kubernetes.io/last-applied-configuration": `{"apiVersion":"v1","kind":"Secret","metadata":{"name":"api-key-1"},"stringData":{"api_key":"ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx"}}`,
+					},
+				},
+				"data": map[string]interface{}{
+					"api_key": "bmR5QnpyZVV6RjR6cURRc3FTUE1Ia1JocmlFT3RjUng=",
+				},
+				"type": "Opaque",
+			},
+			shouldNotContain: []string{"bmR5QnpyZVV6RjR6cURRc3FTUE1Ia1JocmlFT3RjUng=", "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx"},
+			checkFn: func(t *testing.T, result interface{}) {
+				secret := result.(map[string]interface{})
+
+				// Check data is redacted
+				data := secret["data"].(map[string]interface{})
+				if data["api_key"] != "***REDACTED***" {
+					t.Errorf("api_key in data should be redacted, got %v", data["api_key"])
+				}
+
+				// Check metadata name is preserved
+				metadata := secret["metadata"].(map[string]interface{})
+				if metadata["name"] != "api-key-1" {
+					t.Errorf("Secret name should be preserved")
+				}
+
+				// Check annotation secrets are redacted
+				annotations := metadata["annotations"].(map[string]interface{})
+				annotation := annotations["kubectl.kubernetes.io/last-applied-configuration"].(string)
+				if contains(annotation, "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx") {
+					t.Errorf("Plaintext secret in annotation should be redacted")
+				}
+			},
+		},
+		{
+			name: "Regular identity object with sensitive fields",
+			identity: map[string]interface{}{
+				"username":     "john",
+				"access_token": "secret-token-123",
+				"email":        "john@example.com",
+			},
+			shouldNotContain: []string{"secret-token-123"},
+			checkFn: func(t *testing.T, result interface{}) {
+				identity := result.(map[string]interface{})
+				if identity["username"] != "john" {
+					t.Errorf("username should be preserved")
+				}
+				if identity["access_token"] != "***REDACTED***" {
+					t.Errorf("access_token should be redacted")
+				}
+				if identity["email"] != "john@example.com" {
+					t.Errorf("email should be preserved")
+				}
+			},
+		},
+		{
+			name: "Typed Kubernetes Secret struct (real v1.Secret)",
+			identity: &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Secret",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "api-key-1",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"kubectl.kubernetes.io/last-applied-configuration": `{"apiVersion":"v1","kind":"Secret","stringData":{"api_key":"ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx"}}`,
+					},
+				},
+				Data: map[string][]byte{
+					"api_key": []byte("bmR5QnpyZVV6RjR6cURRc3FTUE1Ia1JocmlFT3RjUng="),
+				},
+				Type: corev1.SecretTypeOpaque,
+			},
+			shouldNotContain: []string{"bmR5QnpyZVV6RjR6cURRc3FTUE1Ia1JocmlFT3RjUng=", "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx"},
+			checkFn: func(t *testing.T, result interface{}) {
+				secret := result.(map[string]interface{})
+
+				// Check it's recognized as a Secret
+				if secret["kind"] != "Secret" {
+					t.Errorf("Expected kind=Secret, got %v", secret["kind"])
+				}
+
+				// Check data is redacted
+				data := secret["data"].(map[string]interface{})
+				if data["api_key"] != "***REDACTED***" {
+					t.Errorf("Typed Secret data.api_key should be redacted, got %v", data["api_key"])
+				}
+
+				// Check metadata is preserved
+				metadata := secret["metadata"].(map[string]interface{})
+				if metadata["name"] != "api-key-1" {
+					t.Errorf("Secret name should be preserved")
+				}
+
+				// Check annotation secrets are redacted
+				annotations := metadata["annotations"].(map[string]interface{})
+				annotation := annotations["kubectl.kubernetes.io/last-applied-configuration"].(string)
+				if contains(annotation, "ndyBzreUzF4zqDQsqSPMHkRhriEOtcRx") {
+					t.Errorf("Plaintext secret in annotation should be redacted")
+				}
+			},
+		},
+		{
+			name:             "Primitive identity value",
+			identity:         "some-string-identity",
+			shouldNotContain: []string{},
+			checkFn: func(t *testing.T, result interface{}) {
+				if result != "some-string-identity" {
+					t.Errorf("Primitive identity should be returned as-is")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := RedactedIdentityObject(tt.identity)
+
+			// Serialize to check for sensitive data
+			serialized, _ := json.Marshal(result)
+			resultStr := string(serialized)
+			for _, notExpected := range tt.shouldNotContain {
+				if contains(resultStr, notExpected) {
+					t.Errorf("Result should not contain %q, got %v", notExpected, resultStr)
+				}
+			}
+
+			if tt.checkFn != nil {
+				tt.checkFn(t, result)
+			}
+		})
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) >= len(substr) && containsSubstring(s, substr))
 }
@@ -687,14 +838,16 @@ func TestRedactedAuthorizationJSON(t *testing.T) {
 			},
 		},
 		{
-			name: "Authorization JSON with sensitive identity fields",
+			name: "Authorization JSON with sensitive identity fields under auth",
 			authJSON: `{
-				"identity": {
-					"username": "john",
-					"access_token": "secret-access-token",
-					"api_key": "my-api-key",
-					"nested": {
-						"refresh_token": "secret-refresh-token"
+				"auth": {
+					"identity": {
+						"username": "john",
+						"access_token": "secret-access-token",
+						"api_key": "my-api-key",
+						"nested": {
+							"refresh_token": "secret-refresh-token"
+						}
 					}
 				}
 			}`,
@@ -705,7 +858,8 @@ func TestRedactedAuthorizationJSON(t *testing.T) {
 					t.Fatal("Result should be a map")
 				}
 
-				identity := data["identity"].(map[string]interface{})
+				auth := data["auth"].(map[string]interface{})
+				identity := auth["identity"].(map[string]interface{})
 				if identity["username"] != "john" {
 					t.Errorf("username should be preserved")
 				}
@@ -719,6 +873,57 @@ func TestRedactedAuthorizationJSON(t *testing.T) {
 				nested := identity["nested"].(map[string]interface{})
 				if nested["refresh_token"] != "***REDACTED***" {
 					t.Errorf("nested refresh_token should be redacted")
+				}
+			},
+		},
+		{
+			name: "Authorization JSON with Kubernetes Secret identity under auth",
+			authJSON: `{
+				"auth": {
+					"identity": {
+						"kind": "Secret",
+						"apiVersion": "v1",
+						"metadata": {
+							"name": "api-key-1",
+							"namespace": "default",
+							"annotations": {
+								"kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"name\":\"api-key-1\"},\"stringData\":{\"api_key\":\"plaintext-secret\"}}"
+							}
+						},
+						"data": {
+							"api_key": "base64-encoded-secret"
+						},
+						"type": "Opaque"
+					}
+				}
+			}`,
+			shouldNotContain: []string{"base64-encoded-secret", "plaintext-secret"},
+			checkFn: func(t *testing.T, result interface{}) {
+				data, ok := result.(map[string]interface{})
+				if !ok {
+					t.Fatal("Result should be a map")
+				}
+
+				auth := data["auth"].(map[string]interface{})
+				identity := auth["identity"].(map[string]interface{})
+
+				// Check data field is redacted
+				identityData := identity["data"].(map[string]interface{})
+				if identityData["api_key"] != "***REDACTED***" {
+					t.Errorf("Secret data.api_key should be redacted, got %v", identityData["api_key"])
+				}
+
+				// Check metadata is preserved
+				metadata := identity["metadata"].(map[string]interface{})
+				if metadata["name"] != "api-key-1" {
+					t.Errorf("Secret name should be preserved")
+				}
+
+				// Check annotation is redacted
+				annotations := metadata["annotations"].(map[string]interface{})
+				annotationStr := annotations["kubectl.kubernetes.io/last-applied-configuration"].(string)
+				if contains(annotationStr, "plaintext-secret") {
+					t.Errorf("Secret in annotation should be redacted, got %v", annotationStr)
 				}
 			},
 		},

@@ -263,10 +263,12 @@ func RedactedAuthorizationJSON(authJSON string) interface{} {
 		}
 	}
 
-	// Redact identity data - it may contain tokens or sensitive claims
-	// We keep the structure but redact string values in common sensitive fields
-	if identity, ok := data["identity"].(map[string]interface{}); ok {
-		redactSensitiveIdentityFields(identity)
+	// Redact identity data in auth.identity
+	// The authorization JSON has identity nested under "auth"
+	if auth, ok := data["auth"].(map[string]interface{}); ok {
+		if identity, ok := auth["identity"].(map[string]interface{}); ok {
+			redactSensitiveIdentityFields(identity)
+		}
 	}
 
 	return data
@@ -293,6 +295,12 @@ func redactSensitiveIdentityFields(identity map[string]interface{}) {
 	}
 	sensitiveFieldsMu.RUnlock()
 
+	// Special handling for Kubernetes Secret objects
+	if kind, ok := identity["kind"].(string); ok && kind == "Secret" {
+		redactKubernetesSecret(identity)
+		return
+	}
+
 	// Redact fields (case-insensitive)
 	for field := range identity {
 		if fieldsToRedact[strings.ToLower(field)] {
@@ -306,4 +314,91 @@ func redactSensitiveIdentityFields(identity map[string]interface{}) {
 			redactSensitiveIdentityFields(nested)
 		}
 	}
+}
+
+// redactKubernetesSecret redacts all data fields in a Kubernetes Secret
+func redactKubernetesSecret(secret map[string]interface{}) {
+	// Redact all entries in the 'data' field (base64-encoded secrets)
+	if data, ok := secret["data"].(map[string]interface{}); ok {
+		for key := range data {
+			data[key] = redacted
+		}
+	}
+
+	// Redact all entries in the 'stringData' field (plain text secrets)
+	if stringData, ok := secret["stringData"].(map[string]interface{}); ok {
+		for key := range stringData {
+			stringData[key] = redacted
+		}
+	}
+
+	// Redact secrets in annotations (kubectl last-applied-configuration can contain plaintext secrets)
+	if metadata, ok := secret["metadata"].(map[string]interface{}); ok {
+		if annotations, ok := metadata["annotations"].(map[string]interface{}); ok {
+			for key, value := range annotations {
+				// kubectl stores the last applied configuration which may contain plaintext secrets
+				if strings.Contains(strings.ToLower(key), "last-applied-configuration") {
+					if strValue, ok := value.(string); ok {
+						// Try to parse and redact secrets from the JSON annotation
+						annotations[key] = redactSecretsFromJSONString(strValue)
+					}
+				}
+			}
+		}
+	}
+}
+
+// redactSecretsFromJSONString redacts secrets from a JSON string (used in annotations)
+func redactSecretsFromJSONString(jsonStr string) string {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+		// If we can't parse it, redact the whole thing to be safe
+		return redacted
+	}
+
+	// Redact stringData and data fields
+	if stringData, ok := data["stringData"].(map[string]interface{}); ok {
+		for key := range stringData {
+			stringData[key] = redacted
+		}
+	}
+	if dataField, ok := data["data"].(map[string]interface{}); ok {
+		for key := range dataField {
+			dataField[key] = redacted
+		}
+	}
+
+	// Re-serialize
+	redactedJSON, err := json.Marshal(data)
+	if err != nil {
+		return redacted
+	}
+	return string(redactedJSON)
+}
+
+// RedactedIdentityObject redacts sensitive data from identity objects
+// This is used for logging identity validation results
+func RedactedIdentityObject(identity interface{}) interface{} {
+	if identity == nil {
+		return nil
+	}
+
+	// Convert to map[string]interface{} via JSON for uniform handling
+	// This handles typed structs (like Kubernetes v1.Secret) as well as maps
+	jsonBytes, err := json.Marshal(identity)
+	if err != nil {
+		// If we can't serialize it, return redacted to be safe
+		return redacted
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &data); err != nil {
+		// If we can't deserialize to map, return the original
+		// (might be a primitive type like string or number)
+		return identity
+	}
+
+	// Apply redaction
+	redactSensitiveIdentityFields(data)
+	return data
 }
