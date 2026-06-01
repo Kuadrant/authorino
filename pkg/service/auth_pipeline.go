@@ -292,11 +292,7 @@ func (pipeline *AuthPipeline) evaluateAuthorizationConfigs() EvaluationResponse 
 	logger := pipeline.Logger.WithName("authorization").V(1)
 
 	if logger.Enabled() {
-		var authJSON interface{}
-		err := gojson.Unmarshal([]byte(pipeline.GetAuthorizationJSON()), &authJSON)
-		if err != nil {
-			logger.V(1).Error(err, "failed to unmarshal authorization JSON")
-		}
+		authJSON := log.RedactedAuthorizationJSON(pipeline.GetAuthorizationJSON())
 		logger.Info("evaluating for input", "input", authJSON)
 	}
 
