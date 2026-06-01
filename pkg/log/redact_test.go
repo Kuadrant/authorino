@@ -928,6 +928,58 @@ func TestRedactedAuthorizationJSON(t *testing.T) {
 			},
 		},
 		{
+			name: "Authorization JSON with sensitive metadata",
+			authJSON: `{
+				"auth": {
+					"identity": {
+						"username": "john"
+					},
+					"metadata": {
+						"external_source": {
+							"access_token": "metadata-token-123",
+							"user_id": "12345",
+							"api_key": "metadata-api-key"
+						},
+						"user_info": {
+							"email": "john@example.com",
+							"secret": "user-secret"
+						}
+					}
+				}
+			}`,
+			shouldNotContain: []string{"metadata-token-123", "metadata-api-key", "user-secret"},
+			checkFn: func(t *testing.T, result interface{}) {
+				data, ok := result.(map[string]interface{})
+				if !ok {
+					t.Fatal("Result should be a map")
+				}
+
+				auth := data["auth"].(map[string]interface{})
+				metadata := auth["metadata"].(map[string]interface{})
+
+				// Check external_source metadata
+				externalSource := metadata["external_source"].(map[string]interface{})
+				if externalSource["access_token"] != "***REDACTED***" {
+					t.Errorf("metadata access_token should be redacted")
+				}
+				if externalSource["api_key"] != "***REDACTED***" {
+					t.Errorf("metadata api_key should be redacted")
+				}
+				if externalSource["user_id"] != "12345" {
+					t.Errorf("user_id should be preserved")
+				}
+
+				// Check user_info metadata
+				userInfo := metadata["user_info"].(map[string]interface{})
+				if userInfo["secret"] != "***REDACTED***" {
+					t.Errorf("metadata secret should be redacted")
+				}
+				if userInfo["email"] != "john@example.com" {
+					t.Errorf("email should be preserved")
+				}
+			},
+		},
+		{
 			name:             "Invalid JSON",
 			authJSON:         `{invalid json`,
 			shouldNotContain: []string{},
