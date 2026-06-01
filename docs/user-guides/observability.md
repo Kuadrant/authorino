@@ -1160,6 +1160,7 @@ For `debug` log messages, Authorino automatically redacts sensitive information 
 - URL credentials (userinfo in URLs like `https://user:pass@example.com`)
 - Kubernetes TokenReview tokens
 - Complete request bodies for JSON and other content types (form-encoded data has specific fields redacted)
+- Authorization pipeline evaluation data (identity claims, metadata, and request context)
 
 #### Customizing redaction
 
