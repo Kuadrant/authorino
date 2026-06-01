@@ -1,6 +1,7 @@
 package log
 
 import (
+	"encoding/json"
 	"net/url"
 	"testing"
 
@@ -578,5 +579,177 @@ func TestConcurrentAccess(t *testing.T) {
 	// Wait for all goroutines to complete
 	for i := 0; i < 20; i++ {
 		<-done
+	}
+}
+
+func TestRedactedAuthorizationJSON(t *testing.T) {
+	tests := []struct {
+		name             string
+		authJSON         string
+		shouldNotContain []string
+		checkFn          func(*testing.T, interface{})
+	}{
+		{
+			name: "Authorization JSON with sensitive headers",
+			authJSON: `{
+				"context": {
+					"request": {
+						"http": {
+							"headers": {
+								"authorization": "Bearer secret-token",
+								"cookie": "session=abc123",
+								"content-type": "application/json"
+							}
+						}
+					}
+				},
+				"identity": {
+					"username": "john"
+				}
+			}`,
+			shouldNotContain: []string{"secret-token", "abc123"},
+			checkFn: func(t *testing.T, result interface{}) {
+				data, ok := result.(map[string]interface{})
+				if !ok {
+					t.Fatal("Result should be a map")
+				}
+
+				context := data["context"].(map[string]interface{})
+				request := context["request"].(map[string]interface{})
+				httpReq := request["http"].(map[string]interface{})
+				headers := httpReq["headers"].(map[string]string)
+
+				if headers["authorization"] != "***REDACTED***" {
+					t.Errorf("authorization header should be redacted, got %v", headers["authorization"])
+				}
+				if headers["cookie"] != "***REDACTED***" {
+					t.Errorf("cookie header should be redacted, got %v", headers["cookie"])
+				}
+				if headers["content-type"] != "application/json" {
+					t.Errorf("content-type should be preserved, got %v", headers["content-type"])
+				}
+			},
+		},
+		{
+			name: "Authorization JSON with headers in both locations",
+			authJSON: `{
+				"context": {
+					"request": {
+						"http": {
+							"headers": {
+								"authorization": "Bearer context-token",
+								"content-type": "application/json"
+							}
+						}
+					}
+				},
+				"request": {
+					"headers": {
+						"authorization": "Bearer request-token",
+						"cookie": "session=xyz",
+						"user-agent": "curl/7.0"
+					}
+				}
+			}`,
+			shouldNotContain: []string{"context-token", "request-token", "xyz"},
+			checkFn: func(t *testing.T, result interface{}) {
+				data, ok := result.(map[string]interface{})
+				if !ok {
+					t.Fatal("Result should be a map")
+				}
+
+				// Check context.request.http.headers
+				context := data["context"].(map[string]interface{})
+				contextRequest := context["request"].(map[string]interface{})
+				httpReq := contextRequest["http"].(map[string]interface{})
+				contextHeaders := httpReq["headers"].(map[string]string)
+
+				if contextHeaders["authorization"] != "***REDACTED***" {
+					t.Errorf("context authorization header should be redacted, got %v", contextHeaders["authorization"])
+				}
+				if contextHeaders["content-type"] != "application/json" {
+					t.Errorf("context content-type should be preserved")
+				}
+
+				// Check request.headers
+				request := data["request"].(map[string]interface{})
+				requestHeaders := request["headers"].(map[string]string)
+
+				if requestHeaders["authorization"] != "***REDACTED***" {
+					t.Errorf("request authorization header should be redacted, got %v", requestHeaders["authorization"])
+				}
+				if requestHeaders["cookie"] != "***REDACTED***" {
+					t.Errorf("request cookie header should be redacted, got %v", requestHeaders["cookie"])
+				}
+				if requestHeaders["user-agent"] != "curl/7.0" {
+					t.Errorf("request user-agent should be preserved")
+				}
+			},
+		},
+		{
+			name: "Authorization JSON with sensitive identity fields",
+			authJSON: `{
+				"identity": {
+					"username": "john",
+					"access_token": "secret-access-token",
+					"api_key": "my-api-key",
+					"nested": {
+						"refresh_token": "secret-refresh-token"
+					}
+				}
+			}`,
+			shouldNotContain: []string{"secret-access-token", "my-api-key", "secret-refresh-token"},
+			checkFn: func(t *testing.T, result interface{}) {
+				data, ok := result.(map[string]interface{})
+				if !ok {
+					t.Fatal("Result should be a map")
+				}
+
+				identity := data["identity"].(map[string]interface{})
+				if identity["username"] != "john" {
+					t.Errorf("username should be preserved")
+				}
+				if identity["access_token"] != "***REDACTED***" {
+					t.Errorf("access_token should be redacted")
+				}
+				if identity["api_key"] != "***REDACTED***" {
+					t.Errorf("api_key should be redacted")
+				}
+
+				nested := identity["nested"].(map[string]interface{})
+				if nested["refresh_token"] != "***REDACTED***" {
+					t.Errorf("nested refresh_token should be redacted")
+				}
+			},
+		},
+		{
+			name:             "Invalid JSON",
+			authJSON:         `{invalid json`,
+			shouldNotContain: []string{},
+			checkFn: func(t *testing.T, result interface{}) {
+				if result != "***REDACTED***" {
+					t.Errorf("Invalid JSON should return redacted placeholder, got %v", result)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := RedactedAuthorizationJSON(tt.authJSON)
+
+			// Check that sensitive data is not in the result when serialized
+			serialized, _ := json.Marshal(result)
+			resultStr := string(serialized)
+			for _, notExpected := range tt.shouldNotContain {
+				if contains(resultStr, notExpected) {
+					t.Errorf("Result should not contain %q, got %v", notExpected, resultStr)
+				}
+			}
+
+			if tt.checkFn != nil {
+				tt.checkFn(t, result)
+			}
+		})
 	}
 }

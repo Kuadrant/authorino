@@ -1,6 +1,7 @@
 package log
 
 import (
+	"encoding/json"
 	"net/url"
 	"strings"
 	"sync"
@@ -231,4 +232,78 @@ func RedactedAttributeContext(attrs *envoy_auth.AttributeContext) *envoy_auth.At
 	}
 
 	return redactedAttrs
+}
+
+// RedactedAuthorizationJSON returns authorization JSON with sensitive data redacted
+// This function attempts to parse the JSON, redact sensitive fields, and re-serialize it.
+// If parsing fails, it returns the redacted placeholder to be safe.
+func RedactedAuthorizationJSON(authJSON string) interface{} {
+	var data map[string]interface{}
+	decoder := strings.NewReader(authJSON)
+	if err := json.NewDecoder(decoder).Decode(&data); err != nil {
+		// If we can't parse it, return redacted to be safe
+		return redacted
+	}
+
+	// Redact headers in context.request.http.headers
+	if context, ok := data["context"].(map[string]interface{}); ok {
+		if request, ok := context["request"].(map[string]interface{}); ok {
+			if httpReq, ok := request["http"].(map[string]interface{}); ok {
+				if headers, ok := httpReq["headers"].(map[string]interface{}); ok {
+					httpReq["headers"] = redactHeadersFromInterface(headers)
+				}
+			}
+		}
+	}
+
+	// Redact headers in request.headers (copy at top level)
+	if request, ok := data["request"].(map[string]interface{}); ok {
+		if headers, ok := request["headers"].(map[string]interface{}); ok {
+			request["headers"] = redactHeadersFromInterface(headers)
+		}
+	}
+
+	// Redact identity data - it may contain tokens or sensitive claims
+	// We keep the structure but redact string values in common sensitive fields
+	if identity, ok := data["identity"].(map[string]interface{}); ok {
+		redactSensitiveIdentityFields(identity)
+	}
+
+	return data
+}
+
+// redactHeadersFromInterface converts interface{} headers to map[string]string and redacts them
+func redactHeadersFromInterface(headers map[string]interface{}) map[string]string {
+	headersMap := make(map[string]string)
+	for k, v := range headers {
+		if strVal, ok := v.(string); ok {
+			headersMap[k] = strVal
+		}
+	}
+	return RedactedStringMapHeaders(headersMap)
+}
+
+// redactSensitiveIdentityFields redacts known sensitive fields in identity objects
+func redactSensitiveIdentityFields(identity map[string]interface{}) {
+	// Get configured sensitive fields
+	sensitiveFieldsMu.RLock()
+	fieldsToRedact := make(map[string]bool, len(sensitiveFields))
+	for k, v := range sensitiveFields {
+		fieldsToRedact[k] = v
+	}
+	sensitiveFieldsMu.RUnlock()
+
+	// Redact fields (case-insensitive)
+	for field := range identity {
+		if fieldsToRedact[strings.ToLower(field)] {
+			identity[field] = redacted
+		}
+	}
+
+	// Recursively redact nested objects
+	for _, value := range identity {
+		if nested, ok := value.(map[string]interface{}); ok {
+			redactSensitiveIdentityFields(nested)
+		}
+	}
 }
