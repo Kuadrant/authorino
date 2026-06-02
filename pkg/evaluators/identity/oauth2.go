@@ -70,7 +70,7 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 		return nil, err
 	}
 
-	log.FromContext(ctx).WithName("oauth2").V(1).Info("sending token introspection request", "url", tokenIntrospectionURL.String(), "data", encodedFormData)
+	log.FromContext(ctx).WithName("oauth2").V(1).Info("sending token introspection request", "url", log.RedactedURL(tokenIntrospectionURL), "data", log.RedactedFormData(encodedFormData))
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
