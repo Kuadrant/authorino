@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
@@ -214,14 +215,14 @@ type OPAExternalSource struct {
 }
 
 func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
-	req, err := ext.BuildRequestWithCredentials(context.TODO(), ext.Endpoint, "GET", ext.SharedSecret, nil)
+	req, err := httputil.NewRequestWithCredentials(context.TODO(), "GET", ext.Endpoint, nil, ext.AuthCredentials, ext.SharedSecret)
 	if err != nil {
 		return "", err
 	}
 
 	otel.GetTextMapPropagator().Inject(req.Context(), otel_propagation.HeaderCarrier(req.Header))
 
-	if resp, err := http.DefaultClient.Do(req); err != nil {
+	if resp, err := httputil.NewClient().Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
 	} else {
 		defer func(Body io.ReadCloser) {

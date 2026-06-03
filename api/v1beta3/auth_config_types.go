@@ -394,6 +394,9 @@ type JwtAuthenticationSpec struct {
 // Settings to perform the OAuth2 token introspection request.
 type OAuth2TokenIntrospectionSpec struct {
 	// The full URL of the token introspection endpoint.
+	//
+	// IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
+	// you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
 	Url string `json:"endpoint"`
 
 	// The token type hint for the token introspection.
@@ -509,10 +512,22 @@ type HttpEndpointSpec struct {
 	// The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
 	// by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
 	// E.g. https://ext-auth-server.io/metadata?p={request.path}
+	//
+	// IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+	// URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+	// controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+	// metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+	// dynamic values used in URLs.
 	Url string `json:"url,omitempty"`
 
 	// A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
 	// String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+	//
+	// IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+	// URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+	// controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+	// metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+	// dynamic values used in URLs.
 	UrlExpression CelExpression `json:"urlExpression,omitempty"`
 
 	// HTTP verb used in the request to the service. Accepted values: GET (default), POST.
@@ -577,6 +592,9 @@ type SecretKeyReference struct {
 // Settings for OAuth2 client authentication with the external service
 type OAuth2ClientAuthentication struct {
 	// Token endpoint URL of the OAuth2 resource server.
+	//
+	// IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
+	// you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
 	TokenUrl string `json:"tokenUrl"`
 	// OAuth2 Client ID.
 	ClientId string `json:"clientId"`
@@ -603,6 +621,9 @@ type UserInfoMetadataSpec struct {
 	// The URL of the UserInfo endpoint.
 	// Use it for non-OIDC JWT authentication, where the UserInfo URL is known beforehand.
 	// One of: identitySource, userInfoUrl
+	//
+	// IMPORTANT: Ensure this URL points to a trusted endpoint. If constructing this URL dynamically or if it can be
+	// influenced by user input, you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
 	UserInfoUrl string `json:"userInfoUrl,omitempty"`
 }
 
@@ -610,6 +631,9 @@ type UserInfoMetadataSpec struct {
 type UmaMetadataSpec struct {
 	// The endpoint of the UMA server.
 	// The value must coincide with the "issuer" claim of the UMA config discovered from the well-known uma configuration endpoint.
+	//
+	// IMPORTANT: Ensure this URL points to a trusted UMA server. If this value can be influenced by user input,
+	// you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
 	Endpoint string `json:"endpoint"`
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the resource registration API of the UMA server.

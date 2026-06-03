@@ -3,8 +3,6 @@ package identity
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/expressions"
@@ -28,18 +26,14 @@ func (p *Plain) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface
 
 // impl: AuthCredentials
 
-func (p *Plain) GetCredentialsFromReq(*envoy_auth.AttributeContext_HttpRequest) (string, error) {
+func (p *Plain) GetCredentialsFromAuthReq(*envoy_auth.AttributeContext_HttpRequest) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (p *Plain) GetCredentialsKeySelector() string {
+func (p *Plain) GetIdentifier() string {
 	return p.Pattern
 }
 
-func (p *Plain) GetCredentialsIn() string {
+func (p *Plain) GetPlacement() string {
 	return p.Pattern
-}
-
-func (p *Plain) BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error) {
-	return nil, fmt.Errorf("not implemented")
 }

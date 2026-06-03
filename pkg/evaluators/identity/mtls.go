@@ -37,7 +37,7 @@ type MTLS struct {
 
 func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace string, xfccHeader string, clientCertHeader string, expression expressions.Value, k8sClient k8s_client.Reader, ctx context.Context) *MTLS {
 	mtls := &MTLS{
-		AuthCredentials:  &auth.AuthCredential{KeySelector: "Basic"},
+		AuthCredentials:  &auth.AuthCredential{Identifier: "Certificate"},
 		Name:             name,
 		LabelSelectors:   labelSelectors,
 		Namespace:        namespace,

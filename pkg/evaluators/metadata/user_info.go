@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"go.opentelemetry.io/otel"
@@ -64,7 +64,7 @@ func (u *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context)
 	}
 
 	// get access token from the request
-	accessToken, err := resolvedIdentityEvaluator.GetAuthCredentials().GetCredentialsFromReq(pipeline.GetHttp())
+	accessToken, err := resolvedIdentityEvaluator.GetAuthCredentials().GetCredentialsFromAuthReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}
@@ -80,15 +80,15 @@ func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Co
 
 	log.FromContext(ctx).V(1).Info("fetching user info", "endpoint", userInfoEndpoint)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", userInfoEndpoint, nil)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req, err := httputil.NewRequest(ctx, "GET", userInfoEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httputil.NewClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -71,7 +71,7 @@ func TestCallSuccess(t *testing.T) {
 	pipelineMock := mockAuthPipeline(ctrl)
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil)
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
 	apiKey := NewApiKeyIdentity("jedi", selector, "", authCredMock, testAPIKeyK8sClient, context.TODO())
@@ -87,7 +87,7 @@ func TestCallNoApiKeyFail(t *testing.T) {
 	pipelineMock := mockAuthPipeline(ctrl)
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", fmt.Errorf("something went wrong getting the API Key"))
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("", fmt.Errorf("something went wrong getting the API Key"))
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
 	apiKey := NewApiKeyIdentity("jedi", selector, "", authCredMock, testAPIKeyK8sClient, context.TODO())
@@ -103,7 +103,7 @@ func TestCallInvalidApiKeyFail(t *testing.T) {
 	pipelineMock := mockAuthPipeline(ctrl)
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ASithLightSaber", nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("ASithLightSaber", nil)
 
 	selector, _ := k8s_labels.Parse("planet=coruscant")
 	apiKey := NewApiKeyIdentity("jedi", selector, "", authCredMock, testAPIKeyK8sClient, context.TODO())
@@ -143,7 +143,7 @@ func BenchmarkAPIKeyAuthn(b *testing.B) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetHttp().Return(nil).MinTimes(1)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil).MinTimes(1)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil).MinTimes(1)
 	selector, _ := k8s_labels.Parse("planet=coruscant")
 	apiKey := NewApiKeyIdentity("jedi", selector, "", authCredMock, testAPIKeyK8sClient, context.TODO())
 

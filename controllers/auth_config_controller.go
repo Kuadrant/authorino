@@ -31,6 +31,7 @@ import (
 	response_evaluators "github.com/kuadrant/authorino/pkg/evaluators/response"
 	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/expressions/cel"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -1186,22 +1187,22 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 }
 
 func newAuthCredential(creds api.Credentials) *auth.AuthCredential {
-	var in, key string
+	var placement, identifier string
 	switch creds.GetType() {
 	case api.AuthorizationHeaderCredentials:
-		in = "authorization_header"
-		key = creds.AuthorizationHeader.Prefix
+		placement = httputil.InAuthorizationHeader
+		identifier = creds.AuthorizationHeader.Prefix
 	case api.CustomHeaderCredentials:
-		in = "custom_header"
-		key = creds.CustomHeader.Name
+		placement = httputil.InCustomHeader
+		identifier = creds.CustomHeader.Name
 	case api.QueryStringCredentials:
-		in = "query"
-		key = creds.QueryString.Name
+		placement = httputil.InQuery
+		identifier = creds.QueryString.Name
 	case api.CookieCredentials:
-		in = "cookie"
-		key = creds.Cookie.Name
+		placement = httputil.InCookie
+		identifier = creds.Cookie.Name
 	}
-	return auth.NewAuthCredential(key, in)
+	return auth.NewAuthCredential(placement, identifier)
 }
 
 func findIdentityConfigByName(identityConfigs []evaluators.IdentityConfig, name string) (*evaluators.IdentityConfig, error) {

@@ -1,24 +1,16 @@
 package auth
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"io"
-	"net/http"
 	"regexp"
 	"strings"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 )
 
 const (
-	inCustomHeader = "custom_header"
-	inAuthHeader   = "authorization_header"
-	inCookieHeader = "cookie"
-	inQuery        = "query"
-
-	defaultKeySelector = "Bearer"
+	defaultCredentialLocationIdentifier = "Bearer"
 
 	credentialNotFoundMsg             = "credential not found"
 	credentialNotFoundInHeaderMsg     = "the credential was not found in the request header"
@@ -29,97 +21,54 @@ const (
 
 var errNotFound = errors.New(credentialNotFoundMsg)
 
-// AuthCredentials interface represents the methods needed to fetch credentials from input
+// AuthCredentials combines credential location information with the ability to extract
+// credentials from Envoy authorization requests.
 type AuthCredentials interface {
-	GetCredentialsFromReq(*envoy_auth.AttributeContext_HttpRequest) (string, error)
-	GetCredentialsKeySelector() string
-	GetCredentialsIn() string
-	BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error)
+	httputil.CredentialLocation
+	GetCredentialsFromAuthReq(*envoy_auth.AttributeContext_HttpRequest) (string, error)
 }
 
 // NewAuthCredential creates a new instance of AuthCredential
-func NewAuthCredential(selector string, location string) *AuthCredential {
-	var keySelector, in string
-	if keySelector = selector; keySelector == "" {
-		keySelector = defaultKeySelector
+func NewAuthCredential(placement, identifier string) *AuthCredential {
+	if placement == "" {
+		placement = httputil.InAuthorizationHeader
 	}
-	if in = location; in == "" {
-		in = inAuthHeader
+	if identifier == "" {
+		identifier = defaultCredentialLocationIdentifier
 	}
-
 	return &AuthCredential{
-		keySelector,
-		in,
+		Placement:  placement,
+		Identifier: identifier,
 	}
 }
 
 // AuthCredential struct implements the AuthCredentials interface
 type AuthCredential struct {
-	KeySelector string `yaml:"keySelector"`
-	In          string `yaml:"in"`
+	Placement  string
+	Identifier string
 }
 
-// GetCredentialsFromReq will retrieve the secrets from a given location
-func (c *AuthCredential) GetCredentialsFromReq(httpReq *envoy_auth.AttributeContext_HttpRequest) (string, error) {
-	switch c.In {
-	case inCustomHeader:
-		return getCredFromCustomHeader(httpReq.GetHeaders(), c.KeySelector)
-	case inAuthHeader:
-		return getCredFromAuthHeader(httpReq.GetHeaders(), c.KeySelector)
-	case inCookieHeader:
-		return getFromCookieHeader(httpReq.GetHeaders(), c.KeySelector)
-	case inQuery:
-		return getCredFromQuery(httpReq.GetPath(), c.KeySelector)
+func (c *AuthCredential) GetPlacement() string {
+	return c.Placement
+}
+
+func (c *AuthCredential) GetIdentifier() string {
+	return c.Identifier
+}
+
+// GetCredentialsFromAuthReq will retrieve the secrets from a given location in the Envoy authorization request
+func (c *AuthCredential) GetCredentialsFromAuthReq(httpReq *envoy_auth.AttributeContext_HttpRequest) (string, error) {
+	switch c.GetPlacement() {
+	case httputil.InCustomHeader:
+		return getCredFromCustomHeader(httpReq.GetHeaders(), c.GetIdentifier())
+	case httputil.InAuthorizationHeader:
+		return getCredFromAuthHeader(httpReq.GetHeaders(), c.GetIdentifier())
+	case httputil.InCookie:
+		return getFromCookieHeader(httpReq.GetHeaders(), c.GetIdentifier())
+	case httputil.InQuery:
+		return getCredFromQuery(httpReq.GetPath(), c.GetIdentifier())
 	default:
 		return "", errors.New(credentialLocationNotSupportedMsg)
-	}
-}
-
-func (c *AuthCredential) GetCredentialsKeySelector() string {
-	return c.KeySelector
-}
-
-func (c *AuthCredential) GetCredentialsIn() string {
-	return c.In
-}
-
-func (c *AuthCredential) BuildRequestWithCredentials(ctx context.Context, endpoint string, method string, credentialValue string, body io.Reader) (*http.Request, error) {
-	url := endpoint
-
-	// build url with creds (if credentialValue is not empty)
-	if c.In == inQuery && credentialValue != "" {
-		var separator string
-		if strings.Contains(url, "?") {
-			separator = "&"
-		} else {
-			separator = "?"
-		}
-		url = url + separator + c.KeySelector + "=" + credentialValue
-	}
-
-	// build request
-	if req, err := http.NewRequestWithContext(ctx, method, url, body); err != nil {
-		return nil, err
-	} else {
-		// don't add creds if credentialValue is empty
-		if credentialValue == "" {
-			return req, nil
-		}
-
-		// add creds to request
-		switch c.In {
-		case inAuthHeader:
-			req.Header.Set("Authorization", c.KeySelector+" "+credentialValue)
-		case inCustomHeader:
-			req.Header.Set(c.KeySelector, credentialValue)
-		case inCookieHeader:
-			req.Header.Set("Cookie", c.KeySelector+"="+credentialValue)
-		case inQuery:
-			// already done
-		default:
-			return nil, fmt.Errorf("unsupported credentials location")
-		}
-		return req, nil
 	}
 }
 

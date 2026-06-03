@@ -57,7 +57,7 @@ func TestJWTAuthenticationCall(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
-	authCredMock.EXPECT().GetCredentialsFromReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return(rawToken, nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return(rawToken, nil)
 	jwtVerifier.EXPECT().Verify(gomock.Any(), rawToken).Return(token, nil)
 	obj, err := evaluator.Call(pipelineMock, context.TODO())
 
@@ -75,7 +75,7 @@ func TestOIDCProviderVerifierUnknownHost(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
-	authCredMock.EXPECT().GetCredentialsFromReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
 	token, err := evaluator.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, token == nil)
@@ -97,7 +97,7 @@ func TestOIDCProviderVerifierNotFound(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
-	authCredMock.EXPECT().GetCredentialsFromReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
 	token, err := evaluator.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, token == nil)
@@ -119,7 +119,7 @@ func TestOIDCProviderVerifierInternalError(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
-	authCredMock.EXPECT().GetCredentialsFromReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
 	token, err := evaluator.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, token == nil)
@@ -231,7 +231,7 @@ func TestJWKSVerifierTokenExpired(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
-	authCredMock.EXPECT().GetCredentialsFromReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return(rawToken, nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return(rawToken, nil)
 	token, err := evaluator.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, token == nil)
@@ -248,7 +248,7 @@ func TestJWKSVerifierMalformedJWT(t *testing.T) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
-	authCredMock.EXPECT().GetCredentialsFromReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return("token", nil)
 	token, err := evaluator.Call(pipelineMock, context.TODO())
 
 	assert.Check(t, token == nil)

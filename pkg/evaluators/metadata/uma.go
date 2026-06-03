@@ -5,13 +5,13 @@ import (
 	gocontext "context"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 
@@ -129,7 +129,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 	}
 
 	// build the request
-	req, err := http.NewRequestWithContext(ctx, "GET", rawurl, nil)
+	req, err := httputil.NewRequest(ctx, "GET", rawurl, nil)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httputil.NewClient().Do(req)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,14 @@ func (uma *UMA) wellKnownConfigEndpoint() string {
 }
 
 func (uma *UMA) discover() error {
-	if resp, err := http.Get(uma.wellKnownConfigEndpoint()); err != nil {
+	wellKnownEndpoint := uma.wellKnownConfigEndpoint()
+
+	req, err := httputil.NewRequest(gocontext.Background(), "GET", wellKnownEndpoint, nil)
+	if err != nil {
+		return fmt.Errorf("invalid UMA well-known config endpoint: %w", err)
+	}
+
+	if resp, err := httputil.NewClient().Do(req); err != nil {
 		return fmt.Errorf("failed to fetch uma config: %v", err)
 	} else {
 		defer func(Body io.ReadCloser) {
@@ -242,7 +249,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 	tokenURL, _ := uma.clientAuthenticatedURL(uma.provider.GetTokenURL())
 	data := url.Values{"grant_type": {"client_credentials"}}
 	encodedData := bytes.NewBufferString(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL.String(), encodedData)
+	req, err := httputil.NewRequest(ctx, "POST", tokenURL.String(), encodedData)
 	if err != nil {
 		return err
 	}
@@ -252,7 +259,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httputil.NewClient().Do(req)
 	if err != nil {
 		return err
 	}

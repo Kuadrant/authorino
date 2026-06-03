@@ -2867,7 +2867,11 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         endpoint:
-                          description: The full URL of the token introspection endpoint.
+                          description: |-
+                            The full URL of the token introspection endpoint.
+
+                            IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
+                            you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                           type: string
                         tokenTypeHint:
                           description: |-
@@ -3542,8 +3546,11 @@ spec:
                                     type: string
                                   type: array
                                 tokenUrl:
-                                  description: Token endpoint URL of the OAuth2 resource
-                                    server.
+                                  description: |-
+                                    Token endpoint URL of the OAuth2 resource server.
+
+                                    IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
+                                    you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                                   type: string
                               required:
                               - clientId
@@ -3578,11 +3585,23 @@ spec:
                                 The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
                                 by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                                 E.g. https://ext-auth-server.io/metadata?p={request.path}
+
+                                IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+                                URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+                                controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+                                metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+                                dynamic values used in URLs.
                               type: string
                             urlExpression:
                               description: |-
                                 A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
                                 String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+
+                                IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+                                URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+                                controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+                                metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+                                dynamic values used in URLs.
                               type: string
                           type: object
                           x-kubernetes-validations:
@@ -4109,8 +4128,11 @@ spec:
                                 type: string
                               type: array
                             tokenUrl:
-                              description: Token endpoint URL of the OAuth2 resource
-                                server.
+                              description: |-
+                                Token endpoint URL of the OAuth2 resource server.
+
+                                IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
+                                you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                               type: string
                           required:
                           - clientId
@@ -4141,11 +4163,23 @@ spec:
                             The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
+
+                            IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+                            URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+                            controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+                            metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+                            dynamic values used in URLs.
                           type: string
                         urlExpression:
                           description: |-
                             A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
                             String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+
+                            IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+                            URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+                            controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+                            metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+                            dynamic values used in URLs.
                           type: string
                       type: object
                       x-kubernetes-validations:
@@ -4457,8 +4491,11 @@ spec:
                                 type: string
                               type: array
                             tokenUrl:
-                              description: Token endpoint URL of the OAuth2 resource
-                                server.
+                              description: |-
+                                Token endpoint URL of the OAuth2 resource server.
+
+                                IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
+                                you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                               type: string
                           required:
                           - clientId
@@ -4489,11 +4526,23 @@ spec:
                             The value can include variable placeholders in the format "{selector}", where "selector" is any pattern supported
                             by https://pkg.go.dev/github.com/tidwall/gjson and selects value from the authorization JSON.
                             E.g. https://ext-auth-server.io/metadata?p={request.path}
+
+                            IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+                            URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+                            controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+                            metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+                            dynamic values used in URLs.
                           type: string
                         urlExpression:
                           description: |-
                             A Common Expression Language (CEL) expression that evaluates to a string endpoint URL of the HTTP service to call.
                             String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+
+                            IMPORTANT: Avoid using untrusted user input (e.g. request headers, query parameters, or JWT claims) directly in
+                            URL construction, as this may expose your services to Server-Side Request Forgery (SSRF) attacks. An attacker
+                            controlling the URL or parts of it may be able to make Authorino send requests to internal services, cloud
+                            metadata endpoints (e.g. 169.254.169.254), or other unintended destinations. Always validate and sanitize any
+                            dynamic values used in URLs.
                           type: string
                       type: object
                       x-kubernetes-validations:
@@ -4531,6 +4580,9 @@ spec:
                           description: |-
                             The endpoint of the UMA server.
                             The value must coincide with the "issuer" claim of the UMA config discovered from the well-known uma configuration endpoint.
+
+                            IMPORTANT: Ensure this URL points to a trusted UMA server. If this value can be influenced by user input,
+                            you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                           type: string
                       required:
                       - credentialsRef
@@ -4550,6 +4602,9 @@ spec:
                             The URL of the UserInfo endpoint.
                             Use it for non-OIDC JWT authentication, where the UserInfo URL is known beforehand.
                             One of: identitySource, userInfoUrl
+
+                            IMPORTANT: Ensure this URL points to a trusted endpoint. If constructing this URL dynamically or if it can be
+                            influenced by user input, you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                           type: string
                       type: object
                       x-kubernetes-validations:

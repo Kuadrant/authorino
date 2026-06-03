@@ -32,7 +32,7 @@ func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx gocontext.C
 	}
 
 	request := pipeline.GetHttp()
-	if reqToken, err := kubeAuth.GetCredentialsFromReq(request); err != nil {
+	if reqToken, err := kubeAuth.GetCredentialsFromAuthReq(request); err != nil {
 		return nil, err
 	} else {
 		tr := &authv1.TokenReview{

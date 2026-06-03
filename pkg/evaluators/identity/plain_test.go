@@ -1,7 +1,6 @@
 package identity
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -52,26 +51,19 @@ func TestPlainCallWithInvalidPatttern(t *testing.T) {
 	assert.Check(t, id == nil)
 }
 
-func TestPlainGetCredentialsKeySelector(t *testing.T) {
+func TestPlainGetIdentifier(t *testing.T) {
 	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
-	assert.Equal(t, plain.GetCredentialsKeySelector(), "context.request.http.body.@fromstr")
+	assert.Equal(t, plain.GetIdentifier(), "context.request.http.body.@fromstr")
 }
 
-func TestPlainGetCredentialsIn(t *testing.T) {
+func TestPlainGetPlacement(t *testing.T) {
 	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
-	assert.Equal(t, plain.GetCredentialsIn(), "context.request.http.body.@fromstr")
+	assert.Equal(t, plain.GetPlacement(), "context.request.http.body.@fromstr")
 }
 
-func TestPlainGetCredentialsFromReq(t *testing.T) {
+func TestPlainGetCredentialsFromAuthReq(t *testing.T) {
 	plain := &Plain{}
-	s, err := plain.GetCredentialsFromReq(nil)
+	s, err := plain.GetCredentialsFromAuthReq(nil)
 	assert.Equal(t, s, "")
-	assert.ErrorContains(t, err, "not implemented")
-}
-
-func TestPlainBuildRequestWithCredentials(t *testing.T) {
-	plain := &Plain{}
-	r, err := plain.BuildRequestWithCredentials(context.TODO(), "", "", "", nil)
-	assert.Check(t, r == nil)
 	assert.ErrorContains(t, err, "not implemented")
 }
