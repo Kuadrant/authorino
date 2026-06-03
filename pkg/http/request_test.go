@@ -386,8 +386,12 @@ func TestNewRequestWithCredentials(t *testing.T) {
 			},
 			wantErr: false,
 			checkURL: func(t *testing.T, req *http.Request) {
-				if got := req.URL.String(); got != "https://example.com/api?foo=bar&access_token=token123" {
-					t.Errorf("URL = %v, want %v", got, "https://example.com/api?foo=bar&access_token=token123")
+				// Check both parameters exist (order may vary due to url.Values.Encode())
+				if got := req.URL.Query().Get("foo"); got != "bar" {
+					t.Errorf("Query param foo = %v, want %v", got, "bar")
+				}
+				if got := req.URL.Query().Get("access_token"); got != "token123" {
+					t.Errorf("Query param access_token = %v, want %v", got, "token123")
 				}
 			},
 		},
@@ -442,6 +446,97 @@ func TestNewRequestWithCredentials(t *testing.T) {
 				return mock
 			},
 			wantErr: true,
+		},
+		{
+			name:            "query credentials with ampersand",
+			endpoint:        "https://example.com/api",
+			method:          "GET",
+			credentialValue: "token&with&ampersands",
+			setupMock: func() *mock_http.MockCredentialLocation {
+				mock := mock_http.NewMockCredentialLocation(ctrl)
+				mock.EXPECT().GetIdentifier().Return("access_token").AnyTimes()
+				mock.EXPECT().GetPlacement().Return(InQuery).AnyTimes()
+				return mock
+			},
+			wantErr: false,
+			checkURL: func(t *testing.T, req *http.Request) {
+				// Verify the credential value is properly encoded and decoded
+				if got := req.URL.Query().Get("access_token"); got != "token&with&ampersands" {
+					t.Errorf("Query param = %v, want %v", got, "token&with&ampersands")
+				}
+			},
+		},
+		{
+			name:            "query credentials with equals sign",
+			endpoint:        "https://example.com/api",
+			method:          "GET",
+			credentialValue: "token=value=here",
+			setupMock: func() *mock_http.MockCredentialLocation {
+				mock := mock_http.NewMockCredentialLocation(ctrl)
+				mock.EXPECT().GetIdentifier().Return("access_token").AnyTimes()
+				mock.EXPECT().GetPlacement().Return(InQuery).AnyTimes()
+				return mock
+			},
+			wantErr: false,
+			checkURL: func(t *testing.T, req *http.Request) {
+				if got := req.URL.Query().Get("access_token"); got != "token=value=here" {
+					t.Errorf("Query param = %v, want %v", got, "token=value=here")
+				}
+			},
+		},
+		{
+			name:            "query credentials with hash",
+			endpoint:        "https://example.com/api",
+			method:          "GET",
+			credentialValue: "token#fragment",
+			setupMock: func() *mock_http.MockCredentialLocation {
+				mock := mock_http.NewMockCredentialLocation(ctrl)
+				mock.EXPECT().GetIdentifier().Return("access_token").AnyTimes()
+				mock.EXPECT().GetPlacement().Return(InQuery).AnyTimes()
+				return mock
+			},
+			wantErr: false,
+			checkURL: func(t *testing.T, req *http.Request) {
+				if got := req.URL.Query().Get("access_token"); got != "token#fragment" {
+					t.Errorf("Query param = %v, want %v", got, "token#fragment")
+				}
+			},
+		},
+		{
+			name:            "query credentials with spaces",
+			endpoint:        "https://example.com/api",
+			method:          "GET",
+			credentialValue: "token with spaces",
+			setupMock: func() *mock_http.MockCredentialLocation {
+				mock := mock_http.NewMockCredentialLocation(ctrl)
+				mock.EXPECT().GetIdentifier().Return("access_token").AnyTimes()
+				mock.EXPECT().GetPlacement().Return(InQuery).AnyTimes()
+				return mock
+			},
+			wantErr: false,
+			checkURL: func(t *testing.T, req *http.Request) {
+				if got := req.URL.Query().Get("access_token"); got != "token with spaces" {
+					t.Errorf("Query param = %v, want %v", got, "token with spaces")
+				}
+			},
+		},
+		{
+			name:            "query credentials with percent sign",
+			endpoint:        "https://example.com/api",
+			method:          "GET",
+			credentialValue: "token%20encoded",
+			setupMock: func() *mock_http.MockCredentialLocation {
+				mock := mock_http.NewMockCredentialLocation(ctrl)
+				mock.EXPECT().GetIdentifier().Return("access_token").AnyTimes()
+				mock.EXPECT().GetPlacement().Return(InQuery).AnyTimes()
+				return mock
+			},
+			wantErr: false,
+			checkURL: func(t *testing.T, req *http.Request) {
+				if got := req.URL.Query().Get("access_token"); got != "token%20encoded" {
+					t.Errorf("Query param = %v, want %v", got, "token%20encoded")
+				}
+			},
 		},
 	}
 

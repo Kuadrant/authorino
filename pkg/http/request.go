@@ -56,11 +56,14 @@ func NewRequestWithCredentials(ctx context.Context, method, rawURL string, body 
 
 	// Add credentials to query string if needed
 	if credentialInjector.GetPlacement() == InQuery && credentialValue != "" {
-		separator := "&"
-		if !strings.Contains(finalURL, "?") {
-			separator = "?"
+		parsedURL, err := url.Parse(finalURL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid URL: %w", err)
 		}
-		finalURL = finalURL + separator + credentialInjector.GetIdentifier() + "=" + credentialValue
+		query := parsedURL.Query()
+		query.Set(credentialInjector.GetIdentifier(), credentialValue)
+		parsedURL.RawQuery = query.Encode()
+		finalURL = parsedURL.String()
 	}
 
 	// Create the request with validation
