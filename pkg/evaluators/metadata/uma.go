@@ -142,8 +142,8 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
+	defer func(body io.ReadCloser) {
+		_ = body.Close()
 	}(resp.Body)
 
 	return json.UnmashalJSONResponse(resp, &v, nil)
@@ -178,8 +178,8 @@ func (uma *UMA) discover() error {
 	if resp, err := http.Get(uma.wellKnownConfigEndpoint()); err != nil {
 		return fmt.Errorf("failed to fetch uma config: %v", err)
 	} else {
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
+		defer func(body io.ReadCloser) {
+			_ = body.Close()
 		}(resp.Body)
 
 		var p providerJSON
@@ -256,6 +256,9 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 	if err != nil {
 		return err
 	}
+	defer func(body io.ReadCloser) {
+		_ = body.Close()
+	}(resp.Body)
 
 	// parse the pat
 	if err := json.UnmashalJSONResponse(resp, pat, nil); err != nil {
