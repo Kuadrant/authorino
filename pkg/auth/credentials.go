@@ -2,7 +2,7 @@ package auth
 
 import (
 	"errors"
-	"regexp"
+	"net/url"
 	"strings"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
@@ -109,12 +109,19 @@ func getFromCookieHeader(headers map[string]string, keyName string) (string, err
 	return "", errNotFound
 }
 
-func getCredFromQuery(path string, keyName string) (string, error) {
-	const credValue = "credValue"
-	regex := regexp.MustCompile("([?&]" + keyName + "=)(?P<" + credValue + ">[^&]*)")
-	matches := regex.FindStringSubmatch(path)
-	if len(matches) == 0 {
+func getCredFromQuery(path string, param string) (string, error) {
+	// Parse the URL to extract query parameters safely
+	u, err := url.Parse(path)
+	if err != nil {
 		return "", errNotFound
 	}
-	return matches[regex.SubexpIndex(credValue)], nil
+
+	// Get the query parameter by name
+	values := u.Query()
+	cred := values.Get(param)
+	if cred == "" {
+		return "", errNotFound
+	}
+
+	return cred, nil
 }

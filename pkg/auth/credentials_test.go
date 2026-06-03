@@ -210,3 +210,72 @@ func TestGetCredentialsFromQueryFail(t *testing.T) {
 
 	assert.Error(t, err, "credential not found")
 }
+
+func TestGetCredentialsFromQueryWithSpecialCharactersInIdentifier(t *testing.T) {
+	// Test that special regex characters in the identifier don't cause panics
+	// This would have panicked with the old regexp.MustCompile approach
+	testCases := []struct {
+		name       string
+		identifier string
+		path       string
+		wantValue  string
+		wantErr    bool
+	}{
+		{
+			name:       "identifier with brackets",
+			identifier: "token[0]",
+			path:       "/api?token[0]=secret123",
+			wantValue:  "secret123",
+			wantErr:    false,
+		},
+		{
+			name:       "identifier with plus (URL encoded)",
+			identifier: "a+b",
+			path:       "/api?a%2Bb=value", // + must be encoded as %2B in query string
+			wantValue:  "value",
+			wantErr:    false,
+		},
+		{
+			name:       "identifier with asterisk",
+			identifier: "key*",
+			path:       "/api?key*=data",
+			wantValue:  "data",
+			wantErr:    false,
+		},
+		{
+			name:       "identifier with dot",
+			identifier: "api.key",
+			path:       "/api?api.key=token",
+			wantValue:  "token",
+			wantErr:    false,
+		},
+		{
+			name:       "url encoded value",
+			identifier: "redirect_uri",
+			path:       "/auth?redirect_uri=https%3A%2F%2Fexample.com%2Fcallback",
+			wantValue:  "https://example.com/callback",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			httpReq := envoyServiceAuthV3.AttributeContext_HttpRequest{
+				Path: tt.path,
+			}
+			authCredentials := AuthCredential{
+				Identifier: tt.identifier,
+				Placement:  httputil.InQuery,
+			}
+
+			cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
+
+			if tt.wantErr {
+				assert.ErrorContains(t, err, "credential not found")
+			} else {
+				assert.NilError(t, err)
+				assert.Check(t, cred == tt.wantValue, "got %q, want %q", cred, tt.wantValue)
+			}
+		})
+	}
+}
