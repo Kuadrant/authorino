@@ -46,7 +46,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 	pullFromRegistry := rego == "" && externalSource != nil && externalSource.Endpoint != ""
 
 	if pullFromRegistry {
-		if downloadedRego, err := externalSource.downloadRegoDataFromUrl(); err != nil {
+		if downloadedRego, err := externalSource.downloadRegoDataFromUrl(ctx); err != nil {
 			logger.Error(err, msg_opaPolicyDownloadError, "policy", policyName, "endpoint", externalSource.Endpoint)
 			return nil, err
 		} else {
@@ -214,13 +214,21 @@ type OPAExternalSource struct {
 	refresher workers.Worker
 }
 
-func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
-	req, err := httputil.NewRequestWithCredentials(context.TODO(), "GET", ext.Endpoint, nil, ext.AuthCredentials, ext.SharedSecret)
+func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (string, error) {
+	var req *http.Request
+	var err error
+
+	// Use credentials if configured, otherwise make an unauthenticated request
+	if ext.AuthCredentials != nil {
+		req, err = httputil.NewRequestWithCredentials(ctx, "GET", ext.Endpoint, nil, ext.AuthCredentials, ext.SharedSecret)
+	} else {
+		req, err = httputil.NewRequest(ctx, "GET", ext.Endpoint, nil)
+	}
 	if err != nil {
 		return "", err
 	}
 
-	otel.GetTextMapPropagator().Inject(req.Context(), otel_propagation.HeaderCarrier(req.Header))
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
 	if resp, err := httputil.NewClient().Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
@@ -257,7 +265,7 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 	var startErr error
 
 	ext.refresher, startErr = workers.StartWorker(ctx, ext.TTL, func() {
-		if downloadedRego, err := ext.downloadRegoDataFromUrl(); err == nil {
+		if downloadedRego, err := ext.downloadRegoDataFromUrl(ctx); err == nil {
 			if updated, err := opa.updateRego(downloadedRego, ctx, false); updated {
 				logger.Info(msg_opaPolicyRefreshFromRegistrySuccess)
 			} else {
