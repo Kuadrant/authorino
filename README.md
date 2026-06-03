@@ -451,5 +451,17 @@ If you are interested in contributing to Authorino, please refer to the [Develop
 Join us on the [#kuadrant](https://kubernetes.slack.com/archives/C05J0D0V525) channel in the Kubernetes Slack workspace, for live discussions about the roadmap and more.
 
 
+## Profiling
+
+Authorino supports runtime profiling via Go's built-in [pprof](https://pkg.go.dev/net/http/pprof) tooling. Enabled by default on `:8084`.
+
+Connect to a running instance:
+
+```bash
+kubectl port-forward -n <namespace> deploy/authorino 8084:8084
+go tool pprof -http=:8080 http://localhost:8084/debug/pprof/profile?seconds=30
+go tool pprof -http=:8080 http://localhost:8084/debug/pprof/heap
+```
+
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FKuadrant%2Fauthorino?ref=badge_large)

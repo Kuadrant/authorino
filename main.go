@@ -104,6 +104,7 @@ type commonServerOptions struct {
 	log             logOptions
 	metricsAddr     string
 	healthProbeAddr string
+	pprofAddr       string
 	telemetry       telemetryOptions
 }
 
@@ -232,6 +233,7 @@ func registerCommonServerOptions(cmd *cobra.Command, opts *commonServerOptions) 
 	cmd.PersistentFlags().StringVar(&opts.log.mode, "log-mode", utils.EnvVar("LOG_MODE", "production"), "Log mode")
 	cmd.PersistentFlags().StringVar(&opts.metricsAddr, "metrics-addr", ":8080", "The network address the metrics endpoint binds to")
 	cmd.PersistentFlags().StringVar(&opts.healthProbeAddr, "health-probe-addr", ":8081", "The network address the health probe endpoint binds to")
+	cmd.PersistentFlags().StringVar(&opts.pprofAddr, "pprof-bind-address", ":8084", "The address the pprof endpoint binds to")
 	cmd.PersistentFlags().StringVar(&opts.telemetry.tracingServiceEndpoint, "tracing-service-endpoint", "", "Endpoint URL of the tracing exporter service - use either 'rpc://' or 'http://' scheme")
 	cmd.PersistentFlags().BoolVar(&opts.telemetry.tracingServiceInsecure, "tracing-service-insecure", false, "Disable TLS for the tracing service connection")
 	cmd.PersistentFlags().StringArrayVar(&opts.telemetry.tracingServiceTags, "tracing-service-tag", []string{}, "Fixed key=value tag to add to emitted traces")
@@ -288,6 +290,7 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: opts.webhookServicePort}),
 		Metrics:                metricsserver.Options{BindAddress: opts.metricsAddr},
 		HealthProbeBindAddress: opts.healthProbeAddr,
+		PprofBindAddress:       opts.pprofAddr,
 		LeaderElection:         false,
 	}
 	if opts.watchNamespace != "" {
@@ -391,6 +394,7 @@ func runWebhookServer(cmd *cobra.Command, _ []string) {
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: opts.metricsAddr},
 		HealthProbeBindAddress: opts.healthProbeAddr,
+		PprofBindAddress:       opts.pprofAddr,
 		LeaderElection:         true,
 		LeaderElectionID:       fmt.Sprintf("670aa2de.%s", leaderElectionIDSuffix),
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: opts.port}),
