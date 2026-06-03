@@ -233,7 +233,6 @@ Built with:
 - controller-runtime v0.16.x
 - Kubernetes client-go v0.28.x
 - Envoy go-control-plane v1.36.x
-- OPA v1.x
 - CEL (Common Expression Language) for dynamic expressions
 
 ## Contribution Guide
