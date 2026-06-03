@@ -188,9 +188,20 @@ func TestValidateURL(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "URL at exact max length",
-			url:     "https://example.com/" + strings.Repeat("a", 2024), // 2048 total
+			name: "URL at exact max length",
+			url: func() string {
+				const prefix = "https://example.com/"
+				return prefix + strings.Repeat("a", 2048-len(prefix))
+			}(),
 			wantErr: false,
+		},
+		{
+			name: "URL one char over max length",
+			url: func() string {
+				const prefix = "https://example.com/"
+				return prefix + strings.Repeat("a", 2049-len(prefix))
+			}(),
+			wantErr: true,
 		},
 	}
 
