@@ -11,7 +11,7 @@ Authorino is a Kubernetes-native authorization service that implements Envoy's e
 ```text
 authorino/
 ├── api/
-│   ├── v1beta2/          # Legacy CRD type definitions (still supported)
+│   ├── v1beta2/          # Legacy CRD type definitions (DEPRECATED)
 │   └── v1beta3/          # Current CRD type definitions — prefer this
 │       └── auth_config_types.go  # Primary AuthConfig spec
 ├── controllers/
@@ -229,11 +229,11 @@ Both are registered in the scheme and controllers handle both versions.
 ## Dependencies
 
 Built with:
-- Go 1.25.7
-- controller-runtime v0.16.3
-- Kubernetes client-go v0.28.3
-- Envoy go-control-plane v1.32.4
-- OPA v1.4.0
+- Go 1.25.x
+- controller-runtime v0.16.x
+- Kubernetes client-go v0.28.x
+- Envoy go-control-plane v1.36.x
+- OPA v1.x
 - CEL (Common Expression Language) for dynamic expressions
 
 ## Contribution Guide
