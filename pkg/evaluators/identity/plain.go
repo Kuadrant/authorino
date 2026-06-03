@@ -35,5 +35,5 @@ func (p *Plain) GetIdentifier() string {
 }
 
 func (p *Plain) GetPlacement() string {
-	return p.Pattern
+	return ""
 }

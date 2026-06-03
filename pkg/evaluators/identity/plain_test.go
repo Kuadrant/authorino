@@ -58,7 +58,7 @@ func TestPlainGetIdentifier(t *testing.T) {
 
 func TestPlainGetPlacement(t *testing.T) {
 	plain := &Plain{Value: &j.JSONValue{Pattern: "context.request.http.body.@fromstr"}, Pattern: "context.request.http.body.@fromstr"}
-	assert.Equal(t, plain.GetPlacement(), "context.request.http.body.@fromstr")
+	assert.Equal(t, plain.GetPlacement(), "")
 }
 
 func TestPlainGetCredentialsFromAuthReq(t *testing.T) {
