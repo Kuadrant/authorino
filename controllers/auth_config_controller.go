@@ -459,6 +459,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 
 			if uma, err := metadata_evaluators.NewUMAMetadata(
+				ctx,
 				metadata.Uma.Endpoint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),

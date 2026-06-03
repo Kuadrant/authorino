@@ -149,13 +149,13 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 	return json.UnmashalJSONResponse(resp, &v, nil)
 }
 
-func NewUMAMetadata(endpoint string, clientID string, clientSecret string) (*UMA, error) {
+func NewUMAMetadata(ctx gocontext.Context, endpoint string, clientID string, clientSecret string) (*UMA, error) {
 	uma := &UMA{
 		Endpoint:     endpoint,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 	}
-	if err := uma.discover(); err != nil {
+	if err := uma.discover(ctx); err != nil {
 		return nil, err
 	} else {
 		return uma, nil
@@ -174,13 +174,15 @@ func (uma *UMA) wellKnownConfigEndpoint() string {
 	return strings.TrimSuffix(uma.Endpoint, "/") + "/.well-known/uma2-configuration"
 }
 
-func (uma *UMA) discover() error {
+func (uma *UMA) discover(ctx gocontext.Context) error {
 	wellKnownEndpoint := uma.wellKnownConfigEndpoint()
 
-	req, err := httputil.NewRequest(gocontext.Background(), "GET", wellKnownEndpoint, nil)
+	req, err := httputil.NewRequest(ctx, "GET", wellKnownEndpoint, nil)
 	if err != nil {
 		return fmt.Errorf("invalid UMA well-known config endpoint: %w", err)
 	}
+
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
 	if resp, err := httputil.NewClient().Do(req); err != nil {
 		return fmt.Errorf("failed to fetch uma config: %v", err)
