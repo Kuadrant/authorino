@@ -355,6 +355,7 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	statusUpdaterOptions := baseManagerOptions
 	statusUpdaterOptions.Metrics.BindAddress = "0"    // disabled so it does not clash with the reconciliation manager
 	statusUpdaterOptions.HealthProbeBindAddress = "0" // disabled so it does not clash with the reconciliation manager
+	statusUpdaterOptions.PprofBindAddress = "0"       // disabled so it does not clash with the reconciliation manager
 	statusUpdaterOptions.LeaderElection = opts.enableLeaderElection
 	statusUpdaterOptions.LeaderElectionID = fmt.Sprintf("%v.%v", hex.EncodeToString(leaderElectionId[:4]), leaderElectionIDSuffix)
 	statusUpdateManager, err := setupManager(restConfig, statusUpdaterOptions)
