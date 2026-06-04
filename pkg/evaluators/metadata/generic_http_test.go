@@ -5,6 +5,7 @@ import (
 	gojson "encoding/json"
 	"fmt"
 	"net/http"
+	gohttptest "net/http/httptest"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
@@ -199,16 +200,21 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 }
 
 func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
-	extHttpMetadataServer := httptest.NewHttpServerMock(testHttpMetadataServerHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
-	})
-	defer extHttpMetadataServer.Close()
+	// Capture headers sent to the server
+	var receivedHeaders http.Header
+
+	// Create test server with custom handler that captures headers
+	server := gohttptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedHeaders = r.Header.Clone()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"foo":"bar"}`))
+	}))
+	defer server.Close()
 
 	ctx := context.TODO()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	endpoint := "http://" + testHttpMetadataServerHost + "/metadata"
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
@@ -218,8 +224,9 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
-		Endpoint: endpoint,
-		Method:   "GET",
+		Endpoint:     server.URL,
+		Method:       "GET",
+		SharedSecret: "secret",
 		Headers: []json.JSONProperty{
 			{Name: "X-Requested-By", Value: &json.JSONValue{Static: "authorino"}},
 			{Name: "Content-Type", Value: &json.JSONValue{Static: "to-be-overwritten"}},
@@ -230,7 +237,13 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	_, err := metadata.Call(pipelineMock, ctx)
 
 	assert.NilError(t, err)
-	// Note: Can't check headers on httpRequestMock since it's no longer created in the test
+
+	// Verify custom headers were sent correctly
+	assert.Check(t, receivedHeaders.Get("X-Requested-By") == "authorino", "expected X-Requested-By: authorino")
+	// Content-Type should be overwritten to "text/plain" for GET requests (line 157 in generic_http.go)
+	assert.Check(t, receivedHeaders.Get("Content-Type") == "text/plain", "expected Content-Type to be overwritten to text/plain for GET requests")
+	// Authorization header from credentials (Bearer + SharedSecret)
+	assert.Check(t, receivedHeaders.Get("Authorization") == "Bearer secret", "expected Authorization: Bearer secret")
 }
 
 func TestGenericHttpWithInvalidJSONResponse(t *testing.T) {
