@@ -218,16 +218,21 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 	var req *http.Request
 	var err error
 
+	// Use Background context for the HTTP request to avoid cancellation from reconciliation/worker lifecycle.
+	// We still use the caller's ctx for tracing injection.
+	httpCtx := context.Background()
+
 	// Use credentials if configured, otherwise make an unauthenticated request
 	if ext.AuthCredentials != nil {
-		req, err = httputil.NewRequestWithCredentials(ctx, "GET", ext.Endpoint, nil, ext.AuthCredentials, ext.SharedSecret)
+		req, err = httputil.NewRequestWithCredentials(httpCtx, "GET", ext.Endpoint, nil, ext.AuthCredentials, ext.SharedSecret)
 	} else {
-		req, err = httputil.NewRequest(ctx, "GET", ext.Endpoint, nil)
+		req, err = httputil.NewRequest(httpCtx, "GET", ext.Endpoint, nil)
 	}
 	if err != nil {
 		return "", err
 	}
 
+	// Use the caller's context for tracing (so traces are linked), but the request uses Background context
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
 	if resp, err := httputil.NewClient().Do(req); err != nil {
