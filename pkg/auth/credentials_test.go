@@ -256,6 +256,42 @@ func TestGetCredentialsFromQueryWithSpecialCharactersInIdentifier(t *testing.T) 
 			wantValue:  "https://example.com/callback",
 			wantErr:    false,
 		},
+		// Malformed paths and error cases
+		{
+			name:       "malformed path with invalid escape sequence",
+			identifier: "token",
+			path:       "/api?token=%",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "malformed path with incomplete escape",
+			identifier: "token",
+			path:       "/api?token=%Z",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "path with control characters",
+			identifier: "token",
+			path:       "/api?token=value\x00",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "empty parameter value",
+			identifier: "token",
+			path:       "/api?token=",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "parameter exists but empty after other params",
+			identifier: "token",
+			path:       "/api?foo=bar&token=&baz=qux",
+			wantValue:  "",
+			wantErr:    true,
+		},
 	}
 
 	for _, tt := range testCases {
