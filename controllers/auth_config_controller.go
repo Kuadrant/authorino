@@ -328,21 +328,23 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
-			translatedIdentity.OAuth2 = identity_evaluators.NewOAuth2Identity(
+			oauth2 := identity_evaluators.NewOAuth2Identity(
 				oauth2Identity.Url,
 				oauth2Identity.TokenTypeHint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
 				authCred,
 			)
+			oauth2.Timeout = oauth2Identity.Timeout
+			translatedIdentity.OAuth2 = oauth2
 
 		// oidc
 		case api.JwtAuthentication:
 			var jwtVerifier identity_evaluators.JWTVerifier
 			if identity.Jwt.IssuerUrl != "" {
-				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL)
+				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL, identity.Jwt.Timeout)
 			} else if identity.Jwt.JwksUrl != "" {
-				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl)
+				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Timeout)
 			} else {
 				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
 			}
@@ -468,6 +470,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				span.SetStatus(codes.Error, "failed to create UMA metadata evaluator")
 				return nil, err
 			} else {
+				uma.Timeout = metadata.Uma.Timeout
 				translatedMetadata.UMA = uma
 			}
 
@@ -483,7 +486,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				}
 				openIdConfigStore = idConfig.GetOpenIdConfig()
 			}
-			translatedMetadata.UserInfo = metadata_evaluators.NewUserInfo(openIdConfigStore, metadata.UserInfo.UserInfoUrl)
+			userInfo := metadata_evaluators.NewUserInfo(openIdConfigStore, metadata.UserInfo.UserInfoUrl)
+			userInfo.Timeout = metadata.UserInfo.Timeout
+			translatedMetadata.UserInfo = userInfo
 
 		// generic http
 		case api.HttpMetadata:
@@ -560,6 +565,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 					SharedSecret:    sharedSecret,
 					AuthCredentials: newAuthCredential(externalRegistry.Credentials),
 					TTL:             externalRegistry.TTL,
+					Timeout:         externalRegistry.Timeout,
 				}
 			}
 
@@ -1178,6 +1184,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		SharedSecret:          sharedSecret,
 		OAuth2:                oauth2ClientCredentialsConfig,
 		OAuth2TokenForceFetch: oauth2TokenForceFetch,
+		Timeout:               http.Timeout,
 	}
 
 	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {

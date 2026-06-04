@@ -138,7 +138,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := httputil.NewClient().Do(req)
+	resp, err := httputil.NewClient(nil).Do(req)
 	if err != nil {
 		return err
 	}
@@ -166,6 +166,7 @@ type UMA struct {
 	Endpoint     string `yaml:"endpoint,omitempty"`
 	ClientID     string `yaml:"client_id"`
 	ClientSecret string `yaml:"client_secret"`
+	Timeout      *int
 
 	provider *Provider
 }
@@ -184,7 +185,7 @@ func (uma *UMA) discover(ctx gocontext.Context) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	if resp, err := httputil.NewClient().Do(req); err != nil {
+	if resp, err := httputil.NewClient(uma.Timeout).Do(req); err != nil {
 		return fmt.Errorf("failed to fetch uma config: %v", err)
 	} else {
 		defer func(body io.ReadCloser) {
@@ -261,7 +262,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := httputil.NewClient().Do(req)
+	resp, err := httputil.NewClient(uma.Timeout).Do(req)
 	if err != nil {
 		return err
 	}

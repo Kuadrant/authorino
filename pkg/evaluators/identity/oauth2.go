@@ -24,6 +24,7 @@ type OAuth2 struct {
 	TokenTypeHint         string `yaml:"tokenTypeHint,omitempty"`
 	ClientID              string `yaml:"clientId"`
 	ClientSecret          string `yaml:"clientSecret"`
+	Timeout               *int
 }
 
 func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clientID string, clientSecret string, creds auth.AuthCredentials) *OAuth2 {
@@ -35,11 +36,12 @@ func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clien
 	}
 
 	return &OAuth2{
-		creds,
-		tokenIntrospectionUrl,
-		tokenHint,
-		clientID,
-		clientSecret,
+		AuthCredentials:       creds,
+		TokenIntrospectionUrl: tokenIntrospectionUrl,
+		TokenTypeHint:         tokenHint,
+		ClientID:              clientID,
+		ClientSecret:          clientSecret,
+		Timeout:               nil,
 	}
 }
 
@@ -74,7 +76,7 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	resp, err := httputil.NewClient().Do(req)
+	resp, err := httputil.NewClient(oauth.Timeout).Do(req)
 	if err != nil {
 		return nil, err
 	}

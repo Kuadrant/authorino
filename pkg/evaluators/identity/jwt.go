@@ -8,6 +8,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
@@ -92,15 +93,17 @@ type JWTVerifier interface {
 
 type oidcProviderVerifier struct {
 	issuerUrl string
+	timeout   *int
 
 	mu        sync.RWMutex
 	provider  *oidc.Provider
 	refresher workers.Worker
 }
 
-func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int) JWTVerifier {
+func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, timeout *int) JWTVerifier {
 	v := &oidcProviderVerifier{
 		issuerUrl: issuerUrl,
+		timeout:   timeout,
 	}
 	ctxWithLogger := log.IntoContext(ctx, log.FromContext(ctx).WithName("jwt"))
 	v.getOpenIdProvider(ctxWithLogger, false)
@@ -167,7 +170,13 @@ func (v *oidcProviderVerifier) getOpenIdProvider(ctx gocontext.Context, force bo
 	defer v.mu.Unlock()
 
 	if v.provider == nil || force {
-		if provider, err := oidc.NewProvider(gocontext.Background(), v.issuerUrl); err != nil {
+		// Create HTTP client with timeout
+		httpClient := httputil.NewClient(v.timeout)
+		// Use Background context (not caller's ctx) to avoid cancellation from reconciliation/request lifecycle.
+		// The HTTP client's timeout will still apply.
+		discoveryCtx := oidc.ClientContext(gocontext.Background(), httpClient)
+
+		if provider, err := oidc.NewProvider(discoveryCtx, v.issuerUrl); err != nil {
 			log.FromContext(ctx).Error(err, msg_oidcProviderVerifierConfigRefreshError, "issuerUrl", v.issuerUrl)
 		} else {
 			log.FromContext(ctx).V(1).Info(msg_oidcProviderVerifierConfigRefreshSuccess, "issuerUrl", v.issuerUrl)
@@ -194,9 +203,15 @@ type jwksVerifier struct {
 	jwks oidc.KeySet
 }
 
-func NewJwksVerifier(ctx gocontext.Context, jwksUrl string) JWTVerifier {
+func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, timeout *int) JWTVerifier {
+	// Create HTTP client with timeout for JWK fetching
+	httpClient := httputil.NewClient(timeout)
+	// Use Background context (not caller's ctx) to avoid cancellation from reconciliation lifecycle.
+	// The HTTP client's timeout will still apply for each JWK fetch.
+	jwkCtx := oidc.ClientContext(gocontext.Background(), httpClient)
+
 	return &jwksVerifier{
-		jwks: oidc.NewRemoteKeySet(ctx, jwksUrl),
+		jwks: oidc.NewRemoteKeySet(jwkCtx, jwksUrl),
 	}
 }
 

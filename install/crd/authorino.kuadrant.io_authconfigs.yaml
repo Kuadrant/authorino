@@ -2557,6 +2557,13 @@ spec:
                             The JSON Web Keys (JWK) obtained from this endpoint are automatically cached and the caching updated whenever the kid of a JWT does not match any of the cached JWKs (https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys).
                             One of: jwksUrl, issuerUrl
                           type: string
+                        timeout:
+                          description: |-
+                            Timeout for OIDC discovery and JWK fetching HTTP requests, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                         ttl:
                           description: |-
                             Decides how long the OIDC configuration will be cached.
@@ -2606,6 +2613,13 @@ spec:
                             IMPORTANT: Ensure this URL points to a trusted OAuth2 server. If this value can be influenced by user input,
                             you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                           type: string
+                        timeout:
+                          description: |-
+                            Timeout for the token introspection HTTP request, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                         tokenTypeHint:
                           description: |-
                             The token type hint for the token introspection.
@@ -3237,6 +3251,13 @@ spec:
                                   items:
                                     type: string
                                   type: array
+                                timeout:
+                                  description: |-
+                                    Timeout for the token endpoint HTTP request, in milliseconds.
+                                    If not specified, defaults to 5000ms (5 seconds).
+                                    Set to 0 to disable timeout.
+                                  minimum: 0
+                                  type: integer
                                 tokenUrl:
                                   description: |-
                                     Token endpoint URL of the OAuth2 resource server.
@@ -3267,6 +3288,13 @@ spec:
                               - key
                               - name
                               type: object
+                            timeout:
+                              description: |-
+                                Timeout for the HTTP request, in milliseconds.
+                                If not specified, defaults to 5000ms (5 seconds).
+                                Set to 0 to disable timeout.
+                              minimum: 0
+                              type: integer
                             ttl:
                               description: Duration (in seconds) of the external data
                                 in the cache before pulled again from the source.
@@ -3771,6 +3799,13 @@ spec:
                               items:
                                 type: string
                               type: array
+                            timeout:
+                              description: |-
+                                Timeout for the token endpoint HTTP request, in milliseconds.
+                                If not specified, defaults to 5000ms (5 seconds).
+                                Set to 0 to disable timeout.
+                              minimum: 0
+                              type: integer
                             tokenUrl:
                               description: |-
                                 Token endpoint URL of the OAuth2 resource server.
@@ -3801,6 +3836,13 @@ spec:
                           - key
                           - name
                           type: object
+                        timeout:
+                          description: |-
+                            Timeout for the HTTP request, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                         url:
                           description: |-
                             Endpoint URL of the HTTP service.
@@ -4121,6 +4163,13 @@ spec:
                               items:
                                 type: string
                               type: array
+                            timeout:
+                              description: |-
+                                Timeout for the token endpoint HTTP request, in milliseconds.
+                                If not specified, defaults to 5000ms (5 seconds).
+                                Set to 0 to disable timeout.
+                              minimum: 0
+                              type: integer
                             tokenUrl:
                               description: |-
                                 Token endpoint URL of the OAuth2 resource server.
@@ -4151,6 +4200,13 @@ spec:
                           - key
                           - name
                           type: object
+                        timeout:
+                          description: |-
+                            Timeout for the HTTP request, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                         url:
                           description: |-
                             Endpoint URL of the HTTP service.
@@ -4215,6 +4271,13 @@ spec:
                             IMPORTANT: Ensure this URL points to a trusted UMA server. If this value can be influenced by user input,
                             you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
                           type: string
+                        timeout:
+                          description: |-
+                            Timeout for UMA HTTP requests (discovery, PAT, resource queries), in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                       required:
                       - credentialsRef
                       - endpoint
@@ -4228,6 +4291,13 @@ spec:
                             Name of an OIDC JWT authentication rule whose obtained configuration includes an "userinfo_endpoint" claim.
                             One of: identitySource, userInfoUrl
                           type: string
+                        timeout:
+                          description: |-
+                            Timeout for the UserInfo HTTP request, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                         userInfoUrl:
                           description: |-
                             The URL of the UserInfo endpoint.

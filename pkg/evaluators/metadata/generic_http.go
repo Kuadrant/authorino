@@ -33,6 +33,7 @@ type GenericHttp struct {
 	SharedSecret          string
 	OAuth2                *oauth2.ClientCredentials
 	OAuth2TokenForceFetch bool
+	Timeout               *int
 	auth.AuthCredentials
 }
 
@@ -58,7 +59,7 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 		return nil, err
 	}
 
-	resp, err := httputil.NewClient().Do(req)
+	resp, err := httputil.NewClient(h.Timeout).Do(req)
 	if err != nil {
 		return nil, err
 	}

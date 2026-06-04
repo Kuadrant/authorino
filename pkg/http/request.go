@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const maxURLLength = 2048 // Standard reasonable limit for URLs
@@ -155,8 +156,19 @@ func ValidateURL(rawURL string) error {
 	return nil
 }
 
-// NewClient creates an HTTP client for making requests.
-// Currently returns http.DefaultClient, but will support configurable timeouts in the future (issue #620).
-func NewClient() *http.Client {
-	return http.DefaultClient
+// NewClient creates an HTTP client with the specified timeout.
+// If timeoutMs is nil, defaults to 5000ms (5 seconds).
+// If timeoutMs is 0, no timeout is set (matching Go's http.Client convention).
+// If timeoutMs is positive, uses that value as the timeout in milliseconds.
+func NewClient(timeoutMs *int) *http.Client {
+	if timeoutMs == nil {
+		// Default: 5 seconds
+		return &http.Client{
+			Timeout: 5000 * time.Millisecond,
+		}
+	}
+
+	return &http.Client{
+		Timeout: time.Duration(*timeoutMs) * time.Millisecond,
+	}
 }

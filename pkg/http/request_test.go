@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	mock_http "github.com/kuadrant/authorino/pkg/http/mocks"
 	"go.uber.org/mock/gomock"
@@ -280,9 +281,53 @@ func TestNewRequest(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
-	client := NewClient()
-	if client == nil {
-		t.Error("NewClient() returned nil")
+	tests := []struct {
+		name        string
+		timeout     *int
+		wantTimeout time.Duration
+	}{
+		{
+			name:        "default timeout (nil)",
+			timeout:     nil,
+			wantTimeout: 5000 * time.Millisecond,
+		},
+		{
+			name: "custom timeout",
+			timeout: func() *int {
+				t := 10000
+				return &t
+			}(),
+			wantTimeout: 10000 * time.Millisecond,
+		},
+		{
+			name: "zero timeout (no timeout, Go convention)",
+			timeout: func() *int {
+				t := 0
+				return &t
+			}(),
+			wantTimeout: 0, // 0 means no timeout in http.Client
+		},
+		{
+			name: "1ms timeout",
+			timeout: func() *int {
+				t := 1
+				return &t
+			}(),
+			wantTimeout: 1 * time.Millisecond,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient(tt.timeout)
+			if client == nil {
+				t.Error("NewClient() returned nil")
+				return
+			}
+			if client.Timeout != tt.wantTimeout {
+				t.Errorf("NewClient() timeout = %v, want %v", client.Timeout, tt.wantTimeout)
+			}
+		})
 	}
 }
 

@@ -211,6 +211,7 @@ type OPAExternalSource struct {
 	SharedSecret string
 	auth.AuthCredentials
 	TTL       int
+	Timeout   *int
 	refresher workers.Worker
 }
 
@@ -220,6 +221,7 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 
 	// Use Background context for the HTTP request to avoid cancellation from reconciliation/worker lifecycle.
 	// We still use the caller's ctx for tracing injection.
+	// The HTTP client's timeout will still apply.
 	httpCtx := context.Background()
 
 	// Use credentials if configured, otherwise make an unauthenticated request
@@ -235,7 +237,7 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 	// Use the caller's context for tracing (so traces are linked), but the request uses Background context
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	if resp, err := httputil.NewClient().Do(req); err != nil {
+	if resp, err := httputil.NewClient(ext.Timeout).Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
 	} else {
 		defer func(Body io.ReadCloser) {

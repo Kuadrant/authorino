@@ -389,6 +389,13 @@ type JwtAuthenticationSpec struct {
 	// This configuration does not affect the caching of JSON Web Keys (JWK), which is always updated whenever the kid of a JWT does not match any of the cached JWKs (https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys)
 	// +optional
 	TTL int `json:"ttl,omitempty"`
+
+	// Timeout for OIDC discovery and JWK fetching HTTP requests, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // Settings to perform the OAuth2 token introspection request.
@@ -406,6 +413,13 @@ type OAuth2TokenIntrospectionSpec struct {
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the OAuth2 server.
 	Credentials *k8score.LocalObjectReference `json:"credentialsRef"`
+
+	// Timeout for the token introspection HTTP request, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // Parameters of the Kubernetes TokenReview request
@@ -572,6 +586,13 @@ type HttpEndpointSpec struct {
 	// If omitted, it defaults to client credentials passed in the HTTP Authorization header and the "Bearer" prefix expected prepended to the secret value.
 	// +optional
 	Credentials Credentials `json:"credentials,omitempty"`
+
+	// Timeout for the HTTP request, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=GET;POST;PUT;PATCH;DELETE;HEAD;OPTIONS;CONNECT;TRACE
@@ -608,6 +629,12 @@ type OAuth2ClientAuthentication struct {
 	// Set it to false to force fetch the token at every authorization request regardless of expiration.
 	// +kubebuilder:default:=true
 	Cache *bool `json:"cache,omitempty"`
+	// Timeout for the token endpoint HTTP request, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // Settings of the OpendID Connect UserInfo linked to an OIDC-enabled JWT authentication config of this same AuthConfig.
@@ -625,6 +652,13 @@ type UserInfoMetadataSpec struct {
 	// IMPORTANT: Ensure this URL points to a trusted endpoint. If constructing this URL dynamically or if it can be
 	// influenced by user input, you may be vulnerable to Server-Side Request Forgery (SSRF) attacks.
 	UserInfoUrl string `json:"userInfoUrl,omitempty"`
+
+	// Timeout for the UserInfo HTTP request, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // Settings of the User-Managed Access (UMA) source of resource data.
@@ -638,6 +672,13 @@ type UmaMetadataSpec struct {
 
 	// Reference to a Kubernetes secret in the same namespace, that stores client credentials to the resource registration API of the UMA server.
 	Credentials *k8score.LocalObjectReference `json:"credentialsRef"`
+
+	// Timeout for UMA HTTP requests (discovery, PAT, resource queries), in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 type AuthorizationSpec struct {
