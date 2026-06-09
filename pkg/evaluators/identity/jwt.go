@@ -45,7 +45,7 @@ func (j *JWTAuthentication) Call(pipeline auth.AuthPipeline, ctx gocontext.Conte
 	}
 
 	// get the raw token from the request
-	rawIDToken, err := j.GetCredentialsFromReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
+	rawIDToken, err := j.GetCredentialsFromAuthReq(pipeline.GetRequest().GetAttributes().GetRequest().GetHttp())
 	if err != nil {
 		return nil, err
 	}

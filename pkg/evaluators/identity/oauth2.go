@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/log"
 
 	"go.opentelemetry.io/otel"
@@ -49,7 +49,7 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 	}
 
 	// retrieve access token
-	accessToken, err := oauth.GetCredentialsFromReq(pipeline.GetHttp())
+	accessToken, err := oauth.GetCredentialsFromAuthReq(pipeline.GetHttp())
 	if err != nil {
 		return nil, err
 	}
@@ -64,17 +64,17 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 	}
 	encodedFormData := formData.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", tokenIntrospectionURL.String(), bytes.NewBufferString(encodedFormData))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req, err := httputil.NewRequest(ctx, "POST", tokenIntrospectionURL.String(), bytes.NewBufferString(encodedFormData))
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	log.FromContext(ctx).WithName("oauth2").V(1).Info("sending token introspection request", "url", log.RedactedURL(tokenIntrospectionURL), "data", log.RedactedFormData(encodedFormData))
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httputil.NewClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -1,11 +1,11 @@
 package metadata
 
 import (
-	"bytes"
 	"context"
 	gojson "encoding/json"
 	"fmt"
 	"net/http"
+	gohttptest "net/http/httptest"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
@@ -39,8 +39,8 @@ func TestGenericHttpCallWithGET(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "secret", nil).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
@@ -73,9 +73,8 @@ func TestGenericHttpCallWithPOST(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	requestBody := bytes.NewBuffer([]byte("user=mock"))
-	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
@@ -110,9 +109,8 @@ func TestGenericHttpCallWithStaticBody(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	requestBody := bytes.NewBuffer([]byte(`{"foo":"bar"}`))
-	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
@@ -147,9 +145,8 @@ func TestGenericHttpCallWithDynamicBody(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	requestBody := bytes.NewBuffer([]byte(`{"foo":"bar","user":{"name":"mock"}}`))
-	httpRequestMock, _ := http.NewRequest("POST", endpoint, requestBody)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "POST", "secret", requestBody).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
@@ -179,14 +176,13 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 	defer ctrl.Finish()
 
 	endpointWithPlaceholders := "http://" + testHttpMetadataServerHost + "/metadata?p={context.request.http.headers.x-origin}"
-	endpoint := "http://" + testHttpMetadataServerHost + "/metadata?p=some-origin"
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "secret", nil).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpointWithPlaceholders,
@@ -204,27 +200,33 @@ func TestGenericHttpCallWithURLPlaceholders(t *testing.T) {
 }
 
 func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
-	extHttpMetadataServer := httptest.NewHttpServerMock(testHttpMetadataServerHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(`{"foo":"bar"}`),
-	})
-	defer extHttpMetadataServer.Close()
+	// Capture headers sent to the server
+	var receivedHeaders http.Header
+
+	// Create test server with custom handler that captures headers
+	server := gohttptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedHeaders = r.Header.Clone()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"foo":"bar"}`))
+	}))
+	defer server.Close()
 
 	ctx := context.TODO()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	endpoint := "http://" + testHttpMetadataServerHost + "/metadata"
-
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "", nil).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
-		Endpoint: endpoint,
-		Method:   "GET",
+		Endpoint:     server.URL,
+		Method:       "GET",
+		SharedSecret: "secret",
 		Headers: []json.JSONProperty{
 			{Name: "X-Requested-By", Value: &json.JSONValue{Static: "authorino"}},
 			{Name: "Content-Type", Value: &json.JSONValue{Static: "to-be-overwritten"}},
@@ -235,8 +237,13 @@ func TestGenericHttpCallWithCustomHeaders(t *testing.T) {
 	_, err := metadata.Call(pipelineMock, ctx)
 
 	assert.NilError(t, err)
-	assert.Equal(t, httpRequestMock.Header.Get("X-Requested-By"), "authorino")
-	assert.Equal(t, httpRequestMock.Header.Get("Content-Type"), "text/plain")
+
+	// Verify custom headers were sent correctly
+	assert.Check(t, receivedHeaders.Get("X-Requested-By") == "authorino", "expected X-Requested-By: authorino")
+	// Content-Type should be overwritten to "text/plain" for GET requests (line 157 in generic_http.go)
+	assert.Check(t, receivedHeaders.Get("Content-Type") == "text/plain", "expected Content-Type to be overwritten to text/plain for GET requests")
+	// Authorization header from credentials (Bearer + SharedSecret)
+	assert.Check(t, receivedHeaders.Get("Authorization") == "Bearer secret", "expected Authorization: Bearer secret")
 }
 
 func TestGenericHttpWithInvalidJSONResponse(t *testing.T) {
@@ -280,8 +287,8 @@ func TestGenericHttpMultipleElementsJSONResponse(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "secret", nil).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
@@ -355,8 +362,8 @@ func TestWithOAuth2Authentication(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock()).Times(2)
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "xyz-1", nil).Return(httpRequestMock, nil).Times(2)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
@@ -406,9 +413,8 @@ func TestWithOAuth2AuthenticationWithoutTokenCache(t *testing.T) {
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock()).Times(2)
 
 	sharedCredsMock := mock_auth.NewMockAuthCredentials(ctrl)
-	httpRequestMock, _ := http.NewRequest("GET", endpoint, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "xyz-1", nil).Return(httpRequestMock, nil)
-	sharedCredsMock.EXPECT().BuildRequestWithCredentials(ctx, endpoint, "GET", "xyz-2", nil).Return(httpRequestMock, nil)
+	sharedCredsMock.EXPECT().GetIdentifier().Return("Bearer").AnyTimes()
+	sharedCredsMock.EXPECT().GetPlacement().Return("authorization_header").AnyTimes()
 
 	metadata := &GenericHttp{
 		Endpoint:              endpoint,

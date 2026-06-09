@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
@@ -45,7 +46,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 	pullFromRegistry := rego == "" && externalSource != nil && externalSource.Endpoint != ""
 
 	if pullFromRegistry {
-		if downloadedRego, err := externalSource.downloadRegoDataFromUrl(); err != nil {
+		if downloadedRego, err := externalSource.downloadRegoDataFromUrl(ctx); err != nil {
 			logger.Error(err, msg_opaPolicyDownloadError, "policy", policyName, "endpoint", externalSource.Endpoint)
 			return nil, err
 		} else {
@@ -213,15 +214,28 @@ type OPAExternalSource struct {
 	refresher workers.Worker
 }
 
-func (ext *OPAExternalSource) downloadRegoDataFromUrl() (string, error) {
-	req, err := ext.BuildRequestWithCredentials(context.TODO(), ext.Endpoint, "GET", ext.SharedSecret, nil)
+func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (string, error) {
+	var req *http.Request
+	var err error
+
+	// Use Background context for the HTTP request to avoid cancellation from reconciliation/worker lifecycle.
+	// We still use the caller's ctx for tracing injection.
+	httpCtx := context.Background()
+
+	// Use credentials if configured, otherwise make an unauthenticated request
+	if ext.AuthCredentials != nil {
+		req, err = httputil.NewRequestWithCredentials(httpCtx, "GET", ext.Endpoint, nil, ext.AuthCredentials, ext.SharedSecret)
+	} else {
+		req, err = httputil.NewRequest(httpCtx, "GET", ext.Endpoint, nil)
+	}
 	if err != nil {
 		return "", err
 	}
 
-	otel.GetTextMapPropagator().Inject(req.Context(), otel_propagation.HeaderCarrier(req.Header))
+	// Use the caller's context for tracing (so traces are linked), but the request uses Background context
+	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	if resp, err := http.DefaultClient.Do(req); err != nil {
+	if resp, err := httputil.NewClient().Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
 	} else {
 		defer func(Body io.ReadCloser) {
@@ -256,7 +270,7 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 	var startErr error
 
 	ext.refresher, startErr = workers.StartWorker(ctx, ext.TTL, func() {
-		if downloadedRego, err := ext.downloadRegoDataFromUrl(); err == nil {
+		if downloadedRego, err := ext.downloadRegoDataFromUrl(ctx); err == nil {
 			if updated, err := opa.updateRego(downloadedRego, ctx, false); updated {
 				logger.Info(msg_opaPolicyRefreshFromRegistrySuccess)
 			} else {

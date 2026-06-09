@@ -1,44 +1,41 @@
 package auth
 
 import (
-	"context"
 	"testing"
 
 	envoyServiceAuthV3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"gotest.tools/assert"
 )
 
 func TestConstants(t *testing.T) {
-	assert.Check(t, inCustomHeader == "custom_header")
-	assert.Check(t, inAuthHeader == "authorization_header")
-	assert.Check(t, inQuery == "query")
 	assert.Check(t, credentialNotFoundMsg == "credential not found")
 	assert.Check(t, credentialNotFoundInHeaderMsg == "the credential was not found in the request header")
 	assert.Check(t, credentialLocationNotSupportedMsg == "the credential location is not supported")
 	assert.Check(t, authHeaderNotSetMsg == "the Authorization header is not set")
 	assert.Check(t, cookieHeaderNotSetMsg == "the Cookie header is not set")
-	assert.Check(t, defaultKeySelector == "Bearer")
+	assert.Check(t, defaultCredentialLocationIdentifier == "Bearer")
 }
 
 func TestNewAuthCredential(t *testing.T) {
-	creds := NewAuthCredential("api_key", "query")
-	assert.Check(t, creds.KeySelector == "api_key")
-	assert.Check(t, creds.In == "query")
+	creds := NewAuthCredential(httputil.InQuery, "api_key")
+	assert.Check(t, creds.Identifier == "api_key")
+	assert.Check(t, creds.Placement == httputil.InQuery)
 }
 
 func TestNewAuthCredentialDefaultValues(t *testing.T) {
 	creds := NewAuthCredential("", "")
-	assert.Check(t, creds.KeySelector == "Bearer")
-	assert.Check(t, creds.In == "authorization_header")
+	assert.Check(t, creds.Identifier == "Bearer")
+	assert.Check(t, creds.Placement == httputil.InAuthorizationHeader)
 }
 
 func TestGetCredentialsLocationNotSupported(t *testing.T) {
 	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{}
 
 	authCredentials := AuthCredential{
-		In: "body",
+		Placement: "body",
 	}
-	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	_, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.Error(t, err, "the credential location is not supported")
 }
@@ -49,10 +46,10 @@ func TestGetCredentialsFromCustomHeaderSuccess(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "X-API-KEY",
-		In:          "custom_header",
+		Identifier: "X-API-KEY",
+		Placement:  httputil.InCustomHeader,
 	}
-	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "DasUberApiKey")
@@ -62,10 +59,10 @@ func TestGetCredentialsFromCustomHeaderFail(t *testing.T) {
 	var httpReq = envoyServiceAuthV3.AttributeContext_HttpRequest{}
 
 	authCredentials := AuthCredential{
-		KeySelector: "X-API-KEY",
-		In:          "custom_header",
+		Identifier: "X-API-KEY",
+		Placement:  httputil.InCustomHeader,
 	}
-	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	_, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
 }
@@ -76,10 +73,10 @@ func TestGetCredentialsFromAuthHeaderSuccess(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "X-API-KEY",
-		In:          "authorization_header",
+		Identifier: "X-API-KEY",
+		Placement:  httputil.InAuthorizationHeader,
 	}
-	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "DasUberApiKey")
@@ -91,10 +88,10 @@ func TestGetCredentialsFromAuthHeaderFail(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "Bearer",
-		In:          "authorization_header",
+		Identifier: "Bearer",
+		Placement:  httputil.InAuthorizationHeader,
 	}
-	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	_, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
 }
@@ -105,10 +102,10 @@ func TestGetCredentialsFromCookieHeaderSuccess(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "API-KEY",
-		In:          "cookie",
+		Identifier: "API-KEY",
+		Placement:  httputil.InCookie,
 	}
-	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "HumanInstrumentality")
@@ -120,10 +117,10 @@ func TestGetCredentialsFromCookieHeaderFirstKey(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "API-KEY",
-		In:          "cookie",
+		Identifier: "API-KEY",
+		Placement:  httputil.InCookie,
 	}
-	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "HumanInstrumentality")
@@ -135,10 +132,10 @@ func TestGetCredentialsFromCookieHeaderWithEqualSign(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "API-KEY",
-		In:          "cookie",
+		Identifier: "API-KEY",
+		Placement:  httputil.InCookie,
 	}
-	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "SHVtYW5JbnN0cnVtZW50YWxpdHk=")
@@ -150,10 +147,10 @@ func TestGetCredentialsFromCookieHeaderNoCookieHeaderFail(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "API-KEY",
-		In:          "cookie",
+		Identifier: "API-KEY",
+		Placement:  httputil.InCookie,
 	}
-	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	_, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
 
@@ -165,10 +162,10 @@ func TestGetCredentialsFromCookieHeaderNoKeyFoundFail(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "API-KEY",
-		In:          "cookie",
+		Identifier: "API-KEY",
+		Placement:  httputil.InCookie,
 	}
-	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	_, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
 
@@ -181,10 +178,10 @@ func TestGetCredentialsFromQuerySuccess(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "api_key",
-		In:          "query",
+		Identifier: "api_key",
+		Placement:  httputil.InQuery,
 	}
-	cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "DasUberApiKey")
@@ -194,7 +191,7 @@ func TestGetCredentialsFromQuerySuccess(t *testing.T) {
 		Path: "/seele.de/hip?third_impact=true&api_key=DasUberApiKey&some=scheisse",
 	}
 
-	cred, err = authCredentials.GetCredentialsFromReq(&httpReq)
+	cred, err = authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.NilError(t, err)
 	assert.Check(t, cred == "DasUberApiKey")
@@ -206,27 +203,115 @@ func TestGetCredentialsFromQueryFail(t *testing.T) {
 	}
 
 	authCredentials := AuthCredential{
-		KeySelector: "api_key",
-		In:          "query",
+		Identifier: "api_key",
+		Placement:  httputil.InQuery,
 	}
-	_, err := authCredentials.GetCredentialsFromReq(&httpReq)
+	_, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
 	assert.Error(t, err, "credential not found")
 }
 
-func TestBuildRequestWithCredentials(t *testing.T) {
-	creds := NewAuthCredential("", "")
-	req, err := creds.BuildRequestWithCredentials(context.TODO(), "http://example.com", "GET", "123", nil)
+func TestGetCredentialsFromQueryWithSpecialCharactersInIdentifier(t *testing.T) {
+	// Test that special regex characters in the identifier don't cause panics
+	// This would have panicked with the old regexp.MustCompile approach
+	testCases := []struct {
+		name       string
+		identifier string
+		path       string
+		wantValue  string
+		wantErr    bool
+	}{
+		{
+			name:       "identifier with brackets",
+			identifier: "token[0]",
+			path:       "/api?token[0]=secret123",
+			wantValue:  "secret123",
+			wantErr:    false,
+		},
+		{
+			name:       "identifier with plus (URL encoded)",
+			identifier: "a+b",
+			path:       "/api?a%2Bb=value", // + must be encoded as %2B in query string
+			wantValue:  "value",
+			wantErr:    false,
+		},
+		{
+			name:       "identifier with asterisk",
+			identifier: "key*",
+			path:       "/api?key*=data",
+			wantValue:  "data",
+			wantErr:    false,
+		},
+		{
+			name:       "identifier with dot",
+			identifier: "api.key",
+			path:       "/api?api.key=token",
+			wantValue:  "token",
+			wantErr:    false,
+		},
+		{
+			name:       "url encoded value",
+			identifier: "redirect_uri",
+			path:       "/auth?redirect_uri=https%3A%2F%2Fexample.com%2Fcallback",
+			wantValue:  "https://example.com/callback",
+			wantErr:    false,
+		},
+		// Malformed paths and error cases
+		{
+			name:       "malformed path with invalid escape sequence",
+			identifier: "token",
+			path:       "/api?token=%",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "malformed path with incomplete escape",
+			identifier: "token",
+			path:       "/api?token=%Z",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "path with control characters",
+			identifier: "token",
+			path:       "/api?token=value\x00",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "empty parameter value",
+			identifier: "token",
+			path:       "/api?token=",
+			wantValue:  "",
+			wantErr:    true,
+		},
+		{
+			name:       "parameter exists but empty after other params",
+			identifier: "token",
+			path:       "/api?foo=bar&token=&baz=qux",
+			wantValue:  "",
+			wantErr:    true,
+		},
+	}
 
-	assert.NilError(t, err)
-	assert.Equal(t, len(req.Header.Values("Authorization")), 1)
-	assert.Equal(t, req.Header.Get("Authorization"), creds.KeySelector+" 123")
-}
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			httpReq := envoyServiceAuthV3.AttributeContext_HttpRequest{
+				Path: tt.path,
+			}
+			authCredentials := AuthCredential{
+				Identifier: tt.identifier,
+				Placement:  httputil.InQuery,
+			}
 
-func TestBuildRequestWithCredentialsEmpty(t *testing.T) {
-	creds := NewAuthCredential("", "")
-	req, err := creds.BuildRequestWithCredentials(context.TODO(), "http://example.com", "GET", "", nil)
+			cred, err := authCredentials.GetCredentialsFromAuthReq(&httpReq)
 
-	assert.NilError(t, err)
-	assert.Equal(t, len(req.Header.Values("Authorization")), 0)
+			if tt.wantErr {
+				assert.ErrorContains(t, err, "credential not found")
+			} else {
+				assert.NilError(t, err)
+				assert.Check(t, cred == tt.wantValue, "got %q, want %q", cred, tt.wantValue)
+			}
+		})
+	}
 }

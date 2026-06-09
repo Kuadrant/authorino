@@ -32,7 +32,7 @@ func (config *AuthConfig) GetChallengeHeaders() []map[string]string {
 
 	for _, authConfig := range config.IdentityConfigs {
 		if idConfig, ok := authConfig.(*IdentityConfig); ok {
-			challenge := fmt.Sprintf("%v realm=\"%v\"", idConfig.GetAuthCredentials().GetCredentialsKeySelector(), idConfig.Name)
+			challenge := fmt.Sprintf("%v realm=\"%v\"", idConfig.GetAuthCredentials().GetIdentifier(), idConfig.Name)
 			challengeHeaders = append(challengeHeaders, map[string]string{"WWW-Authenticate": challenge})
 		}
 	}

@@ -37,7 +37,7 @@ func TestNewUMAMetadata(t *testing.T) {
 	})
 	defer httpServer.Close()
 
-	uma, err := NewUMAMetadata(umaIssuer, "client-id", "client-secret")
+	uma, err := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret")
 
 	assert.NilError(t, err)
 	assert.Equal(t, umaIssuer, uma.provider.issuer)
@@ -49,7 +49,7 @@ func TestUMAMetadataFailToDecodeConfig(t *testing.T) {
 	})
 	defer httpServer.Close()
 
-	uma, err := NewUMAMetadata(umaIssuer, "client-id", "client-secret")
+	uma, err := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret")
 
 	assert.ErrorContains(t, err, "failed to decode uma provider discovery object")
 	assert.Check(t, uma == nil)
@@ -78,7 +78,7 @@ func TestUMACall(t *testing.T) {
 	request := &envoy_auth.AttributeContext_HttpRequest{Path: "/someresource"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
-	uma, _ := NewUMAMetadata(umaIssuer, "client-id", "client-secret")
+	uma, _ := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret")
 
 	obj, err := uma.Call(pipelineMock, context.TODO())
 

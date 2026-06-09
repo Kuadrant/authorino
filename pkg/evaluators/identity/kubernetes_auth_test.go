@@ -73,7 +73,7 @@ func TestKubernetesTokenReviewWithOpaqueToken(t *testing.T) {
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
-	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
+	authCredsMock.EXPECT().GetCredentialsFromAuthReq(request).Return(requestToken, nil)
 
 	mockClient := &kubernetesAuthenticationClientMock{
 		Client:                        fake.NewClientBuilder().Build(),
@@ -100,7 +100,7 @@ func TestKubernetesTokenReviewWithJWT(t *testing.T) {
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
-	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
+	authCredsMock.EXPECT().GetCredentialsFromAuthReq(request).Return(requestToken, nil)
 
 	mockClient := &kubernetesAuthenticationClientMock{
 		Client:                        fake.NewClientBuilder().Build(),
@@ -126,7 +126,7 @@ func TestKubernetesTokenReviewUnauthenticatedToken(t *testing.T) {
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
-	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
+	authCredsMock.EXPECT().GetCredentialsFromAuthReq(request).Return(requestToken, nil)
 
 	mockClient := &kubernetesAuthenticationClientMock{
 		Client:                        fake.NewClientBuilder().Build(),
@@ -151,7 +151,7 @@ func TestKubernetesTokenReviewAudiencesMatch(t *testing.T) {
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
-	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
+	authCredsMock.EXPECT().GetCredentialsFromAuthReq(request).Return(requestToken, nil)
 
 	mockClient := &kubernetesAuthenticationClientMock{
 		Client:                        fake.NewClientBuilder().Build(),
@@ -177,7 +177,7 @@ func TestKubernetesTokenReviewAudiencesUnmatch(t *testing.T) {
 
 	request := &envoy_auth.AttributeContext_HttpRequest{Host: "echo-api"}
 	pipelineMock.EXPECT().GetHttp().Return(request).AnyTimes()
-	authCredsMock.EXPECT().GetCredentialsFromReq(request).Return(requestToken, nil)
+	authCredsMock.EXPECT().GetCredentialsFromAuthReq(request).Return(requestToken, nil)
 
 	mockClient := &kubernetesAuthenticationClientMock{
 		Client:                        fake.NewClientBuilder().Build(),

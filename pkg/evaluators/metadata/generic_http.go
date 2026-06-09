@@ -13,6 +13,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
 	"github.com/kuadrant/authorino/pkg/expressions"
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/oauth2"
@@ -57,7 +58,7 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httputil.NewClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -133,9 +134,9 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 			}
 			creds = token.AccessToken
 		}
-		req, err = h.BuildRequestWithCredentials(ctx, endpoint, method, creds, requestBody)
+		req, err = httputil.NewRequestWithCredentials(ctx, method, endpoint, requestBody, h.AuthCredentials, creds)
 	} else {
-		req, err = http.NewRequestWithContext(ctx, method, endpoint, requestBody)
+		req, err = httputil.NewRequest(ctx, method, endpoint, requestBody)
 	}
 	if err != nil {
 		return nil, err

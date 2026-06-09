@@ -70,7 +70,7 @@ func (a *APIKey) loadSecrets(ctx context.Context) error {
 
 // Call will evaluate the credentials within the request against the authorized ones
 func (a *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{}, error) {
-	if reqKey, err := a.GetCredentialsFromReq(pipeline.GetHttp()); err != nil {
+	if reqKey, err := a.GetCredentialsFromAuthReq(pipeline.GetHttp()); err != nil {
 		return nil, err
 	} else {
 		a.mutex.RLock()

@@ -71,7 +71,7 @@ func TestUserInfoCall(t *testing.T) {
 	ta.idConfEvalMock.EXPECT().GetOpenIdConfig().Return(ta.newOIDC)
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.idConfEvalMock.EXPECT().GetAuthCredentials().Return(ta.authCredMock)
-	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
+	ta.authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("", nil)
 
 	obj, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 
@@ -90,7 +90,7 @@ func TestUserInfoCanceledContext(t *testing.T) {
 	ta.idConfEvalMock.EXPECT().GetOpenIdConfig().Return(ta.newOIDC)
 	ta.pipelineMock.EXPECT().GetHttp().Return(nil)
 	ta.idConfEvalMock.EXPECT().GetAuthCredentials().Return(ta.authCredMock)
-	ta.authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("", nil)
+	ta.authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("", nil)
 
 	ta.cancel()
 	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)

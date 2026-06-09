@@ -29,7 +29,7 @@ func TestOAuth2Call(t *testing.T) {
 	defer ctrl.Finish()
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	authCredMock.EXPECT().GetCredentialsFromReq(gomock.Any()).Return("oauth-opaque-token", nil).AnyTimes()
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("oauth-opaque-token", nil).AnyTimes()
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetHttp().Return(nil).AnyTimes()
