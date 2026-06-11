@@ -665,7 +665,7 @@ func TestNewClientWithTracing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Verify that trace headers were injected
 	traceparent := receivedHeaders.Get("traceparent")
