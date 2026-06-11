@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"sync"
 
+	httputil "github.com/kuadrant/authorino/pkg/http"
 	gooauth2 "golang.org/x/oauth2"
 	gooauth2clientcredentials "golang.org/x/oauth2/clientcredentials"
 )
@@ -32,13 +33,20 @@ type ClientCredentials struct {
 	token *gooauth2.Token
 }
 
-func (c *ClientCredentials) ClientCredentialsToken(ctx context.Context, force bool) (*gooauth2.Token, error) {
+// ClientCredentialsToken fetches an OAuth2 token using client credentials flow.
+// If timeoutMs is provided, it will be used for the HTTP client making the token request.
+func (c *ClientCredentials) ClientCredentialsToken(ctx context.Context, force bool, timeoutMs *int) (*gooauth2.Token, error) {
 	c.mu.RLock()
 	if c.token != nil && c.token.Valid() && !force {
 		defer c.mu.RUnlock()
 		return c.token, nil
 	}
 	c.mu.RUnlock()
+
+	// Inject custom HTTP client with timeout into context
+	// The oauth2 library will use this client for token requests
+	httpClient := httputil.NewClient(timeoutMs)
+	ctx = context.WithValue(ctx, gooauth2.HTTPClient, httpClient)
 
 	token, err := c.Token(ctx)
 	if err != nil {
