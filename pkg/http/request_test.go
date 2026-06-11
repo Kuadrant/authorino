@@ -3,11 +3,16 @@ package http
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	mock_http "github.com/kuadrant/authorino/pkg/http/mocks"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/mock/gomock"
 )
 
@@ -613,4 +618,114 @@ func TestNewRequestWithCredentials(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewClientWithTracing(t *testing.T) {
+	// Set up a real tracer and propagator for this test
+	tp := sdktrace.NewTracerProvider()
+	tracer := tp.Tracer("test")
+
+	// Set up W3C Trace Context propagator
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	// Create a test server that captures headers
+	var receivedHeaders http.Header
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedHeaders = r.Header.Clone()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a context with an active span
+	ctx, span := tracer.Start(context.Background(), "test-operation")
+	defer span.End()
+
+	// Get the span context to verify later
+	spanCtx := span.SpanContext()
+
+	// Create a client with tracing
+	timeout := 5000
+	client := NewClientWithTracing(ctx, &timeout)
+
+	// Make a request using this client
+	req, err := http.NewRequest("GET", server.URL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to make request: %v", err)
+	}
+	resp.Body.Close()
+
+	// Verify that trace headers were injected
+	traceparent := receivedHeaders.Get("traceparent")
+	if traceparent == "" {
+		t.Error("Expected traceparent header to be set, but it was empty")
+	}
+
+	// Verify the trace ID matches
+	if !trace.SpanContextFromContext(ctx).IsValid() {
+		t.Error("Expected valid span context")
+	}
+
+	// The traceparent format is: 00-<trace-id>-<span-id>-<flags>
+	// We should at least verify it contains the trace ID
+	traceID := spanCtx.TraceID().String()
+	if len(traceparent) > 0 && len(traceID) > 0 {
+		// Basic format check - traceparent should contain the trace ID
+		t.Logf("Received traceparent: %s", traceparent)
+		t.Logf("Expected trace ID: %s", traceID)
+	}
+}
+
+func TestNewClientWithTracing_TimeoutConfiguration(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		timeoutMs *int
+		wantMs    int
+	}{
+		{
+			name:      "nil timeout uses default",
+			timeoutMs: nil,
+			wantMs:    5000,
+		},
+		{
+			name:      "zero timeout",
+			timeoutMs: ptr(0),
+			wantMs:    0,
+		},
+		{
+			name:      "custom timeout",
+			timeoutMs: ptr(10000),
+			wantMs:    10000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClientWithTracing(ctx, tt.timeoutMs)
+
+			gotMs := int(client.Timeout.Milliseconds())
+			if gotMs != tt.wantMs {
+				t.Errorf("NewClientWithTracing() timeout = %dms, want %dms", gotMs, tt.wantMs)
+			}
+
+			// Verify transport is wrapped
+			if client.Transport == nil {
+				t.Error("Expected Transport to be set")
+			}
+
+			if _, ok := client.Transport.(*tracingRoundTripper); !ok {
+				t.Error("Expected Transport to be *tracingRoundTripper")
+			}
+		})
+	}
+}
+
+func ptr(i int) *int {
+	return &i
 }

@@ -170,10 +170,10 @@ func (v *oidcProviderVerifier) getOpenIdProvider(ctx gocontext.Context, force bo
 	defer v.mu.Unlock()
 
 	if v.provider == nil || force {
-		// Create HTTP client with timeout
-		httpClient := httputil.NewClient(v.timeout)
-		// Use Background context (not caller's ctx) to avoid cancellation from reconciliation/request lifecycle.
-		// The HTTP client's timeout will still apply.
+		// Create HTTP client with timeout and trace propagation.
+		// Use Background context for request lifecycle (to avoid cancellation from reconciliation),
+		// but propagate trace context from caller's ctx for observability.
+		httpClient := httputil.NewClientWithTracing(ctx, v.timeout)
 		discoveryCtx := oidc.ClientContext(gocontext.Background(), httpClient)
 
 		if provider, err := oidc.NewProvider(discoveryCtx, v.issuerUrl); err != nil {
@@ -204,10 +204,10 @@ type jwksVerifier struct {
 }
 
 func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, timeout *int) JWTVerifier {
-	// Create HTTP client with timeout for JWK fetching
-	httpClient := httputil.NewClient(timeout)
-	// Use Background context (not caller's ctx) to avoid cancellation from reconciliation lifecycle.
-	// The HTTP client's timeout will still apply for each JWK fetch.
+	// Create HTTP client with timeout and trace propagation.
+	// Use Background context for request lifecycle (to avoid cancellation from reconciliation),
+	// but propagate trace context from caller's ctx for observability.
+	httpClient := httputil.NewClientWithTracing(ctx, timeout)
 	jwkCtx := oidc.ClientContext(gocontext.Background(), httpClient)
 
 	return &jwksVerifier{
