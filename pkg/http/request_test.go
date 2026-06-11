@@ -679,12 +679,10 @@ func TestNewClientWithTracing(t *testing.T) {
 	}
 
 	// The traceparent format is: 00-<trace-id>-<span-id>-<flags>
-	// We should at least verify it contains the trace ID
+	// Verify the traceparent contains the expected trace ID
 	traceID := spanCtx.TraceID().String()
-	if len(traceparent) > 0 && len(traceID) > 0 {
-		// Basic format check - traceparent should contain the trace ID
-		t.Logf("Received traceparent: %s", traceparent)
-		t.Logf("Expected trace ID: %s", traceID)
+	if !strings.Contains(traceparent, traceID) {
+		t.Errorf("Expected traceparent %q to contain trace ID %q", traceparent, traceID)
 	}
 }
 
