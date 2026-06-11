@@ -174,19 +174,18 @@ func (t *tracingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 }
 
 // NewClient creates an HTTP client with the specified timeout.
-// If timeoutMs is nil, defaults to 5000ms (5 seconds).
+// If timeoutMs is nil or negative, defaults to 5000ms (5 seconds).
 // If timeoutMs is 0, no timeout is set (matching Go's http.Client convention).
 // If timeoutMs is positive, uses that value as the timeout in milliseconds.
 func NewClient(timeoutMs *int) *http.Client {
-	if timeoutMs == nil {
-		// Default: 5 seconds
-		return &http.Client{
-			Timeout: 5000 * time.Millisecond,
-		}
+	timeout := 5000 * time.Millisecond // default
+
+	if timeoutMs != nil && *timeoutMs >= 0 {
+		timeout = time.Duration(*timeoutMs) * time.Millisecond
 	}
 
 	return &http.Client{
-		Timeout: time.Duration(*timeoutMs) * time.Millisecond,
+		Timeout: timeout,
 	}
 }
 

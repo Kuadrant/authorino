@@ -320,6 +320,14 @@ func TestNewClient(t *testing.T) {
 			}(),
 			wantTimeout: 1 * time.Millisecond,
 		},
+		{
+			name: "negative timeout falls back to default",
+			timeout: func() *int {
+				t := -5000
+				return &t
+			}(),
+			wantTimeout: 5000 * time.Millisecond, // negative values are invalid, use default
+		},
 	}
 
 	for _, tt := range tests {
