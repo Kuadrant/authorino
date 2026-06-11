@@ -117,6 +117,7 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocont
 
 type PAT struct {
 	AccessToken string `json:"access_token"`
+	Timeout     *int
 }
 
 func (pat *PAT) String() string {
@@ -138,7 +139,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := httputil.NewClient(nil).Do(req)
+	resp, err := httputil.NewClient(pat.Timeout).Do(req)
 	if err != nil {
 		return err
 	}
@@ -247,6 +248,9 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 	if err := context.CheckContext(ctx); err != nil {
 		return err
 	}
+
+	// Set timeout from UMA configuration
+	pat.Timeout = uma.Timeout
 
 	// build the request
 	tokenURL, _ := uma.clientAuthenticatedURL(uma.provider.GetTokenURL())
