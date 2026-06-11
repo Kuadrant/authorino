@@ -38,19 +38,19 @@ func (provider *Provider) GetTokenURL() string {
 	return provider.tokenURL
 }
 
-func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx gocontext.Context) ([]interface{}, error) {
+func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx gocontext.Context, timeout *int) ([]interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx)
+	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx, timeout)
 	if err != nil {
 		return nil, err
 	}
-	return provider.getResourcesByIDs(resourceIDs, pat, ctx)
+	return provider.getResourcesByIDs(resourceIDs, pat, ctx, timeout)
 }
 
-func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext.Context) ([]string, error) {
+func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext.Context, timeout *int) ([]string, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -61,14 +61,14 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext
 	log.FromContext(ctx).V(1).Info("querying resources by uri", "url", queryResourcesURL.String())
 
 	var resourceIDs []string
-	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs); err != nil {
+	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs, timeout); err != nil {
 		return nil, err
 	} else {
 		return resourceIDs, nil
 	}
 }
 
-func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx gocontext.Context) ([]interface{}, error) {
+func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx gocontext.Context, timeout *int) ([]interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx g
 		go func(id string) {
 			defer waitGroup.Done()
 
-			if data, err := provider.getResourceByID(id, pat, ctx); err == nil {
+			if data, err := provider.getResourceByID(id, pat, ctx, timeout); err == nil {
 				buf <- data
 			}
 		}(resourceID)
@@ -98,7 +98,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx g
 	return resourceData, nil
 }
 
-func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocontext.Context) (interface{}, error) {
+func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocontext.Context, timeout *int) (interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocont
 	log.FromContext(ctx).V(1).Info("getting resource data", "url", resourceURL.String())
 
 	var data interface{}
-	if err := pat.Get(resourceURL.String(), ctx, &data); err != nil {
+	if err := pat.Get(resourceURL.String(), ctx, &data, timeout); err != nil {
 		return nil, err
 	}
 	return data, nil
@@ -117,14 +117,13 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocont
 
 type PAT struct {
 	AccessToken string `json:"access_token"`
-	Timeout     *int
 }
 
 func (pat *PAT) String() string {
 	return pat.AccessToken
 }
 
-func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
+func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}, timeout *int) error {
 	if err := context.CheckContext(ctx); err != nil {
 		return err
 	}
@@ -139,7 +138,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := httputil.NewClient(pat.Timeout).Do(req)
+	resp, err := httputil.NewClient(timeout).Do(req)
 	if err != nil {
 		return err
 	}
@@ -226,7 +225,7 @@ func (uma *UMA) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context) (i
 
 	// get resource data
 	uri := pipeline.GetHttp().GetPath()
-	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx)
+	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx, uma.Timeout)
 
 	if err != nil {
 		return nil, err
@@ -248,9 +247,6 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 	if err := context.CheckContext(ctx); err != nil {
 		return err
 	}
-
-	// Set timeout from UMA configuration
-	pat.Timeout = uma.Timeout
 
 	// build the request
 	tokenURL, _ := uma.clientAuthenticatedURL(uma.provider.GetTokenURL())
