@@ -24,6 +24,7 @@ import (
 
 	"github.com/kuadrant/authorino/api/v1beta3"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -706,6 +707,590 @@ func TestPlainIdentitySpecCELValidation(t *testing.T) {
 				}
 			},
 			wantErrors: []string{"Use exactly one of: selector, expression"},
+		},
+	})
+}
+
+// TestJwtAuthenticationSpecCELValidation tests the CEL validation rule on JwtAuthenticationSpec:
+//
+//	!has(self.jwksUrl) || !has(self.issuerUrl) -> "Use one of: jwksUrl, issuerUrl"
+func TestJwtAuthenticationSpecCELValidation(t *testing.T) {
+	baseAuthConfig := v1beta3.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1beta3.AuthConfigSpec{
+			Hosts: []string{"test-jwt.example.com"},
+			Authentication: map[string]v1beta3.AuthenticationSpec{
+				"jwt": {
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						Jwt: &v1beta3.JwtAuthenticationSpec{
+							IssuerUrl: "https://issuer.example.com",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	runTests(t, "test-jwt", baseAuthConfig, []validationTestCase{
+		{
+			desc: "valid - issuerUrl only",
+		},
+		{
+			desc: "valid - jwksUrl only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authentication["jwt"] = v1beta3.AuthenticationSpec{
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						Jwt: &v1beta3.JwtAuthenticationSpec{
+							JwksUrl: "https://issuer.example.com/.well-known/jwks.json",
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "valid - neither jwksUrl nor issuerUrl",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authentication["jwt"] = v1beta3.AuthenticationSpec{
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						Jwt: &v1beta3.JwtAuthenticationSpec{},
+					},
+				}
+			},
+		},
+		{
+			desc: "invalid - both jwksUrl and issuerUrl",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authentication["jwt"] = v1beta3.AuthenticationSpec{
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						Jwt: &v1beta3.JwtAuthenticationSpec{
+							JwksUrl:   "https://issuer.example.com/.well-known/jwks.json",
+							IssuerUrl: "https://issuer.example.com",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use one of: jwksUrl, issuerUrl"},
+		},
+	})
+}
+
+// TestUserInfoMetadataSpecCELValidation tests the CEL validation rule on UserInfoMetadataSpec:
+//
+//	!has(self.identitySource) || !has(self.userInfoUrl) -> "Use one of: identitySource, userInfoUrl"
+func TestUserInfoMetadataSpecCELValidation(t *testing.T) {
+	baseAuthConfig := v1beta3.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1beta3.AuthConfigSpec{
+			Hosts: []string{"test-userinfo.example.com"},
+			Authentication: map[string]v1beta3.AuthenticationSpec{
+				"anonymous": {
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						AnonymousAccess: &v1beta3.AnonymousAccessSpec{},
+					},
+				},
+			},
+			Metadata: map[string]v1beta3.MetadataSpec{
+				"userinfo": {
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							IdentitySource: "jwt-auth",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	runTests(t, "test-userinfo", baseAuthConfig, []validationTestCase{
+		{
+			desc: "valid - identitySource only",
+		},
+		{
+			desc: "valid - userInfoUrl only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["userinfo"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							UserInfoUrl: "https://issuer.example.com/userinfo",
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "valid - neither identitySource nor userInfoUrl",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["userinfo"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						UserInfo: &v1beta3.UserInfoMetadataSpec{},
+					},
+				}
+			},
+		},
+		{
+			desc: "invalid - both identitySource and userInfoUrl",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["userinfo"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							IdentitySource: "jwt-auth",
+							UserInfoUrl:    "https://issuer.example.com/userinfo",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use one of: identitySource, userInfoUrl"},
+		},
+	})
+}
+
+// TestMetadataSpecCELValidation tests the CEL validation rule on MetadataSpec:
+//
+//	has(self.http) ? !(has(self.userInfo) || has(self.uma)) : has(self.userInfo) != has(self.uma)
+//	-> "Use exactly one of: http, userInfo, uma"
+func TestMetadataSpecCELValidation(t *testing.T) {
+	baseAuthConfig := v1beta3.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1beta3.AuthConfigSpec{
+			Hosts: []string{"test-metadata.example.com"},
+			Authentication: map[string]v1beta3.AuthenticationSpec{
+				"anonymous": {
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						AnonymousAccess: &v1beta3.AnonymousAccessSpec{},
+					},
+				},
+			},
+			Metadata: map[string]v1beta3.MetadataSpec{
+				"ext": {
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						Http: &v1beta3.HttpEndpointSpec{
+							Url: "http://metadata.example.com",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	runTests(t, "test-metadata", baseAuthConfig, []validationTestCase{
+		{
+			desc: "valid - http only",
+		},
+		{
+			desc: "valid - userInfo only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							IdentitySource: "jwt-auth",
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "valid - uma only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						Uma: &v1beta3.UmaMetadataSpec{
+							Endpoint:    "https://uma.example.com",
+							Credentials: &corev1.LocalObjectReference{Name: "uma-creds"},
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "invalid - no method specified",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{}
+			},
+			wantErrors: []string{"Use exactly one of: http, userInfo, uma"},
+		},
+		{
+			desc: "invalid - both http and userInfo",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						Http: &v1beta3.HttpEndpointSpec{
+							Url: "http://metadata.example.com",
+						},
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							IdentitySource: "jwt-auth",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: http, userInfo, uma"},
+		},
+		{
+			desc: "invalid - both http and uma",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						Http: &v1beta3.HttpEndpointSpec{
+							Url: "http://metadata.example.com",
+						},
+						Uma: &v1beta3.UmaMetadataSpec{
+							Endpoint:    "https://uma.example.com",
+							Credentials: &corev1.LocalObjectReference{Name: "uma-creds"},
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: http, userInfo, uma"},
+		},
+		{
+			desc: "invalid - both userInfo and uma",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							IdentitySource: "jwt-auth",
+						},
+						Uma: &v1beta3.UmaMetadataSpec{
+							Endpoint:    "https://uma.example.com",
+							Credentials: &corev1.LocalObjectReference{Name: "uma-creds"},
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: http, userInfo, uma"},
+		},
+		{
+			desc: "invalid - all three methods",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Metadata["ext"] = v1beta3.MetadataSpec{
+					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
+						Http: &v1beta3.HttpEndpointSpec{
+							Url: "http://metadata.example.com",
+						},
+						UserInfo: &v1beta3.UserInfoMetadataSpec{
+							IdentitySource: "jwt-auth",
+						},
+						Uma: &v1beta3.UmaMetadataSpec{
+							Endpoint:    "https://uma.example.com",
+							Credentials: &corev1.LocalObjectReference{Name: "uma-creds"},
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: http, userInfo, uma"},
+		},
+	})
+}
+
+// TestAuthorizationSpecCELValidation tests the CEL validation rule on AuthorizationSpec:
+//
+//	has(self.patternMatching) ? !(has(self.opa) || has(self.kubernetesSubjectAccessReview) || has(self.spicedb))
+//	: has(self.opa) ? !(has(self.kubernetesSubjectAccessReview) || has(self.spicedb))
+//	: has(self.kubernetesSubjectAccessReview) != has(self.spicedb)
+//	-> "Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"
+func TestAuthorizationSpecCELValidation(t *testing.T) {
+	baseAuthConfig := v1beta3.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1beta3.AuthConfigSpec{
+			Hosts: []string{"test-authz.example.com"},
+			Authentication: map[string]v1beta3.AuthenticationSpec{
+				"anonymous": {
+					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
+						AnonymousAccess: &v1beta3.AnonymousAccessSpec{},
+					},
+				},
+			},
+			Authorization: map[string]v1beta3.AuthorizationSpec{
+				"authz": {
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	runTests(t, "test-authz", baseAuthConfig, []validationTestCase{
+		{
+			desc: "valid - patternMatching only",
+		},
+		{
+			desc: "valid - opa only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "valid - kubernetesSubjectAccessReview only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "valid - spicedb only",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+		},
+		{
+			desc: "invalid - no method specified",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - patternMatching and opa",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - patternMatching and kubernetesSubjectAccessReview",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - patternMatching and spicedb",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - opa and kubernetesSubjectAccessReview",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - opa and spicedb",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - kubernetesSubjectAccessReview and spicedb",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - patternMatching, opa, and kubernetesSubjectAccessReview",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - patternMatching, opa, and spicedb",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - patternMatching, kubernetesSubjectAccessReview, and spicedb",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - opa, kubernetesSubjectAccessReview, and spicedb",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
+		},
+		{
+			desc: "invalid - all four methods",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authorization["authz"] = v1beta3.AuthorizationSpec{
+					AuthorizationMethodSpec: v1beta3.AuthorizationMethodSpec{
+						PatternMatching: &v1beta3.PatternMatchingAuthorizationSpec{
+							Patterns: []v1beta3.PatternExpressionOrRef{
+								{CelPredicate: v1beta3.CelPredicate{Predicate: "true"}},
+							},
+						},
+						Opa: &v1beta3.OpaAuthorizationSpec{
+							Rego: "allow = true",
+						},
+						KubernetesSubjectAccessReview: &v1beta3.KubernetesSubjectAccessReviewAuthorizationSpec{
+							User: &v1beta3.ValueOrSelector{
+								Selector: "auth.identity.username",
+							},
+						},
+						SpiceDB: &v1beta3.SpiceDBAuthorizationSpec{
+							Endpoint: "spicedb:50051",
+						},
+					},
+				}
+			},
+			wantErrors: []string{"Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"},
 		},
 	})
 }
