@@ -14,7 +14,7 @@ import (
 	"gotest.tools/assert"
 )
 
-const testCallbackServerHost string = "127.0.0.1:9010"
+const testCallbackServerHost string = "127.0.0.1:9012"
 
 func TestCallbacks(t *testing.T) {
 	var called bool
