@@ -3,10 +3,16 @@ package http
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	mock_http "github.com/kuadrant/authorino/pkg/http/mocks"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/mock/gomock"
 )
 
@@ -280,9 +286,61 @@ func TestNewRequest(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
-	client := NewClient()
-	if client == nil {
-		t.Error("NewClient() returned nil")
+	tests := []struct {
+		name        string
+		timeout     *int
+		wantTimeout time.Duration
+	}{
+		{
+			name:        "default timeout (nil)",
+			timeout:     nil,
+			wantTimeout: 5000 * time.Millisecond,
+		},
+		{
+			name: "custom timeout",
+			timeout: func() *int {
+				t := 10000
+				return &t
+			}(),
+			wantTimeout: 10000 * time.Millisecond,
+		},
+		{
+			name: "zero timeout (no timeout, Go convention)",
+			timeout: func() *int {
+				t := 0
+				return &t
+			}(),
+			wantTimeout: 0, // 0 means no timeout in http.Client
+		},
+		{
+			name: "1ms timeout",
+			timeout: func() *int {
+				t := 1
+				return &t
+			}(),
+			wantTimeout: 1 * time.Millisecond,
+		},
+		{
+			name: "negative timeout falls back to default",
+			timeout: func() *int {
+				t := -5000
+				return &t
+			}(),
+			wantTimeout: 5000 * time.Millisecond, // negative values are invalid, use default
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient(tt.timeout)
+			if client == nil {
+				t.Error("NewClient() returned nil")
+				return
+			}
+			if client.Timeout != tt.wantTimeout {
+				t.Errorf("NewClient() timeout = %v, want %v", client.Timeout, tt.wantTimeout)
+			}
+		})
 	}
 }
 
@@ -568,4 +626,112 @@ func TestNewRequestWithCredentials(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewClientWithTracing(t *testing.T) {
+	// Set up a real tracer and propagator for this test
+	tp := sdktrace.NewTracerProvider()
+	tracer := tp.Tracer("test")
+
+	// Set up W3C Trace Context propagator
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	// Create a test server that captures headers
+	var receivedHeaders http.Header
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedHeaders = r.Header.Clone()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a context with an active span
+	ctx, span := tracer.Start(context.Background(), "test-operation")
+	defer span.End()
+
+	// Get the span context to verify later
+	spanCtx := span.SpanContext()
+
+	// Create a client with tracing
+	timeout := 5000
+	client := NewClientWithTracing(ctx, &timeout)
+
+	// Make a request using this client
+	req, err := http.NewRequest("GET", server.URL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to make request: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	// Verify that trace headers were injected
+	traceparent := receivedHeaders.Get("traceparent")
+	if traceparent == "" {
+		t.Error("Expected traceparent header to be set, but it was empty")
+	}
+
+	// Verify the trace ID matches
+	if !trace.SpanContextFromContext(ctx).IsValid() {
+		t.Error("Expected valid span context")
+	}
+
+	// The traceparent format is: 00-<trace-id>-<span-id>-<flags>
+	// Verify the traceparent contains the expected trace ID
+	traceID := spanCtx.TraceID().String()
+	if !strings.Contains(traceparent, traceID) {
+		t.Errorf("Expected traceparent %q to contain trace ID %q", traceparent, traceID)
+	}
+}
+
+func TestNewClientWithTracing_TimeoutConfiguration(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		timeoutMs *int
+		wantMs    int
+	}{
+		{
+			name:      "nil timeout uses default",
+			timeoutMs: nil,
+			wantMs:    5000,
+		},
+		{
+			name:      "zero timeout",
+			timeoutMs: ptr(0),
+			wantMs:    0,
+		},
+		{
+			name:      "custom timeout",
+			timeoutMs: ptr(10000),
+			wantMs:    10000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClientWithTracing(ctx, tt.timeoutMs)
+
+			gotMs := int(client.Timeout.Milliseconds())
+			if gotMs != tt.wantMs {
+				t.Errorf("NewClientWithTracing() timeout = %dms, want %dms", gotMs, tt.wantMs)
+			}
+
+			// Verify transport is wrapped
+			if client.Transport == nil {
+				t.Error("Expected Transport to be set")
+			}
+
+			if _, ok := client.Transport.(*tracingRoundTripper); !ok {
+				t.Error("Expected Transport to be *tracingRoundTripper")
+			}
+		})
+	}
+}
+
+func ptr(i int) *int {
+	return &i
 }

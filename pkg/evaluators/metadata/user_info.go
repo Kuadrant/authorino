@@ -18,6 +18,7 @@ import (
 type UserInfo struct {
 	OpenIdConfig     auth.OpenIdConfigStore
 	UserInfoEndpoint string
+	Timeout          *int
 }
 
 func NewUserInfo(openIdConfigStore auth.OpenIdConfigStore, userInfoEndpoint string) *UserInfo {
@@ -70,10 +71,10 @@ func (u *UserInfo) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context)
 	}
 
 	// fetch user info
-	return fetchUserInfo(userInfoEndpoint, accessToken, ctx)
+	return fetchUserInfo(userInfoEndpoint, accessToken, u.Timeout, ctx)
 }
 
-func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Context) (interface{}, error) {
+func fetchUserInfo(userInfoEndpoint string, accessToken string, timeout *int, ctx gocontext.Context) (interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func fetchUserInfo(userInfoEndpoint string, accessToken string, ctx gocontext.Co
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	resp, err := httputil.NewClient().Do(req)
+	resp, err := httputil.NewClient(timeout).Do(req)
 	if err != nil {
 		return nil, err
 	}

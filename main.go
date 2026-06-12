@@ -29,7 +29,6 @@ import (
 
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -274,17 +273,6 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 
 	restConfig := ctrl.GetConfigOrDie()
 
-	// Factory for creating non-cached k8s clients with dedicated rate limiting.
-	// We use non-cached clients for TokenReview/SubjectAccessReview because:
-	// 1. These are CREATE operations that don't benefit from caching
-	// 2. We want an isolated rate limiting buckets separate from reconciler operations
-	newClient := func() (client.Client, error) {
-		config := rest.CopyConfig(restConfig)
-		config.QPS = opts.kubeClientQPS
-		config.Burst = opts.kubeClientBurst
-		return client.New(config, client.Options{Scheme: scheme})
-	}
-
 	baseManagerOptions := ctrl.Options{
 		Scheme:                 scheme,
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: opts.webhookServicePort}),
@@ -307,10 +295,21 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	statusReport := controllers.NewStatusReportMap()
 	controllerLogger := log.WithName("controller-runtime").WithName("manager").WithName("controller")
 
+	// Configuration for creating non-cached k8s clients with dedicated rate limiting.
+	// We use non-cached clients for TokenReview/SubjectAccessReview because:
+	// 1. These are CREATE operations that don't benefit from caching
+	// 2. We want isolated rate limiting buckets separate from reconciler operations
+	// 3. Each AuthConfig can now specify its own timeout for these operations
+	evaluatorClientOptions := &controllers.EvaluatorClientOptions{
+		RESTConfig: restConfig,
+		QPS:        opts.kubeClientQPS,
+		Burst:      opts.kubeClientBurst,
+	}
+
 	// sets up the authconfig reconciler
 	authConfigReconciler := &controllers.AuthConfigReconciler{
 		Client:                      mgr.GetClient(),
-		NewClient:                   newClient,
+		EvaluatorClientOptions:      evaluatorClientOptions,
 		Index:                       index,
 		AllowSupersedingHostSubsets: opts.allowSupersedingHostSubsets,
 		StatusReport:                statusReport,

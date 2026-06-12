@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 const maxURLLength = 2048 // Standard reasonable limit for URLs
@@ -155,8 +159,56 @@ func ValidateURL(rawURL string) error {
 	return nil
 }
 
-// NewClient creates an HTTP client for making requests.
-// Currently returns http.DefaultClient, but will support configurable timeouts in the future (issue #620).
-func NewClient() *http.Client {
-	return http.DefaultClient
+// tracingRoundTripper wraps an http.RoundTripper and injects OpenTelemetry trace headers
+// from a stored context on every request. This is useful when the HTTP requests are created
+// by third-party libraries (like go-oidc) and we can't inject headers directly.
+type tracingRoundTripper struct {
+	base http.RoundTripper
+	ctx  context.Context
+}
+
+func (t *tracingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Inject trace context from the stored context into the request headers
+	otel.GetTextMapPropagator().Inject(t.ctx, otel_propagation.HeaderCarrier(req.Header))
+	return t.base.RoundTrip(req)
+}
+
+// NewClient creates an HTTP client with the specified timeout.
+// If timeoutMs is nil or negative, defaults to 5000ms (5 seconds).
+// If timeoutMs is 0, no timeout is set (matching Go's http.Client convention).
+// If timeoutMs is positive, uses that value as the timeout in milliseconds.
+func NewClient(timeoutMs *int) *http.Client {
+	timeout := 5000 * time.Millisecond // default
+
+	if timeoutMs != nil && *timeoutMs >= 0 {
+		timeout = time.Duration(*timeoutMs) * time.Millisecond
+	}
+
+	return &http.Client{
+		Timeout: timeout,
+	}
+}
+
+// NewClientWithTracing creates an HTTP client with the specified timeout and trace propagation.
+// The trace context from ctx will be injected into all outbound HTTP requests made by this client.
+// This is useful for instrumenting HTTP clients used by third-party libraries that create requests
+// internally (e.g., go-oidc for OIDC discovery and JWK fetching).
+//
+// The ctx parameter is used only for trace propagation, not for request cancellation.
+// Callers should use context.Background() or a non-cancellable context for the HTTP request lifecycle.
+func NewClientWithTracing(ctx context.Context, timeoutMs *int) *http.Client {
+	baseClient := NewClient(timeoutMs)
+
+	// Wrap the transport with trace injection
+	baseTransport := baseClient.Transport
+	if baseTransport == nil {
+		baseTransport = http.DefaultTransport
+	}
+
+	baseClient.Transport = &tracingRoundTripper{
+		base: baseTransport,
+		ctx:  ctx,
+	}
+
+	return baseClient
 }

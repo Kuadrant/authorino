@@ -27,7 +27,7 @@ func TestClientCredentials(t *testing.T) {
 	defer oauth2Server.Close()
 
 	tokenUrl := "http://" + testOAuth2ServerHost + "/token"
-	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{})
+	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}, nil)
 
 	token, err := oauthConfig.ClientCredentialsToken(context.TODO(), false)
 	assert.NilError(t, err)
@@ -65,7 +65,7 @@ func TestClientCredentialsTokenExpired(t *testing.T) {
 	defer oauth2Server.Close()
 
 	tokenUrl := "http://" + testOAuth2ServerHost + "/token"
-	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{})
+	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}, nil)
 
 	token, err := oauthConfig.ClientCredentialsToken(context.TODO(), true)
 	assert.NilError(t, err)

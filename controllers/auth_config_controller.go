@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -52,6 +53,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,10 +65,21 @@ const (
 	AuthConfigsReadyzSubpath = "authconfigs"
 )
 
+// EvaluatorClientOptions holds configuration for creating detached, non-cached
+// Kubernetes API clients used by AuthConfig evaluators (e.g., TokenReview and SubjectAccessReview).
+type EvaluatorClientOptions struct {
+	// RESTConfig is the base Kubernetes configuration
+	RESTConfig *rest.Config
+	// QPS is the rate limit for API calls
+	QPS float32
+	// Burst is the burst limit for API calls
+	Burst int
+}
+
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	NewClient                   func() (client.Client, error)
+	EvaluatorClientOptions      *EvaluatorClientOptions
 	Logger                      logr.Logger
 	Index                       index.Index
 	AllowSupersedingHostSubsets bool
@@ -75,6 +88,31 @@ type AuthConfigReconciler struct {
 	Namespace                   string
 
 	indexBootstrap sync.Mutex
+}
+
+// newKubernetesClient creates a new detached, non-cached Kubernetes API client with the specified timeout.
+// Used by TokenReview and SubjectAccessReview evaluators to directly query the Kubernetes API.
+// The timeout is applied to the HTTP client used for API requests.
+// If timeoutMs is nil, defaults to 5000ms (5 seconds).
+// If timeoutMs is 0, no timeout is set.
+func (r *AuthConfigReconciler) newKubernetesClient(timeoutMs *int) (client.Client, error) {
+	if r.EvaluatorClientOptions == nil || r.EvaluatorClientOptions.RESTConfig == nil {
+		return nil, fmt.Errorf("no Kubernetes client configuration available")
+	}
+
+	config := rest.CopyConfig(r.EvaluatorClientOptions.RESTConfig)
+	config.QPS = r.EvaluatorClientOptions.QPS
+	config.Burst = r.EvaluatorClientOptions.Burst
+
+	// Set HTTP client timeout
+	// Convert milliseconds to time.Duration
+	if timeoutMs == nil {
+		config.Timeout = 5000 * time.Millisecond
+	} else {
+		config.Timeout = time.Duration(*timeoutMs) * time.Millisecond
+	}
+
+	return client.New(config, client.Options{Scheme: r.Scheme()})
 }
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -328,21 +366,23 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
-			translatedIdentity.OAuth2 = identity_evaluators.NewOAuth2Identity(
+			oauth2 := identity_evaluators.NewOAuth2Identity(
 				oauth2Identity.Url,
 				oauth2Identity.TokenTypeHint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
 				authCred,
 			)
+			oauth2.Timeout = oauth2Identity.Timeout
+			translatedIdentity.OAuth2 = oauth2
 
 		// oidc
 		case api.JwtAuthentication:
 			var jwtVerifier identity_evaluators.JWTVerifier
 			if identity.Jwt.IssuerUrl != "" {
-				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL)
+				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL, identity.Jwt.Timeout)
 			} else if identity.Jwt.JwksUrl != "" {
-				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl)
+				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Timeout)
 			} else {
 				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
 			}
@@ -388,7 +428,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// kubernetes auth
 		case api.KubernetesTokenReviewAuthentication:
-			tokenReviewClient, err := r.NewClient()
+			tokenReviewClient, err := r.newKubernetesClient(identity.KubernetesTokenReview.Timeout)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create token review client: %w", err)
 			}
@@ -468,6 +508,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				span.SetStatus(codes.Error, "failed to create UMA metadata evaluator")
 				return nil, err
 			} else {
+				uma.Timeout = metadata.Uma.Timeout
 				translatedMetadata.UMA = uma
 			}
 
@@ -483,7 +524,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				}
 				openIdConfigStore = idConfig.GetOpenIdConfig()
 			}
-			translatedMetadata.UserInfo = metadata_evaluators.NewUserInfo(openIdConfigStore, metadata.UserInfo.UserInfoUrl)
+			userInfo := metadata_evaluators.NewUserInfo(openIdConfigStore, metadata.UserInfo.UserInfoUrl)
+			userInfo.Timeout = metadata.UserInfo.Timeout
+			translatedMetadata.UserInfo = userInfo
 
 		// generic http
 		case api.HttpMetadata:
@@ -560,6 +603,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 					SharedSecret:    sharedSecret,
 					AuthCredentials: newAuthCredential(externalRegistry.Credentials),
 					TTL:             externalRegistry.TTL,
+					Timeout:         externalRegistry.Timeout,
 				}
 			}
 
@@ -645,7 +689,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				// use deprecated Groups property otherwise
 				authorinoGroups = &json.JSONValue{Static: authorization.KubernetesSubjectAccessReview.Groups}
 			}
-			sarClient, err := r.NewClient()
+			sarClient, err := r.newKubernetesClient(authorization.KubernetesSubjectAccessReview.Timeout)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create subject access review client: %w", err)
 			}
@@ -1115,7 +1159,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 		}
 		clientSecret := string(secret.Data[oauth2Config.ClientSecret.Key])
-		oauth2ClientCredentialsConfig = oauth2.NewClientCredentialsConfig(oauth2Config.TokenUrl, oauth2Config.ClientId, clientSecret, oauth2Config.Scopes, oauth2Config.ExtraParams)
+		oauth2ClientCredentialsConfig = oauth2.NewClientCredentialsConfig(oauth2Config.TokenUrl, oauth2Config.ClientId, clientSecret, oauth2Config.Scopes, oauth2Config.ExtraParams, oauth2Config.Timeout)
 		oauth2TokenForceFetch = oauth2Config.Cache != nil && !*oauth2Config.Cache
 	}
 
@@ -1178,6 +1222,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		SharedSecret:          sharedSecret,
 		OAuth2:                oauth2ClientCredentialsConfig,
 		OAuth2TokenForceFetch: oauth2TokenForceFetch,
+		Timeout:               http.Timeout,
 	}
 
 	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {
