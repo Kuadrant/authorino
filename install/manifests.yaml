@@ -379,6 +379,10 @@ spec:
                             any: {}
                           required:
                           - any
+                        - properties:
+                            predicate: {}
+                          required:
+                          - predicate
                         properties:
                           all:
                             description: A list of pattern expressions to be evaluated
@@ -895,6 +899,10 @@ spec:
                                 any: {}
                               required:
                               - any
+                            - properties:
+                                predicate: {}
+                              required:
+                              - predicate
                             properties:
                               all:
                                 description: A list of pattern expressions to be evaluated
@@ -1076,6 +1084,10 @@ spec:
                             any: {}
                           required:
                           - any
+                        - properties:
+                            predicate: {}
+                          required:
+                          - predicate
                         properties:
                           all:
                             description: A list of pattern expressions to be evaluated
@@ -1718,6 +1730,10 @@ spec:
                             any: {}
                           required:
                           - any
+                        - properties:
+                            predicate: {}
+                          required:
+                          - predicate
                         properties:
                           all:
                             description: A list of pattern expressions to be evaluated
@@ -1929,6 +1945,10 @@ spec:
                                     any: {}
                                   required:
                                   - any
+                                - properties:
+                                    predicate: {}
+                                  required:
+                                  - predicate
                                 properties:
                                   all:
                                     description: A list of pattern expressions to
@@ -2161,6 +2181,10 @@ spec:
                                     any: {}
                                   required:
                                   - any
+                                - properties:
+                                    predicate: {}
+                                  required:
+                                  - predicate
                                 properties:
                                   all:
                                     description: A list of pattern expressions to
@@ -2412,6 +2436,10 @@ spec:
                       any: {}
                     required:
                     - any
+                  - properties:
+                      predicate: {}
+                    required:
+                    - predicate
                   properties:
                     all:
                       description: A list of pattern expressions to be evaluated as
