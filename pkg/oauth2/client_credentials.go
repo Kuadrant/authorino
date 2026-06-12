@@ -10,7 +10,7 @@ import (
 	gooauth2clientcredentials "golang.org/x/oauth2/clientcredentials"
 )
 
-func NewClientCredentialsConfig(tokenURL, clientID, clientSecret string, scopes []string, extraParams map[string]string) *ClientCredentials {
+func NewClientCredentialsConfig(tokenURL, clientID, clientSecret string, scopes []string, extraParams map[string]string, timeout *int) *ClientCredentials {
 	params := url.Values{}
 	for k, v := range extraParams {
 		params.Set(k, v)
@@ -23,19 +23,21 @@ func NewClientCredentialsConfig(tokenURL, clientID, clientSecret string, scopes 
 			Scopes:         scopes,
 			EndpointParams: params,
 		},
+		Timeout: timeout,
 	}
 }
 
 type ClientCredentials struct {
 	*gooauth2clientcredentials.Config
+	Timeout *int
 
 	mu    sync.RWMutex
 	token *gooauth2.Token
 }
 
 // ClientCredentialsToken fetches an OAuth2 token using client credentials flow.
-// If timeoutMs is provided, it will be used for the HTTP client making the token request.
-func (c *ClientCredentials) ClientCredentialsToken(ctx context.Context, force bool, timeoutMs *int) (*gooauth2.Token, error) {
+// Uses the timeout configured in the ClientCredentials struct.
+func (c *ClientCredentials) ClientCredentialsToken(ctx context.Context, force bool) (*gooauth2.Token, error) {
 	c.mu.RLock()
 	if c.token != nil && c.token.Valid() && !force {
 		defer c.mu.RUnlock()
@@ -45,7 +47,7 @@ func (c *ClientCredentials) ClientCredentialsToken(ctx context.Context, force bo
 
 	// Inject custom HTTP client with timeout into context
 	// The oauth2 library will use this client for token requests
-	httpClient := httputil.NewClient(timeoutMs)
+	httpClient := httputil.NewClient(c.Timeout)
 	ctx = context.WithValue(ctx, gooauth2.HTTPClient, httpClient)
 
 	token, err := c.Token(ctx)

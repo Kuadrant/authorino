@@ -27,25 +27,25 @@ func TestClientCredentials(t *testing.T) {
 	defer oauth2Server.Close()
 
 	tokenUrl := "http://" + testOAuth2ServerHost + "/token"
-	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{})
+	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}, nil)
 
-	token, err := oauthConfig.ClientCredentialsToken(context.TODO(), false, nil)
+	token, err := oauthConfig.ClientCredentialsToken(context.TODO(), false)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-1")
 
-	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), false, nil)
+	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), false)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-1")
 
-	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), true, nil)
+	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), true)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-2")
 
-	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), true, nil)
+	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), true)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-3")
 
-	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), false, nil)
+	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), false)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-3")
 }
@@ -65,14 +65,14 @@ func TestClientCredentialsTokenExpired(t *testing.T) {
 	defer oauth2Server.Close()
 
 	tokenUrl := "http://" + testOAuth2ServerHost + "/token"
-	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{})
+	oauthConfig := NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}, nil)
 
-	token, err := oauthConfig.ClientCredentialsToken(context.TODO(), true, nil)
+	token, err := oauthConfig.ClientCredentialsToken(context.TODO(), true)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-1")
 
 	// because the token is expired, even without forcing the fetching of a new token, it will do it anyway
-	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), false, nil)
+	token, err = oauthConfig.ClientCredentialsToken(context.TODO(), false)
 	assert.NilError(t, err)
 	assert.Equal(t, token.AccessToken, "xyz-2")
 }

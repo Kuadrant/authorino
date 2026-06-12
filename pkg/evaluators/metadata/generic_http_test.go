@@ -368,7 +368,7 @@ func TestWithOAuth2Authentication(t *testing.T) {
 	metadata := &GenericHttp{
 		Endpoint:        endpoint,
 		Method:          "GET",
-		OAuth2:          oauth2.NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}),
+		OAuth2:          oauth2.NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}, nil),
 		AuthCredentials: sharedCredsMock,
 	}
 
@@ -419,7 +419,7 @@ func TestWithOAuth2AuthenticationWithoutTokenCache(t *testing.T) {
 	metadata := &GenericHttp{
 		Endpoint:              endpoint,
 		Method:                "GET",
-		OAuth2:                oauth2.NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}),
+		OAuth2:                oauth2.NewClientCredentialsConfig(tokenUrl, "foo", "secret", []string{}, map[string]string{}, nil),
 		OAuth2TokenForceFetch: true,
 		AuthCredentials:       sharedCredsMock,
 	}

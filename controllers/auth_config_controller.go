@@ -1121,7 +1121,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 			return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 		}
 		clientSecret := string(secret.Data[oauth2Config.ClientSecret.Key])
-		oauth2ClientCredentialsConfig = oauth2.NewClientCredentialsConfig(oauth2Config.TokenUrl, oauth2Config.ClientId, clientSecret, oauth2Config.Scopes, oauth2Config.ExtraParams)
+		oauth2ClientCredentialsConfig = oauth2.NewClientCredentialsConfig(oauth2Config.TokenUrl, oauth2Config.ClientId, clientSecret, oauth2Config.Scopes, oauth2Config.ExtraParams, oauth2Config.Timeout)
 		oauth2TokenForceFetch = oauth2Config.Cache != nil && !*oauth2Config.Cache
 	}
 

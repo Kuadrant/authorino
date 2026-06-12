@@ -129,7 +129,7 @@ func (h *GenericHttp) buildRequest(ctx gocontext.Context, endpoint, authJSON str
 	if h.AuthCredentials != nil {
 		creds := h.SharedSecret
 		if h.OAuth2 != nil {
-			token, err := h.OAuth2.ClientCredentialsToken(ctx, h.OAuth2TokenForceFetch, h.Timeout)
+			token, err := h.OAuth2.ClientCredentialsToken(ctx, h.OAuth2TokenForceFetch)
 			if err != nil {
 				return nil, err
 			}
