@@ -2852,6 +2852,13 @@ spec:
                           items:
                             type: string
                           type: array
+                        timeout:
+                          description: |-
+                            Timeout for the Kubernetes TokenReview API request, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                       type: object
                     metrics:
                       default: false
@@ -3332,6 +3339,13 @@ spec:
                                   x-kubernetes-preserve-unknown-fields: true
                               type: object
                           type: object
+                        timeout:
+                          description: |-
+                            Timeout for the Kubernetes SubjectAccessReview API request, in milliseconds.
+                            If not specified, defaults to 5000ms (5 seconds).
+                            Set to 0 to disable timeout.
+                          minimum: 0
+                          type: integer
                         user:
                           description: |-
                             User to check for authorization in the Kubernetes RBAC.

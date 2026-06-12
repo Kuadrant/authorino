@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -52,6 +53,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -63,10 +65,21 @@ const (
 	AuthConfigsReadyzSubpath = "authconfigs"
 )
 
+// EvaluatorClientOptions holds configuration for creating detached, non-cached
+// Kubernetes API clients used by AuthConfig evaluators (e.g., TokenReview and SubjectAccessReview).
+type EvaluatorClientOptions struct {
+	// RESTConfig is the base Kubernetes configuration
+	RESTConfig *rest.Config
+	// QPS is the rate limit for API calls
+	QPS float32
+	// Burst is the burst limit for API calls
+	Burst int
+}
+
 // AuthConfigReconciler reconciles an AuthConfig object
 type AuthConfigReconciler struct {
 	client.Client
-	NewClient                   func() (client.Client, error)
+	EvaluatorClientOptions      *EvaluatorClientOptions
 	Logger                      logr.Logger
 	Index                       index.Index
 	AllowSupersedingHostSubsets bool
@@ -75,6 +88,31 @@ type AuthConfigReconciler struct {
 	Namespace                   string
 
 	indexBootstrap sync.Mutex
+}
+
+// newKubernetesClient creates a new detached, non-cached Kubernetes API client with the specified timeout.
+// Used by TokenReview and SubjectAccessReview evaluators to directly query the Kubernetes API.
+// The timeout is applied to the HTTP client used for API requests.
+// If timeoutMs is nil, defaults to 5000ms (5 seconds).
+// If timeoutMs is 0, no timeout is set.
+func (r *AuthConfigReconciler) newKubernetesClient(timeoutMs *int) (client.Client, error) {
+	if r.EvaluatorClientOptions == nil || r.EvaluatorClientOptions.RESTConfig == nil {
+		return nil, fmt.Errorf("no Kubernetes client configuration available")
+	}
+
+	config := rest.CopyConfig(r.EvaluatorClientOptions.RESTConfig)
+	config.QPS = r.EvaluatorClientOptions.QPS
+	config.Burst = r.EvaluatorClientOptions.Burst
+
+	// Set HTTP client timeout
+	// Convert milliseconds to time.Duration
+	if timeoutMs == nil {
+		config.Timeout = 5000 * time.Millisecond
+	} else {
+		config.Timeout = time.Duration(*timeoutMs) * time.Millisecond
+	}
+
+	return client.New(config, client.Options{Scheme: r.Scheme()})
 }
 
 // +kubebuilder:rbac:groups=authorino.kuadrant.io,resources=authconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -390,7 +428,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 		// kubernetes auth
 		case api.KubernetesTokenReviewAuthentication:
-			tokenReviewClient, err := r.NewClient()
+			tokenReviewClient, err := r.newKubernetesClient(identity.KubernetesTokenReview.Timeout)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create token review client: %w", err)
 			}
@@ -651,7 +689,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				// use deprecated Groups property otherwise
 				authorinoGroups = &json.JSONValue{Static: authorization.KubernetesSubjectAccessReview.Groups}
 			}
-			sarClient, err := r.NewClient()
+			sarClient, err := r.newKubernetesClient(authorization.KubernetesSubjectAccessReview.Timeout)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create subject access review client: %w", err)
 			}

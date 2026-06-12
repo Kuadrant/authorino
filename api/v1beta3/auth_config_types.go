@@ -428,6 +428,12 @@ type KubernetesTokenReviewSpec struct {
 	// If omitted, Authorino will review tokens expecting the host name of the requested protected service amongst the audiences.
 	// +optional
 	Audiences []string `json:"audiences,omitempty"`
+	// Timeout for the Kubernetes TokenReview API request, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // Settings to authenticate clients by X.509 certificates.
@@ -774,6 +780,13 @@ type KubernetesSubjectAccessReviewAuthorizationSpec struct {
 	// If omitted, it performs a non-resource SubjectAccessReview, with verb and path inferred from the request.
 	// +optional
 	ResourceAttributes *KubernetesSubjectAccessReviewResourceAttributesSpec `json:"resourceAttributes,omitempty"`
+
+	// Timeout for the Kubernetes SubjectAccessReview API request, in milliseconds.
+	// If not specified, defaults to 5000ms (5 seconds).
+	// Set to 0 to disable timeout.
+	// +optional
+	// +kubebuilder:validation:Minimum:=0
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 type KubernetesSubjectAccessReviewResourceAttributesSpec struct {
