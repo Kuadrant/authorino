@@ -47,6 +47,9 @@ spec:
       name: Wristband
       priority: 2
       type: boolean
+    deprecated: true
+    deprecationWarning: AuthConfig version authorino.kuadrant.io/v1beta2 is deprecated,
+      use authorino.kuadrant.io/v1beta3 version instead
     name: v1beta2
     schema:
       openAPIV3Schema:
