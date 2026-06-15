@@ -2814,7 +2814,7 @@ spec:
                       type: object
                       x-kubernetes-validations:
                       - message: 'Use one of: jwksUrl, issuerUrl'
-                        rule: '!has(self.jwksUrl) || !has(self.issuerUrl)'
+                        rule: has(self.jwksUrl) != has(self.issuerUrl)
                     kubernetesTokenReview:
                       description: Authentication by Kubernetes token review.
                       properties:
@@ -4566,7 +4566,7 @@ spec:
                       type: object
                       x-kubernetes-validations:
                       - message: 'Use one of: identitySource, userInfoUrl'
-                        rule: '!has(self.identitySource) || !has(self.userInfoUrl)'
+                        rule: has(self.identitySource) != has(self.userInfoUrl)
                     when:
                       description: |-
                         Conditions for Authorino to enforce this config.

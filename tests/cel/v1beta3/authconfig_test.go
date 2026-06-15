@@ -713,7 +713,7 @@ func TestPlainIdentitySpecCELValidation(t *testing.T) {
 
 // TestJwtAuthenticationSpecCELValidation tests the CEL validation rule on JwtAuthenticationSpec:
 //
-//	!has(self.jwksUrl) || !has(self.issuerUrl) -> "Use one of: jwksUrl, issuerUrl"
+//	has(self.jwksUrl) != has(self.issuerUrl) -> "Use one of: jwksUrl, issuerUrl"
 func TestJwtAuthenticationSpecCELValidation(t *testing.T) {
 	baseAuthConfig := v1beta3.AuthConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -750,7 +750,7 @@ func TestJwtAuthenticationSpecCELValidation(t *testing.T) {
 			},
 		},
 		{
-			desc: "valid - neither jwksUrl nor issuerUrl",
+			desc: "invalid - neither jwksUrl nor issuerUrl",
 			mutate: func(ac *v1beta3.AuthConfig) {
 				ac.Spec.Authentication["jwt"] = v1beta3.AuthenticationSpec{
 					AuthenticationMethodSpec: v1beta3.AuthenticationMethodSpec{
@@ -758,6 +758,7 @@ func TestJwtAuthenticationSpecCELValidation(t *testing.T) {
 					},
 				}
 			},
+			wantErrors: []string{"Use one of: jwksUrl, issuerUrl"},
 		},
 		{
 			desc: "invalid - both jwksUrl and issuerUrl",
@@ -778,7 +779,7 @@ func TestJwtAuthenticationSpecCELValidation(t *testing.T) {
 
 // TestUserInfoMetadataSpecCELValidation tests the CEL validation rule on UserInfoMetadataSpec:
 //
-//	!has(self.identitySource) || !has(self.userInfoUrl) -> "Use one of: identitySource, userInfoUrl"
+//	has(self.identitySource) != has(self.userInfoUrl) -> "Use one of: identitySource, userInfoUrl"
 func TestUserInfoMetadataSpecCELValidation(t *testing.T) {
 	baseAuthConfig := v1beta3.AuthConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -822,7 +823,7 @@ func TestUserInfoMetadataSpecCELValidation(t *testing.T) {
 			},
 		},
 		{
-			desc: "valid - neither identitySource nor userInfoUrl",
+			desc: "invalid - neither identitySource nor userInfoUrl",
 			mutate: func(ac *v1beta3.AuthConfig) {
 				ac.Spec.Metadata["userinfo"] = v1beta3.MetadataSpec{
 					MetadataMethodSpec: v1beta3.MetadataMethodSpec{
@@ -830,6 +831,7 @@ func TestUserInfoMetadataSpecCELValidation(t *testing.T) {
 					},
 				}
 			},
+			wantErrors: []string{"Use one of: identitySource, userInfoUrl"},
 		},
 		{
 			desc: "invalid - both identitySource and userInfoUrl",
