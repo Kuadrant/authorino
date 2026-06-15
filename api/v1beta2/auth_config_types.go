@@ -405,6 +405,7 @@ type PlainIdentitySpec struct {
 
 type AnonymousAccessSpec struct{}
 
+// +kubebuilder:validation:XValidation:rule="has(self.http) ? !(has(self.userInfo) || has(self.uma)) : has(self.userInfo) != has(self.uma)",message="Use exactly one of: http, userInfo, uma"
 type MetadataSpec struct {
 	CommonEvaluatorSpec `json:""`
 	MetadataMethodSpec  `json:""`
@@ -531,6 +532,7 @@ type UmaMetadataSpec struct {
 	Credentials *k8score.LocalObjectReference `json:"credentialsRef"`
 }
 
+// +kubebuilder:validation:XValidation:rule="has(self.patternMatching) ? !(has(self.opa) || has(self.kubernetesSubjectAccessReview) || has(self.spicedb)) : has(self.opa) ? !(has(self.kubernetesSubjectAccessReview) || has(self.spicedb)) : has(self.kubernetesSubjectAccessReview) != has(self.spicedb)",message="Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"
 type AuthorizationSpec struct {
 	CommonEvaluatorSpec     `json:""`
 	AuthorizationMethodSpec `json:""`
