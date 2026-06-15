@@ -84,7 +84,7 @@ Failed validation (expected):
 
 To add new CEL validation tests:
 
-1. **Add the CEL validation rule** to the CRD type in `api/v1beta3/auth_config_types.go` (or `api/v1beta2/` for v1beta2):
+1. **Add the CEL validation rule** to the CRD type in `api/v1beta3/auth_config_types.go`:
    ```go
    // +kubebuilder:validation:XValidation:rule="your.cel.expression",message="Validation error message"
    type YourSpec struct {

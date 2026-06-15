@@ -32,7 +32,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/kuadrant/authorino/api/v1beta2"
 	"github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/controllers"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -84,7 +83,6 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(v1beta2.AddToScheme(scheme))
 	utilruntime.Must(v1beta3.AddToScheme(scheme))
 }
 

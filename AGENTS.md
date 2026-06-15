@@ -11,8 +11,7 @@ Authorino is a Kubernetes-native authorization service that implements Envoy's e
 ```text
 authorino/
 ├── api/
-│   ├── v1beta2/          # Legacy CRD type definitions (DEPRECATED)
-│   └── v1beta3/          # Current CRD type definitions — prefer this
+│   └── v1beta3/          # CRD type definitions
 │       └── auth_config_types.go  # Primary AuthConfig spec
 ├── controllers/
 │   ├── auth_config_controller.go # Reconciliation: AuthConfig watcher
@@ -118,7 +117,7 @@ go test -race ./...
 
 ### Key Packages
 
-- `api/v1beta2` & `api/v1beta3`: AuthConfig CRD definitions
+- `api/v1beta3`: AuthConfig CRD definitions
 - `controllers/`: Kubernetes controllers for AuthConfig and Secret reconciliation
 - `pkg/service/`: gRPC and HTTP authorization service implementations
 - `pkg/auth/`: Core authentication logic and credential extraction
@@ -220,11 +219,8 @@ Server command flags:
 
 ## API Versions
 
-The project maintains two API versions:
-- `v1beta2`: Legacy version (in `api/v1beta2/`)
+The project has one API version:
 - `v1beta3`: Current version (in `api/v1beta3/`)
-
-Both are registered in the scheme and controllers handle both versions.
 
 ## Dependencies
 
