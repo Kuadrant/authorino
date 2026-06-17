@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         platform: [ ubuntu-latest ]
-        authconfig_version: [ v1beta2, v1beta3 ]
+        authconfig_version: [ v1beta3 ]
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
