@@ -42,7 +42,7 @@ func (kubeAuth *KubernetesAuth) Call(pipeline auth.AuthPipeline, ctx gocontext.C
 			},
 		}
 
-		log.FromContext(ctx).WithName("kubernetesauth").V(1).Info("calling kubernetes token review api", "tokenreview", tr)
+		log.FromContext(ctx).WithName("kubernetesauth").V(1).Info("calling kubernetes token review api", "tokenreview", log.RedactedTokenReview(tr))
 
 		if err := kubeAuth.k8sClient.Create(ctx, tr); err != nil {
 			return nil, err

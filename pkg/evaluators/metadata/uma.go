@@ -248,7 +248,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	log.FromContext(ctx).V(1).Info("requesting pat", "url", tokenURL.String(), "data", encodedData, "headers", req.Header)
+	log.FromContext(ctx).V(1).Info("requesting pat", "url", log.RedactedURL(tokenURL), "data", log.RedactedRequestBody(encodedData.String(), "application/x-www-form-urlencoded"), "headers", log.RedactedHeaders(req.Header))
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
