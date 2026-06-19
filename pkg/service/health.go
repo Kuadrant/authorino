@@ -17,13 +17,22 @@ import (
 // HealthService is the server API for the gRPC health service
 type HealthService struct{}
 
+// List returns the health status of all registered gRPC services
+func (hs *HealthService) List(_ context.Context, _ *healthpb.HealthListRequest) (*healthpb.HealthListResponse, error) {
+	return &healthpb.HealthListResponse{
+		Statuses: map[string]*healthpb.HealthCheckResponse{
+			"": {Status: healthpb.HealthCheckResponse_SERVING},
+		},
+	}, nil
+}
+
 // Check performs a health of the gRPC service
-func (hs *HealthService) Check(ctx context.Context, in *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
+func (hs *HealthService) Check(_ context.Context, _ *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
 	log.Printf("[HealthService] Check()")
 	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
 }
 
 // Watch is for streaming health-check (not yet implemented)
-func (hs *HealthService) Watch(in *healthpb.HealthCheckRequest, srv healthpb.Health_WatchServer) error {
+func (hs *HealthService) Watch(_ *healthpb.HealthCheckRequest, _ healthpb.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "Watch is not implemented")
 }

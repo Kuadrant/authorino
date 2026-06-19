@@ -128,6 +128,10 @@ type authServerOptions struct {
 	maxHttpRequestBodySize         int64
 	kubeClientQPS                  float32
 	kubeClientBurst                int
+	addSensitiveFields             []string
+	removeSensitiveFields          []string
+	addSensitiveHeaders            []string
+	removeSensitiveHeaders         []string
 }
 
 type webhookServerOptions struct {
@@ -192,6 +196,10 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().Int64Var(&opts.maxHttpRequestBodySize, "max-http-request-body-size", utils.EnvVar("MAX_HTTP_REQUEST_BODY_SIZE", int64(8192)), "Maximum size of the body of requests accepted in the raw HTTP interface of the authorization server - in bytes")
 	cmd.PersistentFlags().Float32Var(&opts.kubeClientQPS, "kube-client-qps", utils.EnvVar("KUBE_CLIENT_QPS", float32(20)), "QPS limit for each client sending requests to the kube-apiserver")
 	cmd.PersistentFlags().IntVar(&opts.kubeClientBurst, "kube-client-burst", utils.EnvVar("KUBE_CLIENT_BURST", 30), "Burst limit for each client sending requests to the kube-apiserver")
+	cmd.PersistentFlags().StringArrayVar(&opts.addSensitiveFields, "log-redact-add-field", []string{}, "Add a field name to the list of sensitive fields to redact from logs (can be repeated)")
+	cmd.PersistentFlags().StringArrayVar(&opts.removeSensitiveFields, "log-redact-remove-field", []string{}, "Remove a field name from the default list of sensitive fields (can be repeated)")
+	cmd.PersistentFlags().StringArrayVar(&opts.addSensitiveHeaders, "log-redact-add-header", []string{}, "Add a header name to the list of sensitive headers to redact from logs (can be repeated)")
+	cmd.PersistentFlags().StringArrayVar(&opts.removeSensitiveHeaders, "log-redact-remove-header", []string{}, "Remove a header name from the default list of sensitive headers (can be repeated)")
 
 	registerCommonServerOptions(cmd, &opts.commonServerOptions)
 
@@ -233,6 +241,20 @@ func runAuthorizationServer(cmd *cobra.Command, _ []string) {
 	opts := cmd.Context().Value(keyAuthServerOptions{}).(*authServerOptions)
 
 	setup(cmd, opts.log, opts.telemetry)
+
+	// Configure log redaction
+	for _, field := range opts.addSensitiveFields {
+		log.AddSensitiveField(field)
+	}
+	for _, field := range opts.removeSensitiveFields {
+		log.RemoveSensitiveField(field)
+	}
+	for _, header := range opts.addSensitiveHeaders {
+		log.AddSensitiveHeader(header)
+	}
+	for _, header := range opts.removeSensitiveHeaders {
+		log.RemoveSensitiveHeader(header)
+	}
 
 	// global options
 	evaluators.EvaluatorCacheSize = opts.evaluatorCacheSize
