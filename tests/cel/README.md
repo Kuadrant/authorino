@@ -17,7 +17,7 @@ Each version directory under `tests/cel/` contains:
 ### Prerequisites
 
 The tests require:
-- Go 1.25+
+- Go 1.26+
 - `controller-gen` tool (for CRD generation)
 - `envtest` binaries (downloaded automatically by the test setup)
 
