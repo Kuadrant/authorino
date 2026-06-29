@@ -70,6 +70,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 MOCKGEN ?= $(LOCALBIN)/mockgen
 BENCHSTAT ?= $(LOCALBIN)/benchstat
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+RATCHET ?= $(LOCALBIN)/ratchet
 
 ## Tool Versions
 KIND_VERSION ?= v0.31.0
@@ -82,6 +83,7 @@ ENVTEST_K8S_VERSION ?= $(K8S_VERSION)
 MOCKGEN_VERSION ?= v0.6.0
 BENCHSTAT_VERSION ?= latest
 GOLANGCI_LINT_VERSION ?= v2.1.6
+RATCHET_VERSION ?= v0.11.4
 GO_VERSION ?= $(shell awk '/^go / {print $$2}' go.mod)
 
 ## Versioned Binaries (the actual files that 'make' will check for)
@@ -92,6 +94,7 @@ ENVTEST_V_BINARY := $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 MOCKGEN_V_BINARY := $(LOCALBIN)/mockgen-$(MOCKGEN_VERSION)
 BENCHSTAT_V_BINARY := $(LOCALBIN)/benchstat-$(BENCHSTAT_VERSION)
 GOLANGCI_LINT_V_BINARY = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+RATCHET_V_BINARY := $(LOCALBIN)/ratchet-$(RATCHET_VERSION)
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE_V_BINARY) ## Download kustomize locally if necessary.
@@ -127,6 +130,11 @@ $(KIND_V_BINARY): $(LOCALBIN)  ## Installs kind in $PROJECT_DIR/bin
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+
+.PHONY: ratchet
+ratchet: $(RATCHET_V_BINARY) ## Download ratchet locally if necessary.
+$(RATCHET_V_BINARY): $(LOCALBIN)
+	$(call go-install-tool,$(RATCHET),github.com/sethvargo/ratchet,$(RATCHET_VERSION))
 
 ifeq ($(shell uname),Darwin)
 SED=$(shell which gsed)
@@ -232,6 +240,19 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 .PHONY: lint-config
 lint-config: golangci-lint ## Verify golangci-lint linter configuration
 	$(GOLANGCI_LINT) config verify
+
+##@ Verify
+
+.PHONY: verify-all
+verify-all: verify-ratchet ## Run all verification checks.
+
+.PHONY: ratchet-pin
+ratchet-pin: ratchet ## Pin GitHub Actions to commit SHAs.
+	$(RATCHET) pin $$(find .github/workflows -name '*.yaml' -o -name '*.yml')
+
+.PHONY: verify-ratchet
+verify-ratchet: ratchet ## Verify GitHub Actions are pinned to commit SHAs.
+	$(RATCHET) lint $$(find .github/workflows -name '*.yaml' -o -name '*.yml')
 
 ##@ Apps
 
