@@ -1,0 +1,26 @@
+name: Ratchet Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  ratchet:
+    runs-on: ubuntu-latest
+    name: Check pinned actions
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: sethvargo/ratchet@8b4ca256dbed184350608a3023620f267f0a5253 # ratchet:sethvargo/ratchet@v0.11.4
+        with:
+          files: |
+            .github/workflows/*.yaml
+            .github/workflows/*.yml
