@@ -13,6 +13,9 @@ env:
   IMG_REGISTRY_ORG: kuadrant
   MAIN_BRANCH_NAME: main
 
+permissions:
+  contents: read
+
 jobs:
   prepare:
     name: Prepare build info
