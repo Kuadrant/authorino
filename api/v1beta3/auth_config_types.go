@@ -742,6 +742,13 @@ type OpaAuthorizationSpec struct {
 	// Returning all Rego rules can affect performance of OPA policies during reconciliation (policy precompile) and at runtime.
 	// +kubebuilder:default:=false
 	AllValues bool `json:"allValues,omitempty"`
+
+	// Version of the OPA Rego language syntax used in the policy.
+	// Defaults to "v0" for backward compatibility with existing policies, use "v1" to enable OPA v1.0 Rego syntax.
+	// It is recommended to upgrade your policies and use v1 syntax (https://www.openpolicyagent.org/docs/v0-upgrade#changes-to-rego-in-opa-v10), as v0 syntax is deprecated and may be removed in future releases of Authorino.
+	// +kubebuilder:validation:Enum=v0;v1
+	// +kubebuilder:default:="v0"
+	Version string `json:"version,omitempty"`
 }
 
 // ExternalOpaPolicy sets the configs for fetching OPA policies from an external source.

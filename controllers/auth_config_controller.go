@@ -40,6 +40,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/oauth2"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
+	opaParser "github.com/open-policy-agent/opa/v1/ast"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 
@@ -547,6 +548,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
 	authzIndex := 0
+	regoV0DeprecationLogged := false
 	for authzName, authorization := range authConfig.Spec.Authorization {
 		predicates, err := buildPredicates(authConfig, authorization.Conditions, jsonexp.All)
 		if err != nil {
@@ -581,6 +583,15 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			opa := authorization.Opa
 			secret := &v1.Secret{}
 
+			regoVersion, err := authorization_evaluators.RegoVersionFromString(opa.Version)
+			if err != nil {
+				return nil, err
+			}
+			if regoVersion == opaParser.RegoV0 && !regoV0DeprecationLogged {
+				log.FromContext(ctxWithLogger).Info("AuthConfig contains OPA policies using deprecated Rego v0 syntax. Consider upgrading to v1 syntax as soon as possible, since v0 syntax is deprecated and may be removed in future releases of Authorino")
+				regoV0DeprecationLogged = true
+			}
+
 			var (
 				sharedSecret   string
 				externalSource *authorization_evaluators.OPAExternalSource
@@ -607,8 +618,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				}
 			}
 
-			var err error
-			translatedAuthorization.OPA, err = authorization_evaluators.NewOPAAuthorization(policyName, opa.Rego, externalSource, opa.AllValues, authzIndex, ctxWithLogger)
+			translatedAuthorization.OPA, err = authorization_evaluators.NewOPAAuthorization(policyName, opa.Rego, externalSource, opa.AllValues, regoVersion, authzIndex, ctxWithLogger)
 			if err != nil {
 				return nil, err
 			}
