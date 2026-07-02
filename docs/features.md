@@ -12,7 +12,7 @@ A full specification of all features of Authorino that can be configured in an `
 
 You can also learn about Authorino features by using the [`kubectl explain`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#explain) command in a Kubernetes cluster where the Authorino CRD has been installed. E.g. `kubectl explain authconfigs.spec.authentication.credentials`.
 
-## Common feature: JSON paths ([`selector`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#ValueOrSelector))
+## Common feature: JSON paths ([`selector`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#ValueOrSelector))
 
 > **Deprecated:** Prefer `predicate` and `expression`, based on [Common Expression Language (CEL)](#common-feature-common-expression-language-cel), instead.
 
@@ -86,9 +86,9 @@ The most common applications of `expression` are for building dynamic URLs and r
 
 Use `predicate` for expressions that return a boolean value, such as in [`when`](#common-feature-conditions-when) conditions and pattern-matching authorization rules.
 
-## Identity verification & authentication features ([`authentication`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#AuthenticationSpec))
+## Identity verification & authentication features ([`authentication`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#AuthenticationSpec))
 
-### API key ([`authentication.apiKey`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#ApiKeyAuthenticationSpec))
+### API key ([`authentication.apiKey`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#ApiKeyAuthenticationSpec))
 
 Authorino relies on Kubernetes `Secret` resources to represent API keys.
 
@@ -138,7 +138,7 @@ type: Opaque
 
 The resolved identity object, added to the authorization JSON following an API key identity source evaluation, is the Kubernetes `Secret` resource (as JSON).
 
-### Kubernetes TokenReview ([`authentication.kubernetesTokenReview`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#KubernetesTokenReviewSpec))
+### Kubernetes TokenReview ([`authentication.kubernetesTokenReview`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#KubernetesTokenReviewSpec))
 
 Authorino can verify Kubernetes-valid access tokens (using Kubernetes [TokenReview](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1) API).
 
@@ -181,7 +181,7 @@ spec:
 
 The resolved identity object added to the authorization JSON following a successful Kubernetes authentication identity evaluation is the `status` field of TokenReview response (see [TokenReviewStatus](https://kubernetes.io/docs/reference/kubernetes-api/authentication-resources/token-review-v1/#TokenReviewStatus) for reference).
 
-### JWT verification ([`authentication.jwt`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#JwtAuthenticationSpec))
+### JWT verification ([`authentication.jwt`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#JwtAuthenticationSpec))
 
 JWT authentication comes in two forms:
 1. **For token issuers that implement OpenId Connect:** At reconciliation-time, using [OpenID Connect Discovery well-known endpoint](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig), Authorino automatically discovers and caches OpenID Connect configurations for all OpenID Connect issuers declared in an `AuthConfig`. At request-time, Authorino fetches the JSON Web Key Sets (JWKS) if needed, using the `jwks_uri` obtained from the OpenId configuration. Then, it verifies the JSON Web Signature (JWS) and checks the time validity of signed JSON Web Tokens (JWT) supplied in the request. Activate this form with `authentication.jwt.issuerUrl`.
@@ -202,7 +202,7 @@ _Important!_ Authorino does **not** implement [OAuth2 grants](https://datatracke
 
 For an excellent summary of the underlying concepts and standards that relate OpenID Connect and JSON Object Signing and Encryption (JOSE), see this [article](https://access.redhat.com/blogs/766093/posts/1976593) by Jan Rusnacko. For official specification and RFCs, see [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html), [JSON Web Token (JWT) (RFC7519)](https://datatracker.ietf.org/doc/html/rfc7519), and [JSON Object Signing and Encryption (JOSE)](http://www.iana.org/assignments/jose/jose.xhtml).
 
-### OAuth 2.0 introspection ([`authentication.oauth2Introspection`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#OAuth2TokenIntrospectionSpec))
+### OAuth 2.0 introspection ([`authentication.oauth2Introspection`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#OAuth2TokenIntrospectionSpec))
 
 For bare OAuth 2.0 implementations, Authorino can perform token introspection on the access tokens supplied in the requests to protected APIs.
 
@@ -364,7 +364,7 @@ Authorino-issued [Festival Wristband](#festival-wristband-tokens-responsesuccess
 
 The value of the issuer must be the same issuer specified in the custom resource for the protected API originally issuing wristband. Eventually, this can be the same custom resource where the wristband is configured as a valid source of identity, but not necessarily.
 
-### _Extra:_ Auth credentials ([`authentication.credentials`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#Credentials))
+### _Extra:_ Auth credentials ([`authentication.credentials`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#Credentials))
 
 All the identity verification methods supported by Authorino can be configured regarding the location where access tokens and credentials (i.e. authentication secrets) fly within the request.
 
@@ -395,7 +395,7 @@ spec:
         name: cookie-key
 ```
 
-### _Extra:_ Identity extension ([`authentication.defaults`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#ExtendedProperties) and [`authentication.overrides`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#ExtendedProperties))
+### _Extra:_ Identity extension ([`authentication.defaults`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#ExtendedProperties) and [`authentication.overrides`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#ExtendedProperties))
 
 Resolved identity objects can be extended with user-defined JSON properties. Values can be static or fetched from the Authorization JSON.
 
@@ -405,9 +405,9 @@ In such cases, identity extension can be used to normalize the token to always i
 
 In case of extending an existing property of the identity object (replacing), the API allows to control whether to overwrite the value or not. This is particularly useful for normalizing tokens of a same identity source that nonetheless may occasionally differ in structure, such as in the case of JWT claims that sometimes may not be present but can be safely replaced with another (e.g. `username` or `sub`).
 
-## External auth metadata features ([`metadata`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#Metadata))
+## External auth metadata features ([`metadata`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#MetadataMethodSpec))
 
-### HTTP GET/GET-by-POST ([`metadata.http`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#HttpEndpointSpec))
+### HTTP GET/GET-by-POST ([`metadata.http`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#HttpEndpointSpec))
 
 Generic HTTP adapter that sends a request to an external service. It can be used to fetch external metadata for the authorization policies (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)), or as a web hook.
 
@@ -421,7 +421,7 @@ In both cases, the location where the secret (long-lived or OAuth2 access token)
 
 Custom headers can be set with the `headers` field. Nevertheless, headers such as `Content-Type` and `Authorization` (or eventual custom header used for carrying the authentication secret, set instead via the `credentials` option) will be superseded by the respective values defined for the fields `contentType` and `sharedSecretRef`.
 
-### OIDC UserInfo ([`metadata.userInfo`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#UserInfoMetadataSpec))
+### OIDC UserInfo ([`metadata.userInfo`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#UserInfoMetadataSpec))
 
 Online fetching of OpenID Connect (OIDC) UserInfo data (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)), associated with an OIDC identity source configured and resolved in phase (i).
 
@@ -431,7 +431,7 @@ Implementation requires a JWT verification authentication config ([`spec.authent
 
 The response returned by the OIDC server to the UserInfo request is appended (as JSON) to `auth.metadata` in the authorization JSON.
 
-### User-Managed Access (UMA) resource registry ([`metadata.uma`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#UmaMetadataSpec))
+### User-Managed Access (UMA) resource registry ([`metadata.uma`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#UmaMetadataSpec))
 
 User-Managed Access (UMA) is an OAuth-based protocol for resource owners to allow other users to access their resources. Since the UMA-compliant server is expected to know about the resources, Authorino includes a client that fetches resource data from the server and adds that as metadata of the authorization payload.
 
@@ -445,9 +445,9 @@ It's important to notice that Authorino does NOT manage resources in the UMA-com
 
 The resources data is added as metadata of the authorization payload and passed as input for the configured authorization policies. All resources returned by the UMA-compliant server in the query by URI are passed along. They are available in the PDPs (authorization payload) as `input.auth.metadata.custom-name => Array`. (See [The "Auth Pipeline"](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time) for details.)
 
-## Authorization features ([`authorization`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#Authorization))
+## Authorization features ([`authorization`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#AuthorizationMethodSpec))
 
-### Pattern-matching authorization ([`authorization.patternMatching`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#PatternMatchingAuthorizationSpec))
+### Pattern-matching authorization ([`authorization.patternMatching`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#PatternMatchingAuthorizationSpec))
 
 Grant/deny access based on simple pattern-matching expressions ("patterns") compared against values selected from the Authorization JSON.
 
@@ -477,7 +477,7 @@ spec:
       value: admin
 ```
 
-### Open Policy Agent (OPA) Rego policies ([`authorization.opa`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#OpaAuthorizationSpec))
+### Open Policy Agent (OPA) Rego policies ([`authorization.opa`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#OpaAuthorizationSpec))
 
 You can model authorization policies in [Rego language](https://www.openpolicyagent.org/docs/latest/policy-language/) and add them as part of the protection of your APIs.
 
@@ -491,7 +491,7 @@ Authorino's built-in OPA module precompiles the policies during reconciliation o
 
 An optional field `allValues: boolean` makes the values of all rules declared in the Rego document to be returned in the OPA output after policy evaluation. When disabled (default), only the boolean value `allow` is returned. Values of internal rules of the Rego document can be referenced in subsequent policies/phases of the Auth Pipeline.
 
-### Kubernetes SubjectAccessReview ([`authorization.kubernetesSubjectAccessReview`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#KubernetesSubjectAccessReviewAuthorizationSpec))
+### Kubernetes SubjectAccessReview ([`authorization.kubernetesSubjectAccessReview`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#KubernetesSubjectAccessReviewAuthorizationSpec))
 
 Access control enforcement based on rules defined in the Kubernetes authorization system, i.e. `Role`, `ClusterRole`, `RoleBinding` and `ClusterRoleBinding` resources of Kubernetes RBAC.
 
@@ -577,7 +577,7 @@ An array of `groups` (optional) can as well be set. When defined, it will be use
 >     priority: 1
 > ```
 
-### SpiceDB ([`authorization.spicedb`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#SpiceDBAuthorizationSpec))
+### SpiceDB ([`authorization.spicedb`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#SpiceDBAuthorizationSpec))
 
 Check permission requests via gRPC with an external Google Zanzibar-inspired [SpiceDB](https://authzed.com) server, by Authzed.
 
@@ -607,7 +607,7 @@ spec:
           expression: request.method
 ```
 
-## Custom response features ([`response`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#Response))
+## Custom response features ([`response`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#AuthResponseMethodSpec))
 
 ### Custom response forms: successful authorization vs custom denial status
 
@@ -660,13 +660,13 @@ rate_limits:
       descriptor_key: username
 ```
 
-#### Custom denial status ([`response.unauthenticated`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#DenyWithSpec) and [`response.unauthorized`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#DenyWithSpec))
+#### Custom denial status ([`response.unauthenticated`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#DenyWithSpec) and [`response.unauthorized`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#DenyWithSpec))
 
 By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)) or authorization (phase ii) fail. These can be customized respectively by specifying `spec.response.unauthanticated` and `spec.response.unauthorized` in the `AuthConfig`.
 
 ### Custom response methods
 
-#### Plain text ([`response.success.<headers|dynamicMetadata>.plain`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#PlainAuthResponseSpec))
+#### Plain text ([`response.success.<headers|dynamicMetadata>.plain`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#PlainAuthResponseSpec))
 
 Simpler, yet more generalized form, for extending the authorization response for header mutation and Envoy Dynamic Metadata, based on plain text values.
 
@@ -692,7 +692,7 @@ response:
           expression: auth.identity.username
 ```
 
-#### JSON injection ([`response.success.<headers|dynamicMetadata>.json`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#JsonAuthResponseSpec))
+#### JSON injection ([`response.success.<headers|dynamicMetadata>.json`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#JsonAuthResponseSpec))
 
 User-defined dynamic JSON objects generated by Authorino in the response phase, from static or dynamic data of the auth pipeline, and passed back to the external authorization client within added HTTP headers or Dynamic Metadata.
 
@@ -742,7 +742,7 @@ spec:
                 expression: auth.identity.metadata.name
 ```
 
-#### Festival Wristband tokens ([`response.success.<headers|dynamicMetadata>.wristband`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta2?utm_source=gopls#WristbandAuthResponseSpec))
+#### Festival Wristband tokens ([`response.success.<headers|dynamicMetadata>.wristband`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#WristbandAuthResponseSpec))
 
 Festival Wristbands are signed OpenID Connect JSON Web Tokens (JWTs) issued by Authorino at the end of the auth pipeline and passed back to the client, typically in added HTTP response header. It is an opt-in feature that can be used to implement Edge Authentication Architecture (EAA) and enable token normalization. Authorino wristbands include minimal standard JWT claims such as `iss`, `iat`, and `exp`, and optional user-defined custom claims, whose values can be static or dynamically fetched from the authorization JSON.
 

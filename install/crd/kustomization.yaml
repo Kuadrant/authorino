@@ -5,10 +5,6 @@ resources:
 - authorino.kuadrant.io_authconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
-#patchesStrategicMerge:
-#- patches/webhook_in_authconfigs.yaml
-# +kubebuilder:scaffold:crdkustomizewebhookpatch
-
 patches:
 - path: patches/oneof_in_authconfigs.yaml
   target:

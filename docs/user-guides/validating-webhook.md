@@ -240,7 +240,7 @@ webhooks:
       path: /check
   rules:
   - apiGroups: ["authorino.kuadrant.io"]
-    apiVersions: ["v1beta2"]
+    apiVersions: ["v1beta3"]
     resources: ["authconfigs"]
     operations: ["CREATE", "UPDATE"]
     scope: Namespaced
