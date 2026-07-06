@@ -241,7 +241,7 @@ See the full Developer's Guide in [docs/contributing.md](docs/contributing.md) f
 step-by-step instructions on setting up your development environment, running
 tests, generating code, and submitting changes. Quick highlights:
 
-- **Environment:** install Go >=1.25 and recommended tools (see the guide).
+- **Environment:** install Go (version per `go.mod`) and recommended tools (see the guide).
 - **Tests:** run `make test` locally; use `make local-setup` to try changes
   in a local Kind cluster.
 - **Commit signing:** commits must be signed; follow the linked GitHub docs.
