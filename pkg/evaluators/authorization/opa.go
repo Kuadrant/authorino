@@ -17,14 +17,17 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/workers"
 
-	opaParser "github.com/open-policy-agent/opa/ast" //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
-	"github.com/open-policy-agent/opa/rego"          //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
+	opaParser "github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 
 	"go.opentelemetry.io/otel"
 	otel_propagation "go.opentelemetry.io/otel/propagation"
 )
 
 const (
+	RegoVersionV0 = "v0"
+	RegoVersionV1 = "v1"
+
 	policyTemplate = `package %s
 default allow = false
 %s`
@@ -40,7 +43,18 @@ default allow = false
 	msg_opaPolicyRefreshFromRegistryDisabled = "auto-refresh of external policy disabled"
 )
 
-func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExternalSource, allValues bool, nonce int, ctx context.Context) (*OPA, error) {
+func RegoVersionFromString(version string) (opaParser.RegoVersion, error) {
+	switch version {
+	case RegoVersionV0:
+		return opaParser.RegoV0, nil
+	case RegoVersionV1:
+		return opaParser.RegoV1, nil
+	default:
+		return 0, fmt.Errorf("unsupported OPA Rego version: %s", version)
+	}
+}
+
+func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExternalSource, allValues bool, regoVersion opaParser.RegoVersion, nonce int, ctx context.Context) (*OPA, error) {
 	logger := log.FromContext(ctx).WithName("opa")
 
 	pullFromRegistry := rego == "" && externalSource != nil && externalSource.Endpoint != ""
@@ -57,6 +71,7 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 	o := &OPA{
 		ExternalSource: externalSource,
 		AllValues:      allValues,
+		regoVersion:    regoVersion,
 		policyName:     policyName,
 		policyUID:      generatePolicyUID(policyName, rego, nonce),
 		opaContext:     context.TODO(),
@@ -77,10 +92,11 @@ type OPA struct {
 	ExternalSource *OPAExternalSource
 	AllValues      bool
 
-	opaContext context.Context
-	policy     *rego.PreparedEvalQuery
-	policyName string
-	policyUID  string
+	regoVersion opaParser.RegoVersion
+	opaContext  context.Context
+	policy      *rego.PreparedEvalQuery
+	policyName  string
+	policyUID   string
 
 	mu sync.RWMutex
 }
@@ -137,7 +153,7 @@ func (opa *OPA) updateRego(rego string, ctx context.Context, force bool) (bool, 
 
 	opa.Rego = newRego
 
-	if policy, err := precompilePolicy(opa.opaContext, opa.policyUID, opa.Rego, opa.AllValues); err != nil {
+	if policy, err := precompilePolicy(opa.opaContext, opa.policyUID, opa.Rego, opa.AllValues, opa.regoVersion); err != nil {
 		opa.Rego = currentRego
 		log.FromContext(ctx).Error(err, msg_OpaPolicyPrecompileError, "policy", opa.policyName)
 		return false, err
@@ -147,7 +163,7 @@ func (opa *OPA) updateRego(rego string, ctx context.Context, force bool) (bool, 
 	}
 }
 
-func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValues bool) (*rego.PreparedEvalQuery, error) {
+func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValues bool, regoVersion opaParser.RegoVersion) (*rego.PreparedEvalQuery, error) {
 	policyName := fmt.Sprintf(`authorino.authz["%s"]`, policyUID)
 	policyContent := fmt.Sprintf(policyTemplate, policyName, policyRego)
 	policyFileName := policyUID + ".rego"
@@ -157,7 +173,9 @@ func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValu
 	queries := []string{fmt.Sprintf(queryTemplate, allowQuery, allowQuery)}
 	var err error
 
-	if module, err = opaParser.ParseModule(policyFileName, policyContent); err != nil {
+	if module, err = opaParser.ParseModuleWithOpts(policyFileName, policyContent, opaParser.ParserOptions{
+		RegoVersion: regoVersion,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -175,6 +193,7 @@ func precompilePolicy(ctx context.Context, policyUID, policyRego string, allValu
 	r := rego.New(
 		rego.Query(strings.Join(queries, ";")),
 		rego.ParsedModule(module),
+		rego.SetRegoVersion(regoVersion),
 	)
 
 	if regoPolicy, err := r.PrepareForEval(ctx); err != nil {

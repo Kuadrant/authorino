@@ -1107,6 +1107,16 @@ spec:
                             The Rego document must include the "allow" condition, set by Authorino to "false" by default (i.e. requests are unauthorized unless changed).
                             The Rego document must NOT include the "package" declaration in line 1.
                           type: string
+                        version:
+                          default: v0
+                          description: |-
+                            Version of the OPA Rego language syntax used in the policy.
+                            Defaults to "v0" for backward compatibility with existing policies, use "v1" to enable OPA v1.0 Rego syntax.
+                            It is recommended to upgrade your policies and use v1 syntax (https://www.openpolicyagent.org/docs/v0-upgrade#changes-to-rego-in-opa-v10), as v0 syntax is deprecated and may be removed in future releases of Authorino.
+                          enum:
+                          - v0
+                          - v1
+                          type: string
                       type: object
                       x-kubernetes-validations:
                       - message: 'Use exactly one of: rego, externalPolicy'

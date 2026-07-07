@@ -24,6 +24,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
+	opaParser "github.com/open-policy-agent/opa/v1/ast"
 	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -289,7 +290,7 @@ func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewForbidden(t *testing.
 	defer mockController.Finish()
 	authCred := auth.NewAuthCredential("", "")
 	identityConfig := &evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}}
-	authorizationPolicy, _ := authorization.NewOPAAuthorization("a-policy", `allow = false`, nil, false, 0, context.TODO())
+	authorizationPolicy, _ := authorization.NewOPAAuthorization("a-policy", `allow := false`, nil, false, opaParser.RegoV1, 0, context.TODO())
 	authorizationConfig := &evaluators.AuthorizationConfig{Name: "always-deny", OPA: authorizationPolicy}
 	authConfig := &evaluators.AuthConfig{
 		IdentityConfigs:      []auth.AuthConfigEvaluator{identityConfig},

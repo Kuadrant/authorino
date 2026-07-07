@@ -14,30 +14,56 @@ import (
 	mock_workers "github.com/kuadrant/authorino/pkg/workers/mocks"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/open-policy-agent/opa/rego" //nolint:staticcheck // ignore until a migration path is decided - https://github.com/Kuadrant/authorino/issues/546
+	opaParser "github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
 )
 
 const (
 	opaExtHttpServerMockAddr string = "127.0.0.1:9007"
-	opaInlineRegoDataMock    string = `
+	opaInlineRegoV1DataMock  string = `
+		method := object.get(input.context.request.http, "method", "")
+		path := object.get(input.context.request.http, "path", "")
+		allow if { method == "GET"; path == "/allow" }`
+	opaInlineRegoV0DataMock string = `
 		method = object.get(input.context.request.http, "method", "")
 		path = object.get(input.context.request.http, "path", "")
 		allow { method == "GET"; path = "/allow" }`
 )
 
 func TestOPAInlineRego(t *testing.T) {
-	opa, err := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, &OPAExternalSource{}, false, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", opaInlineRegoV1DataMock, &OPAExternalSource{}, false, opaParser.RegoV1, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
 }
 
+func TestOPAInlineRegoV0(t *testing.T) {
+	opa, err := NewOPAAuthorization("test-opa-v0", opaInlineRegoV0DataMock, &OPAExternalSource{}, false, opaParser.RegoV0, 0, context.TODO())
+
+	assert.NilError(t, err)
+	assertOPAAuthorization(t, opa)
+}
+
+func TestOPAV1SyntaxFailsWithV0(t *testing.T) {
+	opa, err := NewOPAAuthorization("test-opa-v1-as-v0", opaInlineRegoV1DataMock, &OPAExternalSource{}, false, opaParser.RegoV0, 0, context.TODO())
+
+	assert.Assert(t, err != nil)
+	assert.Assert(t, opa == nil)
+}
+
+func TestOPAV0SyntaxFailsWithV1(t *testing.T) {
+	opa, err := NewOPAAuthorization("test-opa-v0-as-v1", opaInlineRegoV0DataMock, &OPAExternalSource{}, false, opaParser.RegoV1, 0, context.TODO())
+
+	assert.Assert(t, err != nil)
+	assert.Assert(t, opa == nil)
+}
+
 func TestOPAExternalUrl(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
 		"/rego": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoDataMock}
+			return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
 		},
 	})
 	defer extHttpMetadataServer.Close()
@@ -47,7 +73,7 @@ func TestOPAExternalUrl(t *testing.T) {
 		AuthCredentials: auth.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -66,15 +92,15 @@ func TestOPAInlineRegoAndExternalUrl(t *testing.T) {
 		AuthCredentials: auth.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, externalSource, false, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", opaInlineRegoV1DataMock, externalSource, false, opaParser.RegoV1, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
 }
 
 func TestOPAWithPackageInRego(t *testing.T) {
-	inlineRego := fmt.Sprintf("package my-rego-123\n%s", opaInlineRegoDataMock)
-	opa, err := NewOPAAuthorization("test-opa", inlineRego, &OPAExternalSource{}, false, 0, context.TODO())
+	inlineRego := fmt.Sprintf("package my-rego-123\n%s", opaInlineRegoV1DataMock)
+	opa, err := NewOPAAuthorization("test-opa", inlineRego, &OPAExternalSource{}, false, opaParser.RegoV1, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assert.Assert(t, !strings.Contains(opa.Rego, "package"))
@@ -83,7 +109,7 @@ func TestOPAWithPackageInRego(t *testing.T) {
 }
 
 func TestOPAExternalUrlJsonResponse(t *testing.T) {
-	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod = object.get(input.context.request.http, \"method\", \"\")\npath = object.get(input.context.request.http, \"path\", \"\")\n\nallow { method == \"GET\"; path = \"/allow\" }"}}`
+	jsonData := `{"result": {"id": "empty","raw":"package my-rego-123\n\nmethod := object.get(input.context.request.http, \"method\", \"\")\npath := object.get(input.context.request.http, \"path\", \"\")\n\nallow if { method == \"GET\"; path == \"/allow\" }"}}`
 
 	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
 		"/rego": func() httptest.HttpServerMockResponse {
@@ -97,7 +123,7 @@ func TestOPAExternalUrlJsonResponse(t *testing.T) {
 		AuthCredentials: auth.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assert.Assert(t, !strings.Contains(opa.Rego, "package"))
@@ -108,7 +134,7 @@ func TestOPAExternalUrlJsonResponse(t *testing.T) {
 func TestOPAExternalUrlMissingContentType(t *testing.T) {
 	extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
 		"/rego": func() httptest.HttpServerMockResponse {
-			return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoDataMock, Headers: map[string]string{"Content-Type": ""}}
+			return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock, Headers: map[string]string{"Content-Type": ""}}
 		},
 	})
 	defer extHttpMetadataServer.Close()
@@ -118,7 +144,7 @@ func TestOPAExternalUrlMissingContentType(t *testing.T) {
 		AuthCredentials: auth.NewAuthCredential("", ""),
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
 
 	assert.NilError(t, err)
 	assertOPAAuthorization(t, opa)
@@ -130,9 +156,9 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 		"/rego": func() httptest.HttpServerMockResponse {
 			var rego string
 			if changed {
-				rego = opaInlineRegoDataMock + `allow { method == "POST"; path = "/allow" }`
+				rego = opaInlineRegoV1DataMock + `allow if { method == "POST"; path == "/allow" }`
 			} else {
-				rego = opaInlineRegoDataMock
+				rego = opaInlineRegoV1DataMock
 				changed = true
 			}
 
@@ -147,7 +173,7 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 		TTL:             3,
 	}
 
-	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, 0, context.TODO())
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
 	defer func(opa *OPA) {
 		_ = opa.Clean(context.Background())
 	}(opa)
@@ -165,7 +191,7 @@ func TestOPAClean(t *testing.T) {
 	defer ctrl.Finish()
 
 	refresher := mock_workers.NewMockWorker(ctrl)
-	opa, _ := NewOPAAuthorization("test-opa", "", nil, false, 0, context.TODO())
+	opa, _ := NewOPAAuthorization("test-opa", "", nil, false, opaParser.RegoV1, 0, context.TODO())
 	opa.ExternalSource = &OPAExternalSource{
 		Endpoint:        "http://" + opaExtHttpServerMockAddr + "/rego",
 		AuthCredentials: auth.NewAuthCredential("", ""),
@@ -183,7 +209,7 @@ func TestOPAAllValues(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "GET")).Times(1)
 
-	opa, _ := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, &OPAExternalSource{}, true, 0, context.TODO())
+	opa, _ := NewOPAAuthorization("test-opa", opaInlineRegoV1DataMock, &OPAExternalSource{}, true, opaParser.RegoV1, 0, context.TODO())
 
 	results, err := opa.Call(pipelineMock, nil)
 	resultSet, _ := results.(rego.Vars)
@@ -206,7 +232,7 @@ func TestOPANonBooleanAllowed(t *testing.T) {
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "GET")).Times(1)
 
-	opa, _ := NewOPAAuthorization("test-opa", `allow = "foo"`, &OPAExternalSource{}, false, 0, context.TODO())
+	opa, _ := NewOPAAuthorization("test-opa", `allow := "foo"`, &OPAExternalSource{}, false, opaParser.RegoV1, 0, context.TODO())
 
 	results, err := opa.Call(pipelineMock, nil)
 	resultSet, _ := results.(rego.Vars)
@@ -269,7 +295,7 @@ func BenchmarkOPAAuthz(b *testing.B) {
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetAuthorizationJSON().Return(opaAuthDataMock("/allow", "GET")).MinTimes(1)
-	opa, _ := NewOPAAuthorization("test-opa", opaInlineRegoDataMock, &OPAExternalSource{}, false, 0, context.TODO())
+	opa, _ := NewOPAAuthorization("test-opa", opaInlineRegoV1DataMock, &OPAExternalSource{}, false, opaParser.RegoV1, 0, context.TODO())
 
 	var err error
 	b.ResetTimer()

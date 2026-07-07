@@ -79,13 +79,14 @@ func newTestAuthConfig(authConfigLabels map[string]string) api.AuthConfig {
 			"main-policy": {
 				AuthorizationMethodSpec: api.AuthorizationMethodSpec{
 					Opa: &api.OpaAuthorizationSpec{
+						Version: "v1",
 						Rego: `
-			method = object.get(input.context.request.http, "method", "")
-			path = object.get(input.context.request.http, "path", "")
+			method := input.context.request.http.method
+			path := input.context.request.http.path
 
-			allow {
+			allow if {
               method == "GET"
-              path = "/allow"
+              path == "/allow"
           }`,
 					},
 				},
