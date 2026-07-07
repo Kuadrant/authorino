@@ -24,6 +24,9 @@ on:
   merge_group:
     types: [ checks_requested ]
 
+permissions:
+  contents: read
+
 jobs:
 
   autoformat:
@@ -87,6 +90,9 @@ jobs:
           echo "${{ github.repository }} is formatted correctly."
 
   lint:
+    permissions:
+      checks: write  # for reviewdog to create check
+      contents: read  # for actions/checkout to fetch code
     name: Lint
     runs-on: ubuntu-latest
 
