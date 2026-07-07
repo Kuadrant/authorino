@@ -170,20 +170,22 @@ spec:
           scope := lower(input.context.request.http.method)
           access_token := trim_prefix(input.context.request.http.headers.authorization, "Bearer ")
 
-          default rpt = ""
-          rpt = access_token { object.get(input.auth.identity, "authorization", {}).permissions }
-          else = rpt_str {
+          default rpt := ""
+          rpt := access_token if object.get(input.auth.identity, "authorization", {}).permissions
+          else := rpt_str if {
             ticket := http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/authz/protection/permission","method":"post","headers":{"Authorization":concat("",["Bearer ",pat]),"Content-Type":"application/json"},"raw_body":concat("",["[{\"resource_id\":\"",resource_id,"\",\"resource_scopes\":[\"",scope,"\"]}]"])}).body.ticket
             rpt_str := object.get(http.send({"url":"http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant/protocol/openid-connect/token","method":"post","headers":{"Authorization":concat("",["Bearer ",access_token]),"Content-Type":"application/x-www-form-urlencoded"},"raw_body":concat("",["grant_type=urn:ietf:params:oauth:grant-type:uma-ticket&ticket=",ticket,"&submit_request=true"])}).body, "access_token", "")
           }
 
-          allow {
+          allow if {
             permissions := object.get(io.jwt.decode(rpt)[1], "authorization", { "permissions": [] }).permissions
+            some i
             permissions[i]
-            permissions[i].rsid = resource_id
-            permissions[i].scopes[_] = scope
+            permissions[i].rsid == resource_id
+            permissions[i].scopes[_] == scope
           }
         allValues: true
+        version: v1
   response:
     success:
       headers:

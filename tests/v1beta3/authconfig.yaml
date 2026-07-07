@@ -109,11 +109,12 @@ spec:
       opa:
         allValues: true
         rego: |
-          country = object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
-          allow {
+          country := object.get(object.get(input.auth.metadata, "geo-info", {}), "country_iso_code", null)
+          allow if {
             allowed_countries := ["ES", "FR", "IT"]
             allowed_countries[_] == country
           }
+        version: v1
     admin-kubernetes-rbac:
       when:
       - predicate: request.path.matches("^/admin(/.*)?$")
@@ -133,17 +134,19 @@ spec:
       - predicate: request.path.matches("^/greetings/\\d+$")
       opa:
         rego: |
-          allow {
+          allow if {
             resource_attrs := object.get(input.auth.metadata, "resource-info", [])[0]
             resource_owner := object.get(object.get(resource_attrs, "owner", {}), "id", "")
             resource_owner == input.auth.identity.sub
           }
+        version: v1
     timestamp:
       opa:
         rego: |
-          now = time.now_ns() / 1000000000
-          allow = true
+          now := time.now_ns() / 1000000000
+          allow := true
         allValues: true
+        version: v1
       priority: 1
 
   response:
