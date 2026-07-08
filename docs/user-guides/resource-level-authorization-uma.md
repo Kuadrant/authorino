@@ -177,42 +177,43 @@ spec:
     "owned-resources":
       opa:
         rego: |
-          COLLECTIONS = ["greetings"]
+          COLLECTIONS := ["greetings"]
 
-          http_request = input.context.request.http
-          http_method = http_request.method
-          requested_path_sections = split(trim_left(trim_right(http_request.path, "/"), "/"), "/")
+          http_request := input.context.request.http
+          http_method := http_request.method
+          requested_path_sections := split(trim_left(trim_right(http_request.path, "/"), "/"), "/")
 
-          get { http_method == "GET" }
-          post { http_method == "POST" }
-          put { http_method == "PUT" }
-          delete { http_method == "DELETE" }
+          get if http_method == "GET"
+          post if http_method == "POST"
+          put if http_method == "PUT"
+          delete if http_method == "DELETE"
 
-          valid_collection { COLLECTIONS[_] == requested_path_sections[0] }
+          valid_collection if COLLECTIONS[_] == requested_path_sections[0]
 
-          collection_endpoint {
+          collection_endpoint if {
             valid_collection
             count(requested_path_sections) == 1
           }
 
-          resource_endpoint {
+          resource_endpoint if {
             valid_collection
             some resource_id
             requested_path_sections[1] = resource_id
           }
 
-          identity_owns_the_resource {
+          identity_owns_the_resource if {
             identity := input.auth.identity
             resource_attrs := object.get(input.auth.metadata, "resource-data", [])[0]
             resource_owner := object.get(object.get(resource_attrs, "owner", {}), "id", "")
             resource_owner == identity.sub
           }
 
-          allow { get;    collection_endpoint }
-          allow { post;   collection_endpoint }
-          allow { get;    resource_endpoint; identity_owns_the_resource }
-          allow { put;    resource_endpoint; identity_owns_the_resource }
-          allow { delete; resource_endpoint; identity_owns_the_resource }
+          allow if { get;    collection_endpoint }
+          allow if { post;   collection_endpoint }
+          allow if { get;    resource_endpoint; identity_owns_the_resource }
+          allow if { put;    resource_endpoint; identity_owns_the_resource }
+          allow if { delete; resource_endpoint; identity_owns_the_resource }
+        version: v1
 EOF
 ```
 

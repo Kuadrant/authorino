@@ -167,19 +167,20 @@ spec:
     "features":
       opa:
         rego: |
-          authconfig = json.unmarshal(input.context.request.http.body).request.object
+          authconfig := json.unmarshal(input.context.request.http.body).request.object
 
-          forbidden { count(object.get(authconfig.spec, "authentication", [])) == 0 }
-          forbidden { authconfig.spec.authentication[_].anonymous }
-          forbidden { authconfig.spec.authentication[_].kubernetesTokenReview }
-          forbidden { authconfig.spec.authentication[_].plain }
-          forbidden { authconfig.spec.authorization[_].kubernetesSubjectAccessReview }
-          forbidden { authconfig.spec.response.success.headers[_].wristband }
+          forbidden if count(object.get(authconfig.spec, "authentication", [])) == 0
+          forbidden if authconfig.spec.authentication[_].anonymous
+          forbidden if authconfig.spec.authentication[_].kubernetesTokenReview
+          forbidden if authconfig.spec.authentication[_].plain
+          forbidden if authconfig.spec.authorization[_].kubernetesSubjectAccessReview
+          forbidden if authconfig.spec.response.success.headers[_].wristband
 
-          apiKey { authconfig.spec.authentication[_].apiKey }
+          apiKey if authconfig.spec.authentication[_].apiKey
 
-          allow { count(authconfig.spec.authentication) > 0; not forbidden }
+          allow if { count(authconfig.spec.authentication) > 0; not forbidden }
         allValues: true
+        version: v1
 
     "apikey-authn-requires-k8s-role-binding":
       priority: 1
@@ -200,8 +201,9 @@ spec:
       priority: 1
       opa:
         rego: |
-          invalid_ttl = input.auth.authorization.features.authconfig.spec.metadata[_].cache.ttl != 300
-          allow { not invalid_ttl }
+          invalid_ttl := input.auth.authorization.features.authconfig.spec.metadata[_].cache.ttl != 300
+          allow if not invalid_ttl
+        version: v1
 EOF
 ```
 

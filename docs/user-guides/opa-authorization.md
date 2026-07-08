@@ -156,10 +156,11 @@ spec:
       opa:
         rego: |
           ips := split(input.context.request.http.headers["x-forwarded-for"], ",")
-          trusted_network { net.cidr_contains("192.168.1.1/24", ips[0]) }
+          trusted_network if net.cidr_contains("192.168.1.1/24", ips[0])
 
-          allow { trusted_network }
-          allow { not trusted_network; input.context.request.http.method == "GET" }
+          allow if trusted_network
+          allow if { not trusted_network; input.context.request.http.method == "GET" }
+        version: v1
 EOF
 ```
 

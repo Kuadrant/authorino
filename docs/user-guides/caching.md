@@ -170,9 +170,10 @@ spec:
     "cached-authz":
       opa:
         rego: |
-          now = time.now_ns()
-          allow = true
+          now := time.now_ns()
+          allow := true
         allValues: true
+        version: v1
       cache:
         key:
           selector: context.request.http.path

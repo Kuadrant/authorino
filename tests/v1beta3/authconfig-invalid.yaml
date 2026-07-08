@@ -25,6 +25,7 @@ spec:
   authorization:
     multiple-authorization-methods:
       opa:
-        rego: allow = true
+        rego: allow := true
+        version: v1
       patternMatching:
         patterns: []
