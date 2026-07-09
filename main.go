@@ -40,6 +40,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
 	"github.com/kuadrant/authorino/pkg/service"
+	"github.com/kuadrant/authorino/pkg/tlsconfig"
 	"github.com/kuadrant/authorino/pkg/trace"
 	"github.com/kuadrant/authorino/pkg/utils"
 
@@ -116,9 +117,15 @@ type authServerOptions struct {
 	extAuthHTTPPort                int
 	tlsCertPath                    string
 	tlsCertKeyPath                 string
+	tlsMinVersion                  string
+	tlsMaxVersion                  string
+	tlsCipherSuites                []string
 	oidcHTTPPort                   int
 	oidcTLSCertPath                string
 	oidcTLSCertKeyPath             string
+	oidcTLSMinVersion              string
+	oidcTLSMaxVersion              string
+	oidcTLSCipherSuites            []string
 	evaluatorCacheSize             int
 	deepMetricsEnabled             bool
 	webhookServicePort             int
@@ -185,8 +192,14 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&opts.tlsCertPath, "tls-cert", utils.EnvVar("TLS_CERT", ""), "Path to the public TLS server certificate file in the file system - authorization server")
 	cmd.PersistentFlags().StringVar(&opts.tlsCertKeyPath, "tls-cert-key", utils.EnvVar("TLS_CERT_KEY", ""), "Path to the private TLS server certificate key file in the file system - authorization server")
 	cmd.PersistentFlags().IntVar(&opts.oidcHTTPPort, "oidc-http-port", utils.EnvVar("OIDC_HTTP_PORT", 8083), "Port number of OIDC Discovery server for Festival Wristband tokens")
+	cmd.PersistentFlags().StringVar(&opts.tlsMinVersion, "tls-min-version", utils.EnvVar("TLS_MIN_VERSION", ""), "Minimum TLS version for the authorization server (1.0, 1.1, 1.2, 1.3)")
+	cmd.PersistentFlags().StringVar(&opts.tlsMaxVersion, "tls-max-version", utils.EnvVar("TLS_MAX_VERSION", ""), "Maximum TLS version for the authorization server (1.0, 1.1, 1.2, 1.3)")
+	cmd.PersistentFlags().StringSliceVar(&opts.tlsCipherSuites, "tls-cipher-suites", utils.EnvVarStringSlice("TLS_CIPHER_SUITES", ","), "Comma-separated list of TLS cipher suites (IANA names) for the authorization server")
 	cmd.PersistentFlags().StringVar(&opts.oidcTLSCertPath, "oidc-tls-cert", utils.EnvVar("OIDC_TLS_CERT", ""), "Path to the public TLS server certificate file in the file system - Festival Wristband OIDC Discovery server")
 	cmd.PersistentFlags().StringVar(&opts.oidcTLSCertKeyPath, "oidc-tls-cert-key", utils.EnvVar("OIDC_TLS_CERT_KEY", ""), "Path to the private TLS server certificate key file in the file system - Festival Wristband OIDC Discovery server")
+	cmd.PersistentFlags().StringVar(&opts.oidcTLSMinVersion, "oidc-tls-min-version", utils.EnvVar("OIDC_TLS_MIN_VERSION", ""), "Minimum TLS version for the OIDC Discovery server (1.0, 1.1, 1.2, 1.3)")
+	cmd.PersistentFlags().StringVar(&opts.oidcTLSMaxVersion, "oidc-tls-max-version", utils.EnvVar("OIDC_TLS_MAX_VERSION", ""), "Maximum TLS version for the OIDC Discovery server (1.0, 1.1, 1.2, 1.3)")
+	cmd.PersistentFlags().StringSliceVar(&opts.oidcTLSCipherSuites, "oidc-tls-cipher-suites", utils.EnvVarStringSlice("OIDC_TLS_CIPHER_SUITES", ","), "Comma-separated list of TLS cipher suites (IANA names) for the OIDC Discovery server")
 	cmd.PersistentFlags().IntVar(&opts.evaluatorCacheSize, "evaluator-cache-size", utils.EnvVar("EVALUATOR_CACHE_SIZE", 1), "Cache size of each Authorino evaluator if enabled in the AuthConfig - in megabytes")
 	cmd.PersistentFlags().BoolVar(&opts.deepMetricsEnabled, "deep-metrics-enabled", utils.EnvVar("DEEP_METRICS_ENABLED", false), "Enable deep metrics at the level of each evaluator when requested in the AuthConfig, exported by the metrics server")
 	cmd.PersistentFlags().IntVar(&opts.webhookServicePort, "webhook-service-port", 9443, "Port number of the webhook server")
@@ -498,17 +511,19 @@ func startExtAuthServerGRPC(authConfigIndex index.Index, opts authServerOptions)
 	tlsEnabled := opts.tlsCertPath != "" && opts.tlsCertKeyPath != ""
 
 	if tlsEnabled {
-		if tlsCert, err := tls.LoadX509KeyPair(opts.tlsCertPath, opts.tlsCertKeyPath); err != nil {
+		tlsCert, err := tls.LoadX509KeyPair(opts.tlsCertPath, opts.tlsCertKeyPath)
+		if err != nil {
 			logger.Error(err, "failed to load tls cert for the grpc auth service")
 			os.Exit(1)
-		} else {
-			tlsConfig := &tls.Config{
-				Certificates: []tls.Certificate{tlsCert},
-				ClientAuth:   tls.NoClientCert,
-				MinVersion:   tls.VersionTLS12,
-			}
-			grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		}
+		tlsCfg, err := tlsconfig.BuildTLSConfig(opts.tlsMinVersion, opts.tlsMaxVersion, opts.tlsCipherSuites)
+		if err != nil {
+			logger.Error(err, "failed to build tls config for the grpc auth service")
+			os.Exit(1)
+		}
+		tlsCfg.Certificates = []tls.Certificate{tlsCert}
+		tlsCfg.ClientAuth = tls.NoClientCert
+		grpcServerOpts = append(grpcServerOpts, grpc.Creds(credentials.NewTLS(tlsCfg)))
 	}
 
 	grpcServer := grpc.NewServer(grpcServerOpts...)
@@ -530,14 +545,14 @@ func startExtAuthServerGRPC(authConfigIndex index.Index, opts authServerOptions)
 }
 
 func startExtAuthServerHTTP(authConfigIndex index.Index, opts authServerOptions) {
-	startHTTPService("auth", opts.extAuthHTTPPort, service.HTTPAuthorizationBasePath, opts.tlsCertPath, opts.tlsCertKeyPath, service.NewAuthService(authConfigIndex, timeoutMs(opts.timeout), opts.maxHttpRequestBodySize))
+	startHTTPService("auth", opts.extAuthHTTPPort, service.HTTPAuthorizationBasePath, opts.tlsCertPath, opts.tlsCertKeyPath, opts.tlsMinVersion, opts.tlsMaxVersion, opts.tlsCipherSuites, service.NewAuthService(authConfigIndex, timeoutMs(opts.timeout), opts.maxHttpRequestBodySize))
 }
 
 func startOIDCServer(authConfigIndex index.Index, opts authServerOptions) {
-	startHTTPService("oidc", opts.oidcHTTPPort, service.OIDCBasePath, opts.oidcTLSCertPath, opts.oidcTLSCertKeyPath, &service.OidcService{Index: authConfigIndex})
+	startHTTPService("oidc", opts.oidcHTTPPort, service.OIDCBasePath, opts.oidcTLSCertPath, opts.oidcTLSCertKeyPath, opts.oidcTLSMinVersion, opts.oidcTLSMaxVersion, opts.oidcTLSCipherSuites, &service.OidcService{Index: authConfigIndex})
 }
 
-func startHTTPService(name string, port int, basePath, tlsCertPath, tlsCertKeyPath string, handler http.Handler) {
+func startHTTPService(name string, port int, basePath, tlsCertPath, tlsCertKeyPath, tlsMinVersion, tlsMaxVersion string, tlsCipherSuites []string, handler http.Handler) {
 	lis, err := listen(port)
 
 	if err != nil {
@@ -560,11 +575,18 @@ func startHTTPService(name string, port int, basePath, tlsCertPath, tlsCertKeyPa
 		logger.Info(fmt.Sprintf("starting http %s service", name), "port", port, "tls", tlsEnabled)
 
 		if tlsEnabled {
+			tlsCfg, tlsErr := tlsconfig.BuildTLSConfig(tlsMinVersion, tlsMaxVersion, tlsCipherSuites)
+			if tlsErr != nil {
+				logger.Error(tlsErr, fmt.Sprintf("failed to build tls config for the http %s service", name))
+				os.Exit(1)
+			}
+			tlsCfg.ClientAuth = tls.RequestClientCert
 			server := &http.Server{
-				TLSConfig: &tls.Config{
-					MinVersion: tls.VersionTLS12,
-					ClientAuth: tls.RequestClientCert,
-				},
+				TLSConfig:         tlsCfg,
+				ReadHeaderTimeout: 5 * time.Second,
+				ReadTimeout:       10 * time.Second,
+				WriteTimeout:      10 * time.Second,
+				IdleTimeout:       60 * time.Second,
 			}
 			err = server.ServeTLS(lis, tlsCertPath, tlsCertKeyPath)
 		} else {
