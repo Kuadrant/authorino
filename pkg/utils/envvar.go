@@ -4,10 +4,26 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type envVar interface {
 	string | int | int64 | bool | float32 | float64
+}
+
+func EnvVarStringSlice(key, sep string) []string {
+	val := os.Getenv(key)
+	if val == "" {
+		return nil
+	}
+	parts := strings.Split(val, sep)
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			result = append(result, s)
+		}
+	}
+	return result
 }
 
 func EnvVar[T envVar](key string, def T) T {
