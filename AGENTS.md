@@ -100,6 +100,16 @@ go test -v ./pkg/evaluators/...
 go test -race ./...
 ```
 
+### Static Analysis
+
+```bash
+# Verify GitHub Actions are pinned to commit SHAs
+make verify-ratchet
+
+# Pin GitHub Actions to commit SHAs
+make ratchet-pin
+```
+
 ## Architecture
 
 ### Core Components

@@ -18,6 +18,7 @@ The following tools can be installed as part of the development workflow:
     - [benchstat](https://cs.opensource.google/go/x/perf): for human-friendly test benchmark reports
     - [mockgen](https://github.com/golang/mock): to generate mocks for tests – e.g. `./bin/mockgen -source=pkg/auth/auth.go -destination=pkg/auth/mocks/mock_auth.go`
     - [Kind](https://kind.sigs.k8s.io): for deploying a containerized Kubernetes cluster for integration testing purposes
+    - [Ratchet](https://github.com/sethvargo/ratchet): for pinning and verifying GitHub Actions versions to commit SHAs
 
 - _Other recommended tools to have installed:_
     - [jq](https://stedolan.github.io/jq/)
@@ -225,6 +226,20 @@ The following command deletes the entire Kubernetes cluster started with Kind:
 
 ```sh
 make local-cleanup
+```
+
+### Static analysis
+
+When adding or updating GitHub Actions in workflow files, pin them to commit SHAs using [Ratchet](https://github.com/sethvargo/ratchet):
+
+```sh
+make ratchet-pin
+```
+
+To verify that all actions are properly pinned:
+
+```sh
+make verify-ratchet
 ```
 
 ### Sign your commits
