@@ -24,7 +24,7 @@ jobs:
       version: ${{ steps.validate.outputs.version }}
       release-branch: ${{ steps.validate.outputs.release-branch }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
         with:
           ref: ${{ inputs.source-branch }}
           fetch-depth: 0
@@ -59,7 +59,7 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
         with:
           ref: ${{ needs.setup.outputs.release-branch }}
           fetch-depth: 0
@@ -105,7 +105,7 @@ jobs:
     needs: [setup, prepare-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
 
       - name: Open pull request
         env:
