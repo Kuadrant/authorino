@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	gohttptest "net/http/httptest"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
+	"github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	"github.com/kuadrant/authorino/pkg/evaluators/response"
 	"github.com/kuadrant/authorino/pkg/index"
 	mock_index "github.com/kuadrant/authorino/pkg/index/mocks"
@@ -306,6 +308,71 @@ func TestAuthServiceRawHTTPAuthorization_K8sAdmissionReviewForbidden(t *testing.
 	assert.Equal(t, response.Code, 200)
 	assert.Equal(t, response.Body.String(), `{"kind":"AdmissionReview","apiVersion":"admission.k8s.io/v1","response":{"uid":"2868ade4-a649-4812-b969-3662a7963535","allowed":false,"status":{"metadata":{},"message":"Unauthorized","code":403}}}`)
 	assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
+}
+
+func TestCheckFailsClosedOnContextTimeout(t *testing.T) {
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	// Create a slow HTTP server that delays response - simulates slow metadata endpoint
+	server := gohttptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond) // Slow endpoint
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"slow":"data"}`))
+	}))
+	defer server.Close()
+
+	// Create an AuthConfig with:
+	// - Fast anonymous auth (succeeds immediately)
+	// - Slow HTTP metadata fetch (will hit timeout)
+	// - Authorization policy that would allow (but never runs due to timeout)
+	authCred := auth.NewAuthCredential("", "")
+	identityConfig := &evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}}
+
+	// Add slow HTTP metadata
+	metadataConfig := &evaluators.MetadataConfig{
+		Name: "slow-metadata",
+		GenericHTTP: &metadata.GenericHttp{
+			Endpoint: server.URL,
+			Method:   "GET",
+		},
+	}
+
+	// Authorization that would allow - but will be skipped due to context timeout
+	authorizationPolicy, _ := authorization.NewOPAAuthorization("allow-all", `allow := true`, nil, false, opaParser.RegoV1, 0, context.TODO())
+	authorizationConfig := &evaluators.AuthorizationConfig{Name: "allow-all", OPA: authorizationPolicy}
+
+	authConfig := &evaluators.AuthConfig{
+		IdentityConfigs:      []auth.AuthConfigEvaluator{identityConfig},
+		MetadataConfigs:      []auth.AuthConfigEvaluator{metadataConfig},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authorizationConfig},
+	}
+
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(authConfig)
+
+	// Use a short server timeout (20ms) - will expire during the slow metadata fetch (50ms)
+	authService := &AuthService{Index: indexMock, Timeout: 20 * time.Millisecond}
+
+	resp, err := authService.Check(context.Background(), &envoy_auth.CheckRequest{
+		Attributes: &envoy_auth.AttributeContext{
+			Request: &envoy_auth.AttributeContext_Request{
+				Http: &envoy_auth.AttributeContext_HttpRequest{
+					Host:   "myapp.io",
+					Method: "GET",
+					Path:   "/",
+				},
+			},
+		},
+	})
+
+	assert.NilError(t, err)
+	// Should fail closed with UNAVAILABLE when context times out during pipeline
+	// Without the fix, this would return OK (empty authorization = success)
+	assert.Equal(t, resp.Status.Code, int32(rpc.UNAVAILABLE))
+	denied := resp.GetDeniedResponse()
+	assert.Check(t, denied != nil, "Expected denied response")
 }
 
 func mockAnonymousAccessAuthConfig() *evaluators.AuthConfig {
