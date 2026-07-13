@@ -9,6 +9,8 @@ on:
       - 'install/crd/**'
   workflow_dispatch: {}
 
+permissions: {}
+
 jobs:
   notify-operator:
     name: Notify authorino-operator
