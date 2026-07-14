@@ -1,0 +1,139 @@
+name: Pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (semver, e.g. 1.5.0)"
+        required: true
+        type: string
+      source-branch:
+        description: "Branch to base the pre-release changes on (default: main)"
+        required: false
+        type: string
+        default: "main"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+      release-branch: ${{ steps.validate.outputs.release-branch }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.source-branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version format
+        id: validate
+        run: |
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Invalid semver version: $VERSION"
+            exit 1
+          fi
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          RELEASE_BRANCH="release-${MAJOR}.${MINOR}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release-branch=$RELEASE_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create or verify release branch
+        run: |
+          RELEASE_BRANCH="${{ steps.validate.outputs.release-branch }}"
+          if git ls-remote --exit-code origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
+            echo "Release branch '${RELEASE_BRANCH}' already exists"
+          else
+            echo "Creating release branch '${RELEASE_BRANCH}' from '${{ inputs.source-branch }}'"
+            git checkout -b "${RELEASE_BRANCH}"
+            git push origin "${RELEASE_BRANCH}"
+          fi
+
+  prepare-release:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.release-branch }}
+          fetch-depth: 0
+
+      - name: Create pre-release branch
+        run: |
+          PRE_RELEASE_BRANCH="pre-release-v${{ needs.setup.outputs.version }}"
+          if git ls-remote --exit-code origin "refs/heads/${PRE_RELEASE_BRANCH}" >/dev/null 2>&1; then
+            echo "::error::Pre-release branch '${PRE_RELEASE_BRANCH}' already exists. Delete it first or use a different version."
+            exit 1
+          fi
+          git checkout -b "${PRE_RELEASE_BRANCH}"
+
+      - name: Update release.yaml
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          yq -i ".authorino.version = \"${VERSION}\"" release.yaml
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # ratchet:actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run code generation
+        run: |
+          make generate
+          make manifests
+
+      - name: Commit and push changes
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: prepare release v${VERSION}"
+          fi
+          git push origin "pre-release-v${VERSION}"
+
+  open-pr:
+    needs: [setup, prepare-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          RELEASE_BRANCH="${{ needs.setup.outputs.release-branch }}"
+
+          gh pr create \
+            --base "${RELEASE_BRANCH}" \
+            --head "pre-release-v${VERSION}" \
+            --title "Release v${VERSION}" \
+            --body "$(cat <<EOF
+          ## Release v${VERSION}
+
+          This PR prepares the release of v${VERSION}.
+
+          ### Pre-release changes
+          - Updated \`release.yaml\` version to \`${VERSION}\`
+          - Ran \`make generate\` and \`make manifests\`
+
+          ### Checklist
+          - [ ] Version numbers are correct
+          - [ ] All pre-release modifications look correct
+          - [ ] CI checks pass
+          - [ ] Version gate check passes
+
+          ### Next steps
+          After merging this PR, run the **Release** workflow with branch \`${RELEASE_BRANCH}\`.
+          EOF
+          )"

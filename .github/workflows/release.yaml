@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-branch:
+        description: "Release branch (e.g. release-1.5)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  read-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      major: ${{ steps.parse.outputs.major }}
+      minor: ${{ steps.parse.outputs.minor }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-branch }}
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Parse version from release.yaml
+        id: parse
+        run: |
+          chmod +x .github/scripts/parse-version.sh
+          .github/scripts/parse-version.sh
+
+      - name: Validate branch matches version
+        run: |
+          EXPECTED_BRANCH="release-${{ steps.parse.outputs.major }}.${{ steps.parse.outputs.minor }}"
+          if [[ "${{ inputs.release-branch }}" != "$EXPECTED_BRANCH" ]]; then
+            echo "::error::Branch '${{ inputs.release-branch }}' does not match version ${{ steps.parse.outputs.version }} (expected branch: $EXPECTED_BRANCH)"
+            exit 1
+          fi
+
+      - name: Check for existing release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          if gh release view "v${VERSION}" &>/dev/null; then
+            echo "::error::GitHub Release v${VERSION} already exists"
+            exit 1
+          fi
+
+  smoke-tests:
+    needs: read-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-branch }}
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # ratchet:actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Lint
+        run: make lint
+
+      - name: Unit tests
+        run: make test
+
+      - name: CEL validation tests
+        run: make test-cel
+
+  tag:
+    needs: [read-version, smoke-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-branch }}
+          fetch-depth: 0
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ needs.read-version.outputs.version }}"
+          TAG="v${VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+  build-image:
+    needs: [read-version, tag]
+    uses: ./.github/workflows/build-images.yaml
+    with:
+      version: ${{ needs.read-version.outputs.version }}
+      ref: v${{ needs.read-version.outputs.version }}
+    secrets: inherit
+
+  create-release:
+    needs: [read-version, build-image]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-branch }}
+          fetch-depth: 0
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.read-version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+
+          NOTES_ARGS="--generate-notes"
+          if [[ -n "$PREV_TAG" ]]; then
+            NOTES_ARGS="$NOTES_ARGS --notes-start-tag $PREV_TAG"
+          fi
+
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            $NOTES_ARGS

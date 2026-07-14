@@ -1,0 +1,30 @@
+name: Version Gate
+
+on:
+  pull_request:
+    branches:
+      - "release-**"
+    paths:
+      - "release.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-release-yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Validate release.yaml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/scripts/validate-release-yaml.sh
+          .github/scripts/validate-release-yaml.sh "${{ github.head_ref }}" "Kuadrant"
