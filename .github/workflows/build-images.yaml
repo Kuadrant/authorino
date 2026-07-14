@@ -13,6 +13,9 @@ env:
   IMG_REGISTRY_ORG: kuadrant
   MAIN_BRANCH_NAME: main
 
+permissions:
+  contents: read
+
 jobs:
   prepare:
     name: Prepare build info
@@ -96,6 +99,10 @@ jobs:
   merge:
     name: Create multi-platform manifest
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     needs: [ prepare, build ]
     steps:
       - name: Download digests
@@ -130,5 +137,23 @@ jobs:
             $(printf '${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino@sha256:%s ' *)
       - name: Inspect image
         if: ${{ !env.ACT }}
+        id: inspect
         run: |
           docker buildx imagetools inspect ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino:${{ needs.prepare.outputs.version_tag }}
+
+          digest=$(docker buildx imagetools inspect ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino:${{ needs.prepare.outputs.version_tag }} --format '{{json .Manifest.Digest}}' | tr -d '"')
+          echo "digest=$digest" >> $GITHUB_OUTPUT
+      - name: Install cosign
+        if: ${{ !env.ACT }}
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # ratchet:sigstore/cosign-installer@v3
+      - name: Sign image with cosign
+        if: ${{ !env.ACT }}
+        run: |
+          cosign sign --yes ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino@${{ steps.inspect.outputs.digest }}
+      - name: Attest build provenance
+        if: ${{ !env.ACT }}
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # ratchet:actions/attest@v4
+        with:
+          subject-name: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
+          subject-digest: ${{ steps.inspect.outputs.digest }}
+          push-to-registry: true

@@ -55,6 +55,7 @@ var (
 		rpc.NOT_FOUND:           envoy_type.StatusCode_NotFound,
 		rpc.UNAUTHENTICATED:     envoy_type.StatusCode_Unauthorized,
 		rpc.PERMISSION_DENIED:   envoy_type.StatusCode_Forbidden,
+		rpc.UNAVAILABLE:         envoy_type.StatusCode_ServiceUnavailable,
 	}
 
 	authServerResponseStatusMetric = metrics.NewDynamicCounter("auth_server_response_status", "Response status of authconfigs sent by the auth server.")
@@ -298,6 +299,14 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 
 	pipeline := NewAuthPipeline(log.IntoContext(ctx, requestLogger), req, *authConfig)
 	result := pipeline.Evaluate()
+
+	// Re-check context after evaluation - if context was cancelled during pipeline execution,
+	// the result may be incorrectly successful (empty authorization result). Fail closed instead.
+	if err := context.CheckContext(ctx); err != nil {
+		result = auth.AuthResult{Code: rpc.UNAVAILABLE}
+		span.RecordError(err)
+		span.SetStatus(otel_codes.Error, err.Error())
+	}
 
 	a.logAuthResult(result, ctx)
 

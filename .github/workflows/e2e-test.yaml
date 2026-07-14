@@ -8,6 +8,9 @@ on:
         required: true
         default: latest
 
+permissions:
+  contents: read
+
 jobs:
   e2e-tests:
     name: End-to-end Tests

@@ -82,12 +82,28 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 		_ = Body.Close()
 	}(resp.Body)
 
+	// a non-200 response (e.g. invalid client credentials) is not a valid introspection
+	// result and may not carry the RFC 7662 "active" field; treat it as an error instead
+	// of attempting to parse it as a successful introspection response.
+	// The returned error only carries the status, since it is surfaced to the client (via
+	// the X-Ext-Auth-Reason header) and logged; the response body may contain data from the
+	// auth server and is only logged at debug level.
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.FromContext(ctx).WithName("oauth2").V(1).Info("token introspection request failed", "status", resp.Status, "response", string(body))
+		return nil, fmt.Errorf("token introspection request failed: %s", resp.Status)
+	}
+
 	// parse the response
 	var claims map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&claims); err != nil {
 		return nil, err
 	} else {
-		if claims["active"].(bool) {
+		active, ok := claims["active"].(bool)
+		if !ok {
+			return nil, fmt.Errorf("invalid token introspection response: missing or non-boolean \"active\" field")
+		}
+		if active {
 			return claims, nil
 		} else {
 			return nil, fmt.Errorf("token is not active")
