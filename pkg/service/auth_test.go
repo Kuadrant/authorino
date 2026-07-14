@@ -339,7 +339,7 @@ func TestCheckFailsClosedOnContextTimeout(t *testing.T) {
 	}
 
 	// Authorization that would allow - but will be skipped due to context timeout
-	authorizationPolicy, _ := authorization.NewOPAAuthorization("allow-all", `allow := true`, nil, false, opaParser.RegoV1, 0, context.TODO())
+	authorizationPolicy, _ := authorization.NewOPAAuthorization("allow-all", `allow = true`, nil, false, 0, context.TODO())
 	authorizationConfig := &evaluators.AuthorizationConfig{Name: "allow-all", OPA: authorizationPolicy}
 
 	authConfig := &evaluators.AuthConfig{
