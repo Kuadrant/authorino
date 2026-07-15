@@ -69,7 +69,7 @@ func TestOIDCProviderVerifierUnknownHost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), "http://unreachable-server", 0, nil)
+	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), "http://unreachable-server", "", 0, nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
@@ -91,7 +91,7 @@ func TestOIDCProviderVerifierNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 0, nil)
+	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 0, nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
@@ -113,7 +113,7 @@ func TestOIDCProviderVerifierInternalError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 0, nil)
+	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 0, nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
@@ -143,7 +143,7 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 3, nil) // refresh every 3 seconds
+	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 3, nil) // refresh every 3 seconds
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 	defer func(evaluator *JWTAuthentication, ctx context.Context) {
@@ -176,7 +176,7 @@ func TestOIDCProviderVerifierRefreshDisabled(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 0, nil) // refresh disabled
+	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 0, nil) // refresh disabled
 	defer func(verifier *oidcProviderVerifier, ctx context.Context) {
 		_ = verifier.Clean(ctx)
 	}(jwtVerifier.(*oidcProviderVerifier), context.Background())
@@ -223,7 +223,7 @@ func TestJWKSVerifierTokenExpired(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost), nil)
+	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost), "", nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 
@@ -242,7 +242,7 @@ func TestJWKSVerifierMalformedJWT(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost), nil)
+	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost), "", nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
 	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
 

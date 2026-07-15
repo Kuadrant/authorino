@@ -381,11 +381,14 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		case api.JwtAuthentication:
 			var jwtVerifier identity_evaluators.JWTVerifier
 			if identity.Jwt.IssuerUrl != "" {
-				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL, identity.Jwt.Timeout)
+				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.Issuer, identity.Jwt.TTL, identity.Jwt.Timeout)
 			} else if identity.Jwt.JwksUrl != "" {
-				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Timeout)
+				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Issuer, identity.Jwt.Timeout)
 			} else {
 				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
+			}
+			if identity.Jwt.Issuer == "" {
+				log.FromContext(ctxWithLogger).Info("JWT authentication does not verify the token issuer (iss) claim; set issuer to enforce it, or verify it via an authorization rule", "authentication", identityCfgName)
 			}
 			translatedIdentity.JWTAuthentication = identity_evaluators.NewJWTAuthentication(jwtVerifier, authCred)
 
