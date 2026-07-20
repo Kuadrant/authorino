@@ -73,6 +73,8 @@ jobs:
           fi
           git checkout -b "${PRE_RELEASE_BRANCH}"
 
+      - uses: ./.github/actions/install-yq
+
       - name: Update release.yaml
         run: |
           VERSION="${{ needs.setup.outputs.version }}"
