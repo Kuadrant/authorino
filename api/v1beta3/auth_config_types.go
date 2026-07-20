@@ -387,8 +387,7 @@ type JwtAuthenticationSpec struct {
 	// The expected value of the "iss" (issuer) claim of the JWT.
 	// If set, Authorino rejects, at the authentication phase, any token whose "iss" claim does not equal this value.
 	// If omitted, the issuer claim is not verified — it can still be checked via an authorization rule (CEL, pattern-matching or OPA).
-	// Applies to both issuerUrl and jwksUrl. It usually matches issuerUrl, but may differ when the OpenID Connect discovery
-	// endpoint is reached at a different URL than the issuer stamped into the tokens (e.g. cluster-internal discovery vs external issuer).
+	// Applies to both issuerUrl and jwksUrl.
 	// +optional
 	Issuer string `json:"issuer,omitempty"`
 
