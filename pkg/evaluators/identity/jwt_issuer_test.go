@@ -165,8 +165,7 @@ func TestOIDCProviderVerifier_IssuerDiffersFromIssuerUrl_EnforcesConfiguredIssue
 	assert.ErrorContains(t, err, "issued by a different provider")
 }
 
-// jwksUrl path, issuer set: `iss` is enforced here too — the exact behavior the boolean design
-// could never provide on the raw-JWKS path.
+// jwksUrl path, issuer set: `iss` is enforced
 func TestJWKSVerifier_IssuerSet_EnforcesIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
 	authServer := newIdPMock(jwks)
