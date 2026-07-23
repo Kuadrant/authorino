@@ -1,6 +1,6 @@
 # Build the authorino binary
 # https://catalog.redhat.com/software/containers/ubi10/go-toolset
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi10/go-toolset:1.25 AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi10/go-toolset:1.26 AS builder
 WORKDIR /usr/src/authorino
 COPY ./ ./
 ARG version
