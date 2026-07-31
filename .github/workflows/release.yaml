@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+env:
+  IMG_REGISTRY_HOST: quay.io
+  IMG_REGISTRY_ORG: kuadrant
+
 jobs:
   read-version:
     runs-on: ubuntu-latest
@@ -46,6 +50,9 @@ jobs:
           VERSION="${{ steps.parse.outputs.version }}"
           if gh release view "v${VERSION}" &>/dev/null; then
             echo "::error::GitHub Release v${VERSION} already exists"
+            if [ "$(gh release view "v${VERSION}" --json isDraft --jq '.isDraft')" = "true" ]; then
+              echo "::error::Updating of draft releases is currently not supported. Please remove existing drafts"
+            fi
             exit 1
           fi
 
@@ -101,8 +108,15 @@ jobs:
       ref: v${{ needs.read-version.outputs.version }}
     secrets: inherit
 
-  create-release:
+  image-smoke-test:
     needs: [read-version, build-image]
+    uses: ./.github/workflows/smoke-test.yaml
+    with:
+      authorino-image: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino:v${{ needs.read-version.outputs.version }}
+      ref: ${{ inputs.release-branch }}
+
+  create-release:
+    needs: [read-version, build-image, image-smoke-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
