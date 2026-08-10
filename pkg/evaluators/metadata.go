@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/evaluators/metadata"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -22,6 +24,7 @@ type MetadataConfig struct {
 	Conditions jsonexp.Expression `yaml:"conditions"`
 	Metrics    bool               `yaml:"metrics"`
 	Cache      EvaluatorCache
+	flight     singleflight.Group
 
 	UserInfo    *metadata.UserInfo    `yaml:"userinfo,omitempty"`
 	UMA         *metadata.UMA         `yaml:"uma,omitempty"`
@@ -44,35 +47,49 @@ func (config *MetadataConfig) GetAuthConfigEvaluator() auth.AuthConfigEvaluator 
 // impl:AuthConfigEvaluator
 
 func (config *MetadataConfig) Call(pipeline auth.AuthPipeline, ctx context.Context) (interface{}, error) {
-	if evaluator := config.GetAuthConfigEvaluator(); evaluator == nil {
+	evaluator := config.GetAuthConfigEvaluator()
+	if evaluator == nil {
 		return nil, fmt.Errorf("invalid metadata config")
-	} else {
-		logger := log.FromContext(ctx).WithName("metadata").WithValues("config", config.Name)
+	}
 
-		cache := config.Cache
-		var cacheKey interface{}
+	logger := log.FromContext(ctx).WithName("metadata").WithValues("config", config.Name)
 
-		if cache != nil {
-			cacheKey, _ = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
-			if cacheKey != nil {
-				if cachedObj, err := cache.Get(cacheKey); err != nil {
-					logger.V(1).Error(err, "failed to retrieve data from the cache")
-				} else if cachedObj != nil {
-					return cachedObj, nil
+	cache := config.Cache
+	var cacheKey interface{}
+
+	if cache != nil {
+		cacheKey, _ = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
+		if cacheKey != nil {
+			if cachedObj, err := cache.Get(cacheKey); err != nil {
+				logger.V(1).Error(err, "failed to retrieve data from the cache")
+			} else if cachedObj != nil {
+				return cachedObj, nil
+			}
+		}
+	}
+
+	if cache != nil && cacheKey != nil {
+		flightKey := fmt.Sprintf("%s/%v", config.Name, cacheKey)
+		result, err, shared := config.flight.Do(flightKey, func() (interface{}, error) {
+			if cachedObj, _ := cache.Get(cacheKey); cachedObj != nil {
+				return cachedObj, nil
+			}
+			obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+			if err == nil {
+				if setErr := cache.Set(cacheKey, obj); setErr != nil {
+					logger.V(1).Info("unable to store data in the cache", "err", setErr)
 				}
 			}
+			return obj, err
+		})
+		if shared {
+			logger.V(1).Info("singleflight: coalesced duplicate metadata call", "key", flightKey)
 		}
-
-		obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
-
-		if err == nil && cacheKey != nil {
-			if err := cache.Set(cacheKey, obj); err != nil {
-				logger.V(1).Info("unable to store data in the cache", "err", err)
-			}
-		}
-
-		return obj, err
+		return result, err
 	}
+
+	obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
+	return obj, err
 }
 
 // impl:NamedEvaluator
