@@ -556,6 +556,48 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	return labels
 }
 
+func (pipeline *AuthPipeline) loggingFields() map[string]string {
+	fields := make(map[string]string)
+
+	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
+	if loggingFields, ok := filteredMetadata["io.kuadrant.logging.fields"]; ok {
+		for k, v := range loggingFields.Fields {
+			switch kind := v.Kind.(type) {
+			case *structpb.Value_StringValue:
+				fields[k] = kind.StringValue
+
+			case *structpb.Value_NumberValue:
+				fields[k] = fmt.Sprintf("%v", kind.NumberValue)
+
+			case *structpb.Value_BoolValue:
+				fields[k] = fmt.Sprintf("%v", kind.BoolValue)
+
+			case *structpb.Value_StructValue:
+				if celExprField, ok := kind.StructValue.Fields["cel_expr"]; ok {
+					if exprStr := celExprField.GetStringValue(); exprStr != "" {
+						expr, err := cel.NewExpression(exprStr)
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
+							continue
+						}
+						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
+							continue
+						}
+						fields[k] = fmt.Sprintf("%v", value)
+					}
+				}
+
+			default:
+				pipeline.Logger.V(1).Info("unexpected value kind", "kind", kind)
+			}
+		}
+	}
+
+	return fields
+}
+
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {
 	return pipeline.Request
 }
