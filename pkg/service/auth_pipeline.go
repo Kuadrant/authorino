@@ -580,7 +580,7 @@ func (pipeline *AuthPipeline) loggingFields() map[string]string {
 							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
 							continue
 						}
-						value, err := expr.ResolveFor(log.RedactedAuthorizationJSON(pipeline.GetAuthorizationJSON()))
+						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
 						if err != nil {
 							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
 							continue
