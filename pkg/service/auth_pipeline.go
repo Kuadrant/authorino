@@ -560,8 +560,8 @@ func (pipeline *AuthPipeline) loggingFields() map[string]string {
 	fields := make(map[string]string)
 
 	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
-	if loggingFields, ok := filteredMetadata["io.kuadrant.logging.fields"]; ok {
-		for k, v := range loggingFields.Fields {
+	if customFields, ok := filteredMetadata["io.kuadrant.logging.fields"]; ok {
+		for k, v := range customFields.Fields {
 			switch kind := v.Kind.(type) {
 			case *structpb.Value_StringValue:
 				fields[k] = kind.StringValue
@@ -580,7 +580,7 @@ func (pipeline *AuthPipeline) loggingFields() map[string]string {
 							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
 							continue
 						}
-						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						value, err := expr.ResolveFor(log.RedactedAuthorizationJSON(pipeline.GetAuthorizationJSON()))
 						if err != nil {
 							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
 							continue
