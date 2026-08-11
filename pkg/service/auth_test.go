@@ -389,7 +389,9 @@ func setupTestTracer(t *testing.T) *tracetest.InMemoryExporter {
 	otel.SetTracerProvider(tp)
 	t.Cleanup(func() {
 		otel.SetTracerProvider(prev)
-		tp.Shutdown(context.Background())
+		if err := tp.Shutdown(context.Background()); err != nil {
+			t.Errorf("failed to shutdown TracerProvider: %v", err)
+		}
 	})
 	return exporter
 }
@@ -447,6 +449,10 @@ func TestCheckSpanAttributes_AllowedRequest(t *testing.T) {
 	assert.Assert(t, ok)
 	assert.Equal(t, val.AsString(), "anonymous")
 
+	val, ok = findSpanAttr(spans, trace.IdentityTypeAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "IDENTITY_NOOP")
+
 	_, ok = findSpanAttr(spans, trace.AuthDenialReasonAttr)
 	assert.Assert(t, !ok, "denial reason should not be set on allowed request")
 }
@@ -495,6 +501,10 @@ func TestCheckSpanAttributes_DeniedRequest(t *testing.T) {
 	val, ok = findSpanAttr(spans, trace.AuthConfigNameAttr)
 	assert.Assert(t, ok)
 	assert.Equal(t, val.AsString(), "protected-api")
+
+	val, ok = findSpanAttr(spans, trace.AuthConfigNamespaceAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "prod")
 }
 
 func TestCheckSpanAttributes_ServiceNotFound(t *testing.T) {
@@ -521,6 +531,10 @@ func TestCheckSpanAttributes_ServiceNotFound(t *testing.T) {
 	assert.Assert(t, ok)
 	assert.Equal(t, val.AsString(), "DENY")
 
+	val, ok = findSpanAttr(spans, trace.AuthResponseCodeAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "NOT_FOUND")
+
 	val, ok = findSpanAttr(spans, trace.AuthDenialReasonAttr)
 	assert.Assert(t, ok)
 	assert.Equal(t, val.AsString(), "Service not found")
@@ -545,6 +559,10 @@ func TestCheckSpanAttributes_InvalidRequest(t *testing.T) {
 	val, ok = findSpanAttr(spans, trace.AuthResponseCodeAttr)
 	assert.Assert(t, ok)
 	assert.Equal(t, val.AsString(), "INVALID_ARGUMENT")
+
+	val, ok = findSpanAttr(spans, trace.AuthDenialReasonAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "Invalid request")
 }
 
 func mockAnonymousAccessAuthConfig() *evaluators.AuthConfig {
