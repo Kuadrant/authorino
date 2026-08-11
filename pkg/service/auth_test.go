@@ -27,8 +27,14 @@ import (
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	opaParser "github.com/open-policy-agent/opa/v1/ast"
+	"go.opentelemetry.io/otel"
+	otel_attr "go.opentelemetry.io/otel/attribute"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/kuadrant/authorino/pkg/trace"
 )
 
 const (
@@ -373,6 +379,172 @@ func TestCheckFailsClosedOnContextTimeout(t *testing.T) {
 	assert.Equal(t, resp.Status.Code, int32(rpc.UNAVAILABLE))
 	denied := resp.GetDeniedResponse()
 	assert.Check(t, denied != nil, "Expected denied response")
+}
+
+func setupTestTracer(t *testing.T) *tracetest.InMemoryExporter {
+	t.Helper()
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() {
+		otel.SetTracerProvider(prev)
+		tp.Shutdown(context.Background())
+	})
+	return exporter
+}
+
+func findSpanAttr(spans tracetest.SpanStubs, attrKey string) (otel_attr.Value, bool) {
+	for _, s := range spans {
+		for _, a := range s.Attributes {
+			if string(a.Key) == attrKey {
+				return a.Value, true
+			}
+		}
+	}
+	return otel_attr.Value{}, false
+}
+
+func TestCheckSpanAttributes_AllowedRequest(t *testing.T) {
+	exporter := setupTestTracer(t)
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	authConfig := mockAnonymousAccessAuthConfig()
+	authConfig.Labels = map[string]string{"authconfig": "my-config", "namespace": "my-ns"}
+
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(authConfig)
+
+	service := &AuthService{Index: indexMock}
+	_, err := service.Check(context.Background(), &envoy_auth.CheckRequest{
+		Attributes: &envoy_auth.AttributeContext{
+			Request: &envoy_auth.AttributeContext_Request{
+				Http: &envoy_auth.AttributeContext_HttpRequest{Host: "myapp.io", Method: "GET", Path: "/"},
+			},
+		},
+	})
+	assert.NilError(t, err)
+
+	spans := exporter.GetSpans()
+	val, ok := findSpanAttr(spans, trace.AuthResultAttr)
+	assert.Assert(t, ok, "expected authorino.auth.result attribute")
+	assert.Equal(t, val.AsString(), "ALLOW")
+
+	val, ok = findSpanAttr(spans, trace.AuthResponseCodeAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "OK")
+
+	val, ok = findSpanAttr(spans, trace.AuthConfigNameAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "my-config")
+
+	val, ok = findSpanAttr(spans, trace.AuthConfigNamespaceAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "my-ns")
+
+	val, ok = findSpanAttr(spans, trace.IdentitySourceAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "anonymous")
+
+	_, ok = findSpanAttr(spans, trace.AuthDenialReasonAttr)
+	assert.Assert(t, !ok, "denial reason should not be set on allowed request")
+}
+
+func TestCheckSpanAttributes_DeniedRequest(t *testing.T) {
+	exporter := setupTestTracer(t)
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	authCred := auth.NewAuthCredential("", "")
+	identityConfig := &evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}}
+	authorizationPolicy, _ := authorization.NewOPAAuthorization("deny-policy", `allow := false`, nil, false, opaParser.RegoV1, 0, context.TODO())
+	authorizationConfig := &evaluators.AuthorizationConfig{Name: "always-deny", OPA: authorizationPolicy}
+	authConfig := &evaluators.AuthConfig{
+		Labels:               map[string]string{"authconfig": "protected-api", "namespace": "prod"},
+		IdentityConfigs:      []auth.AuthConfigEvaluator{identityConfig},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{authorizationConfig},
+	}
+
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("myapp.io").Return(authConfig)
+
+	service := &AuthService{Index: indexMock}
+	resp, err := service.Check(context.Background(), &envoy_auth.CheckRequest{
+		Attributes: &envoy_auth.AttributeContext{
+			Request: &envoy_auth.AttributeContext_Request{
+				Http: &envoy_auth.AttributeContext_HttpRequest{Host: "myapp.io", Method: "GET", Path: "/"},
+			},
+		},
+	})
+	assert.NilError(t, err)
+	assert.Equal(t, resp.Status.Code, int32(rpc.PERMISSION_DENIED))
+
+	spans := exporter.GetSpans()
+	val, ok := findSpanAttr(spans, trace.AuthResultAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "DENY")
+
+	val, ok = findSpanAttr(spans, trace.AuthResponseCodeAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "PERMISSION_DENIED")
+
+	_, ok = findSpanAttr(spans, trace.AuthDenialReasonAttr)
+	assert.Assert(t, ok, "denial reason should be set on denied request")
+
+	val, ok = findSpanAttr(spans, trace.AuthConfigNameAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "protected-api")
+}
+
+func TestCheckSpanAttributes_ServiceNotFound(t *testing.T) {
+	exporter := setupTestTracer(t)
+	mockController := gomock.NewController(t)
+	defer mockController.Finish()
+
+	indexMock := mock_index.NewMockIndex(mockController)
+	indexMock.EXPECT().Get("unknown.io").Return(nil)
+
+	service := &AuthService{Index: indexMock}
+	resp, err := service.Check(context.Background(), &envoy_auth.CheckRequest{
+		Attributes: &envoy_auth.AttributeContext{
+			Request: &envoy_auth.AttributeContext_Request{
+				Http: &envoy_auth.AttributeContext_HttpRequest{Host: "unknown.io", Method: "GET", Path: "/"},
+			},
+		},
+	})
+	assert.NilError(t, err)
+	assert.Equal(t, resp.Status.Code, int32(rpc.NOT_FOUND))
+
+	spans := exporter.GetSpans()
+	val, ok := findSpanAttr(spans, trace.AuthResultAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "DENY")
+
+	val, ok = findSpanAttr(spans, trace.AuthDenialReasonAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "Service not found")
+
+	_, ok = findSpanAttr(spans, trace.AuthConfigNameAttr)
+	assert.Assert(t, !ok, "auth_config.name should not be set when service not found")
+}
+
+func TestCheckSpanAttributes_InvalidRequest(t *testing.T) {
+	exporter := setupTestTracer(t)
+
+	service := &AuthService{Index: index.NewIndex()}
+	resp, err := service.Check(context.Background(), &envoy_auth.CheckRequest{})
+	assert.NilError(t, err)
+	assert.Equal(t, resp.Status.Code, int32(rpc.INVALID_ARGUMENT))
+
+	spans := exporter.GetSpans()
+	val, ok := findSpanAttr(spans, trace.AuthResultAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "DENY")
+
+	val, ok = findSpanAttr(spans, trace.AuthResponseCodeAttr)
+	assert.Assert(t, ok)
+	assert.Equal(t, val.AsString(), "INVALID_ARGUMENT")
 }
 
 func mockAnonymousAccessAuthConfig() *evaluators.AuthConfig {

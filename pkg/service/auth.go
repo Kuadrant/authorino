@@ -13,6 +13,7 @@ import (
 
 	"github.com/kuadrant/authorino/pkg/auth"
 	"github.com/kuadrant/authorino/pkg/context"
+	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/index"
 	"github.com/kuadrant/authorino/pkg/log"
 	"github.com/kuadrant/authorino/pkg/metrics"
@@ -23,7 +24,9 @@ import (
 	envoy_type "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/gogo/googleapis/google/rpc"
 	"github.com/google/uuid"
+	otel_attr "go.opentelemetry.io/otel/attribute"
 	otel_codes "go.opentelemetry.io/otel/codes"
+	otel_trace "go.opentelemetry.io/otel/trace"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 	v1 "k8s.io/api/admission/v1"
@@ -251,6 +254,7 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		span.RecordError(err)
 		span.SetStatus(otel_codes.Error, err.Error())
 		result := auth.AuthResult{Code: rpc.INVALID_ARGUMENT, Message: RESPONSE_MESSAGE_INVALID_REQUEST}
+		setAuthResultSpanAttrs(span, result)
 		return a.deniedResponse(result), nil
 	}
 
@@ -284,12 +288,19 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 	// If we couldn't find the AuthConfig in the config, we return and deny.
 	if authConfig == nil {
 		result := auth.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
+		setAuthResultSpanAttrs(span, result)
 		a.logAuthResult(result, ctx)
 		return a.deniedResponse(result), nil
 	}
 
+	span.SetAttributes(
+		otel_attr.String(trace.AuthConfigNameAttr, authConfig.Labels["authconfig"]),
+		otel_attr.String(trace.AuthConfigNamespaceAttr, authConfig.Labels["namespace"]),
+	)
+
 	if err := context.CheckContext(ctx); err != nil {
 		result := auth.AuthResult{Code: rpc.UNAVAILABLE}
+		setAuthResultSpanAttrs(span, result)
 		a.logAuthResult(result, ctx)
 		context.Cancel(ctx)
 		span.RecordError(err)
@@ -306,6 +317,17 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		result = auth.AuthResult{Code: rpc.UNAVAILABLE}
 		span.RecordError(err)
 		span.SetStatus(otel_codes.Error, err.Error())
+	}
+
+	setAuthResultSpanAttrs(span, result)
+
+	if idConfig, _ := pipeline.GetResolvedIdentity(); idConfig != nil {
+		if ic, ok := idConfig.(*evaluators.IdentityConfig); ok {
+			span.SetAttributes(
+				otel_attr.String(trace.IdentitySourceAttr, ic.GetName()),
+				otel_attr.String(trace.IdentityTypeAttr, ic.GetType()),
+			)
+		}
 	}
 
 	a.logAuthResult(result, ctx)
@@ -497,6 +519,18 @@ func closeWithStatus(respStatusCode envoy_type.StatusCode, response http.Respons
 		closingFunc()
 	}
 	context.Cancel(ctx)
+}
+
+func setAuthResultSpanAttrs(span otel_trace.Span, result auth.AuthResult) {
+	if result.Success() {
+		span.SetAttributes(otel_attr.String(trace.AuthResultAttr, "ALLOW"))
+	} else {
+		span.SetAttributes(otel_attr.String(trace.AuthResultAttr, "DENY"))
+		if result.Message != "" {
+			span.SetAttributes(otel_attr.String(trace.AuthDenialReasonAttr, result.Message))
+		}
+	}
+	span.SetAttributes(otel_attr.String(trace.AuthResponseCodeAttr, result.Code.String()))
 }
 
 func ensureRequestId(requestIdCandidates ...string) string {
