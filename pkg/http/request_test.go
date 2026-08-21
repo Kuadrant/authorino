@@ -742,7 +742,11 @@ func TestMaxResponseBytesRoundTripper(t *testing.T) {
 		defer server.Close()
 
 		client := NewClient(WithTracing(context.Background()), WithMaxResponseBytes(10))
-		resp, err := client.Get(server.URL)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %v", err)
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -769,7 +773,11 @@ func TestMaxResponseBytesRoundTripper(t *testing.T) {
 		defer server.Close()
 
 		client := NewClient(WithTracing(context.Background()), WithMaxResponseBytes(0))
-		resp, err := client.Get(server.URL)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %v", err)
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

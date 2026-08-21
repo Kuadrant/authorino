@@ -274,6 +274,10 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 			return "", fmt.Errorf("unable to read response body: %v", err)
 		}
 
+		if ext.MaxResponseBytes > 0 && int64(len(body)) >= ext.MaxResponseBytes {
+			return "", fmt.Errorf("response body truncated at %d bytes; refusing to compile a potentially incomplete policy", ext.MaxResponseBytes)
+		}
+
 		if resp.StatusCode != http.StatusOK {
 			return "", fmt.Errorf("%s: %s", resp.Status, body)
 		}

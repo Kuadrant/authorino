@@ -214,12 +214,11 @@ func NewClient(opts ...Option) *http.Client {
 
 	client := &http.Client{Timeout: timeout}
 
-	if o.tracingCtx != nil {
-		base := client.Transport
-		if base == nil {
-			base = http.DefaultTransport
+	if o.tracingCtx != nil || o.maxResponseBytes > 0 {
+		transport := http.DefaultTransport
+		if o.tracingCtx != nil {
+			transport = &tracingRoundTripper{base: transport, ctx: o.tracingCtx}
 		}
-		var transport http.RoundTripper = &tracingRoundTripper{base: base, ctx: o.tracingCtx}
 		if o.maxResponseBytes > 0 {
 			transport = &maxResponseBytesRoundTripper{base: transport, maxBytes: o.maxResponseBytes}
 		}

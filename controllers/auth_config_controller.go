@@ -506,20 +506,22 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
+			var umaMaxResponseBytes int64
+			if metadata.Uma.MaxResponseBytes != nil {
+				umaMaxResponseBytes = *metadata.Uma.MaxResponseBytes
+			}
 			if uma, err := metadata_evaluators.NewUMAMetadata(
 				ctx,
 				metadata.Uma.Endpoint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
+				umaMaxResponseBytes,
 			); err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to create UMA metadata evaluator")
 				return nil, err
 			} else {
 				uma.Timeout = metadata.Uma.Timeout
-				if metadata.Uma.MaxResponseBytes != nil {
-					uma.MaxResponseBytes = *metadata.Uma.MaxResponseBytes
-				}
 				translatedMetadata.UMA = uma
 			}
 

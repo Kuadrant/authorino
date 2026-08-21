@@ -279,7 +279,32 @@ func TestOPAExternalUrlMaxResponseBytes(t *testing.T) {
 
 		opa, err := NewOPAAuthorization("test-opa-maxbytes-truncated", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
 
-		assert.Assert(t, err != nil, "expected error due to truncated Rego policy")
+		assert.ErrorContains(t, err, "response body truncated")
+		assert.Assert(t, opa == nil)
+	})
+
+	t.Run("truncated valid rego prefix is rejected", func(t *testing.T) {
+		// The full policy has two rules; truncating to the first rule yields valid Rego
+		// that compiles fine but silently drops the deny logic. The truncation check must
+		// catch this before compilation.
+		fullPolicy := `allow := true
+deny := true`
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: fullPolicy}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: int64(len("allow := true\n")),
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-valid-prefix", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.ErrorContains(t, err, "response body truncated")
 		assert.Assert(t, opa == nil)
 	})
 

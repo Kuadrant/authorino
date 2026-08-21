@@ -442,13 +442,13 @@ The same field is available in:
 - `spec.metadata.*.userInfo` — OIDC UserInfo
 - `spec.metadata.*.uma` — UMA resource registry (applies to discovery, PAT requests, and resource queries)
 
-> **Important:** When a response exceeds the limit, the body is truncated to the specified size. For `application/json` responses, this truncation produces malformed JSON that will cause a decode error. As a result, the evaluator will fail and the corresponding piece of the auth pipeline will not be available.
+> **Important:** When a response exceeds the limit, the body is truncated to the specified size. For `application/json` responses, this truncation produces malformed JSON that can cause a decode error. As a result, the evaluator will fail and the corresponding piece of the auth pipeline will not be available.
 >
 > Depending on how downstream authorization policies handle missing metadata, the outcome can vary:
 > - **Policies that deny access when metadata is absent**: the request will be denied. This is the safer default.
 > - **Policies that fall back to granting access on the absence of metadata**: truncation may cause the policy to inadvertently allow a request that should have been denied. Review your authorization policies to ensure they do not assume missing metadata means "allowed."
 >
-> When `maxResponseBytes` is omitted or set to `0`, no limit is applied and the full response body is read.
+> When `maxResponseBytes` is omitted, no limit is applied and the full response body is read.
 
 ### OIDC UserInfo ([`metadata.userInfo`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#UserInfoMetadataSpec))
 
