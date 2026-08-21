@@ -802,6 +802,33 @@ func TestMaxResponseBytesRoundTripper(t *testing.T) {
 			t.Error("expected inner transport to be *tracingRoundTripper")
 		}
 	})
+
+	t.Run("limits without tracing", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("this is a long response body that exceeds the limit"))
+		}))
+		defer server.Close()
+
+		client := NewClient(WithMaxResponseBytes(10))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %v", err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+		if len(body) != 10 {
+			t.Errorf("expected body length 10, got %d", len(body))
+		}
+	})
 }
 
 func ptr(i int) *int {

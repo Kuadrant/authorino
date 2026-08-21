@@ -149,11 +149,12 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}, timeout
 	return json.UnmashalJSONResponse(resp, &v, nil, maxResponseBytes...)
 }
 
-func NewUMAMetadata(ctx gocontext.Context, endpoint string, clientID string, clientSecret string, maxResponseBytes int64) (*UMA, error) {
+func NewUMAMetadata(ctx gocontext.Context, endpoint string, clientID string, clientSecret string, timeout *int, maxResponseBytes int64) (*UMA, error) {
 	uma := &UMA{
 		Endpoint:         endpoint,
 		ClientID:         clientID,
 		ClientSecret:     clientSecret,
+		Timeout:          timeout,
 		MaxResponseBytes: maxResponseBytes,
 	}
 	if err := uma.discover(ctx); err != nil {

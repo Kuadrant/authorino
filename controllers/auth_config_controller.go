@@ -515,13 +515,13 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				metadata.Uma.Endpoint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
+				metadata.Uma.Timeout,
 				umaMaxResponseBytes,
 			); err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to create UMA metadata evaluator")
 				return nil, err
 			} else {
-				uma.Timeout = metadata.Uma.Timeout
 				translatedMetadata.UMA = uma
 			}
 
