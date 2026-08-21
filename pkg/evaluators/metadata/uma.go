@@ -38,19 +38,19 @@ func (provider *Provider) GetTokenURL() string {
 	return provider.tokenURL
 }
 
-func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx gocontext.Context, timeout *int) ([]interface{}, error) {
+func (provider *Provider) GetResourcesByURI(uri string, pat PAT, ctx gocontext.Context, timeout *int, maxResponseBytes int64) ([]interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
 
-	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx, timeout)
+	resourceIDs, err := provider.queryResourcesByURI(uri, pat, ctx, timeout, maxResponseBytes)
 	if err != nil {
 		return nil, err
 	}
-	return provider.getResourcesByIDs(resourceIDs, pat, ctx, timeout)
+	return provider.getResourcesByIDs(resourceIDs, pat, ctx, timeout, maxResponseBytes)
 }
 
-func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext.Context, timeout *int) ([]string, error) {
+func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext.Context, timeout *int, maxResponseBytes int64) ([]string, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -61,14 +61,14 @@ func (provider *Provider) queryResourcesByURI(uri string, pat PAT, ctx gocontext
 	log.FromContext(ctx).V(1).Info("querying resources by uri", "url", queryResourcesURL.String())
 
 	var resourceIDs []string
-	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs, timeout); err != nil {
+	if err := pat.Get(queryResourcesURL.String(), ctx, &resourceIDs, timeout, maxResponseBytes); err != nil {
 		return nil, err
 	} else {
 		return resourceIDs, nil
 	}
 }
 
-func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx gocontext.Context, timeout *int) ([]interface{}, error) {
+func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx gocontext.Context, timeout *int, maxResponseBytes int64) ([]interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx g
 		go func(id string) {
 			defer waitGroup.Done()
 
-			if data, err := provider.getResourceByID(id, pat, ctx, timeout); err == nil {
+			if data, err := provider.getResourceByID(id, pat, ctx, timeout, maxResponseBytes); err == nil {
 				buf <- data
 			}
 		}(resourceID)
@@ -98,7 +98,7 @@ func (provider *Provider) getResourcesByIDs(resourceIDs []string, pat PAT, ctx g
 	return resourceData, nil
 }
 
-func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocontext.Context, timeout *int) (interface{}, error) {
+func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocontext.Context, timeout *int, maxResponseBytes int64) (interface{}, error) {
 	if err := context.CheckContext(ctx); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (provider *Provider) getResourceByID(resourceID string, pat PAT, ctx gocont
 	log.FromContext(ctx).V(1).Info("getting resource data", "url", resourceURL.String())
 
 	var data interface{}
-	if err := pat.Get(resourceURL.String(), ctx, &data, timeout); err != nil {
+	if err := pat.Get(resourceURL.String(), ctx, &data, timeout, maxResponseBytes); err != nil {
 		return nil, err
 	}
 	return data, nil
@@ -123,7 +123,7 @@ func (pat *PAT) String() string {
 	return pat.AccessToken
 }
 
-func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}, timeout *int) error {
+func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}, timeout *int, maxResponseBytes ...int64) error {
 	if err := context.CheckContext(ctx); err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}, timeout
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := httputil.NewClient(timeout).Do(req)
+	resp, err := httputil.NewClient(httputil.WithTimeout(timeout)).Do(req)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (pat *PAT) Get(rawurl string, ctx gocontext.Context, v interface{}, timeout
 		_ = body.Close()
 	}(resp.Body)
 
-	return json.UnmashalJSONResponse(resp, &v, nil)
+	return json.UnmashalJSONResponse(resp, &v, nil, maxResponseBytes...)
 }
 
 func NewUMAMetadata(ctx gocontext.Context, endpoint string, clientID string, clientSecret string) (*UMA, error) {
@@ -163,10 +163,11 @@ func NewUMAMetadata(ctx gocontext.Context, endpoint string, clientID string, cli
 }
 
 type UMA struct {
-	Endpoint     string `yaml:"endpoint,omitempty"`
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	Timeout      *int
+	Endpoint         string `yaml:"endpoint,omitempty"`
+	ClientID         string `yaml:"client_id"`
+	ClientSecret     string `yaml:"client_secret"`
+	Timeout          *int
+	MaxResponseBytes int64
 
 	provider *Provider
 }
@@ -185,7 +186,7 @@ func (uma *UMA) discover(ctx gocontext.Context) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	if resp, err := httputil.NewClient(uma.Timeout).Do(req); err != nil {
+	if resp, err := httputil.NewClient(httputil.WithTimeout(uma.Timeout)).Do(req); err != nil {
 		return fmt.Errorf("failed to fetch uma config: %v", err)
 	} else {
 		defer func(body io.ReadCloser) {
@@ -194,7 +195,7 @@ func (uma *UMA) discover(ctx gocontext.Context) error {
 
 		var p providerJSON
 		var rawClaims []byte
-		if err = json.UnmashalJSONResponse(resp, &p, &rawClaims); err != nil {
+		if err = json.UnmashalJSONResponse(resp, &p, &rawClaims, uma.MaxResponseBytes); err != nil {
 			return fmt.Errorf("failed to decode uma provider discovery object: %v", err)
 		}
 
@@ -225,7 +226,7 @@ func (uma *UMA) Call(pipeline auth.AuthPipeline, parentCtx gocontext.Context) (i
 
 	// get resource data
 	uri := pipeline.GetHttp().GetPath()
-	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx, uma.Timeout)
+	resourceData, err := uma.provider.GetResourcesByURI(uri, pat, ctx, uma.Timeout, uma.MaxResponseBytes)
 
 	if err != nil {
 		return nil, err
@@ -262,7 +263,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 	// get the response
-	resp, err := httputil.NewClient(uma.Timeout).Do(req)
+	resp, err := httputil.NewClient(httputil.WithTimeout(uma.Timeout)).Do(req)
 	if err != nil {
 		return err
 	}
@@ -271,7 +272,7 @@ func (uma *UMA) requestPAT(ctx gocontext.Context, pat *PAT) error {
 	}(resp.Body)
 
 	// parse the pat
-	if err := json.UnmashalJSONResponse(resp, pat, nil); err != nil {
+	if err := json.UnmashalJSONResponse(resp, pat, nil, uma.MaxResponseBytes); err != nil {
 		return fmt.Errorf("failed to decode uma pat: %v", err)
 	}
 

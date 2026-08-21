@@ -396,6 +396,15 @@ type JwtAuthenticationSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	Timeout *int `json:"timeout,omitempty"`
+
+	// Maximum number of bytes to read from OIDC discovery and JWKS HTTP response bodies.
+	// When set, response body readers will be limited to this size, preventing
+	// unbounded memory consumption from unexpectedly large responses.
+	// If the response exceeds this limit, the truncation will cause a decode error.
+	// If omitted or set to 0, no limit is applied.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
 }
 
 // Settings to perform the OAuth2 token introspection request.
@@ -420,6 +429,15 @@ type OAuth2TokenIntrospectionSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	Timeout *int `json:"timeout,omitempty"`
+
+	// Maximum number of bytes to read from the token introspection HTTP response body.
+	// When set, the response body reader will be limited to this size, preventing
+	// unbounded memory consumption from unexpectedly large responses.
+	// If the response is JSON and exceeds this limit, the truncation will cause a decode error.
+	// If omitted or set to 0, no limit is applied.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
 }
 
 // Parameters of the Kubernetes TokenReview request
@@ -600,6 +618,15 @@ type HttpEndpointSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	Timeout *int `json:"timeout,omitempty"`
+
+	// Maximum number of bytes to read from the HTTP response body.
+	// When set, the response body reader will be limited to this size, preventing
+	// unbounded memory consumption from unexpectedly large responses.
+	// If the response is JSON and exceeds this limit, the truncation will cause a decode error.
+	// If omitted or set to 0, no limit is applied.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
 }
 
 // +kubebuilder:validation:Enum:=GET;POST;PUT;PATCH;DELETE;HEAD;OPTIONS;CONNECT;TRACE
@@ -666,6 +693,15 @@ type UserInfoMetadataSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	Timeout *int `json:"timeout,omitempty"`
+
+	// Maximum number of bytes to read from the UserInfo HTTP response body.
+	// When set, the response body reader will be limited to this size, preventing
+	// unbounded memory consumption from unexpectedly large responses.
+	// If the response exceeds this limit, the truncation will cause a decode error.
+	// If omitted or set to 0, no limit is applied.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
 }
 
 // Settings of the User-Managed Access (UMA) source of resource data.
@@ -686,6 +722,15 @@ type UmaMetadataSpec struct {
 	// +optional
 	// +kubebuilder:validation:Minimum:=0
 	Timeout *int `json:"timeout,omitempty"`
+
+	// Maximum number of bytes to read from UMA HTTP response bodies (discovery, PAT, resource queries).
+	// When set, response body readers will be limited to this size, preventing
+	// unbounded memory consumption from unexpectedly large responses.
+	// If the response exceeds this limit, the truncation will cause a decode error.
+	// If omitted or set to 0, no limit is applied.
+	// +optional
+	// +kubebuilder:validation:Minimum:=1
+	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
 }
 
 // +kubebuilder:validation:XValidation:rule="has(self.patternMatching) ? !(has(self.opa) || has(self.kubernetesSubjectAccessReview) || has(self.spicedb)) : has(self.opa) ? !(has(self.kubernetesSubjectAccessReview) || has(self.spicedb)) : has(self.kubernetesSubjectAccessReview) != has(self.spicedb)",message="Use exactly one of: patternMatching, opa, kubernetesSubjectAccessReview, spicedb"

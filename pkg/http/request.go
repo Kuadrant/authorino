@@ -173,42 +173,85 @@ func (t *tracingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 	return t.base.RoundTrip(req)
 }
 
-// NewClient creates an HTTP client with the specified timeout.
-// If timeoutMs is nil or negative, defaults to 5000ms (5 seconds).
-// If timeoutMs is 0, no timeout is set (matching Go's http.Client convention).
-// If timeoutMs is positive, uses that value as the timeout in milliseconds.
-func NewClient(timeoutMs *int) *http.Client {
-	timeout := 5000 * time.Millisecond // default
-
-	if timeoutMs != nil && *timeoutMs >= 0 {
-		timeout = time.Duration(*timeoutMs) * time.Millisecond
-	}
-
-	return &http.Client{
-		Timeout: timeout,
-	}
+type clientOptions struct {
+	timeoutMs        *int
+	tracingCtx       context.Context
+	maxResponseBytes int64
 }
 
-// NewClientWithTracing creates an HTTP client with the specified timeout and trace propagation.
-// The trace context from ctx will be injected into all outbound HTTP requests made by this client.
-// This is useful for instrumenting HTTP clients used by third-party libraries that create requests
-// internally (e.g., go-oidc for OIDC discovery and JWK fetching).
-//
-// The ctx parameter is used only for trace propagation, not for request cancellation.
-// Callers should use context.Background() or a non-cancellable context for the HTTP request lifecycle.
-func NewClientWithTracing(ctx context.Context, timeoutMs *int) *http.Client {
-	baseClient := NewClient(timeoutMs)
+// Option configures an HTTP client created by NewClient.
+type Option func(*clientOptions)
 
-	// Wrap the transport with trace injection
-	baseTransport := baseClient.Transport
-	if baseTransport == nil {
-		baseTransport = http.DefaultTransport
+// WithTimeout sets the client timeout in milliseconds.
+// If nil or negative, defaults to 5000ms. If 0, no timeout is set.
+func WithTimeout(timeoutMs *int) Option {
+	return func(o *clientOptions) { o.timeoutMs = timeoutMs }
+}
+
+// WithTracing enables OpenTelemetry trace propagation on every outbound request.
+func WithTracing(ctx context.Context) Option {
+	return func(o *clientOptions) { o.tracingCtx = ctx }
+}
+
+// WithMaxResponseBytes limits every response body to the given number of bytes
+// at the transport level, preventing unbounded memory consumption.
+func WithMaxResponseBytes(n int64) Option {
+	return func(o *clientOptions) { o.maxResponseBytes = n }
+}
+
+// NewClient creates an HTTP client with the given options.
+// Without options the client uses the default 5 000 ms timeout.
+func NewClient(opts ...Option) *http.Client {
+	o := &clientOptions{}
+	for _, fn := range opts {
+		fn(o)
 	}
 
-	baseClient.Transport = &tracingRoundTripper{
-		base: baseTransport,
-		ctx:  ctx,
+	timeout := 5000 * time.Millisecond
+	if o.timeoutMs != nil && *o.timeoutMs >= 0 {
+		timeout = time.Duration(*o.timeoutMs) * time.Millisecond
 	}
 
-	return baseClient
+	client := &http.Client{Timeout: timeout}
+
+	if o.tracingCtx != nil {
+		base := client.Transport
+		if base == nil {
+			base = http.DefaultTransport
+		}
+		var transport http.RoundTripper = &tracingRoundTripper{base: base, ctx: o.tracingCtx}
+		if o.maxResponseBytes > 0 {
+			transport = &maxResponseBytesRoundTripper{base: transport, maxBytes: o.maxResponseBytes}
+		}
+		client.Transport = transport
+	}
+
+	return client
+}
+
+// maxResponseBytesRoundTripper wraps an http.RoundTripper and limits the size of response bodies.
+// This prevents unbounded memory consumption when the HTTP client is used by third-party libraries
+// whose response body reads cannot be controlled directly.
+type maxResponseBytesRoundTripper struct {
+	base     http.RoundTripper
+	maxBytes int64
+}
+
+func (rt *maxResponseBytesRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := rt.base.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body = &limitedReadCloser{
+		Reader: io.LimitReader(resp.Body, rt.maxBytes),
+		Closer: resp.Body,
+	}
+	return resp, nil
+}
+
+// limitedReadCloser combines a limited io.Reader with the original io.Closer,
+// so that reads are bounded while the underlying body is still properly closed.
+type limitedReadCloser struct {
+	io.Reader
+	io.Closer
 }

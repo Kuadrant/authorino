@@ -242,6 +242,68 @@ func TestOPANonBooleanAllowed(t *testing.T) {
 	assert.ErrorContains(t, err, "Unauthorized")
 }
 
+func TestOPAExternalUrlMaxResponseBytes(t *testing.T) {
+	t.Run("within limit", func(t *testing.T) {
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: int64(len(opaInlineRegoV1DataMock) + 100),
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-ok", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.NilError(t, err)
+		assertOPAAuthorization(t, opa)
+	})
+
+	t.Run("exceeds limit truncates and causes error", func(t *testing.T) {
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: 10,
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-truncated", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.Assert(t, err != nil, "expected error due to truncated Rego policy")
+		assert.Assert(t, opa == nil)
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: 0,
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-nolimit", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.NilError(t, err)
+		assertOPAAuthorization(t, opa)
+	})
+}
+
 func assertOPAAuthorization(t *testing.T, opa *OPA) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

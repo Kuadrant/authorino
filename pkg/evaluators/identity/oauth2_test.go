@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
@@ -74,6 +75,53 @@ func TestOAuth2Call(t *testing.T) {
 		assert.Assert(t, obj == nil)
 		assert.ErrorContains(t, err, "missing or non-boolean")
 	}
+}
+
+func TestOAuth2MaxResponseBytes(t *testing.T) {
+	largeClaims := `{ "active": true, "sub": "user123", "extra": "` + strings.Repeat("x", 1000) + `" }`
+
+	authServer := httptest.NewHttpServerMock(oauthServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/introspect-large": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: largeClaims}
+		},
+	})
+	defer authServer.Close()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("oauth-opaque-token", nil).AnyTimes()
+
+	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+	pipelineMock.EXPECT().GetHttp().Return(nil).AnyTimes()
+
+	ctx := context.Background()
+
+	t.Run("within limit", func(t *testing.T) {
+		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-large", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
+		oauthEvaluator.MaxResponseBytes = int64(len(largeClaims) + 100)
+		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
+		assert.NilError(t, err)
+		claims := obj.(map[string]interface{})
+		assert.Assert(t, claims["active"])
+	})
+
+	t.Run("exceeds limit causes decode error", func(t *testing.T) {
+		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-large", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
+		oauthEvaluator.MaxResponseBytes = 50
+		_, err := oauthEvaluator.Call(pipelineMock, ctx)
+		assert.Assert(t, err != nil)
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		oauthEvaluator := NewOAuth2Identity(fmt.Sprintf("http://%v/introspect-large", oauthServerHost), "access_token", "client-id", "client-secret", authCredMock)
+		oauthEvaluator.MaxResponseBytes = 0
+		obj, err := oauthEvaluator.Call(pipelineMock, ctx)
+		assert.NilError(t, err)
+		claims := obj.(map[string]interface{})
+		assert.Assert(t, claims["active"])
+	})
 }
 
 func TestDefaultTokenTypeHint(t *testing.T) {

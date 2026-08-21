@@ -229,9 +229,10 @@ type OPAExternalSource struct {
 	Endpoint     string
 	SharedSecret string
 	auth.AuthCredentials
-	TTL       int
-	Timeout   *int
-	refresher workers.Worker
+	TTL              int
+	Timeout          *int
+	MaxResponseBytes int64
+	refresher        workers.Worker
 }
 
 func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (string, error) {
@@ -256,14 +257,19 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 	// Use the caller's context for tracing (so traces are linked), but the request uses Background context
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	if resp, err := httputil.NewClient(ext.Timeout).Do(req); err != nil {
+	if resp, err := httputil.NewClient(httputil.WithTimeout(ext.Timeout)).Do(req); err != nil {
 		return "", fmt.Errorf("failed to fetch Rego config: %v", err)
 	} else {
 		defer func(Body io.ReadCloser) {
 			_ = Body.Close()
 		}(resp.Body)
 
-		body, err := io.ReadAll(resp.Body)
+		var bodyReader io.Reader = resp.Body
+		if ext.MaxResponseBytes > 0 {
+			bodyReader = io.LimitReader(resp.Body, ext.MaxResponseBytes)
+		}
+
+		body, err := io.ReadAll(bodyReader)
 		if err != nil {
 			return "", fmt.Errorf("unable to read response body: %v", err)
 		}
