@@ -401,7 +401,7 @@ type JwtAuthenticationSpec struct {
 	// When set, response body readers will be limited to this size, preventing
 	// unbounded memory consumption from unexpectedly large responses.
 	// If the response exceeds this limit, the truncation will cause a decode error.
-	// If omitted or set to 0, no limit is applied.
+	// If omitted, no limit is applied.
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
 	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
@@ -434,7 +434,7 @@ type OAuth2TokenIntrospectionSpec struct {
 	// When set, the response body reader will be limited to this size, preventing
 	// unbounded memory consumption from unexpectedly large responses.
 	// If the response is JSON and exceeds this limit, the truncation will cause a decode error.
-	// If omitted or set to 0, no limit is applied.
+	// If omitted, no limit is applied.
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
 	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
@@ -623,7 +623,7 @@ type HttpEndpointSpec struct {
 	// When set, the response body reader will be limited to this size, preventing
 	// unbounded memory consumption from unexpectedly large responses.
 	// If the response is JSON and exceeds this limit, the truncation will cause a decode error.
-	// If omitted or set to 0, no limit is applied.
+	// If omitted, no limit is applied.
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
 	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
@@ -698,7 +698,7 @@ type UserInfoMetadataSpec struct {
 	// When set, the response body reader will be limited to this size, preventing
 	// unbounded memory consumption from unexpectedly large responses.
 	// If the response exceeds this limit, the truncation will cause a decode error.
-	// If omitted or set to 0, no limit is applied.
+	// If omitted, no limit is applied.
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
 	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`
@@ -727,7 +727,7 @@ type UmaMetadataSpec struct {
 	// When set, response body readers will be limited to this size, preventing
 	// unbounded memory consumption from unexpectedly large responses.
 	// If the response exceeds this limit, the truncation will cause a decode error.
-	// If omitted or set to 0, no limit is applied.
+	// If omitted, no limit is applied.
 	// +optional
 	// +kubebuilder:validation:Minimum:=1
 	MaxResponseBytes *int64 `json:"maxResponseBytes,omitempty"`

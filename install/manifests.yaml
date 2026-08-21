@@ -298,7 +298,7 @@ spec:
                             When set, response body readers will be limited to this size, preventing
                             unbounded memory consumption from unexpectedly large responses.
                             If the response exceeds this limit, the truncation will cause a decode error.
-                            If omitted or set to 0, no limit is applied.
+                            If omitted, no limit is applied.
                           format: int64
                           minimum: 1
                           type: integer
@@ -370,7 +370,7 @@ spec:
                             When set, the response body reader will be limited to this size, preventing
                             unbounded memory consumption from unexpectedly large responses.
                             If the response is JSON and exceeds this limit, the truncation will cause a decode error.
-                            If omitted or set to 0, no limit is applied.
+                            If omitted, no limit is applied.
                           format: int64
                           minimum: 1
                           type: integer
@@ -992,7 +992,7 @@ spec:
                                 When set, the response body reader will be limited to this size, preventing
                                 unbounded memory consumption from unexpectedly large responses.
                                 If the response is JSON and exceeds this limit, the truncation will cause a decode error.
-                                If omitted or set to 0, no limit is applied.
+                                If omitted, no limit is applied.
                               format: int64
                               minimum: 1
                               type: integer
@@ -1615,7 +1615,7 @@ spec:
                             When set, the response body reader will be limited to this size, preventing
                             unbounded memory consumption from unexpectedly large responses.
                             If the response is JSON and exceeds this limit, the truncation will cause a decode error.
-                            If omitted or set to 0, no limit is applied.
+                            If omitted, no limit is applied.
                           format: int64
                           minimum: 1
                           type: integer
@@ -1989,7 +1989,7 @@ spec:
                             When set, the response body reader will be limited to this size, preventing
                             unbounded memory consumption from unexpectedly large responses.
                             If the response is JSON and exceeds this limit, the truncation will cause a decode error.
-                            If omitted or set to 0, no limit is applied.
+                            If omitted, no limit is applied.
                           format: int64
                           minimum: 1
                           type: integer
@@ -2164,7 +2164,7 @@ spec:
                             When set, response body readers will be limited to this size, preventing
                             unbounded memory consumption from unexpectedly large responses.
                             If the response exceeds this limit, the truncation will cause a decode error.
-                            If omitted or set to 0, no limit is applied.
+                            If omitted, no limit is applied.
                           format: int64
                           minimum: 1
                           type: integer
@@ -2194,7 +2194,7 @@ spec:
                             When set, the response body reader will be limited to this size, preventing
                             unbounded memory consumption from unexpectedly large responses.
                             If the response exceeds this limit, the truncation will cause a decode error.
-                            If omitted or set to 0, no limit is applied.
+                            If omitted, no limit is applied.
                           format: int64
                           minimum: 1
                           type: integer
