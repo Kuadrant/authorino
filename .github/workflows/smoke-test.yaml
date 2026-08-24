@@ -35,6 +35,16 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Check out code (workflow_call ref)
+        if: github.event.name == "workflow_call"
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
+      - name: Check out code (trusted default branch)
+        if: github.event.name == "workflow_call"
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ github.event.respository.default_branch }}
       - name: Check out code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
         with:
