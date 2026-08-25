@@ -9,6 +9,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/expressions"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
+	"github.com/kuadrant/authorino/pkg/log"
 
 	multierror "github.com/hashicorp/go-multierror"
 )
@@ -55,6 +56,13 @@ func (config *AuthConfig) Clean(ctx context.Context) error {
 	for _, evaluator := range evaluators {
 		go func(e auth.AuthConfigEvaluator) {
 			defer wait.Done()
+			// cleanup runs in its own goroutine, so a panic here would be unrecoverable by the
+			// caller and would take the whole process down with it
+			defer func() {
+				if r := recover(); r != nil {
+					log.FromContext(ctx).Error(fmt.Errorf("%v", r), "recovered from panic while cleaning up evaluator", "evaluator", e)
+				}
+			}()
 			if cleaner, ok := e.(auth.AuthConfigCleaner); ok {
 				if err := cleaner.Clean(ctx); err != nil {
 					errors = multierror.Append(errors, err)

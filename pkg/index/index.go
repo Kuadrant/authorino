@@ -2,6 +2,7 @@ package index
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -73,7 +74,7 @@ func (c *authConfigTree) Set(id, key string, config evaluators.AuthConfig, overr
 		AuthConfig: config,
 	}
 	err := c.root.set(revertKey(key), entry, override)
-	if err == nil {
+	if err == nil && !slices.Contains(c.keys[id], key) {
 		c.keys[id] = append(c.keys[id], key)
 	}
 	return err
@@ -84,9 +85,10 @@ func (c *authConfigTree) Delete(id string) {
 	defer c.mu.Unlock()
 
 	if keys, ok := c.keys[id]; ok {
-		for _, key := range keys {
+		for _, key := range slices.Clone(keys) {
 			c.deleteKey(id, key)
 		}
+		delete(c.keys, id)
 	}
 }
 
@@ -132,6 +134,20 @@ func (c *authConfigTree) FindKeys(id string) []string {
 func (c *authConfigTree) deleteKey(id, key string) {
 	if node, _ := c.root.longestCommonLabel(revertKey(key)); node != nil && node.entry != nil && node.entry.Id == id {
 		node.entry = nil
+	}
+
+	// the key must go from the id -> keys map as well, otherwise FindKeys() keeps reporting hosts
+	// the resource no longer owns, and callers such as the reconciler's cleanConfigs() end up
+	// resolving to whichever AuthConfig owns that host now
+	if keys, ok := c.keys[id]; ok {
+		if i := slices.Index(keys, key); i >= 0 {
+			keys = slices.Delete(keys, i, i+1)
+		}
+		if len(keys) == 0 {
+			delete(c.keys, id)
+		} else {
+			c.keys[id] = keys
+		}
 	}
 }
 
