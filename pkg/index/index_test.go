@@ -152,3 +152,62 @@ func buildTestAuthConfig() evaluators.AuthConfig {
 		AuthorizationConfigs: nil,
 	}
 }
+
+func TestDeleteKeyPrunesTheKeysOfTheId(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, false))
+	assert.NilError(t, c.Set("auth-1", "echo-api.nip.io", authConfig, false))
+	assert.Equal(t, len(c.FindKeys("auth-1")), 2)
+
+	c.DeleteKey("auth-1", "talker-api.nip.io")
+
+	// FindKeys() must not keep reporting a host the resource no longer owns: cleanConfigs()
+	// resolves the config to clean from FindKeys()[0] and would otherwise pick up whichever
+	// AuthConfig owns that host now
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+	assert.Check(t, c.Get("talker-api.nip.io") == nil)
+	assert.Check(t, c.Get("echo-api.nip.io") != nil)
+}
+
+func TestDeleteRemovesTheIdFromTheKeys(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, false))
+	c.Delete("auth-1")
+
+	assert.Equal(t, len(c.FindKeys("auth-1")), 0)
+	assert.Check(t, c.Empty())
+}
+
+func TestSetDoesNotDuplicateKeys(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	// every reconcile of an unchanged AuthConfig re-indexes the same hosts
+	for i := 0; i < 5; i++ {
+		assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, true))
+	}
+
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"talker-api.nip.io"})
+}
+
+func TestDeleteKeyDoesNotStealTheHostOfAnotherId(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	// auth-1 owns both hosts, then gets narrowed down to one of them
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, false))
+	assert.NilError(t, c.Set("auth-1", "echo-api.nip.io", authConfig, false))
+	c.DeleteKey("auth-1", "talker-api.nip.io")
+
+	// auth-2 legitimately takes over the released host (addToIndex() always sets with override)
+	assert.NilError(t, c.Set("auth-2", "talker-api.nip.io", authConfig, true))
+
+	id, found := c.FindId("talker-api.nip.io")
+	assert.Check(t, found)
+	assert.Equal(t, id, "auth-2")
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+}

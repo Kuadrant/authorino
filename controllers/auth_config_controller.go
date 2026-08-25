@@ -268,7 +268,7 @@ func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId stri
 	return nil
 }
 
-func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (*evaluators.AuthConfig, error) {
+func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConfig *api.AuthConfig) (_ *evaluators.AuthConfig, err error) {
 	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.translate")
 	defer span.End()
 
@@ -281,6 +281,31 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 
 	identityConfigs := make([]evaluators.IdentityConfig, 0)
 	interfacedIdentityConfigs := make([]auth.AuthConfigEvaluator, 0)
+	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
+	interfacedAuthorizationConfigs := make([]auth.AuthConfigEvaluator, 0)
+	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
+	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
+
+	// some evaluators start background workers as soon as they are built. if the translation
+	// fails halfway through, whatever was built so far is discarded and never reaches the index,
+	// so nothing would ever clean it up - and a persistently failing reconcile is requeued over
+	// and over, leaking a worker each time
+	defer func() {
+		if err == nil {
+			return
+		}
+		partiallyTranslated := &evaluators.AuthConfig{
+			IdentityConfigs:      interfacedIdentityConfigs,
+			MetadataConfigs:      interfacedMetadataConfigs,
+			AuthorizationConfigs: interfacedAuthorizationConfigs,
+			ResponseConfigs:      interfacedResponseConfigs,
+			CallbackConfigs:      interfacedCallbackConfigs,
+		}
+		if cleanErr := partiallyTranslated.Clean(ctx); cleanErr != nil {
+			log.FromContext(ctx).V(1).Info(failedToCleanConfig, "reason", cleanErr)
+		}
+	}()
+
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("identity"))
 
 	authConfigIdentityConfigs := authConfig.Spec.Authentication
@@ -457,8 +482,6 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedIdentityConfigs = append(interfacedIdentityConfigs, translatedIdentity)
 	}
 
-	interfacedMetadataConfigs := make([]auth.AuthConfigEvaluator, 0)
-
 	for name, metadata := range authConfig.Spec.Metadata {
 		predicates, err := buildPredicates(authConfig, metadata.Conditions, jsonexp.All)
 		if err != nil {
@@ -544,7 +567,6 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		interfacedMetadataConfigs = append(interfacedMetadataConfigs, translatedMetadata)
 	}
 
-	interfacedAuthorizationConfigs := make([]auth.AuthConfigEvaluator, 0)
 	ctxWithLogger = log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization"))
 
 	authzIndex := 0
@@ -745,8 +767,6 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 		authzIndex++
 	}
 
-	interfacedResponseConfigs := make([]auth.AuthConfigEvaluator, 0)
-
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
 		for responseName, headerSuccessResponse := range responseConfig.Success.Headers {
 			predicates, err := buildPredicates(authConfig, headerSuccessResponse.Conditions, jsonexp.All)
@@ -796,8 +816,6 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			interfacedResponseConfigs = append(interfacedResponseConfigs, translatedResponse)
 		}
 	}
-
-	interfacedCallbackConfigs := make([]auth.AuthConfigEvaluator, 0)
 
 	for callbackName, callback := range authConfig.Spec.Callbacks {
 		predicates, err := buildPredicates(authConfig, callback.Conditions, jsonexp.All)

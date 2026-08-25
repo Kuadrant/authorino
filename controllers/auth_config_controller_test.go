@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	goruntime "runtime"
 	"testing"
+	"time"
 
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -445,4 +447,100 @@ func BenchmarkReconcileAuthConfig(b *testing.B) {
 	}
 	b.StopTimer()
 	assert.NilError(b, err)
+}
+
+func newTestAuthConfigWithRefresher() api.AuthConfig {
+	return api.AuthConfig{
+		TypeMeta:   metav1.TypeMeta{Kind: "AuthConfig", APIVersion: "authorino.kuadrant.io/v1beta3"},
+		ObjectMeta: metav1.ObjectMeta{Name: "auth-config-1", Namespace: "authorino"},
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"echo-api"},
+			Authentication: map[string]api.AuthenticationSpec{
+				"keycloak": {
+					AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+						Jwt: &api.JwtAuthenticationSpec{
+							IssuerUrl: "http://127.0.0.1:9001/auth/realms/demo",
+							TTL:       60, // starts the background OIDC refresher worker
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// breaks translateAuthConfig() by pointing an oauth2Introspection at a Secret that does not exist,
+// the same way a rotated or deleted credentialsRef breaks it in a cluster
+func breakTranslation(t *testing.T, k8sClient client.WithWatch, name types.NamespacedName) {
+	t.Helper()
+	authConfig := &api.AuthConfig{}
+	assert.NilError(t, k8sClient.Get(context.Background(), name, authConfig))
+	authConfig.Spec.Authentication["oauth2"] = api.AuthenticationSpec{
+		AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+			OAuth2TokenIntrospection: &api.OAuth2TokenIntrospectionSpec{
+				Url:         "http://127.0.0.1:9001/auth/realms/demo/protocol/openid-connect/token/introspect",
+				Credentials: &v1.LocalObjectReference{Name: "no-such-secret"},
+			},
+		},
+	}
+	assert.NilError(t, k8sClient.Update(context.Background(), authConfig))
+}
+
+// A reconcile that fails in translateAuthConfig() returns before addToIndex(), so the config it
+// just cleaned up is still the one in the index. The requeue then cleans that very same instance
+// again, which used to close an already-closed channel and take the whole process down.
+func TestReconcileCleansTheSameIndexedConfigTwiceWithoutPanicking(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+	authConfig := newTestAuthConfigWithRefresher()
+	k8sClient := newTestK8sClient(&authConfig)
+	reconciler := newTestAuthConfigReconciler(k8sClient, authConfigIndex)
+	name := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	req := reconcile.Request{NamespacedName: name}
+
+	_, err := reconciler.Reconcile(context.Background(), req)
+	assert.NilError(t, err)
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
+
+	breakTranslation(t, k8sClient, name)
+
+	// reconcile #1: cleans up the indexed config, fails to translate, requeues
+	_, err = reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil, "the last known good config should stay in the index")
+
+	// reconcile #2: the requeue, cleaning up that same instance all over again
+	_, err = reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
+}
+
+// Evaluators built before translateAuthConfig() fails never reach the index, so nothing else will
+// ever clean them up. A persistently failing reconcile is requeued indefinitely, which used to
+// leak one refresher worker per attempt.
+func TestReconcileDoesNotLeakRefreshersWhenTranslationFails(t *testing.T) {
+	authConfig := newTestAuthConfigWithRefresher()
+	k8sClient := newTestK8sClient(&authConfig)
+	reconciler := newTestAuthConfigReconciler(k8sClient, index.NewIndex())
+	name := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	req := reconcile.Request{NamespacedName: name}
+
+	breakTranslation(t, k8sClient, name)
+
+	// settle whatever the harness already has running before taking the baseline
+	_, err := reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+	time.Sleep(200 * time.Millisecond)
+	goruntime.GC()
+	before := goruntime.NumGoroutine()
+
+	const reconciles = 20
+	for i := 0; i < reconciles; i++ {
+		_, err := reconciler.Reconcile(context.Background(), req)
+		assert.ErrorContains(t, err, "no-such-secret")
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	goruntime.GC()
+	leaked := goruntime.NumGoroutine() - before
+	assert.Check(t, leaked < reconciles/2, "leaked %d goroutines over %d failed reconciles", leaked, reconciles)
 }
