@@ -76,10 +76,11 @@ type AuthService struct {
 	Index                  index.Index
 	Timeout                time.Duration
 	MaxHttpRequestBodySize int64
+	EnableLoggingFields    bool
 }
 
-func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBodySize int64) *AuthService {
-	return &AuthService{Index: index, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize}
+func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBodySize int64, enableLoggingFields bool) *AuthService {
+	return &AuthService{Index: index, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize, EnableLoggingFields: enableLoggingFields}
 }
 
 // ServeHTTP invokes authorization check for a simple GET/POST HTTP authorization request
@@ -309,8 +310,10 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 	}
 
 	var loggingFields map[string]string
-	if p, ok := pipeline.(*AuthPipeline); ok {
-		loggingFields = p.loggingFields()
+	if a.EnableLoggingFields {
+		if p, ok := pipeline.(*AuthPipeline); ok {
+			loggingFields = p.loggingFields()
+		}
 	}
 	a.logAuthResult(result, ctx, loggingFields)
 
