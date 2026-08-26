@@ -60,7 +60,13 @@ func (config *AuthConfig) Clean(ctx context.Context) error {
 			// caller and would take the whole process down with it
 			defer func() {
 				if r := recover(); r != nil {
-					log.FromContext(ctx).Error(fmt.Errorf("%v", r), "recovered from panic while cleaning up evaluator", "evaluator", e)
+					// only the name of the config is logged: evaluators hold credentials in
+					// exported fields (OAuth2.ClientSecret, OPAExternalSource.SharedSecret)
+					logger := log.FromContext(ctx)
+					if named, ok := e.(auth.NamedEvaluator); ok {
+						logger = logger.WithValues("config", named.GetName())
+					}
+					logger.Error(fmt.Errorf("%v", r), "recovered from panic while cleaning up evaluator")
 				}
 			}()
 			if cleaner, ok := e.(auth.AuthConfigCleaner); ok {

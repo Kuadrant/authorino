@@ -469,17 +469,20 @@ func newTestAuthConfigWithRefresher() api.AuthConfig {
 	}
 }
 
-// breaks translateAuthConfig() by pointing an oauth2Introspection at a Secret that does not exist,
-// the same way a rotated or deleted credentialsRef breaks it in a cluster
+// breaks translateAuthConfig() the same way a rotated or deleted credentialsRef does in a cluster.
+// the metadata phase is translated after the identity phase, so the identity refresher is always
+// built before the failure - authentication is a map and its iteration order is not deterministic
 func breakTranslation(t *testing.T, k8sClient client.WithWatch, name types.NamespacedName) {
 	t.Helper()
 	authConfig := &api.AuthConfig{}
 	assert.NilError(t, k8sClient.Get(context.Background(), name, authConfig))
-	authConfig.Spec.Authentication["oauth2"] = api.AuthenticationSpec{
-		AuthenticationMethodSpec: api.AuthenticationMethodSpec{
-			OAuth2TokenIntrospection: &api.OAuth2TokenIntrospectionSpec{
-				Url:         "http://127.0.0.1:9001/auth/realms/demo/protocol/openid-connect/token/introspect",
-				Credentials: &v1.LocalObjectReference{Name: "no-such-secret"},
+	authConfig.Spec.Metadata = map[string]api.MetadataSpec{
+		"uma": {
+			MetadataMethodSpec: api.MetadataMethodSpec{
+				Uma: &api.UmaMetadataSpec{
+					Endpoint:    "http://127.0.0.1:9001/auth/realms/demo",
+					Credentials: &v1.LocalObjectReference{Name: "no-such-secret"},
+				},
 			},
 		},
 	}
