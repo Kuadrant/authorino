@@ -151,6 +151,10 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 	}(evaluator, context.Background())
 
 	verifier, _ := jwtVerifier.(*oidcProviderVerifier)
+	// the refresher is not started by the constructor any more: the reconciler starts it once the
+	// authconfig has been translated and indexed
+	assert.Check(t, verifier.refresher == nil)
+	assert.NilError(t, evaluator.Start(context.TODO()))
 	assert.Check(t, verifier.refresher != nil)
 
 	time.Sleep(4 * time.Second)
