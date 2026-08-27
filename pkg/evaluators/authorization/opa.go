@@ -69,22 +69,41 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 	}
 
 	o := &OPA{
-		ExternalSource: externalSource,
-		AllValues:      allValues,
-		regoVersion:    regoVersion,
-		policyName:     policyName,
-		policyUID:      generatePolicyUID(policyName, rego, nonce),
-		opaContext:     context.TODO(),
+		ExternalSource:   externalSource,
+		AllValues:        allValues,
+		regoVersion:      regoVersion,
+		policyName:       policyName,
+		policyUID:        generatePolicyUID(policyName, rego, nonce),
+		opaContext:       context.TODO(),
+		pullFromRegistry: pullFromRegistry,
 	}
 
 	if _, err := o.updateRego(rego, ctx, true); err != nil {
 		return nil, err
-	} else {
-		if pullFromRegistry {
-			externalSource.setupRefresher(log.IntoContext(ctx, logger), o)
-		}
-		return o, nil
 	}
+
+	return o, nil
+}
+
+// Start kicks off the refresh of the policy pulled from an external registry. The policy itself is
+// downloaded and precompiled by the constructor, so an unreachable registry still fails the
+// translation of the authconfig; only the periodic refresh waits until the config is indexed.
+// impl: auth.AuthConfigStarter
+func (opa *OPA) Start(ctx context.Context) error {
+	if !opa.pullFromRegistry || opa.ExternalSource == nil {
+		return nil
+	}
+
+	opa.mu.Lock()
+	alreadyRunning := opa.ExternalSource.refresher != nil
+	opa.mu.Unlock()
+
+	if alreadyRunning {
+		return nil
+	}
+
+	opa.ExternalSource.setupRefresher(log.IntoContext(ctx, log.FromContext(ctx).WithName("opa")), opa)
+	return nil
 }
 
 type OPA struct {
@@ -92,11 +111,12 @@ type OPA struct {
 	ExternalSource *OPAExternalSource
 	AllValues      bool
 
-	regoVersion opaParser.RegoVersion
-	opaContext  context.Context
-	policy      *rego.PreparedEvalQuery
-	policyName  string
-	policyUID   string
+	regoVersion      opaParser.RegoVersion
+	opaContext       context.Context
+	pullFromRegistry bool
+	policy           *rego.PreparedEvalQuery
+	policyName       string
+	policyUID        string
 
 	mu sync.RWMutex
 }
@@ -129,6 +149,9 @@ func (opa *OPA) Clean(_ context.Context) error {
 	if opa.ExternalSource == nil {
 		return nil
 	}
+
+	opa.mu.Lock()
+	defer opa.mu.Unlock()
 
 	return opa.ExternalSource.cleanupRefresher()
 }
@@ -312,8 +335,11 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 }
 
 func (ext *OPAExternalSource) cleanupRefresher() error {
-	if ext.refresher == nil {
+	refresher := ext.refresher
+	ext.refresher = nil
+
+	if refresher == nil {
 		return nil
 	}
-	return ext.refresher.Stop()
+	return refresher.Stop()
 }

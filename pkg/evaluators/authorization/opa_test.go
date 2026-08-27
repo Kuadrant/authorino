@@ -180,6 +180,10 @@ func TestOPAExternalUrlWithTTL(t *testing.T) {
 
 	assert.NilError(t, err)
 	assert.Check(t, strings.Contains(opa.GetRego(), "GET"))
+	// the policy is downloaded by the constructor, but the refresher is only started by the
+	// reconciler once the authconfig has been translated and indexed
+	assert.Check(t, opa.ExternalSource.refresher == nil)
+	assert.NilError(t, opa.Start(context.TODO()))
 	assert.Check(t, opa.ExternalSource.refresher != nil)
 
 	time.Sleep(4 * time.Second)

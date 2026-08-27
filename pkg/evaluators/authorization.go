@@ -120,6 +120,24 @@ func (config *AuthorizationConfig) MetricsEnabled() bool {
 	return config.Metrics
 }
 
+// impl:AuthConfigStarter
+
+func (config *AuthorizationConfig) Start(ctx context.Context) error {
+	if starter := config.getStarter(); starter != nil {
+		return starter.Start(log.IntoContext(ctx, log.FromContext(ctx).WithName("authorization")))
+	}
+	return nil
+}
+
+func (config *AuthorizationConfig) getStarter() auth.AuthConfigStarter {
+	switch {
+	case config.OPA != nil:
+		return config.OPA
+	default:
+		return nil
+	}
+}
+
 // impl:AuthConfigCleaner
 
 func (config *AuthorizationConfig) Clean(ctx context.Context) error {

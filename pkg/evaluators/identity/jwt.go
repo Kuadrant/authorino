@@ -65,6 +65,18 @@ func (j *JWTAuthentication) Call(pipeline auth.AuthPipeline, ctx gocontext.Conte
 	return claims, nil
 }
 
+// impl:auth.AuthConfigStarter
+func (j *JWTAuthentication) Start(ctx gocontext.Context) error {
+	if j.verifier == nil {
+		return nil
+	}
+	starter, ok := j.verifier.(auth.AuthConfigStarter)
+	if !ok {
+		return nil
+	}
+	return starter.Start(ctx)
+}
+
 // impl:auth.AuthConfigCleaner
 func (j *JWTAuthentication) Clean(ctx gocontext.Context) error {
 	if j.verifier == nil {
@@ -93,6 +105,7 @@ type JWTVerifier interface {
 
 type oidcProviderVerifier struct {
 	issuerUrl string
+	ttl       int
 	timeout   *int
 
 	mu        sync.RWMutex
@@ -100,15 +113,32 @@ type oidcProviderVerifier struct {
 	refresher workers.Worker
 }
 
+// NewOIDCProviderVerifier discovers the openid connect configuration straight away, so a broken
+// issuer still surfaces while the authconfig is being translated, but leaves the periodic refresh
+// to Start(), which the reconciler only calls once the config is indexed.
 func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, timeout *int) JWTVerifier {
 	v := &oidcProviderVerifier{
 		issuerUrl: issuerUrl,
+		ttl:       ttl,
 		timeout:   timeout,
 	}
 	ctxWithLogger := log.IntoContext(ctx, log.FromContext(ctx).WithName("jwt"))
 	v.getOpenIdProvider(ctxWithLogger, false)
-	v.setupOpenIdProviderRefresh(ctxWithLogger, ttl)
 	return v
+}
+
+// impl: auth.AuthConfigStarter
+func (v *oidcProviderVerifier) Start(ctx gocontext.Context) error {
+	v.mu.Lock()
+	alreadyRunning := v.refresher != nil
+	v.mu.Unlock()
+
+	if alreadyRunning {
+		return nil
+	}
+
+	v.setupOpenIdProviderRefresh(log.IntoContext(ctx, log.FromContext(ctx).WithName("jwt")), v.ttl)
+	return nil
 }
 
 func (v *oidcProviderVerifier) Verify(ctx gocontext.Context, rawIDToken string) (*oidc.IDToken, error) {
@@ -152,10 +182,15 @@ func (v *oidcProviderVerifier) GetOpenIdUrl(ctx gocontext.Context, claim string)
 // Clean ensures the goroutine started by setupOpenIdProviderRefresh is cleaned up
 // impl: auth.AuthConfigCleaner
 func (v *oidcProviderVerifier) Clean(ctx gocontext.Context) error {
-	if v.refresher == nil {
+	v.mu.Lock()
+	refresher := v.refresher
+	v.refresher = nil
+	v.mu.Unlock()
+
+	if refresher == nil {
 		return nil
 	}
-	return v.refresher.Stop()
+	return refresher.Stop()
 }
 
 // GetProvider returns the current OIDC provider in a thread-safe manner
@@ -226,4 +261,16 @@ func (v *jwksVerifier) Verify(ctx gocontext.Context, rawIDToken string) (*oidc.I
 // impl: auth.AuthConfigCleaner
 func (v *jwksVerifier) Clean(_ gocontext.Context) error {
 	return nil
+}
+
+// RefresherRunning reports whether the background refresher of the underlying verifier is running.
+// Exposed so the reconciler tests can assert on the lifecycle of a config held in the index.
+func (j *JWTAuthentication) RefresherRunning() bool {
+	verifier, ok := j.verifier.(*oidcProviderVerifier)
+	if !ok {
+		return false
+	}
+	verifier.mu.RLock()
+	defer verifier.mu.RUnlock()
+	return verifier.refresher != nil
 }

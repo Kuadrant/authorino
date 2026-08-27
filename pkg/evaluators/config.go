@@ -41,13 +41,35 @@ func (config *AuthConfig) GetChallengeHeaders() []map[string]string {
 	return challengeHeaders
 }
 
-func (config *AuthConfig) Clean(ctx context.Context) error {
+// Start kicks off whatever the evaluators of this config should only be running once the config is
+// valid and reachable. Unlike Clean, it runs sequentially: there is nothing to parallelise here and
+// it keeps the panic surface of the reconcile path small.
+func (config *AuthConfig) Start(ctx context.Context) error {
+	var errs error
+
+	for _, evaluator := range config.allEvaluators() {
+		if starter, ok := evaluator.(auth.AuthConfigStarter); ok {
+			if err := starter.Start(ctx); err != nil {
+				errs = multierror.Append(errs, err)
+			}
+		}
+	}
+
+	return errs
+}
+
+func (config *AuthConfig) allEvaluators() []auth.AuthConfigEvaluator {
 	evaluators := []auth.AuthConfigEvaluator{}
 	evaluators = append(evaluators, config.IdentityConfigs...)
 	evaluators = append(evaluators, config.MetadataConfigs...)
 	evaluators = append(evaluators, config.AuthorizationConfigs...)
 	evaluators = append(evaluators, config.ResponseConfigs...)
 	evaluators = append(evaluators, config.CallbackConfigs...)
+	return evaluators
+}
+
+func (config *AuthConfig) Clean(ctx context.Context) error {
+	evaluators := config.allEvaluators()
 
 	var errors error
 	var wait sync.WaitGroup
