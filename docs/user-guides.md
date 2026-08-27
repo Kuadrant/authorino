@@ -86,3 +86,6 @@ Cache auth objects resolved at runtime for any configuration bit of an AuthConfi
 
 - **[Observability](./user-guides/observability.md)**<br/>
 Prometheus metrics exported by Authorino, readiness probe, logging, tracing, etc.
+
+- **[Preventing namespace to cluster privilege escalation (AuthConfigs)](./user-guides/preventing-privilege-escalation.md)**<br/>
+Restrict the `apiKey.allNamespaces` and `x509.allNamespaces` fields — which trigger cluster-wide secret lookups — to authorized subjects using a ValidatingAdmissionPolicy.
