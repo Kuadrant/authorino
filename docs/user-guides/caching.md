@@ -47,23 +47,6 @@ kind create cluster --name authorino-tutorial
 
 The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
 
-<table>
-  <thead>
-    <tr>
-      <th>Using Kuadrant</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❺.</p>
-        <p>At step ❺, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
-        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.</p>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 <br/>
 
 ## ❶ Install the Authorino Operator (cluster admin required)
@@ -133,18 +116,6 @@ The example also enables caching of returned OPA virtual documents. `cached-auth
 In both cases, the path of the HTTP request is used as cache key. I.e., whenever the path repeats, Authorino reuse the values stored previously in each cache table (`cached-metadata` and `cached-authz`), respectively saving a request to the external source of metadata and the evaluation of the OPA policy. Cache entries will expire in both cases after 60 seconds they were stored in the cache.
 
 The cached values will be visible in the response returned by the Talker API in `x-authz-data` header injected by Authorino. This way, we can tell when an existing value in the cache was used and when a new one was generated and stored.
-
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
 
 ```sh
 kubectl apply -f -<<EOF
