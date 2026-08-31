@@ -3,7 +3,7 @@
 Two fields on `AuthConfig` resources reach beyond the namespace they live in: `spec.authentication.*.apiKey.allNamespaces` and `spec.authentication.*.x509.allNamespaces`. When either is set to `true`, cluster-wide Authorino instances will look up the API-key / trusted-certificate `Secret`s across **every** namespace in the cluster, so anyone allowed to create `AuthConfig`s in a single namespace can use Authorino's elevated privileges to quietly reach secrets at cluster scope.
 This issue does not affect namespaced Authorino instances, but it can be a problem in multi-tenant, shared Authorino instances (aka: cluster-wide deployments).
 
-The [ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/) below closes that gap. It blocks those fields unless the user has been given a special permission for them, and you hand that permission only to the subjects that need it to do their job.
+The [ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/) below closes that gap. It blocks *enabling* those fields unless the user has been given a special permission for them, and you hand that permission only to the subjects that need it to do their job.
 
 The policy:
 
@@ -117,12 +117,20 @@ spec:
       expression: "has(object.spec.authentication) && object.spec.authentication.exists(k, has(object.spec.authentication[k].apiKey) && has(object.spec.authentication[k].apiKey.allNamespaces) && object.spec.authentication[k].apiKey.allNamespaces)"
     - name: wantsX509AllNamespaces
       expression: "has(object.spec.authentication) && object.spec.authentication.exists(k, has(object.spec.authentication[k].x509) && has(object.spec.authentication[k].x509.allNamespaces) && object.spec.authentication[k].x509.allNamespaces)"
+    # hadApiKeyAllNamespaces / hadX509AllNamespaces capture whether the field was already
+    # enabled before this request (oldObject is null on CREATE). They let the policy
+    # restrict only newly enabling allNamespaces, so a subject without the permission can
+    # still edit unrelated fields of an object that already has it enabled.
+    - name: hadApiKeyAllNamespaces
+      expression: "oldObject != null && has(oldObject.spec.authentication) && oldObject.spec.authentication.exists(k, has(oldObject.spec.authentication[k].apiKey) && has(oldObject.spec.authentication[k].apiKey.allNamespaces) && oldObject.spec.authentication[k].apiKey.allNamespaces)"
+    - name: hadX509AllNamespaces
+      expression: "oldObject != null && has(oldObject.spec.authentication) && oldObject.spec.authentication.exists(k, has(oldObject.spec.authentication[k].x509) && has(oldObject.spec.authentication[k].x509.allNamespaces) && oldObject.spec.authentication[k].x509.allNamespaces)"
   validations:
-    - expression: "!variables.wantsApiKeyAllNamespaces || variables.isExemptApiKey"
-      message: "apiKey allNamespaces: true (cluster-wide secret lookup) can only be set by a subject granted the 'set-apikey-all-namespaces' permission on authconfigs"
+    - expression: "!variables.wantsApiKeyAllNamespaces || variables.hadApiKeyAllNamespaces || variables.isExemptApiKey"
+      message: "apiKey allNamespaces: true (cluster-wide secret lookup) can only be enabled by a subject granted the 'set-apikey-all-namespaces' permission on authconfigs"
       reason: Forbidden
-    - expression: "!variables.wantsX509AllNamespaces || variables.isExemptX509"
-      message: "x509 allNamespaces: true (cluster-wide secret lookup) can only be set by a subject granted the 'set-x509-all-namespaces' permission on authconfigs"
+    - expression: "!variables.wantsX509AllNamespaces || variables.hadX509AllNamespaces || variables.isExemptX509"
+      message: "x509 allNamespaces: true (cluster-wide secret lookup) can only be enabled by a subject granted the 'set-x509-all-namespaces' permission on authconfigs"
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -136,7 +144,7 @@ EOF
 ```
 
 > [!WARNING]
-> Enforcement is strict, there is no grandfathering. On **every** create and update, any resource that enables a restricted field (`apiKey.allNamespaces: true` or `x509.allNamespaces: true`) is **rejected** unless the requesting subject holds the matching permission. This includes updates to resources that already exist: once the policy is active, a subject without the permission cannot update such a resource, or even change unrelated fields, until it either **drops the restricted field** (removes it or sets the boolean to `false`) or is **granted the corresponding ClusterRole** (steps 1–2). To avoid breaking existing workloads, grant the required Roles and RoleBindings **before** applying the policy.
+> The policy restricts **newly enabling** a restricted field, not merely having it enabled. On **create**, any resource that sets a restricted field (`apiKey.allNamespaces: true` or `x509.allNamespaces: true`) is **rejected** unless the requesting subject holds the matching permission. On **update**, only the transition from unset/`false` to `true` is blocked: a subject without the permission can still edit **unrelated** fields of — and can **disable** the field on — a resource that already has it enabled. Resources that already enable a restricted field when the policy is applied are therefore **not** retroactively broken. Newly enabling the field always requires the permission, so grant the required Roles and RoleBindings (steps 1–2) to the subjects that need it.
 
 ## 4. Verifying the VAP
 
@@ -192,7 +200,7 @@ EOF
 You should get an error like this instead of the resource being created:
 
 ```text
-... is forbidden: ValidatingAdmissionPolicy 'authconfig-restrict-all-namespaces' ... denied request: apiKey allNamespaces: true (cluster-wide secret lookup) can only be set by a subject granted the 'set-apikey-all-namespaces' permission on authconfigs
+... is forbidden: ValidatingAdmissionPolicy 'authconfig-restrict-all-namespaces' ... denied request: apiKey allNamespaces: true (cluster-wide secret lookup) can only be enabled by a subject granted the 'set-apikey-all-namespaces' permission on authconfigs
 ```
 
 ### A permitted subject is allowed
@@ -268,7 +276,7 @@ EOF
 
 ### Updates are re-checked, not just creates
 
-Because the policy matches `UPDATE` as well as `CREATE`, it re-evaluates on every change. A subject without the permission can still edit **unrelated** fields of a compliant resource, but is blocked the moment it tries to switch a restricted field on. Using the namespaced AuthConfig created above:
+Because the policy matches `UPDATE` as well as `CREATE`, it re-evaluates on every change — but it only restricts *newly enabling* a restricted field. A subject without the permission can edit **unrelated** fields of a resource whether or not the field is already enabled, and can **disable** it; it is blocked only when it tries to switch the field from off to on. Using the namespaced AuthConfig created above:
 
 ```sh
 # Change an unrelated field (the apiKey selector) on the namespaced AuthConfig — should be ALLOWED
@@ -309,6 +317,29 @@ spec:
         selector:
           matchLabels:
             group: family
+EOF
+```
+
+An object that **already** has a restricted field enabled can likewise be updated by a subject without the permission, as long as the field stays enabled. Using `policy-all-namespaces-2` (created by the authorized subject above, with `apiKey.allNamespaces: true`):
+
+```sh
+# Edit an unrelated field (the host) while leaving apiKey allNamespaces: true unchanged — should be ALLOWED
+kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: policy-all-namespaces-2
+  namespace: <namespace>
+spec:
+  hosts:
+    - test-allowed-updated.example.com
+  authentication:
+    api-key-users:
+      apiKey:
+        allNamespaces: true
+        selector:
+          matchLabels:
+            group: friends
 EOF
 ```
 
