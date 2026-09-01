@@ -81,6 +81,9 @@ Use Authorino as a generic Kubernetes ValidatingWebhook service where the rules 
 - **[Reducing the operational space: sharding, noise and multi-tenancy](./user-guides/sharding.md)**<br/>
 Have multiple instances of Authorino running in the same space (Kubernetes namespace or cluster-scoped), yet watching particular sets of resources.
 
+- **[Restricting the outbound HTTP routes Authorino can reach](./user-guides/restrict-outbound-http-routes.md)**<br/>
+Harden shared, cluster-wide Authorino against SSRF: use ValidatingAdmissionPolicies to gate every outbound destination an AuthConfig can name (JWKS, issuer, introspection, UserInfo, UMA, metadata/callback HTTP, OPA external policy, SpiceDB) and inline Rego `http.send` behind RBAC allowlists.
+
 - **[Caching](./user-guides/caching.md)**<br/>
 Cache auth objects resolved at runtime for any configuration bit of an AuthConfig, for easy access in subsequent requests whenever an arbitrary cache key repeats, until the cache entry expires.
 
