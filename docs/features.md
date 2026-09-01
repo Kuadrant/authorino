@@ -421,6 +421,35 @@ In both cases, the location where the secret (long-lived or OAuth2 access token)
 
 Custom headers can be set with the `headers` field. Nevertheless, headers such as `Content-Type` and `Authorization` (or eventual custom header used for carrying the authentication secret, set instead via the `credentials` option) will be superseded by the respective values defined for the fields `contentType` and `sharedSecretRef`.
 
+#### Limiting response size (`maxResponseBytes`)
+
+To protect Authorino from memory exhaustion caused by unexpectedly large HTTP responses from external services, set the `maxResponseBytes` field to cap the number of bytes read from the response body.
+
+```yaml
+spec:
+  metadata:
+    my-metadata:
+      http:
+        url: https://external-service/metadata
+        maxResponseBytes: 65536  # 64 KiB
+```
+
+The same field is available in:
+- `spec.callbacks.*.http` — HTTP callbacks
+- `spec.authorization.*.opa.externalPolicy` — external OPA policy bundles
+- `spec.authentication.*.jwt` — OIDC discovery and JWKS fetching
+- `spec.authentication.*.oauth2Introspection` — OAuth2 token introspection
+- `spec.metadata.*.userInfo` — OIDC UserInfo
+- `spec.metadata.*.uma` — UMA resource registry (applies to discovery, PAT requests, and resource queries)
+
+> **Important:** When a response exceeds the limit, the body is truncated to the specified size. For `application/json` responses, this truncation produces malformed JSON that can cause a decode error. As a result, the evaluator will fail and the corresponding piece of the auth pipeline will not be available.
+>
+> Depending on how downstream authorization policies handle missing metadata, the outcome can vary:
+> - **Policies that deny access when metadata is absent**: the request will be denied. This is the safer default.
+> - **Policies that fall back to granting access on the absence of metadata**: truncation may cause the policy to inadvertently allow a request that should have been denied. Review your authorization policies to ensure they do not assume missing metadata means "allowed."
+>
+> When `maxResponseBytes` is omitted, no limit is applied and the full response body is read.
+
 ### OIDC UserInfo ([`metadata.userInfo`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#UserInfoMetadataSpec))
 
 Online fetching of OpenID Connect (OIDC) UserInfo data (phase ii of the Authorino [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)), associated with an OIDC identity source configured and resolved in phase (i).

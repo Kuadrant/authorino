@@ -242,6 +242,93 @@ func TestOPANonBooleanAllowed(t *testing.T) {
 	assert.ErrorContains(t, err, "Unauthorized")
 }
 
+func TestOPAExternalUrlMaxResponseBytes(t *testing.T) {
+	t.Run("within limit", func(t *testing.T) {
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: int64(len(opaInlineRegoV1DataMock) + 100),
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-ok", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.NilError(t, err)
+		assertOPAAuthorization(t, opa)
+	})
+
+	t.Run("exceeds limit truncates and causes error", func(t *testing.T) {
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: 10,
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-truncated", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.ErrorContains(t, err, "response body truncated")
+		assert.Assert(t, opa == nil)
+	})
+
+	t.Run("truncated valid rego prefix is rejected", func(t *testing.T) {
+		// The full policy has two rules; truncating to the first rule yields valid Rego
+		// that compiles fine but silently drops the deny logic. The truncation check must
+		// catch this before compilation.
+		fullPolicy := `allow := true
+deny := true`
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: fullPolicy}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: int64(len("allow := true\n")),
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-valid-prefix", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.ErrorContains(t, err, "response body truncated")
+		assert.Assert(t, opa == nil)
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		extHttpMetadataServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+			"/rego": func() httptest.HttpServerMockResponse {
+				return httptest.HttpServerMockResponse{Status: 200, Body: opaInlineRegoV1DataMock}
+			},
+		})
+		defer extHttpMetadataServer.Close()
+
+		externalSource := &OPAExternalSource{
+			Endpoint:         "http://" + opaExtHttpServerMockAddr + "/rego",
+			AuthCredentials:  auth.NewAuthCredential("", ""),
+			MaxResponseBytes: 0,
+		}
+
+		opa, err := NewOPAAuthorization("test-opa-maxbytes-nolimit", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+
+		assert.NilError(t, err)
+		assertOPAAuthorization(t, opa)
+	})
+}
+
 func assertOPAAuthorization(t *testing.T, opa *OPA) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
