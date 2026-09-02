@@ -741,17 +741,17 @@ func TestPipelineLoggingFields(t *testing.T) {
 		&request,
 	)
 
-	fields := pipeline.loggingFields()
+	fields := pipeline.loggingFields(1024)
 
 	assert.Equal(t, 5, len(fields))
 
-	assert.Equal(t, "my-api", fields["client_identity"])
-	assert.Equal(t, "POST", fields["request_method"])
-	assert.Equal(t, "audit-v1", fields["static_field"])
-	assert.Equal(t, "42", fields["numeric_field"])
-	assert.Equal(t, "true", fields["bool_field"])
-	assert.Equal(t, "", fields["unresolvable"])
-	assert.Equal(t, "", fields["null_field"])
+	assert.Equal(t, "my-api", fields["logging.client_identity"])
+	assert.Equal(t, "POST", fields["logging.request_method"])
+	assert.Equal(t, "audit-v1", fields["logging.static_field"])
+	assert.Equal(t, "42", fields["logging.numeric_field"])
+	assert.Equal(t, "true", fields["logging.bool_field"])
+	assert.Equal(t, "", fields["logging.unresolvable"])
+	assert.Equal(t, "", fields["logging.null_field"])
 }
 
 func TestPipelineLoggingFieldsEmpty(t *testing.T) {
@@ -763,7 +763,7 @@ func TestPipelineLoggingFieldsEmpty(t *testing.T) {
 		&request,
 	)
 
-	fields := pipeline.loggingFields()
+	fields := pipeline.loggingFields(1024)
 
 	assert.Equal(t, 0, len(fields))
 }
@@ -802,10 +802,10 @@ func TestLoggingFieldsResolvesIdentityOnAllow(t *testing.T) {
 	result := pipeline.Evaluate()
 	assert.Equal(t, result.Code, rpc.OK)
 
-	fields := pipeline.loggingFields()
+	fields := pipeline.loggingFields(1024)
 
-	assert.Equal(t, "true", fields["identity_anonymous"])
-	assert.Equal(t, "POST", fields["req_method"])
+	assert.Equal(t, "true", fields["logging.identity_anonymous"])
+	assert.Equal(t, "POST", fields["logging.req_method"])
 }
 
 func TestLoggingFieldsResolvesIdentityOnAuthzDeny(t *testing.T) {
@@ -845,10 +845,10 @@ func TestLoggingFieldsResolvesIdentityOnAuthzDeny(t *testing.T) {
 	result := pipeline.Evaluate()
 	assert.Equal(t, result.Code, rpc.PERMISSION_DENIED)
 
-	fields := pipeline.loggingFields()
+	fields := pipeline.loggingFields(1024)
 
-	assert.Equal(t, "true", fields["identity_anonymous"])
-	assert.Equal(t, "POST", fields["req_method"])
+	assert.Equal(t, "true", fields["logging.identity_anonymous"])
+	assert.Equal(t, "POST", fields["logging.req_method"])
 }
 
 func TestLoggingFieldsGracefulOnAuthnFailure(t *testing.T) {
@@ -884,9 +884,9 @@ func TestLoggingFieldsGracefulOnAuthnFailure(t *testing.T) {
 	result := pipeline.Evaluate()
 	assert.Equal(t, result.Code, rpc.UNAUTHENTICATED)
 
-	fields := pipeline.loggingFields()
+	fields := pipeline.loggingFields(1024)
 
-	_, hasIdentity := fields["identity_anonymous"]
+	_, hasIdentity := fields["logging.identity_anonymous"]
 	assert.Check(t, !hasIdentity, "identity field should not resolve when authentication fails")
-	assert.Equal(t, "POST", fields["req_method"])
+	assert.Equal(t, "POST", fields["logging.req_method"])
 }
