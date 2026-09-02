@@ -384,6 +384,13 @@ type JwtAuthenticationSpec struct {
 	// +optional
 	IssuerUrl string `json:"issuerUrl,omitempty"`
 
+	// The expected value of the "iss" (issuer) claim of the JWT.
+	// If set, Authorino rejects, at the authentication phase, any token whose "iss" claim does not equal this value.
+	// If omitted, the issuer claim is not verified — it can still be checked via an authorization rule (CEL, pattern-matching or OPA).
+	// Applies to both issuerUrl and jwksUrl.
+	// +optional
+	Issuer string `json:"issuer,omitempty"`
+
 	// Decides how long the OIDC configuration will be cached.
 	// If omitted or set to zero, Authorino will never refresh the OIDC configuration.
 	// This configuration does not affect the caching of JSON Web Keys (JWK), which is always updated whenever the kid of a JWT does not match any of the cached JWKs (https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys)

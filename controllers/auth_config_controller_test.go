@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/go-logr/logr/funcr"
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
@@ -380,6 +382,55 @@ func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	})
 	assert.NilError(t, err)
 	assert.Equal(t, len(config.IdentityConfigs), 1)
+}
+
+func translateJwtAuthConfig(t *testing.T, issuer string) []string {
+	t.Helper()
+
+	var logs []string
+	recorder := funcr.New(func(prefix, args string) {
+		logs = append(logs, args)
+	}, funcr.Options{})
+
+	r := &AuthConfigReconciler{}
+	_, err := r.translateAuthConfig(log.IntoContext(context.TODO(), recorder), &api.AuthConfig{
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"app.com"},
+			Authentication: map[string]api.AuthenticationSpec{
+				"keycloak": {
+					AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+						Jwt: &api.JwtAuthenticationSpec{
+							IssuerUrl: "http://127.0.0.1:9001/auth/realms/demo",
+							Issuer:    issuer,
+						},
+					},
+				},
+			},
+		},
+	})
+	assert.NilError(t, err)
+	return logs
+}
+
+func logsContain(logs []string, substr string) bool {
+	for _, l := range logs {
+		if strings.Contains(l, substr) {
+			return true
+		}
+	}
+	return false
+}
+
+const unsafeIssuerDefaultLogMsg = "does not verify the token issuer (iss) claim"
+
+func TestJwtIssuerUnsetLogsWarning(t *testing.T) {
+	logs := translateJwtAuthConfig(t, "")
+	assert.Check(t, logsContain(logs, unsafeIssuerDefaultLogMsg), "expected an INFO log warning about the unverified issuer default")
+}
+
+func TestJwtIssuerSetDoesNotLogWarning(t *testing.T) {
+	logs := translateJwtAuthConfig(t, "http://127.0.0.1:9001/auth/realms/demo")
+	assert.Check(t, !logsContain(logs, unsafeIssuerDefaultLogMsg), "did not expect the issuer warning when issuer is set")
 }
 
 func TestBootstrapIndex(t *testing.T) {

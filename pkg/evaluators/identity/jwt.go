@@ -20,11 +20,17 @@ const (
 	msg_oidcProviderVerifierConfigRefreshSuccess  = "openid connect configuration updated"
 	msg_oidcProviderVerifierConfigRefreshError    = "failed to discovery openid connect configuration"
 	msg_oidcProviderVerifierConfigRefreshDisabled = "auto-refresh of openid connect configuration disabled"
-	msg_jwksVerifierFailedToCreate                = "failed to create JWKS verifier"
 	msg_jwtVerifierDoesNotStoreOpenIdConfig       = "rule does not store openid configuration"
 )
 
-var tokenVerifierConfig = &oidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true}
+// oidcConfig returns the go-oidc verifier config shared by both JWT verifier flavors.
+// SkipClientIDCheck is always on: Authorino is not an OAuth2 client and has no audience of
+// its own to match. The issuer check is enabled only when an expected issuer is configured —
+// an empty issuer means "do not verify the iss claim" (the default, backwards compatible),
+// a non-empty issuer means "reject any token whose iss does not equal it".
+func oidcConfig(issuer string) *oidc.Config {
+	return &oidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: issuer == ""}
+}
 
 type JWTAuthentication struct {
 	auth.AuthCredentials
@@ -93,6 +99,8 @@ type JWTVerifier interface {
 
 type oidcProviderVerifier struct {
 	issuerUrl string
+	issuer    string
+	config    *oidc.Config
 	timeout   *int
 
 	mu        sync.RWMutex
@@ -100,9 +108,11 @@ type oidcProviderVerifier struct {
 	refresher workers.Worker
 }
 
-func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, timeout *int) JWTVerifier {
+func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, issuer string, ttl int, timeout *int) JWTVerifier {
 	v := &oidcProviderVerifier{
 		issuerUrl: issuerUrl,
+		issuer:    issuer,
+		config:    oidcConfig(issuer),
 		timeout:   timeout,
 	}
 	ctxWithLogger := log.IntoContext(ctx, log.FromContext(ctx).WithName("jwt"))
@@ -117,10 +127,11 @@ func (v *oidcProviderVerifier) Verify(ctx gocontext.Context, rawIDToken string) 
 		return nil, errors.New(msg_oidcProviderVerifierConfigMissingError)
 	}
 
-	v.mu.RLock()
-	defer v.mu.RUnlock()
-
-	idToken, err := provider.Verifier(tokenVerifierConfig).Verify(ctx, rawIDToken)
+	// No lock is held across Verify on purpose: getOpenIdProvider already returned a stable
+	// provider snapshot under its own lock, the go-oidc Provider is immutable, and v.config is
+	// set once at construction. Holding a read lock across the crypto checks and lazy JWKS fetch
+	// would needlessly block the background refresher's write lock in getOpenIdProvider.
+	idToken, err := provider.Verifier(v.config).Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +187,15 @@ func (v *oidcProviderVerifier) getOpenIdProvider(ctx gocontext.Context, force bo
 		httpClient := httputil.NewClientWithTracing(ctx, v.timeout)
 		discoveryCtx := oidc.ClientContext(gocontext.Background(), httpClient)
 
+		// When an expected issuer is configured that differs from the discovery URL, pin it so
+		// discovery and JWKS are still fetched from issuerUrl while the verifier enforces the
+		// token's iss against the configured issuer. This supports setups where the OpenID
+		// Connect discovery endpoint is reached at a different URL than the issuer stamped into
+		// tokens (e.g. cluster-internal discovery vs external issuer).
+		if v.issuer != "" && v.issuer != v.issuerUrl {
+			discoveryCtx = oidc.InsecureIssuerURLContext(discoveryCtx, v.issuer)
+		}
+
 		if provider, err := oidc.NewProvider(discoveryCtx, v.issuerUrl); err != nil {
 			log.FromContext(ctx).Error(err, msg_oidcProviderVerifierConfigRefreshError, "issuerUrl", v.issuerUrl)
 		} else {
@@ -200,27 +220,25 @@ func (v *oidcProviderVerifier) setupOpenIdProviderRefresh(ctx gocontext.Context,
 }
 
 type jwksVerifier struct {
-	jwks oidc.KeySet
+	verifier *oidc.IDTokenVerifier
 }
 
-func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, timeout *int) JWTVerifier {
+func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, issuer string, timeout *int) JWTVerifier {
 	// Create HTTP client with timeout and trace propagation.
 	// Use Background context for request lifecycle (to avoid cancellation from reconciliation),
 	// but propagate trace context from caller's ctx for observability.
 	httpClient := httputil.NewClientWithTracing(ctx, timeout)
 	jwkCtx := oidc.ClientContext(gocontext.Background(), httpClient)
 
+	// The remote key set self-refreshes on key rotation, and issuer and config are fixed for the
+	// lifetime of the verifier, so it can be built once here and reused for every request.
 	return &jwksVerifier{
-		jwks: oidc.NewRemoteKeySet(jwkCtx, jwksUrl),
+		verifier: oidc.NewVerifier(issuer, oidc.NewRemoteKeySet(jwkCtx, jwksUrl), oidcConfig(issuer)),
 	}
 }
 
 func (v *jwksVerifier) Verify(ctx gocontext.Context, rawIDToken string) (*oidc.IDToken, error) {
-	verifier := oidc.NewVerifier("", v.jwks, tokenVerifierConfig)
-	if verifier == nil {
-		return nil, errors.New(msg_jwksVerifierFailedToCreate)
-	}
-	return verifier.Verify(ctx, rawIDToken)
+	return v.verifier.Verify(ctx, rawIDToken)
 }
 
 // impl: auth.AuthConfigCleaner
