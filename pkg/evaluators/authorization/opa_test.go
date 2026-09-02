@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -308,4 +309,36 @@ func BenchmarkOPAAuthz(b *testing.B) {
 	}
 	b.StopTimer()
 	assert.NilError(b, err)
+}
+
+// Same as the jwt verifier: concurrent Start must not be able to spawn two refreshers.
+func TestOPAConcurrentStart(t *testing.T) {
+	rego := `allow := true`
+	extServer := httptest.NewHttpServerMock(opaExtHttpServerMockAddr, map[string]httptest.HttpServerMockResponseFunc{
+		"/rego": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: rego}
+		},
+	})
+	defer extServer.Close()
+
+	externalSource := &OPAExternalSource{
+		Endpoint:        "http://" + opaExtHttpServerMockAddr + "/rego",
+		AuthCredentials: auth.NewAuthCredential("", ""),
+		TTL:             60,
+	}
+	opa, err := NewOPAAuthorization("test-opa", "", externalSource, false, opaParser.RegoV1, 0, context.TODO())
+	assert.NilError(t, err)
+	defer func() { _ = opa.Clean(context.Background()) }()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NilError(t, opa.Start(context.TODO()))
+		}()
+	}
+	wg.Wait()
+
+	assert.Check(t, opa.ExternalSource.refresher != nil)
 }

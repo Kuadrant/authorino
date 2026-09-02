@@ -130,10 +130,11 @@ func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, t
 // impl: auth.AuthConfigStarter
 func (v *oidcProviderVerifier) Start(ctx gocontext.Context) error {
 	v.mu.Lock()
-	alreadyRunning := v.refresher != nil
-	v.mu.Unlock()
+	defer v.mu.Unlock()
 
-	if alreadyRunning {
+	// the check and the assignment have to happen under the same lock: released in between, two
+	// callers could both find no refresher and both start one, leaking whichever loses the race
+	if v.refresher != nil {
 		return nil
 	}
 
@@ -222,6 +223,11 @@ func (v *oidcProviderVerifier) getOpenIdProvider(ctx gocontext.Context, force bo
 	return v.provider
 }
 
+// setupOpenIdProviderRefresh assigns v.refresher and must be called with v.mu held.
+//
+// The worker callback takes v.mu itself, so this relies on StartWorker only arming a ticker and
+// never invoking the callback synchronously. Do not make it fire immediately without moving this
+// call out of the critical section first.
 func (v *oidcProviderVerifier) setupOpenIdProviderRefresh(ctx gocontext.Context, ttl int) {
 	var err error
 

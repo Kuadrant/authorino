@@ -94,15 +94,7 @@ func (opa *OPA) Start(ctx context.Context) error {
 		return nil
 	}
 
-	opa.mu.Lock()
-	alreadyRunning := opa.ExternalSource.refresher != nil
-	opa.mu.Unlock()
-
-	if alreadyRunning {
-		return nil
-	}
-
-	opa.ExternalSource.setupRefresher(log.IntoContext(ctx, log.FromContext(ctx).WithName("opa")), opa)
+	opa.ExternalSource.start(log.IntoContext(ctx, log.FromContext(ctx).WithName("opa")), opa)
 	return nil
 }
 
@@ -149,9 +141,6 @@ func (opa *OPA) Clean(_ context.Context) error {
 	if opa.ExternalSource == nil {
 		return nil
 	}
-
-	opa.mu.Lock()
-	defer opa.mu.Unlock()
 
 	return opa.ExternalSource.cleanupRefresher()
 }
@@ -252,8 +241,12 @@ type OPAExternalSource struct {
 	Endpoint     string
 	SharedSecret string
 	auth.AuthCredentials
-	TTL       int
-	Timeout   *int
+	TTL     int
+	Timeout *int
+
+	// guards refresher. deliberately not opa.mu: that one is read-locked by Call() on every
+	// request, and the refresher is none of its business
+	mu        sync.Mutex
 	refresher workers.Worker
 }
 
@@ -308,6 +301,8 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 	}
 }
 
+// setupRefresher assigns ext.refresher and must be called with ext.mu held. The worker callback
+// does not take ext.mu, and StartWorker only arms a ticker rather than calling it synchronously.
 func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 	logger := log.FromContext(ctx).WithValues("policy", opa.policyName, "endpoint", ext.Endpoint)
 
@@ -334,9 +329,25 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 	}
 }
 
+// start kicks off the refresher, unless one is already running. The check and the assignment happen
+// under the same lock: released in between, two callers could both start one and leak whichever
+// loses the race.
+func (ext *OPAExternalSource) start(ctx context.Context, opa *OPA) {
+	ext.mu.Lock()
+	defer ext.mu.Unlock()
+
+	if ext.refresher != nil {
+		return
+	}
+
+	ext.setupRefresher(ctx, opa)
+}
+
 func (ext *OPAExternalSource) cleanupRefresher() error {
+	ext.mu.Lock()
 	refresher := ext.refresher
 	ext.refresher = nil
+	ext.mu.Unlock()
 
 	if refresher == nil {
 		return nil
