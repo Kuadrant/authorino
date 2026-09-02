@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -26,8 +27,10 @@ type Worker interface {
 }
 
 type worker struct {
-	ctx   context.Context
-	f     func()
+	ctx context.Context
+	f   func()
+
+	mu    sync.Mutex
 	timer *time.Ticker
 	done  chan bool
 }
@@ -44,19 +47,21 @@ func (w *worker) Start(interval int) error {
 
 	duration := time.Duration(interval) * time.Second
 
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if w.timer != nil {
 		w.timer.Stop()
 	}
 
-	w.timer = time.NewTicker(duration)
-
+	timer := time.NewTicker(duration)
 	done := make(chan bool, 1)
 
 	go func() {
-		defer w.timer.Stop()
+		defer timer.Stop()
 		for {
 			select {
-			case <-w.timer.C:
+			case <-timer.C:
 				w.f()
 			case <-w.ctx.Done():
 				return
@@ -66,14 +71,22 @@ func (w *worker) Start(interval int) error {
 		}
 	}()
 
+	w.timer = timer
 	w.done = done
 
 	return nil
 }
 
+// Stop is idempotent: stopping a worker that was never started, or that has already been
+// stopped, is a no-op. Callers such as the AuthConfig reconciler clean up whatever config is
+// currently in the index and cannot know whether that instance was cleaned up before.
 func (w *worker) Stop() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if w.done != nil {
 		close(w.done)
+		w.done = nil
 	}
 	return nil
 }

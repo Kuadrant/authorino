@@ -69,22 +69,33 @@ func NewOPAAuthorization(policyName string, rego string, externalSource *OPAExte
 	}
 
 	o := &OPA{
-		ExternalSource: externalSource,
-		AllValues:      allValues,
-		regoVersion:    regoVersion,
-		policyName:     policyName,
-		policyUID:      generatePolicyUID(policyName, rego, nonce),
-		opaContext:     context.TODO(),
+		ExternalSource:   externalSource,
+		AllValues:        allValues,
+		regoVersion:      regoVersion,
+		policyName:       policyName,
+		policyUID:        generatePolicyUID(policyName, rego, nonce),
+		opaContext:       context.TODO(),
+		pullFromRegistry: pullFromRegistry,
 	}
 
 	if _, err := o.updateRego(rego, ctx, true); err != nil {
 		return nil, err
-	} else {
-		if pullFromRegistry {
-			externalSource.setupRefresher(log.IntoContext(ctx, logger), o)
-		}
-		return o, nil
 	}
+
+	return o, nil
+}
+
+// Start kicks off the refresh of the policy pulled from an external registry. The policy itself is
+// downloaded and precompiled by the constructor, so an unreachable registry still fails the
+// translation of the authconfig; only the periodic refresh waits until the config is indexed.
+// impl: auth.AuthConfigStarter
+func (opa *OPA) Start(ctx context.Context) error {
+	if !opa.pullFromRegistry || opa.ExternalSource == nil {
+		return nil
+	}
+
+	opa.ExternalSource.start(log.IntoContext(ctx, log.FromContext(ctx).WithName("opa")), opa)
+	return nil
 }
 
 type OPA struct {
@@ -92,11 +103,12 @@ type OPA struct {
 	ExternalSource *OPAExternalSource
 	AllValues      bool
 
-	regoVersion opaParser.RegoVersion
-	opaContext  context.Context
-	policy      *rego.PreparedEvalQuery
-	policyName  string
-	policyUID   string
+	regoVersion      opaParser.RegoVersion
+	opaContext       context.Context
+	pullFromRegistry bool
+	policy           *rego.PreparedEvalQuery
+	policyName       string
+	policyUID        string
 
 	mu sync.RWMutex
 }
@@ -229,8 +241,12 @@ type OPAExternalSource struct {
 	Endpoint     string
 	SharedSecret string
 	auth.AuthCredentials
-	TTL       int
-	Timeout   *int
+	TTL     int
+	Timeout *int
+
+	// guards refresher. deliberately not opa.mu: that one is read-locked by Call() on every
+	// request, and the refresher is none of its business
+	mu        sync.Mutex
 	refresher workers.Worker
 }
 
@@ -285,6 +301,8 @@ func (ext *OPAExternalSource) downloadRegoDataFromUrl(ctx context.Context) (stri
 	}
 }
 
+// setupRefresher assigns ext.refresher and must be called with ext.mu held. The worker callback
+// does not take ext.mu, and StartWorker only arms a ticker rather than calling it synchronously.
 func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 	logger := log.FromContext(ctx).WithValues("policy", opa.policyName, "endpoint", ext.Endpoint)
 
@@ -311,9 +329,28 @@ func (ext *OPAExternalSource) setupRefresher(ctx context.Context, opa *OPA) {
 	}
 }
 
+// start kicks off the refresher, unless one is already running. The check and the assignment happen
+// under the same lock: released in between, two callers could both start one and leak whichever
+// loses the race.
+func (ext *OPAExternalSource) start(ctx context.Context, opa *OPA) {
+	ext.mu.Lock()
+	defer ext.mu.Unlock()
+
+	if ext.refresher != nil {
+		return
+	}
+
+	ext.setupRefresher(ctx, opa)
+}
+
 func (ext *OPAExternalSource) cleanupRefresher() error {
-	if ext.refresher == nil {
+	ext.mu.Lock()
+	refresher := ext.refresher
+	ext.refresher = nil
+	ext.mu.Unlock()
+
+	if refresher == nil {
 		return nil
 	}
-	return ext.refresher.Stop()
+	return refresher.Stop()
 }

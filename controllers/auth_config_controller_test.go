@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	goruntime "runtime"
 	"testing"
+	"time"
 
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/evaluators"
@@ -445,4 +447,193 @@ func BenchmarkReconcileAuthConfig(b *testing.B) {
 	}
 	b.StopTimer()
 	assert.NilError(b, err)
+}
+
+func newTestAuthConfigWithRefresher() api.AuthConfig {
+	return api.AuthConfig{
+		TypeMeta:   metav1.TypeMeta{Kind: "AuthConfig", APIVersion: "authorino.kuadrant.io/v1beta3"},
+		ObjectMeta: metav1.ObjectMeta{Name: "auth-config-1", Namespace: "authorino"},
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"echo-api"},
+			Authentication: map[string]api.AuthenticationSpec{
+				"keycloak": {
+					AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+						Jwt: &api.JwtAuthenticationSpec{
+							IssuerUrl: "http://127.0.0.1:9001/auth/realms/demo",
+							TTL:       60, // starts the background OIDC refresher worker
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// breaks translateAuthConfig() the same way a rotated or deleted credentialsRef does in a cluster.
+// the metadata phase is translated after the identity phase, so the identity refresher is always
+// built before the failure - authentication is a map and its iteration order is not deterministic
+func breakTranslation(t *testing.T, k8sClient client.WithWatch, name types.NamespacedName) {
+	t.Helper()
+	authConfig := &api.AuthConfig{}
+	assert.NilError(t, k8sClient.Get(context.Background(), name, authConfig))
+	authConfig.Spec.Metadata = map[string]api.MetadataSpec{
+		"uma": {
+			MetadataMethodSpec: api.MetadataMethodSpec{
+				Uma: &api.UmaMetadataSpec{
+					Endpoint:    "http://127.0.0.1:9001/auth/realms/demo",
+					Credentials: &v1.LocalObjectReference{Name: "no-such-secret"},
+				},
+			},
+		},
+	}
+	assert.NilError(t, k8sClient.Update(context.Background(), authConfig))
+}
+
+// A reconcile that fails in translateAuthConfig() returns before addToIndex(), so the config it
+// just cleaned up is still the one in the index. The requeue then cleans that very same instance
+// again, which used to close an already-closed channel and take the whole process down.
+func TestReconcileCleansTheSameIndexedConfigTwiceWithoutPanicking(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+	authConfig := newTestAuthConfigWithRefresher()
+	k8sClient := newTestK8sClient(&authConfig)
+	reconciler := newTestAuthConfigReconciler(k8sClient, authConfigIndex)
+	name := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	req := reconcile.Request{NamespacedName: name}
+
+	_, err := reconciler.Reconcile(context.Background(), req)
+	assert.NilError(t, err)
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
+
+	breakTranslation(t, k8sClient, name)
+
+	// reconcile #1: cleans up the indexed config, fails to translate, requeues
+	_, err = reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil, "the last known good config should stay in the index")
+
+	// reconcile #2: the requeue, cleaning up that same instance all over again
+	_, err = reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
+}
+
+// dropIdentity removes the identity evaluator from the resource. Kept apart from breakTranslation
+// on purpose: the tests that check nothing gets orphaned need an identity in the failing config,
+// or there would be no refresher to orphan in the first place and they would pass for free.
+func dropIdentity(t *testing.T, k8sClient client.WithWatch, name types.NamespacedName) {
+	t.Helper()
+	authConfig := &api.AuthConfig{}
+	assert.NilError(t, k8sClient.Get(context.Background(), name, authConfig))
+	authConfig.Spec.Authentication = nil
+	assert.NilError(t, k8sClient.Update(context.Background(), authConfig))
+}
+
+// A translation that fails must not start anything: the evaluators it built never reach the index,
+// so nothing would ever clean them up and a persistently failing reconcile is requeued forever.
+func TestReconcileStartsNoWorkersWhenTranslationFails(t *testing.T) {
+	authConfig := newTestAuthConfigWithRefresher()
+	k8sClient := newTestK8sClient(&authConfig)
+	reconciler := newTestAuthConfigReconciler(k8sClient, index.NewIndex())
+	name := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	req := reconcile.Request{NamespacedName: name}
+
+	breakTranslation(t, k8sClient, name)
+
+	_, err := reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+	time.Sleep(200 * time.Millisecond)
+	goruntime.GC()
+	before := goruntime.NumGoroutine()
+
+	const reconciles = 20
+	for i := 0; i < reconciles; i++ {
+		_, err := reconciler.Reconcile(context.Background(), req)
+		assert.ErrorContains(t, err, "no-such-secret")
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	goruntime.GC()
+	leaked := goruntime.NumGoroutine() - before
+	assert.Check(t, leaked < reconciles/2, "leaked %d goroutines over %d failed reconciles", leaked, reconciles)
+}
+
+// An authconfig whose hosts are all taken by another one translates cleanly but is never indexed,
+// and addToIndex() reports that with an empty linkedHosts and no error at all. Nothing may be
+// started for it either, for exactly the same reason.
+func TestReconcileStartsNoWorkersWhenNoHostIsLinked(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+
+	winner := newTestAuthConfigWithRefresher()
+	winner.Name = "auth-config-winner"
+	loser := newTestAuthConfigWithRefresher()
+	loser.Name = "auth-config-loser"
+
+	k8sClient := newTestK8sClient(&winner, &loser)
+	reconciler := newTestAuthConfigReconciler(k8sClient, authConfigIndex)
+	winnerReq := reconcile.Request{NamespacedName: types.NamespacedName{Name: winner.Name, Namespace: winner.Namespace}}
+	loserReq := reconcile.Request{NamespacedName: types.NamespacedName{Name: loser.Name, Namespace: loser.Namespace}}
+
+	_, err := reconciler.Reconcile(context.Background(), winnerReq)
+	assert.NilError(t, err)
+
+	_, err = reconciler.Reconcile(context.Background(), loserReq)
+	assert.NilError(t, err) // a host collision is reported on the status, it is not a reconcile error
+	time.Sleep(200 * time.Millisecond)
+	goruntime.GC()
+	before := goruntime.NumGoroutine()
+
+	const reconciles = 20
+	for i := 0; i < reconciles; i++ {
+		_, err := reconciler.Reconcile(context.Background(), loserReq)
+		assert.NilError(t, err)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	goruntime.GC()
+	leaked := goruntime.NumGoroutine() - before
+	assert.Check(t, leaked < reconciles/2, "leaked %d goroutines over %d reconciles of an unlinked authconfig", leaked, reconciles)
+}
+
+// The config in the index is only torn down once its replacement is known to be good, so a failed
+// translation leaves the last known good config both indexed AND still refreshing.
+func TestReconcileKeepsTheIndexedConfigRunningWhenTranslationFails(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+	authConfig := newTestAuthConfigWithRefresher()
+	k8sClient := newTestK8sClient(&authConfig)
+	reconciler := newTestAuthConfigReconciler(k8sClient, authConfigIndex)
+	name := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	req := reconcile.Request{NamespacedName: name}
+
+	_, err := reconciler.Reconcile(context.Background(), req)
+	assert.NilError(t, err)
+
+	indexed := authConfigIndex.Get("echo-api")
+	assert.Check(t, indexed != nil)
+	assert.Check(t, refresherRunning(indexed), "the indexed config should be refreshing once it is reconciled")
+
+	breakTranslation(t, k8sClient, name)
+	// and take the identity away, so the version of the resource that fails to translate has no
+	// jwt evaluator of its own. a refresher still running below can then only have come from the
+	// config that was indexed before it, rather than from a config this reconcile put there
+	dropIdentity(t, k8sClient, name)
+
+	_, err = reconciler.Reconcile(context.Background(), req)
+	assert.ErrorContains(t, err, "no-such-secret")
+
+	stillIndexed := authConfigIndex.Get("echo-api")
+	assert.Check(t, stillIndexed != nil, "the last known good config should stay in the index")
+	assert.Check(t, refresherRunning(stillIndexed), "the refresher can only be the one from the previously indexed config, and it should still be running")
+}
+
+func refresherRunning(authConfig *evaluators.AuthConfig) bool {
+	for _, evaluator := range authConfig.IdentityConfigs {
+		idConfig, ok := evaluator.(*evaluators.IdentityConfig)
+		if !ok || idConfig.JWTAuthentication == nil {
+			continue
+		}
+		if idConfig.JWTAuthentication.RefresherRunning() {
+			return true
+		}
+	}
+	return false
 }
