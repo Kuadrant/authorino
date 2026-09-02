@@ -590,3 +590,29 @@ func TestJWKSVerifier_Audiences(t *testing.T) {
 	assert.Check(t, obj == nil, "foreign-audience token accepted on the jwksUrl path with audiences set")
 	assert.Error(t, err, msg_jwtAudienceNotAccepted)
 }
+
+// Start must be safe to call concurrently: the check for an existing refresher and the assignment
+// of a new one have to happen under the same lock, or two callers both start one and one leaks.
+func TestOIDCProviderVerifierConcurrentStart(t *testing.T) {
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
+			return oidcServerMockResponse(1)
+		},
+	})
+	defer authServer.Close()
+
+	verifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 60, nil).(*oidcProviderVerifier)
+	defer func() { _ = verifier.Clean(context.TODO()) }()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NilError(t, verifier.Start(context.TODO()))
+		}()
+	}
+	wg.Wait()
+
+	assert.Check(t, verifier.refresher != nil)
+}
