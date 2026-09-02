@@ -556,6 +556,58 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	return labels
 }
 
+const loggingFieldPrefix = "logging."
+
+func truncateValue(s string, maxLen int) string {
+	if maxLen > 0 && len(s) > maxLen {
+		return s[:maxLen] + "...(truncated)"
+	}
+	return s
+}
+
+func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string {
+	fields := make(map[string]string)
+
+	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
+	if customFields, ok := filteredMetadata["io.kuadrant.logging.fields"]; ok {
+		for k, v := range customFields.Fields {
+			key := loggingFieldPrefix + k
+			switch kind := v.Kind.(type) {
+			case *structpb.Value_StringValue:
+				fields[key] = truncateValue(kind.StringValue, maxValueBytes)
+
+			case *structpb.Value_NumberValue:
+				fields[key] = fmt.Sprintf("%v", kind.NumberValue)
+
+			case *structpb.Value_BoolValue:
+				fields[key] = fmt.Sprintf("%v", kind.BoolValue)
+
+			case *structpb.Value_StructValue:
+				if celExprField, ok := kind.StructValue.Fields["cel_expr"]; ok {
+					if exprStr := celExprField.GetStringValue(); exprStr != "" {
+						expr, err := cel.NewExpression(exprStr)
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
+							continue
+						}
+						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						if err != nil {
+							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
+							continue
+						}
+						fields[key] = truncateValue(fmt.Sprintf("%v", value), maxValueBytes)
+					}
+				}
+
+			default:
+				pipeline.Logger.V(1).Info("unexpected value kind", "kind", kind)
+			}
+		}
+	}
+
+	return fields
+}
+
 func (pipeline *AuthPipeline) GetRequest() *envoy_auth.CheckRequest {
 	return pipeline.Request
 }

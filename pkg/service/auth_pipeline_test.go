@@ -703,3 +703,190 @@ func TestPipelineMetricLabels(t *testing.T) {
 	assert.Equal(t, "", labels["unResolvableLabel"])
 	assert.Equal(t, "", labels["nullLabel"])
 }
+
+func TestPipelineLoggingFields(t *testing.T) {
+	reqJSON := `{
+		"attributes": {
+			"metadata_context": {
+				"filter_metadata": {
+					"io.kuadrant.logging.fields": {
+						"client_identity": { "cel_expr": "request.host" },
+						"request_method": { "cel_expr": "request.method" },
+						"static_field": "audit-v1",
+						"numeric_field": 42,
+						"bool_field": true,
+						"unresolvable": { "cel_expr": "auth.nonexistent.value" },
+						"null_field": null
+					}
+				}
+			},
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/v1/chat/completions",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer token123"
+					}
+				}
+			}
+		}
+	}`
+
+	var request envoy_auth.CheckRequest
+	_ = gojson.Unmarshal([]byte(reqJSON), &request)
+
+	pipeline := newTestAuthPipeline(
+		evaluators.AuthConfig{},
+		&request,
+	)
+
+	fields := pipeline.loggingFields(1024)
+
+	assert.Equal(t, 5, len(fields))
+
+	assert.Equal(t, "my-api", fields["logging.client_identity"])
+	assert.Equal(t, "POST", fields["logging.request_method"])
+	assert.Equal(t, "audit-v1", fields["logging.static_field"])
+	assert.Equal(t, "42", fields["logging.numeric_field"])
+	assert.Equal(t, "true", fields["logging.bool_field"])
+	assert.Equal(t, "", fields["logging.unresolvable"])
+	assert.Equal(t, "", fields["logging.null_field"])
+}
+
+func TestPipelineLoggingFieldsEmpty(t *testing.T) {
+	var request envoy_auth.CheckRequest
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
+
+	pipeline := newTestAuthPipeline(
+		evaluators.AuthConfig{},
+		&request,
+	)
+
+	fields := pipeline.loggingFields(1024)
+
+	assert.Equal(t, 0, len(fields))
+}
+
+func TestLoggingFieldsResolvesIdentityOnAllow(t *testing.T) {
+	reqJSON := `{
+		"attributes": {
+			"metadata_context": {
+				"filter_metadata": {
+					"io.kuadrant.logging.fields": {
+						"identity_anonymous": { "cel_expr": "auth.identity.anonymous" },
+						"req_method": { "cel_expr": "request.method" }
+					}
+				}
+			},
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/v1/chat/completions",
+					"method": "POST"
+				}
+			}
+		}
+	}`
+
+	var request envoy_auth.CheckRequest
+	_ = gojson.Unmarshal([]byte(reqJSON), &request)
+
+	authCred := auth.NewAuthCredential("", "")
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
+		IdentityConfigs: []auth.AuthConfigEvaluator{
+			&evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}},
+		},
+	}, &request)
+
+	result := pipeline.Evaluate()
+	assert.Equal(t, result.Code, rpc.OK)
+
+	fields := pipeline.loggingFields(1024)
+
+	assert.Equal(t, "true", fields["logging.identity_anonymous"])
+	assert.Equal(t, "POST", fields["logging.req_method"])
+}
+
+func TestLoggingFieldsResolvesIdentityOnAuthzDeny(t *testing.T) {
+	reqJSON := `{
+		"attributes": {
+			"metadata_context": {
+				"filter_metadata": {
+					"io.kuadrant.logging.fields": {
+						"identity_anonymous": { "cel_expr": "auth.identity.anonymous" },
+						"req_method": { "cel_expr": "request.method" }
+					}
+				}
+			},
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/v1/chat/completions",
+					"method": "POST"
+				}
+			}
+		}
+	}`
+
+	var request envoy_auth.CheckRequest
+	_ = gojson.Unmarshal([]byte(reqJSON), &request)
+
+	authCred := auth.NewAuthCredential("", "")
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
+		IdentityConfigs: []auth.AuthConfigEvaluator{
+			&evaluators.IdentityConfig{Name: "anonymous", Noop: &identity.Noop{AuthCredentials: authCred}},
+		},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{
+			&failConfig{},
+		},
+	}, &request)
+
+	result := pipeline.Evaluate()
+	assert.Equal(t, result.Code, rpc.PERMISSION_DENIED)
+
+	fields := pipeline.loggingFields(1024)
+
+	assert.Equal(t, "true", fields["logging.identity_anonymous"])
+	assert.Equal(t, "POST", fields["logging.req_method"])
+}
+
+func TestLoggingFieldsGracefulOnAuthnFailure(t *testing.T) {
+	reqJSON := `{
+		"attributes": {
+			"metadata_context": {
+				"filter_metadata": {
+					"io.kuadrant.logging.fields": {
+						"identity_anonymous": { "cel_expr": "auth.identity.anonymous" },
+						"req_method": { "cel_expr": "request.method" }
+					}
+				}
+			},
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/v1/chat/completions",
+					"method": "POST"
+				}
+			}
+		}
+	}`
+
+	var request envoy_auth.CheckRequest
+	_ = gojson.Unmarshal([]byte(reqJSON), &request)
+
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
+		IdentityConfigs: []auth.AuthConfigEvaluator{
+			&failConfig{},
+		},
+	}, &request)
+
+	result := pipeline.Evaluate()
+	assert.Equal(t, result.Code, rpc.UNAUTHENTICATED)
+
+	fields := pipeline.loggingFields(1024)
+
+	_, hasIdentity := fields["logging.identity_anonymous"]
+	assert.Check(t, !hasIdentity, "identity field should not resolve when authentication fails")
+	assert.Equal(t, "POST", fields["logging.req_method"])
+}
