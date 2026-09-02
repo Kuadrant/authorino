@@ -517,6 +517,17 @@ func TestReconcileCleansTheSameIndexedConfigTwiceWithoutPanicking(t *testing.T) 
 	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
 }
 
+// dropIdentity removes the identity evaluator from the resource. Kept apart from breakTranslation
+// on purpose: the tests that check nothing gets orphaned need an identity in the failing config,
+// or there would be no refresher to orphan in the first place and they would pass for free.
+func dropIdentity(t *testing.T, k8sClient client.WithWatch, name types.NamespacedName) {
+	t.Helper()
+	authConfig := &api.AuthConfig{}
+	assert.NilError(t, k8sClient.Get(context.Background(), name, authConfig))
+	authConfig.Spec.Authentication = nil
+	assert.NilError(t, k8sClient.Update(context.Background(), authConfig))
+}
+
 // A translation that fails must not start anything: the evaluators it built never reach the index,
 // so nothing would ever clean them up and a persistently failing reconcile is requeued forever.
 func TestReconcileStartsNoWorkersWhenTranslationFails(t *testing.T) {
@@ -601,13 +612,17 @@ func TestReconcileKeepsTheIndexedConfigRunningWhenTranslationFails(t *testing.T)
 	assert.Check(t, refresherRunning(indexed), "the indexed config should be refreshing once it is reconciled")
 
 	breakTranslation(t, k8sClient, name)
+	// and take the identity away, so the version of the resource that fails to translate has no
+	// jwt evaluator of its own. a refresher still running below can then only have come from the
+	// config that was indexed before it, rather than from a config this reconcile put there
+	dropIdentity(t, k8sClient, name)
 
 	_, err = reconciler.Reconcile(context.Background(), req)
 	assert.ErrorContains(t, err, "no-such-secret")
 
 	stillIndexed := authConfigIndex.Get("echo-api")
 	assert.Check(t, stillIndexed != nil, "the last known good config should stay in the index")
-	assert.Check(t, refresherRunning(stillIndexed), "and it should still be refreshing, not left degraded")
+	assert.Check(t, refresherRunning(stillIndexed), "the refresher can only be the one from the previously indexed config, and it should still be running")
 }
 
 func refresherRunning(authConfig *evaluators.AuthConfig) bool {
