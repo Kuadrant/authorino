@@ -9,12 +9,14 @@ host reachable from the pod and have Authorino make the request on their behalf.
 This creates a possible situation where attacker can create malicious AuthConfig
 in order to reach cloud metadata endpoints, internal-only services, or to exfiltrate data.
 
-The two ValidatingAdmissionPolicies below close that gap. They turn every
+The three ValidatingAdmissionPolicies below close that gap. They turn every
 outbound destination into an **explicit, RBAC-gated allowlist**: an `AuthConfig`
-may only name a host that the requesting subject has been granted access to, and
+may only name a host that the requesting subject has been granted access to,
 inline Rego may only use `http.send` if the subject has been granted a dedicated
-permission. You hand those permissions only to the subjects that need them to do
-their job.
+permission, and an OPA policy may only be loaded from an external source if the
+subject has been granted a dedicated permission (its Rego is fetched at runtime
+and cannot be scanned for `http.send` at admission time). You hand those
+permissions only to the subjects that need them to do their job.
 
 The policies:
 
@@ -23,13 +25,24 @@ The policies:
 | `authorino-restrict-http-route` | `authconfigs` | any outbound endpoint whose hostname the subject has not been granted (JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata/callback `http.url` + `http.oauth2.tokenUrl`, OPA `opa.externalPolicy` URL, SpiceDB `endpoint`) | `access` on `http-resource/<hostname>` |
 | `authorino-restrict-http-route` | `authconfigs` | endpoints whose host cannot be statically verified: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname | *(none — always denied; use a literal hostname instead)* |
 | `authorino-deny-rego-httpsend` | `authconfigs` | inline OPA/Rego (`spec.authorization.*.opa.rego`) that uses the `http.send` builtin | `use` on `authconfig-httpsend` |
+| `authorino-deny-external-opa` | `authconfigs` | OPA policies loaded from an external source (`spec.authorization.*.opa.externalPolicy`), whose Rego is fetched at runtime and cannot be scanned for `http.send` at admission time | `use` on `authconfig-external-opa` |
 
+
+## Prerequisites
+
+> **Important**
+>
+> These manifests require **Kubernetes v1.30 or newer**. They use
+> `ValidatingAdmissionPolicy` via the stable `admissionregistration.k8s.io/v1`
+> API, which is only available from v1.30 (where the feature graduated to GA),
+> along with the CEL `authorizer` library the policies rely on. On older
+> clusters these resources will not apply.
 
 ## 1. Create the Roles
 
 Create one `ClusterRole` per host you want to be able to allow (the RBAC resource
 name is `http-resource/<hostname>`), plus one `ClusterRole` for the inline-Rego
-`http.send` permission.
+`http.send` permission and one for loading OPA policies from an external source.
 
 ```bash
 kubectl apply -f - <<'EOF'
@@ -50,15 +63,24 @@ rules:
   - apiGroups: ["authorino.kuadrant.io"]
     resources: ["authconfig-httpsend"]
     verbs: ["use"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: authorino-external-opa
+rules:
+  - apiGroups: ["authorino.kuadrant.io"]
+    resources: ["authconfig-external-opa"]
+    verbs: ["use"]
 EOF
 ```
 
 ## 2. Grant the access to the restricted destinations
 
-Grant the host-access and `http.send` permissions to your own ServiceAccounts and
-Users. Use the RoleBindings below as a template. Replace the placeholders
-(`<sa-name>`, `<namespace-of-sa>`, `<authconfig-namespace>`) with the appropriate
-values.
+Grant the host-access, `http.send`, and external-OPA permissions to your own
+ServiceAccounts and Users. Use the RoleBindings below as a template. Replace the
+placeholders (`<sa-name>`, `<namespace-of-sa>`, `<authconfig-namespace>`) with the
+appropriate values.
 
 
 
@@ -91,12 +113,26 @@ subjects:
   - kind: ServiceAccount
     name: <sa-name>
     namespace: <namespace-of-sa>
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rb-external-opa
+  namespace: <authconfig-namespace>
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: authorino-external-opa
+subjects:
+  - kind: ServiceAccount
+    name: <sa-name>
+    namespace: <namespace-of-sa>
 EOF
 ```
 
 ## 3. Create the ValidatingAdmissionPolicies (VAPs)
 
-Apply the two policies below.
+Apply the three policies below.
 
 ```bash
 kubectl apply -f - <<'EOF'
@@ -253,12 +289,52 @@ metadata:
 spec:
   policyName: authorino-deny-rego-httpsend
   validationActions: ["Deny"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: authorino-deny-external-opa
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["authorino.kuadrant.io"]
+        apiVersions: ["v1beta3"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["authconfigs"]
+  matchConditions:
+    - name: user-not-external-opa-exempt
+      expression: >-
+        !authorizer.group("authorino.kuadrant.io")
+        .resource("authconfig-external-opa")
+        .namespace(object.metadata.namespace)
+        .check("use")
+        .allowed()
+  variables:
+    - name: usesExternalOpa
+      expression: >-
+        has(object.spec.authorization)
+        && object.spec.authorization.exists(k,
+        has(object.spec.authorization[k].opa)
+        && has(object.spec.authorization[k].opa.externalPolicy))
+  validations:
+    - expression: "!variables.usesExternalOpa"
+      reason: Forbidden
+      message: "OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed: the Rego is fetched at runtime and cannot be scanned for the 'http.send' builtin at admission time (SSRF). Use an inline 'rego' policy, which is scanned, or ask an admin for the 'authconfig-external-opa' role."
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: authorino-deny-external-opa
+spec:
+  policyName: authorino-deny-external-opa
+  validationActions: ["Deny"]
 EOF
 ```
 
 > **Warning**
 >
-> Unlike a policy that only restricts *newly enabling* a field, both policies
+> Unlike a policy that only restricts *newly enabling* a field, all three policies
 > re-validate the **entire object** on every `CREATE` **and** `UPDATE`, with no
 > comparison to the previous version:
 >
@@ -266,7 +342,7 @@ EOF
     >   `access` for **every** hostname currently in the `AuthConfig` — even on an
     >   update that does not touch the URLs. An `AuthConfig` that already points at a
     >   host will become **uneditable by a subject that lacks that host's role**, and
-    >   `http.send`-bearing configs behave the same way for `authorino-deny-rego-httpsend`.
+    >   `http.send`-bearing configs behave the same way for `authorino-deny-rego-httpsend`, and configs using `opa.externalPolicy` behave the same way for `authorino-deny-external-opa`.
 > - Applying the policies does **not** retroactively delete existing
     >   `AuthConfig`s, but the next update to one is re-checked in full.
 >
@@ -330,23 +406,48 @@ spec:
 EOF
 ```
 
+```bash
+# OPA policy loaded from an external source, without the external-OPA role — should be DENIED
+kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: route-denied-external-opa
+  namespace: <namespace>
+spec:
+  hosts:
+    - test-external-opa-denied.example.com
+  authorization:
+    external-check:
+      opa:
+        externalPolicy:
+          url: https://keycloak.example.com/policy.rego
+EOF
+```
+
 You should get errors like these instead of the resources being created:
 
-```
+```text
 ... is forbidden: ValidatingAdmissionPolicy 'authorino-restrict-http-route' ... denied request: no role allows request to host(s): not-allowed.example.com
 ```
 
-```
+```text
 ... is forbidden: ValidatingAdmissionPolicy 'authorino-deny-rego-httpsend' ... denied request: inline OPA/Rego policies (spec.authorization[*].opa.rego) must not use the 'http.send' builtin ...
+```
+
+```text
+... is forbidden: ValidatingAdmissionPolicy 'authorino-deny-external-opa' ... denied request: OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed ...
 ```
 
 ### A permitted subject is allowed
 
 Now run the same requests as a subject that holds the matching permission
-(granted in steps 1–2). Both should be admitted. Replace `<authorized-subject>`
+(granted in steps 1–2). All should be admitted. Replace `<authorized-subject>`
 with the subject you granted the permission to (for example,
 `system:serviceaccount:<namespace>:<sa>`), and make sure you granted the role for
-the exact hostname used below.
+the exact hostname used below. Note that an external OPA policy is admitted only
+when the subject holds **both** the `authconfig-external-opa` role **and** the
+host role for the policy's URL (here, `keycloak.example.com`).
 
 ```bash
 # JWT issuer at an allowlisted host, as a subject granted access to it — should be ALLOWED
@@ -383,6 +484,26 @@ spec:
         rego: |
           resp := http.send({"method": "get", "url": "https://keycloak.example.com/check"})
           allow { resp.status_code == 200 }
+EOF
+```
+
+```bash
+# OPA policy from an external source at an allowlisted host, as a subject granted
+# both 'authconfig-external-opa' and the keycloak.example.com host role — should be ALLOWED
+kubectl apply --as=<authorized-subject> -f - <<'EOF'
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: route-allowed-external-opa
+  namespace: <namespace>
+spec:
+  hosts:
+    - test-external-opa-allowed.example.com
+  authorization:
+    external-check:
+      opa:
+        externalPolicy:
+          url: https://keycloak.example.com/policy.rego
 EOF
 ```
 
