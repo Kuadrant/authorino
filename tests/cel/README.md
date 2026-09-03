@@ -32,11 +32,11 @@ make test-cel
 # Or run directly with go test
 go test ./tests/cel/... -v
 
-# Run with specific envtest binaries (e.g., for Kubernetes 1.28.3)
-KUBEBUILDER_ASSETS=$(bin/setup-envtest use -p path 1.28.3) go test ./tests/cel/... -v
+# Run with specific envtest binaries (e.g., for Kubernetes 1.30.3)
+KUBEBUILDER_ASSETS=$(bin/setup-envtest use -p path 1.30.3) go test ./tests/cel/... -v
 
 # Run with a specific Kubernetes version
-K8S_VERSION=1.28.0 go test ./tests/cel/... -v
+K8S_VERSION=1.30.3 go test ./tests/cel/... -v
 ```
 
 ### Run Specific Test
@@ -77,7 +77,7 @@ Failed validation (expected):
 
 ## Environment Variables
 
-- **`K8S_VERSION`**: Kubernetes version for envtest (e.g., `1.28.0`). Defaults to latest GA version
+- **`K8S_VERSION`**: Kubernetes version for envtest (e.g., `1.30.3`). Defaults to latest GA version
 - **`ENVTEST_K8S_VERSION`**: Alternative name for `K8S_VERSION`
 
 ## Adding New Tests
@@ -161,10 +161,10 @@ If you see errors about downloading envtest binaries:
 ```bash
 # Manually download binaries
 go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-setup-envtest use 1.28.0
+setup-envtest use 1.30.3
 
 # Set the path
-export KUBEBUILDER_ASSETS=$(setup-envtest use -p path 1.28.0)
+export KUBEBUILDER_ASSETS=$(setup-envtest use -p path 1.30.3)
 ```
 
 ### CRD validation not working
