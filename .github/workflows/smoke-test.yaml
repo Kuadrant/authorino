@@ -32,7 +32,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get install jq
       - name: Install kind
-        run: go install sigs.k8s.io/kind@v0.20.0
+        run: go install sigs.k8s.io/kind@v0.23.0
       - name: Create kind cluster
         run: kind create cluster --name authorino-smoke-tests
       - name: Install Authorino Operator
