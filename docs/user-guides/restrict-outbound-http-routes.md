@@ -235,7 +235,7 @@ spec:
   validations:
     - expression: "!variables.hasUnverifiableEndpoint"
       reason: Forbidden
-      message: "outbound URLs (authentication/metadata/authorization/callback) must use a static endpoint with a literal hostname so it can be checked against the hostname whitelist (dynamic 'urlExpression' or templated '{selector}' hosts are not allowed)"
+      message: "outbound URLs (authentication/metadata/authorization/callback) must use a static endpoint with a literal hostname so it can be checked against the hostname allowlist (dynamic 'urlExpression' or templated '{selector}' hosts are not allowed)"
     - expression: "size(variables.deniedHosts) == 0"
       reason: Forbidden
       message: "you do not have a role that allows Authorino to make requests to one or more of the configured hostnames"
