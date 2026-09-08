@@ -7,17 +7,6 @@ By default, Authorino will watch events related to all `AuthConfig` custom resou
 - multiple environments (e.g. staging, production) inside of a same cluster/namespace;
 - providing managed instances of Authorino that all watch CRs cluster-wide, yet dedicated to organizations allowed to create and operate their own `AuthConfig`s across multiple namespaces.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b>⚠️ <i>Important:</i></b>
-        This feature may not be available to users of Authorino via <a href="https://kuadrant.io">Kuadrant</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 <details markdown="1">
   <summary markdown="1">
     <strong>Authorino capabilities featured in this guide:</strong>

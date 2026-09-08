@@ -36,23 +36,6 @@ kind create cluster --name authorino-tutorial
 
 The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
 
-<table>
-  <thead>
-    <tr>
-      <th>Using Kuadrant</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❺.</p>
-        <p>At step ❺, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
-        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.</p>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 <br/>
 
 ## ❶ Install the Authorino Operator (cluster admin required)
@@ -120,18 +103,6 @@ In this example, we will use OPA to implement a read-only policy for requests co
 The implementation relies on the [`X-Forwarded-For`](https://datatracker.ietf.org/doc/html/rfc7239) HTTP header to read the client's IP address.[^5]
 
 [^5]: You can also set [`use_remote_address: true`](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-use-remote-address) in the Envoy route configuration, so the proxy will append its IP address instead of run in transparent mode. This setting will also ensure real remote address of the client connection passed in the [`x-envoy-external-address`](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_conn_man/headers#config-http-conn-man-headers-x-envoy-external-address) HTTP header, which can be used to simplify the read-only policy in remote environment.
-
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
 
 ```sh
 kubectl apply -f -<<EOF
