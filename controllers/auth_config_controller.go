@@ -375,15 +375,22 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				authCred,
 			)
 			oauth2.Timeout = oauth2Identity.Timeout
+			if oauth2Identity.MaxResponseBytes != nil {
+				oauth2.MaxResponseBytes = *oauth2Identity.MaxResponseBytes
+			}
 			translatedIdentity.OAuth2 = oauth2
 
 		// oidc
 		case api.JwtAuthentication:
 			var jwtVerifier identity_evaluators.JWTVerifier
+			var jwtMaxResponseBytes int64
+			if identity.Jwt.MaxResponseBytes != nil {
+				jwtMaxResponseBytes = *identity.Jwt.MaxResponseBytes
+			}
 			if identity.Jwt.IssuerUrl != "" {
-				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL, identity.Jwt.Timeout)
+				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL, identity.Jwt.Timeout, jwtMaxResponseBytes)
 			} else if identity.Jwt.JwksUrl != "" {
-				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Timeout)
+				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Timeout, jwtMaxResponseBytes)
 			} else {
 				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
 			}
@@ -499,17 +506,22 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				return nil, err // TODO: Review this error, perhaps we don't need to return an error, just reenqueue.
 			}
 
+			var umaMaxResponseBytes int64
+			if metadata.Uma.MaxResponseBytes != nil {
+				umaMaxResponseBytes = *metadata.Uma.MaxResponseBytes
+			}
 			if uma, err := metadata_evaluators.NewUMAMetadata(
 				ctx,
 				metadata.Uma.Endpoint,
 				string(secret.Data["clientID"]),
 				string(secret.Data["clientSecret"]),
+				metadata.Uma.Timeout,
+				umaMaxResponseBytes,
 			); err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to create UMA metadata evaluator")
 				return nil, err
 			} else {
-				uma.Timeout = metadata.Uma.Timeout
 				translatedMetadata.UMA = uma
 			}
 
@@ -527,6 +539,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			}
 			userInfo := metadata_evaluators.NewUserInfo(openIdConfigStore, metadata.UserInfo.UserInfoUrl)
 			userInfo.Timeout = metadata.UserInfo.Timeout
+			if metadata.UserInfo.MaxResponseBytes != nil {
+				userInfo.MaxResponseBytes = *metadata.UserInfo.MaxResponseBytes
+			}
 			translatedMetadata.UserInfo = userInfo
 
 		// generic http
@@ -609,12 +624,18 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 					sharedSecret = string(secret.Data[externalRegistry.SharedSecret.Key])
 				}
 
+				var opaMaxResponseBytes int64
+				if externalRegistry.MaxResponseBytes != nil {
+					opaMaxResponseBytes = *externalRegistry.MaxResponseBytes
+				}
+
 				externalSource = &authorization_evaluators.OPAExternalSource{
-					Endpoint:        externalRegistry.Url,
-					SharedSecret:    sharedSecret,
-					AuthCredentials: newAuthCredential(externalRegistry.Credentials),
-					TTL:             externalRegistry.TTL,
-					Timeout:         externalRegistry.Timeout,
+					Endpoint:         externalRegistry.Url,
+					SharedSecret:     sharedSecret,
+					AuthCredentials:  newAuthCredential(externalRegistry.Credentials),
+					TTL:              externalRegistry.TTL,
+					Timeout:          externalRegistry.Timeout,
+					MaxResponseBytes: opaMaxResponseBytes,
 				}
 			}
 
@@ -1221,6 +1242,11 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		}
 	}
 
+	var maxResponseBytes int64
+	if http.MaxResponseBytes != nil {
+		maxResponseBytes = *http.MaxResponseBytes
+	}
+
 	ev := &metadata_evaluators.GenericHttp{
 		Endpoint:              http.Url,
 		DynamicEndpoint:       dynamicEndpoint,
@@ -1233,6 +1259,7 @@ func (r *AuthConfigReconciler) buildGenericHttpEvaluator(ctx context.Context, ht
 		OAuth2:                oauth2ClientCredentialsConfig,
 		OAuth2TokenForceFetch: oauth2TokenForceFetch,
 		Timeout:               http.Timeout,
+		MaxResponseBytes:      maxResponseBytes,
 	}
 
 	if sharedSecret != "" || oauth2ClientCredentialsConfig != nil {

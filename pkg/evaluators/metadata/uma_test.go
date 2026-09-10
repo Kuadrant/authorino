@@ -37,7 +37,7 @@ func TestNewUMAMetadata(t *testing.T) {
 	})
 	defer httpServer.Close()
 
-	uma, err := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret")
+	uma, err := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret", nil, 0)
 
 	assert.NilError(t, err)
 	assert.Equal(t, umaIssuer, uma.provider.issuer)
@@ -49,7 +49,7 @@ func TestUMAMetadataFailToDecodeConfig(t *testing.T) {
 	})
 	defer httpServer.Close()
 
-	uma, err := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret")
+	uma, err := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret", nil, 0)
 
 	assert.ErrorContains(t, err, "failed to decode uma provider discovery object")
 	assert.Check(t, uma == nil)
@@ -78,11 +78,55 @@ func TestUMACall(t *testing.T) {
 	request := &envoy_auth.AttributeContext_HttpRequest{Path: "/someresource"}
 	pipelineMock.EXPECT().GetHttp().Return(request)
 
-	uma, _ := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret")
+	uma, _ := NewUMAMetadata(context.TODO(), umaIssuer, "client-id", "client-secret", nil, 0)
 
 	obj, err := uma.Call(pipelineMock, context.TODO())
 
 	data, _ := json.Marshal(obj)
 	assert.Equal(t, "["+resourceData+"]", string(data))
 	assert.NilError(t, err)
+}
+
+func TestUMAMaxResponseBytesDiscovery(t *testing.T) {
+	httpServer := httptest.NewHttpServerMock(umaServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/uma/.well-known/uma2-configuration": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: umaWellKnownConfig}
+		},
+	})
+	defer httpServer.Close()
+
+	t.Run("within limit", func(t *testing.T) {
+		uma := &UMA{
+			Endpoint:         umaIssuer,
+			ClientID:         "client-id",
+			ClientSecret:     "client-secret",
+			MaxResponseBytes: int64(len(umaWellKnownConfig) + 100),
+		}
+		err := uma.discover(context.TODO())
+		assert.NilError(t, err)
+		assert.Equal(t, umaIssuer, uma.provider.issuer)
+	})
+
+	t.Run("exceeds limit causes decode error", func(t *testing.T) {
+		uma := &UMA{
+			Endpoint:         umaIssuer,
+			ClientID:         "client-id",
+			ClientSecret:     "client-secret",
+			MaxResponseBytes: 20,
+		}
+		err := uma.discover(context.TODO())
+		assert.ErrorContains(t, err, "failed to decode uma provider discovery object")
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		uma := &UMA{
+			Endpoint:         umaIssuer,
+			ClientID:         "client-id",
+			ClientSecret:     "client-secret",
+			MaxResponseBytes: 0,
+		}
+		err := uma.discover(context.TODO())
+		assert.NilError(t, err)
+		assert.Equal(t, umaIssuer, uma.provider.issuer)
+	})
 }

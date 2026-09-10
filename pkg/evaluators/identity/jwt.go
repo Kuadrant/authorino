@@ -92,18 +92,24 @@ type JWTVerifier interface {
 }
 
 type oidcProviderVerifier struct {
-	issuerUrl string
-	timeout   *int
+	issuerUrl        string
+	timeout          *int
+	maxResponseBytes int64
 
 	mu        sync.RWMutex
 	provider  *oidc.Provider
 	refresher workers.Worker
 }
 
-func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, timeout *int) JWTVerifier {
+func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, timeout *int, maxResponseBytes ...int64) JWTVerifier {
+	var maxBytes int64
+	if len(maxResponseBytes) > 0 {
+		maxBytes = maxResponseBytes[0]
+	}
 	v := &oidcProviderVerifier{
-		issuerUrl: issuerUrl,
-		timeout:   timeout,
+		issuerUrl:        issuerUrl,
+		timeout:          timeout,
+		maxResponseBytes: maxBytes,
 	}
 	ctxWithLogger := log.IntoContext(ctx, log.FromContext(ctx).WithName("jwt"))
 	v.getOpenIdProvider(ctxWithLogger, false)
@@ -170,10 +176,10 @@ func (v *oidcProviderVerifier) getOpenIdProvider(ctx gocontext.Context, force bo
 	defer v.mu.Unlock()
 
 	if v.provider == nil || force {
-		// Create HTTP client with timeout and trace propagation.
+		// Create HTTP client with timeout, trace propagation, and optional response body size limit.
 		// Use Background context for request lifecycle (to avoid cancellation from reconciliation),
 		// but propagate trace context from caller's ctx for observability.
-		httpClient := httputil.NewClientWithTracing(ctx, v.timeout)
+		httpClient := httputil.NewClient(httputil.WithTimeout(v.timeout), httputil.WithTracing(ctx), httputil.WithMaxResponseBytes(v.maxResponseBytes))
 		discoveryCtx := oidc.ClientContext(gocontext.Background(), httpClient)
 
 		if provider, err := oidc.NewProvider(discoveryCtx, v.issuerUrl); err != nil {
@@ -203,11 +209,15 @@ type jwksVerifier struct {
 	jwks oidc.KeySet
 }
 
-func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, timeout *int) JWTVerifier {
-	// Create HTTP client with timeout and trace propagation.
+func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, timeout *int, maxResponseBytes ...int64) JWTVerifier {
+	// Create HTTP client with timeout, trace propagation, and optional response body size limit.
 	// Use Background context for request lifecycle (to avoid cancellation from reconciliation),
 	// but propagate trace context from caller's ctx for observability.
-	httpClient := httputil.NewClientWithTracing(ctx, timeout)
+	var maxBytes int64
+	if len(maxResponseBytes) > 0 {
+		maxBytes = maxResponseBytes[0]
+	}
+	httpClient := httputil.NewClient(httputil.WithTimeout(timeout), httputil.WithTracing(ctx), httputil.WithMaxResponseBytes(maxBytes))
 	jwkCtx := oidc.ClientContext(gocontext.Background(), httpClient)
 
 	return &jwksVerifier{

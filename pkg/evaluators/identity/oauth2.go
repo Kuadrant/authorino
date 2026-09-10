@@ -26,6 +26,7 @@ type OAuth2 struct {
 	ClientID              string `yaml:"clientId"`
 	ClientSecret          string `yaml:"clientSecret"`
 	Timeout               *int
+	MaxResponseBytes      int64
 }
 
 func NewOAuth2Identity(tokenIntrospectionUrl string, tokenTypeHint string, clientID string, clientSecret string, creds auth.AuthCredentials) *OAuth2 {
@@ -77,13 +78,18 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 
 	otel.GetTextMapPropagator().Inject(ctx, otel_propagation.HeaderCarrier(req.Header))
 
-	resp, err := httputil.NewClient(oauth.Timeout).Do(req)
+	resp, err := httputil.NewClient(httputil.WithTimeout(oauth.Timeout)).Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
 	}(resp.Body)
+
+	var bodyReader io.Reader = resp.Body
+	if oauth.MaxResponseBytes > 0 {
+		bodyReader = io.LimitReader(resp.Body, oauth.MaxResponseBytes)
+	}
 
 	// a non-200 response (e.g. invalid client credentials) is not a valid introspection
 	// result and may not carry the RFC 7662 "active" field; treat it as an error instead
@@ -92,14 +98,14 @@ func (oauth *OAuth2) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (in
 	// the X-Ext-Auth-Reason header) and logged; the response body may contain data from the
 	// auth server and is only logged at debug level.
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(bodyReader)
 		log.FromContext(ctx).WithName("oauth2").V(1).Info("token introspection request failed", "status", resp.Status, "response", string(body))
 		return nil, fmt.Errorf("token introspection request failed: %s", resp.Status)
 	}
 
 	// parse the response
 	var claims map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&claims); err != nil {
+	if err := json.NewDecoder(bodyReader).Decode(&claims); err != nil {
 		return nil, err
 	} else {
 		active, ok := claims["active"].(bool)
