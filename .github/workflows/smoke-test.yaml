@@ -6,6 +6,17 @@ on:
       - Build and push image
     types:
       - completed
+  workflow_call:
+    inputs:
+      authorino-image:
+        description: "Full image reference (e.g. quay.io/kuadrant/authorino:v1.5.0)"
+        required: false
+        type: string
+        default: "quay.io/kuadrant/authorino:latest"
+      ref:
+        description: "Git ref to checkout (e.g. release-1.5, v1.5.0)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -17,13 +28,27 @@ jobs:
       matrix:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      github.event_name == 'workflow_call' ||
+      github.event.workflow_run.conclusion == 'success'
     defaults:
       run:
         shell: bash
     steps:
+      - name: Check out code (workflow_call ref)
+        if: github.event.name == "workflow_call"
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
+      - name: Check out code (trusted default branch)
+        if: github.event.name == "workflow_call"
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ github.event.respository.default_branch }}
       - name: Check out code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # ratchet:actions/setup-go@v6
         with:
@@ -48,7 +73,7 @@ jobs:
           kubectl create namespace authorino
       - name: Create Authorino TLS certificates
         run: |
-          curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/deploy/certs.yaml | sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/authorino/g" | kubectl -n authorino apply -f -
+          sed "s/\$(AUTHORINO_INSTANCE)/authorino/g;s/\$(NAMESPACE)/authorino/g" deploy/certs.yaml | kubectl -n authorino apply -f -
       - name: Create Authorino instance
         run: |
           kubectl -n authorino apply -f -<<EOF
@@ -57,7 +82,7 @@ jobs:
           metadata:
             name: authorino
           spec:
-            image: quay.io/kuadrant/authorino:latest
+            image: ${{ inputs.authorino-image || 'quay.io/kuadrant/authorino:latest' }}
             clusterWide: false
             listener:
               tls:
@@ -81,7 +106,5 @@ jobs:
       - name: Run e2e tests
         env:
           NAMESPACE: authorino
-          AUTHCONFIG: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/v1beta3/authconfig.yaml
-          AUTHCONFIG_INVALID: https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/v1beta3/authconfig-invalid.yaml
         run: |
-          curl -sSL https://raw.githubusercontent.com/Kuadrant/authorino/main/tests/e2e-test.sh | bash
+          ./tests/e2e-test.sh

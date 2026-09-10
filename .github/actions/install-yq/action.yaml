@@ -1,0 +1,18 @@
+name: Install yq
+description: Install mikefarah/yq at a pinned version
+
+inputs:
+  version:
+    description: "yq version to install"
+    required: false
+    default: "4.53.3"
+
+runs:
+  using: composite
+  steps:
+    - name: Install yq v${{ inputs.version }}
+      shell: bash
+      run: |
+        sudo wget -qO /usr/local/bin/yq \
+          "https://github.com/mikefarah/yq/releases/download/v${{ inputs.version }}/yq_linux_amd64"
+        sudo chmod +x /usr/local/bin/yq

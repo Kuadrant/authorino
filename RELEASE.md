@@ -1,32 +1,58 @@
 # How to release Authorino
 
-## Process
+Authorino uses a two-phase release workflow. Every release is split into two GitHub Actions workflows with a human review gate between them. See [RFC: Two-Phase Release Workflow](https://github.com/Kuadrant/architecture/pull/178) for the full specification.
 
-To release a version “vX.Y.Z” of Authorino in GitHub and Quay.io, follow these steps:
+## Phase 1: Pre-release
 
-1. Pick a `<git-ref>` (SHA-1) as source.
+1. Go to **Actions → Pre-release** and click **Run workflow**.
+2. Enter the target version (e.g. `0.27.0`).
+   - For patch releases, set **source-branch** to the existing release branch (e.g. `release-0.27`) if cherry-picks have already been applied there. Otherwise leave it as `main`.
+3. The workflow creates the release branch `release-X.Y` (if needed), updates `release.yaml`, runs code generation, and opens a pull request.
+4. Review the PR. CI runs tests, code style checks, and the **Version Gate** check.
+5. Merge the PR once all checks pass.
 
-```shell
-git checkout <git-ref>
-```
+## Phase 2: Release
 
-2. Create a new tag and named release `vX.Y.Z`. Push the tag to GitHub.
+1. Go to **Actions → Release** and click **Run workflow**.
+2. Enter the release branch (e.g. `release-0.27`).
+3. The workflow:
+   - Reads the version from `release.yaml`
+   - Runs smoke tests (lint, unit tests, CEL tests)
+   - Creates and pushes the `vX.Y.Z` tag
+   - Builds and pushes the multi-arch container image to `quay.io/kuadrant/authorino`
+   - Creates the GitHub Release (final step)
 
-```shell
-git tag -a vX.Y.Z -s -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
+If any step fails, no GitHub Release is created.
 
-Then at the GitHub repository, create a new release from the tag you just pushed. One could start autogenerating the
-release notes and then write the change notes highlighting all the new features, bug fixes, enhancements, etc.
-([example](https://github.com/Kuadrant/authorino/releases/tag/v0.9.0)).
+## Release artifacts
 
-3. Run the GHA ‘Build and push images’ for the `vX.Y.Z` tag. This will cause a new image to be built and pushed to quay.io/kuadrant/authorino.
+| Artifact | Location |
+|----------|----------|
+| Container image | `quay.io/kuadrant/authorino:vX.Y.Z` |
+| GitHub Release | `github.com/Kuadrant/authorino/releases/tag/vX.Y.Z` |
 
-## Notes on Authorino’s automated builds
+## Version file
 
-* PRs merged to the main branch of Authorino cause a new image to be built (GH Action) and pushed automatically to
-`quay.io/kuadrant/authorino:<git-ref>` – the `quay.io/kuadrant/authorino:latest` tag is also moved to match the latest
-`<git-ref>`.
-* Authorino repo owns the manifests required by the operand: AuthConfig CRD + role definitions. A copy of these is merged
-into a single deployment file in the [Authorino Operator repository](https://github.com/Kuadrant/authorino-operator).
+The `release.yaml` file at the repository root is the source of truth for version information:
+
+- On `main`: version is always `0.0.0` (active development)
+- On release branches: version is the target release (e.g. `0.27.0`)
+
+## GitHub configuration
+
+The release workflows require the following repository secrets to be configured in **Settings → Secrets and variables → Actions**:
+
+| Secret | Used by | Purpose |
+|--------|---------|---------|
+| `IMG_REGISTRY_USERNAME` | `build-images.yaml` | Username for the `quay.io` container registry |
+| `IMG_REGISTRY_TOKEN` | `build-images.yaml` | Auth token/password for the `quay.io` container registry |
+
+The `GITHUB_TOKEN` secret is provided automatically by GitHub Actions and does not need to be configured. It is used by the pre-release workflow to create branches and open pull requests, and by the release workflow to create tags and GitHub Releases.
+
+The release workflow passes `secrets: inherit` when calling `build-images.yaml`, so the registry secrets must be set at the repository (or organization) level — not scoped to an environment.
+
+## Notes on automated builds
+
+- PRs merged to `main` trigger an image build pushed to `quay.io/kuadrant/authorino:latest` (and `quay.io/kuadrant/authorino:<sha>`).
+- Smoke tests run automatically after each image build on `main`.
+- Authorino owns the AuthConfig CRD and RBAC manifests. A copy is maintained in the [Authorino Operator repository](https://github.com/Kuadrant/authorino-operator).
