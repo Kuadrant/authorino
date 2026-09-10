@@ -768,6 +768,11 @@ func TestPipelineLoggingFieldsEmpty(t *testing.T) {
 	assert.Equal(t, 0, len(fields))
 }
 
+func TestSanitizeLoggingFieldValue(t *testing.T) {
+	assert.Equal(t, `line1\nline2\r\t\u001b`, sanitizeLoggingFieldValue("line1\nline2\r\t\x1b"))
+	assert.Equal(t, "printable value", sanitizeLoggingFieldValue("printable value"))
+}
+
 func TestLoggingFieldsResolvesIdentityOnAllow(t *testing.T) {
 	reqJSON := `{
 		"attributes": {

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"maps"
 	"sort"
+	"strings"
 	"sync"
+	"unicode"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -558,6 +560,27 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 
 const loggingFieldPrefix = "logging."
 
+func sanitizeLoggingFieldValue(s string) string {
+	var sanitized strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\n':
+			sanitized.WriteString(`\n`)
+		case '\r':
+			sanitized.WriteString(`\r`)
+		case '\t':
+			sanitized.WriteString(`\t`)
+		default:
+			if unicode.IsControl(r) {
+				fmt.Fprintf(&sanitized, `\u%04x`, r)
+			} else {
+				sanitized.WriteRune(r)
+			}
+		}
+	}
+	return sanitized.String()
+}
+
 func truncateValue(s string, maxLen int) string {
 	if maxLen > 0 && len(s) > maxLen {
 		return s[:maxLen] + "...(truncated)"
@@ -574,7 +597,7 @@ func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string
 			key := loggingFieldPrefix + k
 			switch kind := v.Kind.(type) {
 			case *structpb.Value_StringValue:
-				fields[key] = truncateValue(kind.StringValue, maxValueBytes)
+				fields[key] = truncateValue(sanitizeLoggingFieldValue(kind.StringValue), maxValueBytes)
 
 			case *structpb.Value_NumberValue:
 				fields[key] = fmt.Sprintf("%v", kind.NumberValue)
@@ -595,7 +618,7 @@ func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string
 							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
 							continue
 						}
-						fields[key] = truncateValue(fmt.Sprintf("%v", value), maxValueBytes)
+						fields[key] = truncateValue(sanitizeLoggingFieldValue(fmt.Sprintf("%v", value)), maxValueBytes)
 					}
 				}
 
