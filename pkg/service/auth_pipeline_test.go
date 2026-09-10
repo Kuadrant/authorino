@@ -712,6 +712,7 @@ func TestPipelineLoggingFields(t *testing.T) {
 					"io.kuadrant.logging.fields": {
 						"client_identity": { "cel_expr": "request.host" },
 						"request_method": { "cel_expr": "request.method" },
+						"sensitive_header": { "cel_expr": "request.headers.authorization" },
 						"static_field": "audit-v1",
 						"numeric_field": 42,
 						"bool_field": true,
@@ -743,10 +744,11 @@ func TestPipelineLoggingFields(t *testing.T) {
 
 	fields := pipeline.loggingFields(1024)
 
-	assert.Equal(t, 5, len(fields))
+	assert.Equal(t, 6, len(fields))
 
 	assert.Equal(t, "my-api", fields["logging.client_identity"])
 	assert.Equal(t, "POST", fields["logging.request_method"])
+	assert.Equal(t, "***REDACTED***", fields["logging.sensitive_header"])
 	assert.Equal(t, "audit-v1", fields["logging.static_field"])
 	assert.Equal(t, "42", fields["logging.numeric_field"])
 	assert.Equal(t, "true", fields["logging.bool_field"])

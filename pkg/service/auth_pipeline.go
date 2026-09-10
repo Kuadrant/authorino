@@ -590,6 +590,7 @@ func truncateValue(s string, maxLen int) string {
 
 func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string {
 	fields := make(map[string]string)
+	var redactedAuthJSON string
 
 	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
 	if customFields, ok := filteredMetadata["io.kuadrant.logging.fields"]; ok {
@@ -608,12 +609,20 @@ func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string
 			case *structpb.Value_StructValue:
 				if celExprField, ok := kind.StructValue.Fields["cel_expr"]; ok {
 					if exprStr := celExprField.GetStringValue(); exprStr != "" {
+						if redactedAuthJSON == "" {
+							redacted, err := gojson.Marshal(log.RedactedAuthorizationJSON(pipeline.GetAuthorizationJSON()))
+							if err != nil {
+								pipeline.Logger.Error(err, "failed to marshal redacted authorization JSON")
+								continue
+							}
+							redactedAuthJSON = string(redacted)
+						}
 						expr, err := cel.NewExpression(exprStr)
 						if err != nil {
 							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
 							continue
 						}
-						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						value, err := expr.ResolveFor(redactedAuthJSON)
 						if err != nil {
 							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
 							continue
