@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	gohttptest "net/http/httptest"
+	"strings"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
@@ -433,6 +434,113 @@ func TestWithOAuth2AuthenticationWithoutTokenCache(t *testing.T) {
 	assert.NilError(t, err)
 	objJSON = obj.(map[string]interface{})
 	assert.Equal(t, objJSON["foo"], "bar")
+}
+
+func TestGenericHttpMaxResponseBytesJSON(t *testing.T) {
+	largeJSON := `{"key":"` + strings.Repeat("x", 1000) + `"}`
+
+	extHttpMetadataServer := httptest.NewHttpServerMock(testHttpMetadataServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": httptest.NewHttpServerMockResponseFuncJSON(largeJSON),
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + testHttpMetadataServerHost + "/metadata"
+
+	t.Run("within limit", func(t *testing.T) {
+		pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+		pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+		metadata := &GenericHttp{
+			Endpoint:         endpoint,
+			Method:           "GET",
+			MaxResponseBytes: int64(len(largeJSON) + 100),
+		}
+
+		obj, err := metadata.Call(pipelineMock, ctx)
+		assert.NilError(t, err)
+		objJSON := obj.(map[string]interface{})
+		assert.Equal(t, len(objJSON["key"].(string)), 1000)
+	})
+
+	t.Run("exceeds limit truncates and causes decode error", func(t *testing.T) {
+		pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+		pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+		metadata := &GenericHttp{
+			Endpoint:         endpoint,
+			Method:           "GET",
+			MaxResponseBytes: 10,
+		}
+
+		_, err := metadata.Call(pipelineMock, ctx)
+		assert.Assert(t, err != nil, "expected error due to truncated JSON")
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+		pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+		metadata := &GenericHttp{
+			Endpoint:         endpoint,
+			Method:           "GET",
+			MaxResponseBytes: 0,
+		}
+
+		obj, err := metadata.Call(pipelineMock, ctx)
+		assert.NilError(t, err)
+		objJSON := obj.(map[string]interface{})
+		assert.Equal(t, len(objJSON["key"].(string)), 1000)
+	})
+}
+
+func TestGenericHttpMaxResponseBytesPlainText(t *testing.T) {
+	largeBody := strings.Repeat("A", 500)
+
+	extHttpMetadataServer := httptest.NewHttpServerMock(testHttpMetadataServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/metadata": httptest.NewHttpServerMockResponseFuncPlain(largeBody),
+	})
+	defer extHttpMetadataServer.Close()
+
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	endpoint := "http://" + testHttpMetadataServerHost + "/metadata"
+
+	t.Run("within limit", func(t *testing.T) {
+		pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+		pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+		metadata := &GenericHttp{
+			Endpoint:         endpoint,
+			Method:           "GET",
+			MaxResponseBytes: 1000,
+		}
+
+		obj, err := metadata.Call(pipelineMock, ctx)
+		assert.NilError(t, err)
+		assert.Equal(t, obj, largeBody)
+	})
+
+	t.Run("exceeds limit truncates response", func(t *testing.T) {
+		pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+		pipelineMock.EXPECT().GetAuthorizationJSON().Return(genericHttpAuthDataMock())
+
+		metadata := &GenericHttp{
+			Endpoint:         endpoint,
+			Method:           "GET",
+			MaxResponseBytes: 100,
+		}
+
+		obj, err := metadata.Call(pipelineMock, ctx)
+		assert.NilError(t, err)
+		assert.Equal(t, len(obj.(string)), 100)
+		assert.Equal(t, obj, strings.Repeat("A", 100))
+	})
 }
 
 func genericHttpAuthDataMock() string {

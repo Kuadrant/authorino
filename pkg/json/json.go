@@ -66,11 +66,18 @@ func (v *JSONValue) IsTemplate() bool {
 	return len(curlyBracesForModifiersRegex.FindAllStringSubmatch(v.Pattern, -1)) != len(allCurlyBracesRegex.FindAllStringSubmatch(v.Pattern, -1))
 }
 
-// UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure
-// Pass optionally a pointer to a byte array to get the raw body of the response object written back
-func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte) error {
+// UnmashalJSONResponse unmarshalls a generic HTTP response body into a JSON structure.
+// Pass optionally a pointer to a byte array to get the raw body of the response object written back.
+// When maxResponseBytes > 0, the response body reader is limited to that size to prevent
+// unbounded memory consumption from large responses.
+func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte, maxResponseBytes ...int64) error {
+	var bodyReader io.Reader = resp.Body
+	if len(maxResponseBytes) > 0 && maxResponseBytes[0] > 0 {
+		bodyReader = io.LimitReader(resp.Body, maxResponseBytes[0])
+	}
+
 	// read response body
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(bodyReader)
 	if err != nil {
 		return fmt.Errorf("unable to read response body: %v", err)
 	}

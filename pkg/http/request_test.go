@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -332,7 +333,7 @@ func TestNewClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := NewClient(tt.timeout)
+			client := NewClient(WithTimeout(tt.timeout))
 			if client == nil {
 				t.Error("NewClient() returned nil")
 				return
@@ -628,7 +629,7 @@ func TestNewRequestWithCredentials(t *testing.T) {
 	}
 }
 
-func TestNewClientWithTracing(t *testing.T) {
+func TestNewClientWithTracingOption(t *testing.T) {
 	// Set up a real tracer and propagator for this test
 	tp := sdktrace.NewTracerProvider()
 	tracer := tp.Tracer("test")
@@ -653,7 +654,7 @@ func TestNewClientWithTracing(t *testing.T) {
 
 	// Create a client with tracing
 	timeout := 5000
-	client := NewClientWithTracing(ctx, &timeout)
+	client := NewClient(WithTimeout(&timeout), WithTracing(ctx))
 
 	// Make a request using this client
 	req, err := http.NewRequest("GET", server.URL, nil)
@@ -686,7 +687,7 @@ func TestNewClientWithTracing(t *testing.T) {
 	}
 }
 
-func TestNewClientWithTracing_TimeoutConfiguration(t *testing.T) {
+func TestNewClientWithTracingOption_TimeoutConfiguration(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
@@ -713,7 +714,7 @@ func TestNewClientWithTracing_TimeoutConfiguration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := NewClientWithTracing(ctx, tt.timeoutMs)
+			client := NewClient(WithTimeout(tt.timeoutMs), WithTracing(ctx))
 
 			gotMs := int(client.Timeout.Milliseconds())
 			if gotMs != tt.wantMs {
@@ -730,6 +731,104 @@ func TestNewClientWithTracing_TimeoutConfiguration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMaxResponseBytesRoundTripper(t *testing.T) {
+	t.Run("limits response body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("this is a long response body that exceeds the limit"))
+		}))
+		defer server.Close()
+
+		client := NewClient(WithTracing(context.Background()), WithMaxResponseBytes(10))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %v", err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+		if len(body) != 10 {
+			t.Errorf("expected body length 10, got %d", len(body))
+		}
+		if string(body) != "this is a " {
+			t.Errorf("expected truncated body %q, got %q", "this is a ", string(body))
+		}
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		fullBody := strings.Repeat("x", 10000)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(fullBody))
+		}))
+		defer server.Close()
+
+		client := NewClient(WithTracing(context.Background()), WithMaxResponseBytes(0))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %v", err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+		if len(body) != 10000 {
+			t.Errorf("expected full body length 10000, got %d", len(body))
+		}
+	})
+
+	t.Run("transport wraps tracing", func(t *testing.T) {
+		client := NewClient(WithTracing(context.Background()), WithMaxResponseBytes(100))
+		rt, ok := client.Transport.(*maxResponseBytesRoundTripper)
+		if !ok {
+			t.Fatal("expected Transport to be *maxResponseBytesRoundTripper")
+		}
+		if _, ok := rt.base.(*tracingRoundTripper); !ok {
+			t.Error("expected inner transport to be *tracingRoundTripper")
+		}
+	})
+
+	t.Run("limits without tracing", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("this is a long response body that exceeds the limit"))
+		}))
+		defer server.Close()
+
+		client := NewClient(WithMaxResponseBytes(10))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL, nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %v", err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unexpected read error: %v", err)
+		}
+		if len(body) != 10 {
+			t.Errorf("expected body length 10, got %d", len(body))
+		}
+	})
 }
 
 func ptr(i int) *int {

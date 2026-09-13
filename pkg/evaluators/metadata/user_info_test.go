@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	authServerHost string = "127.0.0.1:9002"
-	userInfoClaims string = `{ "sub": "831707be-ef07-4d63-b427-4216309e9897" }`
+	authServerHost      string = "127.0.0.1:9002"
+	userInfoClaims      string = `{ "sub": "831707be-ef07-4d63-b427-4216309e9897" }`
+	largeUserInfoClaims string = `{ "sub": "831707be-ef07-4d63-b427-4216309e9897", "extra": "` + "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" + `" }`
 )
 
 var wellKnownOIDCConfig string = fmt.Sprintf(`{
@@ -60,6 +61,9 @@ func TestMain(m *testing.M) {
 		},
 		"/userinfo": func() httptest.HttpServerMockResponse {
 			return httptest.HttpServerMockResponse{Status: 200, Body: userInfoClaims}
+		},
+		"/userinfo-large": func() httptest.HttpServerMockResponse {
+			return httptest.HttpServerMockResponse{Status: 200, Body: largeUserInfoClaims}
 		},
 	})
 	defer authServer.Close()
@@ -113,4 +117,28 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 
 	_, err := ta.userInfo.Call(ta.pipelineMock, ta.ctx)
 	assert.Error(t, err, "missing openid connect configuration")
+}
+
+func TestFetchUserInfoMaxResponseBytes(t *testing.T) {
+	ctx := context.TODO()
+	endpoint := fmt.Sprintf("http://%s/userinfo-large", authServerHost)
+
+	t.Run("within limit", func(t *testing.T) {
+		obj, err := fetchUserInfo(endpoint, "token", nil, int64(len(largeUserInfoClaims)+100), ctx)
+		assert.NilError(t, err)
+		claims := obj.(map[string]interface{})
+		assert.Equal(t, "831707be-ef07-4d63-b427-4216309e9897", claims["sub"])
+	})
+
+	t.Run("exceeds limit causes decode error", func(t *testing.T) {
+		_, err := fetchUserInfo(endpoint, "token", nil, 30, ctx)
+		assert.Assert(t, err != nil)
+	})
+
+	t.Run("zero means no limit", func(t *testing.T) {
+		obj, err := fetchUserInfo(endpoint, "token", nil, 0, ctx)
+		assert.NilError(t, err)
+		claims := obj.(map[string]interface{})
+		assert.Equal(t, "831707be-ef07-4d63-b427-4216309e9897", claims["sub"])
+	})
 }

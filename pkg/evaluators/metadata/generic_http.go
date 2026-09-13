@@ -34,6 +34,7 @@ type GenericHttp struct {
 	OAuth2                *oauth2.ClientCredentials
 	OAuth2TokenForceFetch bool
 	Timeout               *int
+	MaxResponseBytes      int64
 	auth.AuthCredentials
 }
 
@@ -59,7 +60,7 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 		return nil, err
 	}
 
-	resp, err := httputil.NewClient(h.Timeout).Do(req)
+	resp, err := httputil.NewClient(httputil.WithTimeout(h.Timeout)).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +68,14 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 		_ = Body.Close()
 	}(resp.Body)
 
+	var bodyReader io.Reader = resp.Body
+	if h.MaxResponseBytes > 0 {
+		bodyReader = io.LimitReader(resp.Body, h.MaxResponseBytes)
+	}
+
 	// parse the response as json
 	if strings.Contains(strings.Join(resp.Header["Content-Type"], ";"), "application/json") {
-		decoder := gojson.NewDecoder(resp.Body)
+		decoder := gojson.NewDecoder(bodyReader)
 
 		var elements []map[string]interface{}
 
@@ -94,10 +100,7 @@ func (h *GenericHttp) Call(pipeline auth.AuthPipeline, ctx gocontext.Context) (i
 	}
 
 	// parse the response as text
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
-	str, err := io.ReadAll(resp.Body)
+	str, err := io.ReadAll(bodyReader)
 	if err != nil {
 		return nil, err
 	}

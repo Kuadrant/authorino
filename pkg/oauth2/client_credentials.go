@@ -47,7 +47,7 @@ func (c *ClientCredentials) ClientCredentialsToken(ctx context.Context, force bo
 
 	// Inject custom HTTP client with timeout into context
 	// The oauth2 library will use this client for token requests
-	httpClient := httputil.NewClient(c.Timeout)
+	httpClient := httputil.NewClient(httputil.WithTimeout(c.Timeout))
 	ctx = context.WithValue(ctx, gooauth2.HTTPClient, httpClient)
 
 	token, err := c.Token(ctx)
