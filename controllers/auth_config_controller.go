@@ -388,12 +388,9 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				jwtMaxResponseBytes = *identity.Jwt.MaxResponseBytes
 			}
 			if identity.Jwt.IssuerUrl != "" {
-				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.Issuer, identity.Jwt.TTL, identity.Jwt.Timeout)
+				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.Issuer, identity.Jwt.TTL, identity.Jwt.Timeout, jwtMaxResponseBytes)
 			} else if identity.Jwt.JwksUrl != "" {
-				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Issuer, identity.Jwt.Timeout)
-				jwtVerifier = identity_evaluators.NewOIDCProviderVerifier(ctx, identity.Jwt.IssuerUrl, identity.Jwt.TTL, identity.Jwt.Timeout, jwtMaxResponseBytes)
-			} else if identity.Jwt.JwksUrl != "" {
-				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Timeout, jwtMaxResponseBytes)
+				jwtVerifier = identity_evaluators.NewJwksVerifier(ctx, identity.Jwt.JwksUrl, identity.Jwt.Issuer, identity.Jwt.Timeout, jwtMaxResponseBytes)
 			} else {
 				return nil, fmt.Errorf("missing issuerUrl or jwksUrl for JWT authentication method") // should never happen if properly validated at the API level
 			}

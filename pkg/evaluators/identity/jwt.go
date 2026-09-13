@@ -98,11 +98,9 @@ type JWTVerifier interface {
 }
 
 type oidcProviderVerifier struct {
-	issuerUrl string
-	issuer    string
-	config    *oidc.Config
-	timeout   *int
 	issuerUrl        string
+	issuer           string
+	config           *oidc.Config
 	timeout          *int
 	maxResponseBytes int64
 
@@ -111,19 +109,15 @@ type oidcProviderVerifier struct {
 	refresher workers.Worker
 }
 
-func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, issuer string, ttl int, timeout *int) JWTVerifier {
-	v := &oidcProviderVerifier{
-		issuerUrl: issuerUrl,
-		issuer:    issuer,
-		config:    oidcConfig(issuer),
-		timeout:   timeout,
-func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, ttl int, timeout *int, maxResponseBytes ...int64) JWTVerifier {
+func NewOIDCProviderVerifier(ctx gocontext.Context, issuerUrl string, issuer string, ttl int, timeout *int, maxResponseBytes ...int64) JWTVerifier {
 	var maxBytes int64
 	if len(maxResponseBytes) > 0 {
 		maxBytes = maxResponseBytes[0]
 	}
 	v := &oidcProviderVerifier{
 		issuerUrl:        issuerUrl,
+		issuer:           issuer,
+		config:           oidcConfig(issuer),
 		timeout:          timeout,
 		maxResponseBytes: maxBytes,
 	}
@@ -235,9 +229,7 @@ type jwksVerifier struct {
 	verifier *oidc.IDTokenVerifier
 }
 
-func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, issuer string, timeout *int) JWTVerifier {
-	// Create HTTP client with timeout and trace propagation.
-func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, timeout *int, maxResponseBytes ...int64) JWTVerifier {
+func NewJwksVerifier(ctx gocontext.Context, jwksUrl string, issuer string, timeout *int, maxResponseBytes ...int64) JWTVerifier {
 	// Create HTTP client with timeout, trace propagation, and optional response body size limit.
 	// Use Background context for request lifecycle (to avoid cancellation from reconciliation),
 	// but propagate trace context from caller's ctx for observability.
