@@ -4,17 +4,6 @@ By default, Authorino uses the host information of the HTTP request ([`Attribute
 
 Overriding the host attribute of the HTTP request can be useful to support use cases such as of **path prefix-based lookup** and **wildcard subdomains lookup**.
 
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b>⚠️ <i>Important:</i></b>
-        This feature may not be available to users of Authorino via <a href="https://kuadrant.io">Kuadrant</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 <br/>
 
 In this guide:
