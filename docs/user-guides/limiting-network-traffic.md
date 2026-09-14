@@ -7,7 +7,7 @@ Use Kubernetes [NetworkPolicy](https://kubernetes.io/docs/concepts/services-netw
 
 ## Authorino ports
 
-Authorino listens on the following ports by default:
+Authorino uses the following ports. The pprof endpoint is disabled by default; port `8084` is used below as an example when explicitly enabled with `--pprof-bind-address=:8084`.
 
 | Port  | Service                              | Flag / env var                                  | Production |
 |-------|--------------------------------------|-------------------------------------------------|:----------:|
@@ -91,6 +91,8 @@ kubectl run -n <authorino-namespace> curl-test --rm -i --restart=Never --image=c
 kubectl run -n <authorino-namespace> curl-test --rm -i --restart=Never --image=curlimages/curl -- \
   curl -s --connect-timeout 5 -o /dev/null -w "%{http_code}" http://$POD_IP:8084/debug/pprof/
 ```
+
+If pprof is disabled, the failed request to port `8084` confirms that no endpoint is reachable but does not verify NetworkPolicy enforcement. The debug endpoint check verifies policy blocking only when pprof is enabled on that port.
 
 ### Omitting unused ports
 
