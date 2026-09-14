@@ -114,7 +114,7 @@ jobs:
           cd $TEMP_PATH
 
           echo '::group::🐶 Installing reviewdog ... https://github.com/reviewdog/reviewdog'
-          curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh | sh -s -- -b "${TEMP_PATH}" 2>&1
+          curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/v0.21.1/install.sh | sh -s -- -b "${TEMP_PATH}" v0.21.1 2>&1
           echo '::endgroup::'
 
           echo '::group:: Installing misspell ... https://github.com/client9/misspell'
@@ -122,7 +122,7 @@ jobs:
           echo '::endgroup::'
 
           echo '::group:: Installing woke ... https://github.com/get-woke/woke'
-          curl -sfL https://raw.githubusercontent.com/get-woke/woke/main/install.sh | sh -s -- -b "${TEMP_PATH}" "${WOKE_VERSION}" 2>&1
+          curl -sfL https://raw.githubusercontent.com/get-woke/woke/v0.19.0/install.sh | sh -s -- -b "${TEMP_PATH}" "${WOKE_VERSION}" 2>&1
           echo '::endgroup::'
 
           echo "${TEMP_PATH}" >> $GITHUB_PATH
