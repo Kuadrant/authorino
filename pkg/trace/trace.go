@@ -11,6 +11,14 @@ import (
 const (
 	AuthorinoRequestIdAttr   = "authorino.request_id"
 	PropagationRequestIdAttr = "guid:x-request-id"
+
+	AuthResultAttr          = "authorino.auth.result"
+	AuthResponseCodeAttr    = "authorino.auth.response_code"
+	AuthDenialReasonAttr    = "authorino.auth.denial_reason"
+	AuthConfigNameAttr      = "authorino.auth_config.name"
+	AuthConfigNamespaceAttr = "authorino.auth_config.namespace"
+	IdentitySourceAttr      = "authorino.identity.source"
+	IdentityTypeAttr        = "authorino.identity.type"
 )
 
 func NewSpan(parentContext context.Context, tracerName, spanName string, options ...otel_trace.SpanStartOption) (context.Context, otel_trace.Span) {
