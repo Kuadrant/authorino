@@ -236,8 +236,8 @@ The project has one API version:
 
 Built with:
 - Go (see `go.mod`)
-- controller-runtime v0.18.x
-- Kubernetes client-go v0.30.x (minimum supported Kubernetes 1.30)
+- controller-runtime v0.23.x
+- Kubernetes client-go v0.35.x (built and tested against Kubernetes 1.35; minimum supported Kubernetes 1.30)
 - Envoy go-control-plane v1.36.x
 - CEL (Common Expression Language) for dynamic expressions
 

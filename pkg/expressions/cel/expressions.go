@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/ext"
 	"github.com/tidwall/gjson"
@@ -88,13 +87,14 @@ func (e *Expression) Evaluate(json string) (ref.Val, *cel.EvalDetails, error) {
 }
 
 func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (cel.Program, error) {
-	envOpts := append([]cel.EnvOption{cel.Declarations(
-		decls.NewConst(RootMetadataBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-		decls.NewConst(RootRequestBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-		decls.NewConst(RootSourceBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-		decls.NewConst(RootDestinationBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-		decls.NewConst(RootAuthBinding, decls.NewObjectType("google.protobuf.Struct"), nil),
-	)}, opts...)
+	structType := cel.ObjectType("google.protobuf.Struct")
+	envOpts := append([]cel.EnvOption{
+		cel.Variable(RootMetadataBinding, structType),
+		cel.Variable(RootRequestBinding, structType),
+		cel.Variable(RootSourceBinding, structType),
+		cel.Variable(RootDestinationBinding, structType),
+		cel.Variable(RootAuthBinding, structType),
+	}, opts...)
 	envOpts = append(envOpts, ext.Strings(), cel.OptionalTypes())
 	env, env_err := cel.NewEnv(envOpts...)
 	if env_err != nil {

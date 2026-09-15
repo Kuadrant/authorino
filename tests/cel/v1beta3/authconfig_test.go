@@ -640,7 +640,7 @@ func TestCredentialsMaxPropertiesValidation(t *testing.T) {
 					},
 				}
 			},
-			wantErrors: []string{"must have at most 1 items"},
+			wantErrors: []string{"must have at most 1 item"},
 		},
 	})
 }
