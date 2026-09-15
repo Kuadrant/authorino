@@ -617,7 +617,7 @@ func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string
 							}
 							redactedAuthJSON = string(redacted)
 						}
-						expr, err := cel.NewExpression(exprStr)
+						expr, err := loggingFieldExpressions.getOrCompile(exprStr)
 						if err != nil {
 							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
 							continue
