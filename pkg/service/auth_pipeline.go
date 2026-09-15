@@ -558,7 +558,7 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	return labels
 }
 
-const loggingFieldPrefix = "logging."
+const loggingFieldPrefix = "custom."
 
 func sanitizeLoggingFieldValue(s string) string {
 	var sanitized strings.Builder
