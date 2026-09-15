@@ -1,4 +1,4 @@
-package service
+package cel
 
 import (
 	"sync"
@@ -7,39 +7,39 @@ import (
 	gotestassert "gotest.tools/assert"
 )
 
-func TestLoggingFieldExpressionCache(t *testing.T) {
-	cache := newLoggingFieldExpressionCache(2)
+func TestExpressionCache(t *testing.T) {
+	cache := NewExpressionCache(2)
 
-	first, err := cache.getOrCompile("request.method")
+	first, err := cache.GetOrCompile("request.method")
 	gotestassert.NilError(t, err)
 
-	cached, err := cache.getOrCompile("request.method")
+	cached, err := cache.GetOrCompile("request.method")
 	gotestassert.NilError(t, err)
 	gotestassert.Assert(t, first == cached, "expected the compiled expression to be cached")
 
-	_, err = cache.getOrCompile("request.host")
+	_, err = cache.GetOrCompile("request.host")
 	gotestassert.NilError(t, err)
-	_, err = cache.getOrCompile("auth.identity")
+	_, err = cache.GetOrCompile("auth.identity")
 	gotestassert.NilError(t, err)
 	gotestassert.Equal(t, len(cache.entries), 2)
 
-	recompiled, err := cache.getOrCompile("request.method")
+	recompiled, err := cache.GetOrCompile("request.method")
 	gotestassert.NilError(t, err)
 	gotestassert.Assert(t, first != recompiled, "expected the least-recently-used expression to be evicted")
 }
 
-func TestLoggingFieldExpressionCacheCachesCompilationErrors(t *testing.T) {
-	cache := newLoggingFieldExpressionCache(2)
+func TestExpressionCacheCachesCompilationErrors(t *testing.T) {
+	cache := NewExpressionCache(2)
 
-	_, firstErr := cache.getOrCompile("request.")
+	_, firstErr := cache.GetOrCompile("request.")
 	gotestassert.ErrorContains(t, firstErr, "Syntax error")
-	_, cachedErr := cache.getOrCompile("request.")
+	_, cachedErr := cache.GetOrCompile("request.")
 	gotestassert.Assert(t, firstErr == cachedErr, "expected the compilation error to be cached")
 }
 
-func TestLoggingFieldExpressionCacheConcurrentAccess(t *testing.T) {
-	cache := newLoggingFieldExpressionCache(2)
-	expected, err := cache.getOrCompile("request.method")
+func TestExpressionCacheConcurrentAccess(t *testing.T) {
+	cache := NewExpressionCache(2)
+	expected, err := cache.GetOrCompile("request.method")
 	gotestassert.NilError(t, err)
 
 	const workers = 20
@@ -49,7 +49,7 @@ func TestLoggingFieldExpressionCacheConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			expression, compileErr := cache.getOrCompile("request.method")
+			expression, compileErr := cache.GetOrCompile("request.method")
 			results <- compileErr == nil && expression == expected
 		}()
 	}
