@@ -3,30 +3,36 @@
 Several fields on an `AuthConfig` tell Authorino to make an **outbound request to a
 host of the author's choosing**.
 
-Because Authorino runs with its own network identity and credentials, anyone
-allowed to create `AuthConfig`s in a single namespace can point Authorino at any
-host reachable from the pod and have Authorino make the request on their behalf.
-This creates a possible situation where attacker can create malicious AuthConfig
-in order to reach cloud metadata endpoints, internal-only services, or to exfiltrate data.
+Authorino makes those requests with its own network identity and credentials. So
+anyone who can create an `AuthConfig` in a single namespace can point Authorino at
+any host the pod can reach, and Authorino will call it for them. An attacker can
+use this to reach cloud metadata endpoints, hit internal-only services, or
+exfiltrate data.
 
-The three ValidatingAdmissionPolicies below close that gap. They turn every
-outbound destination into an **explicit, RBAC-gated allowlist**: an `AuthConfig`
-may only name a host that the requesting subject has been granted access to,
-inline Rego may only use `http.send` if the subject has been granted a dedicated
-permission, and an OPA policy may only be loaded from an external source if the
-subject has been granted a dedicated permission (its Rego is fetched at runtime
-and cannot be scanned for `http.send` at admission time). You hand those
-permissions only to the subjects that need them to do their job.
+One `ValidatingAdmissionPolicy` closes that gap. It turns every outbound
+destination into an **explicit, RBAC-gated allowlist**. An `AuthConfig` may only
+name a hostname that the requesting subject has been granted.
 
-The policies:
+There are exactly **two roles**:
 
-| Policy | Resource | Denies | Permission required to allow |
-| --- | --- | --- | --- |
-| `authorino-restrict-http-route` | `authconfigs` | any outbound endpoint whose hostname the subject has not been granted (JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata/callback `http.url` + `http.oauth2.tokenUrl`, OPA `opa.externalPolicy` URL, SpiceDB `endpoint`) | `access` on `http-resource/<hostname>` |
-| `authorino-restrict-http-route` | `authconfigs` | endpoints whose host cannot be statically verified: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname | *(none — always denied; use a literal hostname instead)* |
-| `authorino-deny-rego-httpsend` | `authconfigs` | inline OPA/Rego (`spec.authorization.*.opa.rego`) that uses the `http.send` builtin | `use` on `authconfig-httpsend` |
-| `authorino-deny-external-opa` | `authconfigs` | OPA policies loaded from an external source (`spec.authorization.*.opa.externalPolicy`), whose Rego is fetched at runtime and cannot be scanned for `http.send` at admission time | `use` on `authconfig-external-opa` |
+| Role | RBAC rule | What it gives you |
+| --- | --- | --- |
+| `authorino-trusted-hostnames` | `access` on `authconfigs/<hostname>` | Permission to reference that one hostname from an `AuthConfig`. Add one entry per allowed host. |
+| `authorino-unrestricted-hostnames` | `use` on `unrestricted-hostnames` | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames — a `urlExpression`, or a templated `{selector}` in the host — which resolve only at request time and so cannot be checked against an allowlist. |
 
+The policy runs four checks, in order. The first one that fails rejects the
+request:
+
+| # | Check | Denies |
+| --- | --- | --- |
+| 1 | `!usesHttpSend` | Inline OPA/Rego (`spec.authorization.*.opa.rego`) that uses the `http.send` builtin. |
+| 2 | `!usesExternalOpa` | OPA policies loaded from an external source (`spec.authorization.*.opa.externalPolicy`). The Rego is fetched at runtime, so it cannot be scanned for `http.send` at admission time. |
+| 3 | `!hasUnverifiableEndpoint` | Endpoints whose host cannot be read statically: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname. |
+| 4 | `requestedHosts.all(...)` | Any hostname the subject has not been granted `access` to. Covers JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata and callback `http.url` + `http.oauth2.tokenUrl`, and SpiceDB `endpoint`. |
+
+Checks 1, 2 and 3 have no per-feature role. If you need any of them, you need the
+`authorino-unrestricted-hostnames` role. That is deliberate: either you stay
+inside a static allowlist, or you get everything. There is no middle tier.
 
 ## Prerequisites
 
@@ -35,94 +41,70 @@ The policies:
 > These manifests require **Kubernetes v1.30 or newer**. They use
 > `ValidatingAdmissionPolicy` via the stable `admissionregistration.k8s.io/v1`
 > API, which is only available from v1.30 (where the feature graduated to GA),
-> along with the CEL `authorizer` library the policies rely on. On older
+> along with the CEL `authorizer` library the policy relies on. On older
 > clusters these resources will not apply.
 
 ## 1. Create the Roles
 
-Create one `ClusterRole` per host you want to be able to allow (the RBAC resource
-name is `http-resource/<hostname>`), plus one `ClusterRole` for the inline-Rego
-`http.send` permission and one for loading OPA policies from an external source.
+The first role, `authorino-trusted-hostnames`, is the static allowlist. It is a
+template: you fill it in with the hostnames you want to allow, one
+`authconfigs/<hostname>` entry each. The second role,
+`authorino-unrestricted-hostnames`, is the bypass and needs no editing.
 
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: authorino-http-route-keycloak-example-com
+  name: authorino-trusted-hostnames
 rules:
   - apiGroups: ["authorino.kuadrant.io"]
-    resources: ["http-resource/keycloak.example.com"]
+    resources:
+      - "authconfigs/keycloak.example.com"
+      - "authconfigs/userinfo.example.com"
     verbs: ["access"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: authorino-httpsend
+  name: authorino-unrestricted-hostnames
 rules:
   - apiGroups: ["authorino.kuadrant.io"]
-    resources: ["authconfig-httpsend"]
-    verbs: ["use"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: authorino-external-opa
-rules:
-  - apiGroups: ["authorino.kuadrant.io"]
-    resources: ["authconfig-external-opa"]
+    resources: ["unrestricted-hostnames"]
     verbs: ["use"]
 EOF
 ```
 
-## 2. Grant the access to the restricted destinations
+Notes on the hostname entries:
 
-Grant the host-access, `http.send`, and external-OPA permissions to your own
-ServiceAccounts and Users. Use the RoleBindings below as a template. Replace the
-placeholders (`<sa-name>`, `<namespace-of-sa>`, `<authconfig-namespace>`) with the
-appropriate values.
+- The match is an **exact string**. `*.example.com` does not work, and
+  `Keycloak.example.com` is not the same as `keycloak.example.com`.
+- The grant is for the **hostname only**. Once a host is allowed, any port, path
+  or scheme on that host is allowed too.
+- If you want different allowlists for different teams, create several
+  `ClusterRole`s, each with its own set of `authconfigs/<hostname>` entries, and
+  bind each one to the right subjects.
 
+## 2. Grant the roles to your subjects
 
+Bind the roles to your own ServiceAccounts and Users. Use the bindings below as a
+template. Replace the placeholders (`<sa-name>`, `<namespace-of-sa>`,
+`<authconfig-namespace>`) with the appropriate values.
+
+A `RoleBinding` allows the subject in that one namespace only. A
+`ClusterRoleBinding` allows it everywhere.
 
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: rb-http-route-keycloak
+  name: rb-trusted-hostnames
   namespace: <authconfig-namespace>
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: authorino-http-route-keycloak-example-com
-subjects:
-  - kind: ServiceAccount
-    name: <sa-name>
-    namespace: <namespace-of-sa>
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: rb-httpsend
-  namespace: <authconfig-namespace>
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: authorino-httpsend
-subjects:
-  - kind: ServiceAccount
-    name: <sa-name>
-    namespace: <namespace-of-sa>
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: rb-external-opa
-  namespace: <authconfig-namespace>
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: authorino-external-opa
+  name: authorino-trusted-hostnames
 subjects:
   - kind: ServiceAccount
     name: <sa-name>
@@ -130,9 +112,28 @@ subjects:
 EOF
 ```
 
-## 3. Create the ValidatingAdmissionPolicies (VAPs)
+Grant the bypass role only to subjects you fully trust with outbound network
+access:
 
-Apply the three policies below.
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rb-unrestricted-hostnames
+  namespace: <authconfig-namespace>
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: authorino-unrestricted-hostnames
+subjects:
+  - kind: ServiceAccount
+    name: <sa-name>
+    namespace: <namespace-of-sa>
+EOF
+```
+
+## 3. Create the ValidatingAdmissionPolicy (VAP)
 
 ```bash
 kubectl apply -f - <<'EOF'
@@ -145,10 +146,31 @@ spec:
   matchConstraints:
     resourceRules:
       - apiGroups: ["authorino.kuadrant.io"]
-        apiVersions: ["v1beta3"]
+        apiVersions: ["*"]
         operations: ["CREATE", "UPDATE"]
         resources: ["authconfigs"]
+  matchConditions:
+    - name: is-unrestricted-user
+      expression: >-
+        !authorizer.group("authorino.kuadrant.io")
+        .resource("unrestricted-hostnames")
+        .namespace(object.metadata.namespace)
+        .check("use")
+        .allowed()
   variables:
+    - name: usesHttpSend
+      expression: >-
+        has(object.spec.authorization)
+        && object.spec.authorization.exists(k,
+        has(object.spec.authorization[k].opa)
+        && has(object.spec.authorization[k].opa.rego)
+        && object.spec.authorization[k].opa.rego.contains("http.send"))
+    - name: usesExternalOpa
+      expression: >-
+        has(object.spec.authorization)
+        && object.spec.authorization.exists(k,
+        has(object.spec.authorization[k].opa)
+        && has(object.spec.authorization[k].opa.externalPolicy))
     - name: metadataHttp
       expression: >-
         has(object.spec.metadata)
@@ -159,13 +181,8 @@ spec:
         has(object.spec.callbacks)
         ? object.spec.callbacks.map(k, object.spec.callbacks[k]).filter(c, has(c.http)).map(c, c.http)
         : []
-    - name: opaExternalHttp
-      expression: >-
-        has(object.spec.authorization)
-        ? object.spec.authorization.map(k, object.spec.authorization[k]).filter(a, has(a.opa) && has(a.opa.externalPolicy)).map(a, a.opa.externalPolicy)
-        : []
     - name: httpEndpoints
-      expression: variables.metadataHttp + variables.callbackHttp + variables.opaExternalHttp
+      expression: variables.metadataHttp + variables.callbackHttp
     - name: httpUrls
       expression: >-
         variables.httpEndpoints.filter(e, has(e.url) && e.url != "").map(e, e.url)
@@ -217,29 +234,33 @@ spec:
       expression: >-
         variables.allUrls.exists(u, !isURL(u) || url(u).getHostname() == "" || url(u).getHostname().contains("{"))
         || variables.spicedbHosts.exists(h, h == "" || h.contains("{"))
+      # checking unverifiable endpoints separately for better error logging, since we require only static hostnames
     - name: hasUnverifiableEndpoint
       expression: variables.hasUrlExpression || variables.hasUnparseableUrl
     - name: requestedHosts
       expression: >-
         variables.allUrls.filter(u, isURL(u) && url(u).getHostname() != "" && !url(u).getHostname().contains("{")).map(u, url(u).getHostname())
         + variables.spicedbHosts.filter(h, h != "" && !h.contains("{"))
-    - name: deniedHosts
-      expression: >-
-        variables.requestedHosts.filter(h,
-        !authorizer.group("authorino.kuadrant.io")
-        .resource("http-resource")
+  validations:
+    - expression: "!variables.usesHttpSend"
+      reason: Forbidden
+      message: "inline OPA/Rego policies (spec.authorization[*].opa.rego) must not use the 'http.send' builtin, which lets Authorino make arbitrary outbound HTTP requests (SSRF). Fetch external data via a metadata HTTP source with an allowlisted hostname instead, or ask an admin for the 'unrestricted-hostnames' role."
+    - expression: "!variables.usesExternalOpa"
+      reason: Forbidden
+      message: "OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed: the Rego is fetched at runtime and cannot be scanned for the 'http.send' builtin at admission time (SSRF). Use an inline 'rego' policy, which is scanned, or ask an admin for the 'unrestricted-hostnames' role."
+    - expression: "!variables.hasUnverifiableEndpoint"
+      reason: Forbidden
+      message: "outbound URLs (authentication/metadata/authorization/callback) must use a static endpoint with a literal hostname so it can be checked against the hostname allowlist (dynamic 'urlExpression' or templated '{selector}' hosts are not allowed)"
+    - expression: >-
+        variables.requestedHosts.all(h,
+        authorizer.group("authorino.kuadrant.io")
+        .resource("authconfigs")
         .subresource(h)
         .namespace(object.metadata.namespace)
         .check("access")
         .allowed())
-  validations:
-    - expression: "!variables.hasUnverifiableEndpoint"
       reason: Forbidden
-      message: "outbound URLs (authentication/metadata/authorization/callback) must use a static endpoint with a literal hostname so it can be checked against the hostname allowlist (dynamic 'urlExpression' or templated '{selector}' hosts are not allowed)"
-    - expression: "size(variables.deniedHosts) == 0"
-      reason: Forbidden
-      message: "you do not have a role that allows Authorino to make requests to one or more of the configured hostnames"
-      messageExpression: '"no role allows request to host(s): " + variables.deniedHosts.join(", ")'
+      message: "you do not have a role that allows Authorino to make requests to one or more of the configured hostnames. Ask an admin to grant 'access' on 'authconfigs/<hostname>' for every hostname this AuthConfig references (see the 'trusted-hostnames' ClusterRole), or for the 'unrestricted-hostnames' role."
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -248,128 +269,45 @@ metadata:
 spec:
   policyName: authorino-restrict-http-route
   validationActions: ["Deny"]
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: authorino-deny-rego-httpsend
-spec:
-  failurePolicy: Fail
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["authorino.kuadrant.io"]
-        apiVersions: ["v1beta3"]
-        operations: ["CREATE", "UPDATE"]
-        resources: ["authconfigs"]
-  matchConditions:
-    - name: user-not-httpsend-exempt
-      expression: >-
-        !authorizer.group("authorino.kuadrant.io")
-        .resource("authconfig-httpsend")
-        .namespace(object.metadata.namespace)
-        .check("use")
-        .allowed()
-  variables:
-    - name: usesHttpSend
-      expression: >-
-        has(object.spec.authorization)
-        && object.spec.authorization.exists(k,
-        has(object.spec.authorization[k].opa)
-        && has(object.spec.authorization[k].opa.rego)
-        && object.spec.authorization[k].opa.rego.contains("http.send"))
-  validations:
-    - expression: "!variables.usesHttpSend"
-      reason: Forbidden
-      message: "inline OPA/Rego policies (spec.authorization[*].opa.rego) must not use the 'http.send' builtin, which lets Authorino make arbitrary outbound HTTP requests (SSRF). Fetch external data via a metadata HTTP source with an allowlisted hostname instead, or ask an admin for the 'authconfig-httpsend' role."
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicyBinding
-metadata:
-  name: authorino-deny-rego-httpsend
-spec:
-  policyName: authorino-deny-rego-httpsend
-  validationActions: ["Deny"]
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: authorino-deny-external-opa
-spec:
-  failurePolicy: Fail
-  matchConstraints:
-    resourceRules:
-      - apiGroups: ["authorino.kuadrant.io"]
-        apiVersions: ["v1beta3"]
-        operations: ["CREATE", "UPDATE"]
-        resources: ["authconfigs"]
-  matchConditions:
-    - name: user-not-external-opa-exempt
-      expression: >-
-        !authorizer.group("authorino.kuadrant.io")
-        .resource("authconfig-external-opa")
-        .namespace(object.metadata.namespace)
-        .check("use")
-        .allowed()
-  variables:
-    - name: usesExternalOpa
-      expression: >-
-        has(object.spec.authorization)
-        && object.spec.authorization.exists(k,
-        has(object.spec.authorization[k].opa)
-        && has(object.spec.authorization[k].opa.externalPolicy))
-  validations:
-    - expression: "!variables.usesExternalOpa"
-      reason: Forbidden
-      message: "OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed: the Rego is fetched at runtime and cannot be scanned for the 'http.send' builtin at admission time (SSRF). Use an inline 'rego' policy, which is scanned, or ask an admin for the 'authconfig-external-opa' role."
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicyBinding
-metadata:
-  name: authorino-deny-external-opa
-spec:
-  policyName: authorino-deny-external-opa
-  validationActions: ["Deny"]
 EOF
 ```
 
 > **Warning**
 >
-> Unlike a policy that only restricts *newly enabling* a field, all three policies
-> re-validate the **entire object** on every `CREATE` **and** `UPDATE`, with no
-> comparison to the previous version:
+> The policy re-validates the **entire object** on every `CREATE` **and**
+> `UPDATE`. It does not compare against the previous version.
 >
-> - `authorino-restrict-http-route` requires the requesting subject to hold
-    >   `access` for **every** hostname currently in the `AuthConfig` — even on an
-    >   update that does not touch the URLs. An `AuthConfig` that already points at a
-    >   host will become **uneditable by a subject that lacks that host's role**, and
-    >   `http.send`-bearing configs behave the same way for `authorino-deny-rego-httpsend`, and configs using `opa.externalPolicy` behave the same way for `authorino-deny-external-opa`.
-> - Applying the policies does **not** retroactively delete existing
-    >   `AuthConfig`s, but the next update to one is re-checked in full.
+> - The requesting subject must hold `access` for **every** hostname currently in
+>   the `AuthConfig`, even on an update that does not touch the URLs. An
+>   `AuthConfig` that already points at a host becomes **uneditable by a subject
+>   that lacks that host's grant**. The same applies to configs that use
+>   `http.send`, `opa.externalPolicy` or `urlExpression`.
+> - Applying the policy does **not** retroactively delete existing
+>   `AuthConfig`s, but the next update to one is re-checked in full.
 >
-> Before you apply the policies, **inventory the hostnames already in use** and
-> the controllers/ServiceAccounts that manage `AuthConfig`s (e.g. GitOps
-> controllers, the Kuadrant operator), and grant them the matching host roles
+> Before you apply the policy, **inventory the hostnames already in use** and the
+> controllers/ServiceAccounts that manage `AuthConfig`s (for example GitOps
+> controllers, the Kuadrant operator), and grant them the matching hostnames
 > (steps 1–2) so their reconciliations keep working. Cluster administrators with
 > wildcard access are implicitly exempt (see the note in step 4).
->
 
-## 4. Verifying the VAPs
+## 4. Verifying the VAP
 
 ### A normal user is blocked
 
 Try to create resources that break the rules. Run these as a regular user (one
-without the permissions) and each should be rejected.
+without the roles) and each should be rejected.
 
 > **Note**
 >
 > Do not run these as a cluster administrator. Anything with wildcard access
 > (`verbs: ["*"]` on `resources: ["*"]`) — which cluster admins have — satisfies
-> the `access` / `use` checks and is treated as exempt, so the request would be
-> allowed and a real outbound route enabled. Use an ordinary user (or
-> `--as=<unauthorized-subject>`) to see the policy block.
+> the `access` and `use` checks, so the request would be allowed and a real
+> outbound route enabled. Use an ordinary user (or `--as=<unauthorized-subject>`)
+> to see the policy block.
 
 ```bash
-# AuthConfig pointing JWKS at a host the subject was not granted — should be DENIED
+# AuthConfig pointing a JWT issuer at a host the subject was not granted — should be DENIED
 kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
 apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
@@ -407,7 +345,7 @@ EOF
 ```
 
 ```bash
-# OPA policy loaded from an external source, without the external-OPA role — should be DENIED
+# OPA policy loaded from an external source — should be DENIED
 kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
 apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
@@ -425,29 +363,72 @@ spec:
 EOF
 ```
 
+```bash
+# A hostname taken from a request header at runtime — should be DENIED
+kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: route-denied-urlexpression
+  namespace: <namespace>
+spec:
+  hosts:
+    - test-urlexpression-denied.example.com
+  authentication:
+    anon:
+      anonymous: {}
+  metadata:
+    lookup:
+      http:
+        urlExpression: '"http://" + request.headers["x-forward-to"] + "/latest/meta-data/"'
+EOF
+```
+
+```bash
+# A templated {selector} in the hostname — should be DENIED
+kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: route-denied-templated
+  namespace: <namespace>
+spec:
+  hosts:
+    - test-templated-denied.example.com
+  authentication:
+    anon:
+      anonymous: {}
+  metadata:
+    lookup:
+      http:
+        url: "http://{context.request.http.headers.x-forward-to}/latest/meta-data/"
+EOF
+```
+
 You should get errors like these instead of the resources being created:
 
 ```text
-... is forbidden: ValidatingAdmissionPolicy 'authorino-restrict-http-route' ... denied request: no role allows request to host(s): not-allowed.example.com
+... is forbidden: ValidatingAdmissionPolicy 'authorino-restrict-http-route' ... denied request: you do not have a role that allows Authorino to make requests to one or more of the configured hostnames ...
 ```
 
 ```text
-... is forbidden: ValidatingAdmissionPolicy 'authorino-deny-rego-httpsend' ... denied request: inline OPA/Rego policies (spec.authorization[*].opa.rego) must not use the 'http.send' builtin ...
+... is forbidden: ValidatingAdmissionPolicy 'authorino-restrict-http-route' ... denied request: inline OPA/Rego policies (spec.authorization[*].opa.rego) must not use the 'http.send' builtin ...
 ```
 
 ```text
-... is forbidden: ValidatingAdmissionPolicy 'authorino-deny-external-opa' ... denied request: OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed ...
+... is forbidden: ValidatingAdmissionPolicy 'authorino-restrict-http-route' ... denied request: OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed ...
+```
+
+```text
+... is forbidden: ValidatingAdmissionPolicy 'authorino-restrict-http-route' ... denied request: outbound URLs (authentication/metadata/authorization/callback) must use a static endpoint with a literal hostname ...
 ```
 
 ### A permitted subject is allowed
 
-Now run the same requests as a subject that holds the matching permission
-(granted in steps 1–2). All should be admitted. Replace `<authorized-subject>`
-with the subject you granted the permission to (for example,
-`system:serviceaccount:<namespace>:<sa>`), and make sure you granted the role for
-the exact hostname used below. Note that an external OPA policy is admitted only
-when the subject holds **both** the `authconfig-external-opa` role **and** the
-host role for the policy's URL (here, `keycloak.example.com`).
+Now run the same request as a subject that was granted the hostname in steps 1–2.
+Replace `<authorized-subject>` with that subject (for example,
+`system:serviceaccount:<namespace>:<sa>`), and make sure the grant uses the exact
+hostname below.
 
 ```bash
 # JWT issuer at an allowlisted host, as a subject granted access to it — should be ALLOWED
@@ -467,53 +448,36 @@ spec:
 EOF
 ```
 
-```bash
-# Inline OPA/Rego using http.send, as a subject granted 'authconfig-httpsend' — should be ALLOWED
-kubectl apply --as=<authorized-subject> -f - <<'EOF'
-apiVersion: authorino.kuadrant.io/v1beta3
-kind: AuthConfig
-metadata:
-  name: route-allowed-httpsend
-  namespace: <namespace>
-spec:
-  hosts:
-    - test-httpsend-allowed.example.com
-  authorization:
-    external-check:
-      opa:
-        rego: |
-          resp := http.send({"method": "get", "url": "https://keycloak.example.com/check"})
-          allow { resp.status_code == 200 }
-EOF
-```
+### The role that gives a user unrestricted access
+
+A subject holding `authorino-unrestricted-hostnames` is not evaluated at all.
+Every one of the denied examples above is admitted for it, including the
+`http.send` one and the `urlExpression` one.
 
 ```bash
-# OPA policy from an external source at an allowlisted host, as a subject granted
-# both 'authconfig-external-opa' and the keycloak.example.com host role — should be ALLOWED
-kubectl apply --as=<authorized-subject> -f - <<'EOF'
+# Any hostname, no grant needed — should be ALLOWED for a subject with the bypass role
+kubectl apply --as=<unrestricted-subject> -f - <<'EOF'
 apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
 metadata:
-  name: route-allowed-external-opa
+  name: route-unrestricted
   namespace: <namespace>
 spec:
   hosts:
-    - test-external-opa-allowed.example.com
-  authorization:
-    external-check:
-      opa:
-        externalPolicy:
-          url: https://keycloak.example.com/policy.rego
+    - test-unrestricted.example.com
+  authentication:
+    jwt-users:
+      jwt:
+        issuerUrl: https://anything.example.com/realms/app
 EOF
 ```
 
 ### Resources without outbound endpoints are always allowed
 
-The `authorino-restrict-http-route` policy only looks at fields that produce an
-outbound request. An `AuthConfig` that makes no external call — for example one
-that only verifies API keys, mTLS certificates, or Kubernetes tokens, and uses
-inline pattern-matching authorization — is admitted for any subject, whether or
-not it holds a host role:
+The policy only looks at fields that produce an outbound request. An `AuthConfig`
+that makes no external call — for example one that only verifies API keys, mTLS
+certificates or Kubernetes tokens, and uses inline pattern-matching authorization
+— is admitted for any subject, with or without a hostname grant:
 
 ```bash
 # AuthConfig with no outbound endpoints — should be ALLOWED even for an unauthorized subject
@@ -535,19 +499,17 @@ spec:
 EOF
 ```
 
-
-
 ### Updates are re-checked, not just creates
 
-Because the policies match `UPDATE` as well as `CREATE`, and they validate the
-whole object each time, a subject that lacks a host's role cannot edit an
-`AuthConfig` that references that host — even to change an unrelated field. Using
-the `route-allowed-1` `AuthConfig` created above (which points at
+The policy matches `UPDATE` as well as `CREATE`, and it validates the whole object
+each time. So a subject that lacks a hostname grant cannot edit an `AuthConfig`
+that references that hostname, even to change an unrelated field. Using the
+`route-allowed-1` `AuthConfig` created above (which points at
 `keycloak.example.com`):
 
 ```bash
-# Change an unrelated field (the host) while keeping the same issuer,
-# as a subject WITHOUT the keycloak.example.com role — should be DENIED
+# Change an unrelated field (the OIDC cache TTL) while keeping the same issuer,
+# as a subject WITHOUT the keycloak.example.com grant — should be DENIED
 kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
 apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
@@ -556,26 +518,33 @@ metadata:
   namespace: <namespace>
 spec:
   hosts:
-    - test-allowed-updated.example.com
+    - test-allowed.example.com
   authentication:
     jwt-users:
       jwt:
         issuerUrl: https://keycloak.example.com/realms/app
+        ttl: 300
 EOF
 ```
 
-The same edit performed by a subject that **does** hold the
-`keycloak.example.com` role is admitted. Grant the host roles to every subject
-that legitimately maintains these `AuthConfig`s.
+The same edit by a subject that **does** hold the `keycloak.example.com` grant is
+admitted. Grant the hostnames to every subject that legitimately maintains these
+`AuthConfig`s.
+
+> **Note**
+>
+> When you test this by hand, make sure the update actually changes something. An
+> `apply` that produces no diff is a no-op, and the API server skips admission for
+> it, so the request appears to succeed no matter what the policy says.
 
 ### Permissions bound with a RoleBinding are namespace-scoped
 
-The exemption check runs against the **namespace of the resource being admitted**.
-If you grant a permission with a `RoleBinding` (rather than a
-`ClusterRoleBinding`), the subject is allowed only in that namespace.
+The permission check runs against the **namespace of the resource being admitted**.
+If you grant a role with a `RoleBinding` (rather than a `ClusterRoleBinding`), the
+subject is allowed in that namespace only.
 
 ```bash
-# Subject granted the keycloak.example.com role via a RoleBinding in <namespace-a> — should be ALLOWED
+# Subject granted keycloak.example.com via a RoleBinding in <namespace-a> — should be ALLOWED
 kubectl apply --as=<authorized-subject> -f - <<'EOF'
 apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
@@ -609,3 +578,22 @@ spec:
         issuerUrl: https://keycloak.example.com/realms/app
 EOF
 ```
+
+## Limitations
+
+- **Exact hostname match only.** There is no wildcard form. `*.example.com` is not
+  supported; list each host.
+- **Case-sensitive.** `KEYCLOAK.example.com` does not match a grant for
+  `keycloak.example.com`. It is denied.
+- **Hostname only.** A grant does not restrict the port, path or scheme on that
+  host.
+- **Dynamic URLs need the bypass role.** `urlExpression` and templated
+  `{selector}` hostnames are always denied by check 3, even in the safe shape
+  where the host is fixed and only the path varies. There is no separate role for
+  them, on purpose. If you need them, use `authorino-unrestricted-hostnames`.
+- **A wildcard RBAC rule grants both roles.** A subject with `resources: ["*"]`
+  and `verbs: ["*"]` on the `authorino.kuadrant.io` API group satisfies both the
+  `access` and the `use` check, so it bypasses everything silently. This is how
+  cluster admins are exempt. Note that `resources: ["authconfigs"]` with
+  `verbs: ["*"]` does **not** bypass the policy — the check is on the
+  `authconfigs/<hostname>` subresource, which that rule does not cover.
