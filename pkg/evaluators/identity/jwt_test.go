@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	gohttptest "net/http/httptest"
 	"sync"
 	"testing"
@@ -262,11 +263,9 @@ func TestJWKSVerifierMalformedJWT(t *testing.T) {
 }
 
 const (
-	issuerTestServerHost = "127.0.0.1:9007"
-	trustedIssuer        = "http://" + issuerTestServerHost
-	foreignIssuer        = "http://foreign-issuer.example.com"
-	externalIssuer       = "https://external-issuer.example.com"
-	signingKeyId         = "shared-signing-key"
+	foreignIssuer  = "http://foreign-issuer.example.com"
+	externalIssuer = "https://external-issuer.example.com"
+	signingKeyId   = "shared-signing-key"
 )
 
 // newSharedSigningKey returns an RSA key plus the JWKS document advertising its
@@ -308,21 +307,29 @@ func signToken(t *testing.T, key *rsa.PrivateKey, issuer string) string {
 	return raw
 }
 
-// newIdPMock serves the OIDC discovery document and JWKS of the trusted issuer.
-func newIdPMock(jwks string) *gohttptest.Server {
-	return newIdPMockWithIssuer(trustedIssuer, jwks)
-}
-
-// newIdPMockWithIssuer serves discovery at issuerTestServerHost but advertises advertisedIssuer,
-// modelling a cluster-internal discovery URL with a different (e.g. external) issuer in tokens.
-// JWKS is always served from the discovery host so keys remain fetchable.
-func newIdPMockWithIssuer(advertisedIssuer, jwks string) *gohttptest.Server {
-	return httptest.NewHttpServerMock(issuerTestServerHost, map[string]httptest.HttpServerMockResponseFunc{
-		"/.well-known/openid-configuration": httptest.NewHttpServerMockResponseFuncJSON(
-			fmt.Sprintf(`{"issuer":%q,"jwks_uri":"%v/certs"}`, advertisedIssuer, trustedIssuer),
-		),
-		"/certs": httptest.NewHttpServerMockResponseFuncJSON(jwks),
-	})
+// newIdPMock starts an OIDC discovery + JWKS server on an OS-assigned port (avoiding fixed-port
+// clashes with test servers in other packages). When advertisedIssuer is empty the discovery
+// document self-advertises the server's own URL as the issuer; otherwise it advertises
+// advertisedIssuer, modelling a discovery URL reached at a different address than the issuer
+// stamped into tokens. JWKS is always served from the server's own URL so keys remain fetchable.
+func newIdPMock(advertisedIssuer, jwks string) *gohttptest.Server {
+	var server *gohttptest.Server
+	server = gohttptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		issuer := advertisedIssuer
+		if issuer == "" {
+			issuer = server.URL
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/.well-known/openid-configuration":
+			_, _ = fmt.Fprintf(w, `{"issuer":%q,"jwks_uri":"%s/certs"}`, issuer, server.URL)
+		case "/certs":
+			_, _ = fmt.Fprint(w, jwks)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	return server
 }
 
 func callWithToken(t *testing.T, verifier JWTVerifier, rawToken string) (any, error) {
@@ -347,10 +354,10 @@ func callWithToken(t *testing.T, verifier JWTVerifier, rawToken string) (any, er
 // but whose `iss` names a different issuer must NOT authenticate.
 func TestOIDCProviderVerifier_IssuerSet_RejectsForeignIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
-	authServer := newIdPMock(jwks)
+	authServer := newIdPMock("", jwks)
 	defer authServer.Close()
 
-	verifier := NewOIDCProviderVerifier(context.TODO(), trustedIssuer, trustedIssuer, 0, nil)
+	verifier := NewOIDCProviderVerifier(context.TODO(), authServer.URL, authServer.URL, 0, nil)
 
 	obj, err := callWithToken(t, verifier, signToken(t, key, foreignIssuer))
 
@@ -363,10 +370,10 @@ func TestOIDCProviderVerifier_IssuerSet_RejectsForeignIssuer(t *testing.T) {
 // opt-in nature of the field.
 func TestOIDCProviderVerifier_IssuerUnset_AcceptsForeignIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
-	authServer := newIdPMock(jwks)
+	authServer := newIdPMock("", jwks)
 	defer authServer.Close()
 
-	verifier := NewOIDCProviderVerifier(context.TODO(), trustedIssuer, "", 0, nil)
+	verifier := NewOIDCProviderVerifier(context.TODO(), authServer.URL, "", 0, nil)
 
 	obj, err := callWithToken(t, verifier, signToken(t, key, foreignIssuer))
 
@@ -377,15 +384,15 @@ func TestOIDCProviderVerifier_IssuerUnset_AcceptsForeignIssuer(t *testing.T) {
 // issuerUrl path, issuer set: the happy path (matching `iss`) still authenticates.
 func TestOIDCProviderVerifier_IssuerSet_AcceptsMatchingIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
-	authServer := newIdPMock(jwks)
+	authServer := newIdPMock("", jwks)
 	defer authServer.Close()
 
-	verifier := NewOIDCProviderVerifier(context.TODO(), trustedIssuer, trustedIssuer, 0, nil)
+	verifier := NewOIDCProviderVerifier(context.TODO(), authServer.URL, authServer.URL, 0, nil)
 
-	obj, err := callWithToken(t, verifier, signToken(t, key, trustedIssuer))
+	obj, err := callWithToken(t, verifier, signToken(t, key, authServer.URL))
 
 	assert.NilError(t, err)
-	assert.Equal(t, obj.(map[string]any)["iss"].(string), trustedIssuer)
+	assert.Equal(t, obj.(map[string]any)["iss"].(string), authServer.URL)
 }
 
 // issuerUrl path, issuer differs from issuerUrl (cluster-internal discovery / external issuer):
@@ -393,10 +400,10 @@ func TestOIDCProviderVerifier_IssuerSet_AcceptsMatchingIssuer(t *testing.T) {
 // issuer — accepting the legitimate external-issuer token and rejecting a wrong-issuer one.
 func TestOIDCProviderVerifier_IssuerDiffersFromIssuerUrl_EnforcesConfiguredIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
-	authServer := newIdPMockWithIssuer(externalIssuer, jwks) // served at trustedIssuer, advertises externalIssuer
+	authServer := newIdPMock(externalIssuer, jwks) // discovery served at authServer.URL, advertises externalIssuer
 	defer authServer.Close()
 
-	verifier := NewOIDCProviderVerifier(context.TODO(), trustedIssuer, externalIssuer, 0, nil)
+	verifier := NewOIDCProviderVerifier(context.TODO(), authServer.URL, externalIssuer, 0, nil)
 
 	obj, err := callWithToken(t, verifier, signToken(t, key, externalIssuer))
 	assert.NilError(t, err)
@@ -410,14 +417,14 @@ func TestOIDCProviderVerifier_IssuerDiffersFromIssuerUrl_EnforcesConfiguredIssue
 // jwksUrl path, issuer set: `iss` is enforced
 func TestJWKSVerifier_IssuerSet_EnforcesIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
-	authServer := newIdPMock(jwks)
+	authServer := newIdPMock("", jwks)
 	defer authServer.Close()
 
-	verifier := NewJwksVerifier(context.TODO(), trustedIssuer+"/certs", trustedIssuer, nil)
+	verifier := NewJwksVerifier(context.TODO(), authServer.URL+"/certs", authServer.URL, nil)
 
-	obj, err := callWithToken(t, verifier, signToken(t, key, trustedIssuer))
+	obj, err := callWithToken(t, verifier, signToken(t, key, authServer.URL))
 	assert.NilError(t, err)
-	assert.Equal(t, obj.(map[string]any)["iss"].(string), trustedIssuer)
+	assert.Equal(t, obj.(map[string]any)["iss"].(string), authServer.URL)
 
 	obj, err = callWithToken(t, verifier, signToken(t, key, foreignIssuer))
 	assert.Check(t, obj == nil, "foreign-issuer token accepted on the jwksUrl path with issuer set")
@@ -428,10 +435,10 @@ func TestJWKSVerifier_IssuerSet_EnforcesIssuer(t *testing.T) {
 // regardless of `iss`.
 func TestJWKSVerifier_IssuerUnset_IgnoresIssuer(t *testing.T) {
 	key, jwks := newSharedSigningKey(t)
-	authServer := newIdPMock(jwks)
+	authServer := newIdPMock("", jwks)
 	defer authServer.Close()
 
-	verifier := NewJwksVerifier(context.TODO(), trustedIssuer+"/certs", "", nil)
+	verifier := NewJwksVerifier(context.TODO(), authServer.URL+"/certs", "", nil)
 
 	obj, err := callWithToken(t, verifier, signToken(t, key, foreignIssuer))
 
