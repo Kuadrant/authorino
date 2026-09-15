@@ -73,13 +73,15 @@ func init() {
 
 // AuthService is the server API for the authorization service.
 type AuthService struct {
-	Index                  index.Index
-	Timeout                time.Duration
-	MaxHttpRequestBodySize int64
+	Index                      index.Index
+	Timeout                    time.Duration
+	MaxHttpRequestBodySize     int64
+	EnableLoggingFields        bool
+	LoggingFieldsMaxValueBytes int
 }
 
-func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBodySize int64) *AuthService {
-	return &AuthService{Index: index, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize}
+func NewAuthService(index index.Index, timeout time.Duration, maxHttpRequestBodySize int64, enableLoggingFields bool, loggingFieldsMaxValueBytes int) *AuthService {
+	return &AuthService{Index: index, Timeout: timeout, MaxHttpRequestBodySize: maxHttpRequestBodySize, EnableLoggingFields: enableLoggingFields, LoggingFieldsMaxValueBytes: loggingFieldsMaxValueBytes}
 }
 
 // ServeHTTP invokes authorization check for a simple GET/POST HTTP authorization request
@@ -284,13 +286,13 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 	// If we couldn't find the AuthConfig in the config, we return and deny.
 	if authConfig == nil {
 		result := auth.AuthResult{Code: rpc.NOT_FOUND, Message: RESPONSE_MESSAGE_SERVICE_NOT_FOUND}
-		a.logAuthResult(result, ctx)
+		a.logAuthResult(result, ctx, nil)
 		return a.deniedResponse(result), nil
 	}
 
 	if err := context.CheckContext(ctx); err != nil {
 		result := auth.AuthResult{Code: rpc.UNAVAILABLE}
-		a.logAuthResult(result, ctx)
+		a.logAuthResult(result, ctx, nil)
 		context.Cancel(ctx)
 		span.RecordError(err)
 		span.SetStatus(otel_codes.Error, err.Error())
@@ -308,7 +310,13 @@ func (a *AuthService) Check(parentContext gocontext.Context, req *envoy_auth.Che
 		span.SetStatus(otel_codes.Error, err.Error())
 	}
 
-	a.logAuthResult(result, ctx)
+	var loggingFields map[string]string
+	if a.EnableLoggingFields {
+		if p, ok := pipeline.(*AuthPipeline); ok {
+			loggingFields = p.loggingFields(a.LoggingFieldsMaxValueBytes)
+		}
+	}
+	a.logAuthResult(result, ctx, loggingFields)
 
 	if result.Success() {
 		return a.successResponse(result, ctx), nil
@@ -401,7 +409,7 @@ func (a *AuthService) logAuthRequest(req *envoy_auth.CheckRequest, ctx gocontext
 	}
 }
 
-func (a *AuthService) logAuthResult(result auth.AuthResult, ctx gocontext.Context) {
+func (a *AuthService) logAuthResult(result auth.AuthResult, ctx gocontext.Context, loggingFields map[string]string) {
 	logger := log.FromContext(ctx)
 	success := result.Success()
 	baseLogData := []interface{}{"authorized", success, "response", result.Code.String()}
@@ -415,11 +423,17 @@ func (a *AuthService) logAuthResult(result auth.AuthResult, ctx gocontext.Contex
 		}
 		logData = append(logData, "object", reducedResult)
 	}
+	for k, v := range loggingFields {
+		logData = append(logData, k, v)
+	}
 	logger.Info("outgoing authorization response", logData...) // info
 
 	if logger.V(1).Enabled() {
 		if !success {
 			baseLogData = append(baseLogData, "object", result)
+		}
+		for k, v := range loggingFields {
+			baseLogData = append(baseLogData, k, v)
 		}
 		logger.V(1).Info("outgoing authorization response", baseLogData...) // debug
 	}

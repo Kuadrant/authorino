@@ -133,6 +133,8 @@ type authServerOptions struct {
 	maxHttpRequestBodySize         int64
 	kubeClientQPS                  float32
 	kubeClientBurst                int
+	enableLoggingFields            bool
+	loggingFieldsMaxValueBytes     int
 	addSensitiveFields             []string
 	removeSensitiveFields          []string
 	addSensitiveHeaders            []string
@@ -201,6 +203,8 @@ func authServerCmd(opts *authServerOptions) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&opts.oidcTLSMaxVersion, "oidc-tls-max-version", utils.EnvVar("OIDC_TLS_MAX_VERSION", ""), "Maximum TLS version for the OIDC Discovery server (1.0, 1.1, 1.2, 1.3)")
 	cmd.PersistentFlags().StringSliceVar(&opts.oidcTLSCipherSuites, "oidc-tls-cipher-suites", utils.EnvVarStringSlice("OIDC_TLS_CIPHER_SUITES", ","), "Comma-separated list of TLS cipher suites (IANA names) for the OIDC Discovery server")
 	cmd.PersistentFlags().IntVar(&opts.evaluatorCacheSize, "evaluator-cache-size", utils.EnvVar("EVALUATOR_CACHE_SIZE", 1), "Cache size of each Authorino evaluator if enabled in the AuthConfig - in megabytes")
+	cmd.PersistentFlags().BoolVar(&opts.enableLoggingFields, "enable-logging-fields", utils.EnvVar("ENABLE_LOGGING_FIELDS", false), "Enable configurable logging fields from filter metadata in authorization decision logs")
+	cmd.PersistentFlags().IntVar(&opts.loggingFieldsMaxValueBytes, "logging-fields-max-value-bytes", utils.EnvVar("LOGGING_FIELDS_MAX_VALUE_BYTES", 1024), "Maximum length in bytes for logging field values; 0 disables truncation")
 	cmd.PersistentFlags().BoolVar(&opts.deepMetricsEnabled, "deep-metrics-enabled", utils.EnvVar("DEEP_METRICS_ENABLED", false), "Enable deep metrics at the level of each evaluator when requested in the AuthConfig, exported by the metrics server")
 	cmd.PersistentFlags().IntVar(&opts.webhookServicePort, "webhook-service-port", 9443, "Port number of the webhook server")
 	cmd.PersistentFlags().BoolVar(&opts.enableLeaderElection, "enable-leader-election", false, "Enable leader election for status updater - ensures only one instance of Authorino tries to update the status of reconciled resources")
@@ -529,7 +533,7 @@ func startExtAuthServerGRPC(authConfigIndex index.Index, opts authServerOptions)
 	grpcServer := grpc.NewServer(grpcServerOpts...)
 	reflection.Register(grpcServer)
 
-	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Index: authConfigIndex, Timeout: timeoutMs(opts.timeout)})
+	envoy_auth.RegisterAuthorizationServer(grpcServer, &service.AuthService{Index: authConfigIndex, Timeout: timeoutMs(opts.timeout), EnableLoggingFields: opts.enableLoggingFields, LoggingFieldsMaxValueBytes: opts.loggingFieldsMaxValueBytes})
 	healthpb.RegisterHealthServer(grpcServer, &service.HealthService{})
 	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
@@ -545,7 +549,7 @@ func startExtAuthServerGRPC(authConfigIndex index.Index, opts authServerOptions)
 }
 
 func startExtAuthServerHTTP(authConfigIndex index.Index, opts authServerOptions) {
-	startHTTPService("auth", opts.extAuthHTTPPort, service.HTTPAuthorizationBasePath, opts.tlsCertPath, opts.tlsCertKeyPath, opts.tlsMinVersion, opts.tlsMaxVersion, opts.tlsCipherSuites, service.NewAuthService(authConfigIndex, timeoutMs(opts.timeout), opts.maxHttpRequestBodySize))
+	startHTTPService("auth", opts.extAuthHTTPPort, service.HTTPAuthorizationBasePath, opts.tlsCertPath, opts.tlsCertKeyPath, opts.tlsMinVersion, opts.tlsMaxVersion, opts.tlsCipherSuites, service.NewAuthService(authConfigIndex, timeoutMs(opts.timeout), opts.maxHttpRequestBodySize, opts.enableLoggingFields, opts.loggingFieldsMaxValueBytes))
 }
 
 func startOIDCServer(authConfigIndex index.Index, opts authServerOptions) {
