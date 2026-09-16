@@ -151,6 +151,10 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 	}(evaluator, context.Background())
 
 	verifier, _ := jwtVerifier.(*oidcProviderVerifier)
+	// the refresher is not started by the constructor any more: the reconciler starts it once the
+	// authconfig has been translated and indexed
+	assert.Check(t, verifier.refresher == nil)
+	assert.NilError(t, evaluator.Start(context.TODO()))
 	assert.Check(t, verifier.refresher != nil)
 
 	time.Sleep(4 * time.Second)
@@ -253,4 +257,30 @@ func TestJWKSVerifierMalformedJWT(t *testing.T) {
 
 	assert.Check(t, token == nil)
 	assert.ErrorContains(t, err, "oidc: malformed jwt")
+}
+
+// Start must be safe to call concurrently: the check for an existing refresher and the assignment
+// of a new one have to happen under the same lock, or two callers both start one and one leaks.
+func TestOIDCProviderVerifierConcurrentStart(t *testing.T) {
+	authServer := httptest.NewHttpServerMock(oidcServerHost, map[string]httptest.HttpServerMockResponseFunc{
+		"/.well-known/openid-configuration": func() httptest.HttpServerMockResponse {
+			return oidcServerMockResponse(1)
+		},
+	})
+	defer authServer.Close()
+
+	verifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), 60, nil).(*oidcProviderVerifier)
+	defer func() { _ = verifier.Clean(context.TODO()) }()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NilError(t, verifier.Start(context.TODO()))
+		}()
+	}
+	wg.Wait()
+
+	assert.Check(t, verifier.refresher != nil)
 }
