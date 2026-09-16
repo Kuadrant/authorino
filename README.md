@@ -453,7 +453,9 @@ Join us on the [#kuadrant](https://kubernetes.slack.com/archives/C05J0D0V525) ch
 
 ## Profiling
 
-Authorino supports runtime profiling via Go's built-in [pprof](https://pkg.go.dev/net/http/pprof) tooling. Enabled by default on `:8084`.
+Authorino supports runtime profiling via Go's built-in [pprof](https://pkg.go.dev/net/http/pprof) tooling. Profiling is disabled by default. To enable it, add `--pprof-bind-address=:8084` to the `authorino server` or `authorino webhooks` command. Set the flag to `""` or `"0"` to disable it again.
+
+Profiling endpoints are unauthenticated and profiles may contain sensitive data. Restrict access with a [NetworkPolicy](./docs/user-guides/limiting-network-traffic.md) and disable profiling after diagnostics.
 
 Connect to a running instance:
 
