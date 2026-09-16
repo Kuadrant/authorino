@@ -128,7 +128,10 @@ func (c *authConfigTree) FindKeys(id string) []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return c.keys[id]
+	// a copy, not the slice itself: deleteKey() shifts the elements of the stored slice in place,
+	// and callers hold on to what they are given well after the read lock has been released - the
+	// oidc server reads it while serving a request, the reconciler while reconciling
+	return slices.Clone(c.keys[id])
 }
 
 func (c *authConfigTree) deleteKey(id, key string) {

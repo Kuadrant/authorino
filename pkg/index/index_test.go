@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -210,4 +211,50 @@ func TestDeleteKeyDoesNotStealTheHostOfAnotherId(t *testing.T) {
 	assert.Check(t, found)
 	assert.Equal(t, id, "auth-2")
 	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+}
+
+func TestFindKeysReturnsACopy(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, true))
+	assert.NilError(t, c.Set("auth-1", "echo-api.nip.io", authConfig, true))
+
+	keys := c.FindKeys("auth-1")
+	c.DeleteKey("auth-1", "talker-api.nip.io")
+
+	// deleting a key shifts the stored slice in place, which must not rewrite what an earlier
+	// caller is still holding
+	assert.DeepEqual(t, keys, []string{"talker-api.nip.io", "echo-api.nip.io"})
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+}
+
+func TestFindKeysIsSafeWhileKeysAreBeingDeleted(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// a reader, e.g. the oidc server resolving a wristband issuer while serving a request
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			for _, key := range c.FindKeys("auth-1") {
+				_ = key
+			}
+		}
+	}()
+
+	// and the reconciler, re-indexing the same resource
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			_ = c.Set("auth-1", "talker-api.nip.io", authConfig, true)
+			_ = c.Set("auth-1", "echo-api.nip.io", authConfig, true)
+			c.DeleteKey("auth-1", "talker-api.nip.io")
+		}
+	}()
+
+	wg.Wait()
 }
