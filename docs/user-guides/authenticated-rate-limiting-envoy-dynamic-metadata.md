@@ -35,23 +35,6 @@ kind create cluster --name authorino-tutorial
 
 The next steps walk you through installing Authorino, deploying and configuring a sample service called **Talker API** to be protected by the authorization service.
 
-<table>
-  <thead>
-    <tr>
-      <th>Using Kuadrant</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <p>If you are a user of <a href="https://kuadrant.io">Kuadrant</a> and already have your workload cluster configured and sample service application deployed, as well as your Gateway API network resources applied to route traffic to your service, skip straight to step ❻.</p>
-        <p>At step ❻, instead of creating an <code>AuthConfig</code> custom resource, create a Kuadrant <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> one. The schema of the AuthConfig's <code>spec</code> matches the one of the AuthPolicy's, except <code>spec.host</code>, which is not available in the Kuadrant AuthPolicy. Host names in a Kuadrant AuthPolicy are inferred automatically from the Kubernetes network object referred in <code>spec.targetRef</code> and route selectors declared in the policy.</p>
-        <p>For more about using Kuadrant to enforce authorization, check out <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.</p>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
 <br/>
 
 ## ❶ Install the Authorino Operator (cluster admin required)
@@ -125,18 +108,6 @@ kubectl port-forward deployment/envoy 8000:8000 2>&1 >/dev/null &
 Create an Authorino `AuthConfig` custom resource declaring the auth rules to be enforced.
 
 An annotation `auth-data/username` will be read from the Kubernetes API Key secret and passed as dynamic metadata `{ "ext_auth_data": { "username": «annotations.auth-data/username» } }`.
-
-<table>
-  <tbody>
-    <tr>
-      <td>
-        <b><i>Kuadrant users –</i></b>
-        Remember to create an <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/reference/authpolicy"><code>AuthPolicy</code></a> instead of an AuthConfig.
-        For more, see <a href="https://docs.kuadrant.io/latest/kuadrant-operator/doc/overviews/auth">Kuadrant auth</a>.
-      </td>
-    </tr>
-  </tbody>
-</table>
 
 ```sh
 kubectl apply -f -<<EOF
