@@ -174,6 +174,7 @@ func (u *AuthConfigStatusUpdater) updateAuthConfigStatus(ctx context.Context, re
 
 func (u *AuthConfigStatusUpdater) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("authconfigstatus").
 		For(&api.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(u.LabelSelector))).
 		Complete(u)
 }
