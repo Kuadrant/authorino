@@ -54,7 +54,7 @@ func TestJWTAuthenticationCall(t *testing.T) {
 
 	jwtVerifier := mock_identity.NewMockJWTVerifier(ctrl)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 
 	const issuer = "http://keycloak:8080/auth/realms/kuadrant"
 	const rawToken = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ5cm0tSWpweGRfd3dzVmZPR1FUWWE2NHVmdEVlOHY3VG5sQzFMLUl4ZUlJIn0.eyJleHAiOjIxNDU4NjU3NzMsImlhdCI6MTY1OTA4ODE3MywianRpIjoiZDI0ODliMWEtYjY0Yi00MzRhLWJhNmItMmQ4OGIyY2I1ZWE3IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrOjgwODAvYXV0aC9yZWFsbXMva3VhZHJhbnQiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiMWEwYjZjNmUtNDdmNy00ZjI1LWEyNjYtYzg3MzZhOTkxODQ0IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGVtbyIsInNlc3Npb25fc3RhdGUiOiIxMTdkMTc1Ni1mM2RlLTRjM2MtOWEwZS0zYjU5Mzc2YmI0ZTgiLCJhY3IiOiIxIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwibWVtYmVyIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctaWRlbnRpdHktcHJvdmlkZXJzIiwidmlldy1yZWFsbSIsIm1hbmFnZS1pZGVudGl0eS1wcm92aWRlcnMiLCJpbXBlcnNvbmF0aW9uIiwicmVhbG0tYWRtaW4iLCJjcmVhdGUtY2xpZW50IiwibWFuYWdlLXVzZXJzIiwicXVlcnktcmVhbG1zIiwidmlldy1hdXRob3JpemF0aW9uIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LXVzZXJzIiwibWFuYWdlLWV2ZW50cyIsIm1hbmFnZS1yZWFsbSIsInZpZXctZXZlbnRzIiwidmlldy11c2VycyIsInZpZXctY2xpZW50cyIsIm1hbmFnZS1hdXRob3JpemF0aW9uIiwibWFuYWdlLWNsaWVudHMiLCJxdWVyeS1ncm91cHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyJdfX0sInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsInNpZCI6IjExN2QxNzU2LWYzZGUtNGMzYy05YTBlLTNiNTkzNzZiYjRlOCIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwibmFtZSI6IlBldGVyIFdobyIsInByZWZlcnJlZF91c2VybmFtZSI6InBldGVyIiwiZ2l2ZW5fbmFtZSI6IlBldGVyIiwiZmFtaWx5X25hbWUiOiJXaG8iLCJlbWFpbCI6InBldGVyQGt1YWRyYW50LmlvIn0.Yy2aWR6_u0NBLx8x--OToYipfQ1f1KcC8zedsKDiymcbBiAaxrBQmaV2JC1PQVEgyxwmyMk0Rao2MdKGWk6pXB9mTUF5FX-pS8mkPIMUt1UVGJgzq7WR9KfRqdZSzRtFQHoDmTeA1-msayMYTAD8xtUH4JYRNbIXjY2cEtn8LjuLpQVR3DR4_ARMrEYXiDBS3rmmFKHdipqU7ozwJ_gtpZv8vfeiO3mUPyQLJKQ-nKpe_Z5z7tm_Ewh5MN2oBfn_0pcdANB3pe2RclGAm-YHlyNDTnAZL2Y1gdCmwzwigk7AJcgWtPqnRzvEQ9zRBxQRai5W5aNKYTxuKIG8k9N05w"
@@ -78,7 +78,7 @@ func TestOIDCProviderVerifierUnknownHost(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), "http://unreachable-server", "", 0, nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -100,7 +100,7 @@ func TestOIDCProviderVerifierNotFound(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 0, nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -122,7 +122,7 @@ func TestOIDCProviderVerifierInternalError(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 0, nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -152,7 +152,7 @@ func TestOIDCProviderVerifierRefresh(t *testing.T) {
 
 	jwtVerifier := NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%v", oidcServerHost), "", 3, nil) // refresh every 3 seconds
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 	defer func(evaluator *JWTAuthentication, ctx context.Context) {
 		_ = evaluator.Clean(ctx)
 	}(evaluator, context.Background())
@@ -232,7 +232,7 @@ func TestJWKSVerifierTokenExpired(t *testing.T) {
 
 	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost), "", nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 
 	const rawToken = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJuUnlneVU2Zk5MTk1ZRWVDcjR6WGVQeVZFUUZSODVCWEtad3Q4cHZsTllvIn0.eyJleHAiOjE3NDg1MTIyMTYsImlhdCI6MTc0ODUxMTkxNiwianRpIjoiODJhOGViYTctYTAzYi00YzM5LTkxYjEtOTU1OTNiODgxMTFmIiwiaXNzIjoiaHR0cDovL2tleWNsb2FrOjgwODAvcmVhbG1zL2t1YWRyYW50IiwiYXVkIjpbInJlYWxtLW1hbmFnZW1lbnQiLCJhY2NvdW50Il0sInN1YiI6ImY2ZjZlYTlhLTU3YmMtNGJjYS1hYTFiLTk2ODdkNzIyMDgxNyIsInR5cCI6IkJlYXJlciIsImF6cCI6ImRlbW8iLCJzZXNzaW9uX3N0YXRlIjoiOGJjMTBlNjMtNDhkYy00ZWJhLTllMTgtZDlkMWQyZWU4NTRiIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwibWVtYmVyIiwidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbInZpZXctaWRlbnRpdHktcHJvdmlkZXJzIiwidmlldy1yZWFsbSIsIm1hbmFnZS1pZGVudGl0eS1wcm92aWRlcnMiLCJpbXBlcnNvbmF0aW9uIiwicmVhbG0tYWRtaW4iLCJjcmVhdGUtY2xpZW50IiwibWFuYWdlLXVzZXJzIiwicXVlcnktcmVhbG1zIiwidmlldy1hdXRob3JpemF0aW9uIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LXVzZXJzIiwibWFuYWdlLWV2ZW50cyIsIm1hbmFnZS1yZWFsbSIsInZpZXctZXZlbnRzIiwidmlldy11c2VycyIsInZpZXctY2xpZW50cyIsIm1hbmFnZS1hdXRob3JpemF0aW9uIiwibWFuYWdlLWNsaWVudHMiLCJxdWVyeS1ncm91cHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiI4YmMxMGU2My00OGRjLTRlYmEtOWUxOC1kOWQxZDJlZTg1NGIiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiam9obiIsImdpdmVuX25hbWUiOiJKb2huIiwiZmFtaWx5X25hbWUiOiJEb2UiLCJlbWFpbCI6ImpvaG5Aa3VhZHJhbnQuaW8ifQ.vMlILMmxjadto_CHahbNdSQwhVIJil2pnCwA5dKEZlrYeLnTo1zrptVsGFzyvTSwiB6d0SozoGBqVRU7L6amFcd9KBxk-4dfDhMcKn6NfqBzuYs6NR20i7wknOsUgtdn5O7DmHYjKkNs1Kr55JG6htCLlHRXa4O6wun6qWC3Gp03aLS5n7a0vxPlnPDNszy-QXT4iXeED5n7eJ1s0CVZrD6pZ4fmYWaDWW8PUj25hOBukR6bRwKGN0qioGGYQtgVq491AsvG3cp083nlGfVj9hAEWDtwvuuokmCHCWPTbsppT1CNUcYXODl4QK95VUi7NK66NAbjVc9uD69awei-1A"
 
@@ -251,7 +251,7 @@ func TestJWKSVerifierMalformedJWT(t *testing.T) {
 
 	jwtVerifier := NewJwksVerifier(context.TODO(), fmt.Sprintf("http://%v/certs", oidcServerHost), "", nil)
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock)
+	evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, nil)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -293,13 +293,23 @@ func newSharedSigningKey(t *testing.T) (*rsa.PrivateKey, string) {
 // signToken mints an unexpired RS256 token for the given issuer, signed with key.
 func signToken(t *testing.T, key *rsa.PrivateKey, issuer string) string {
 	t.Helper()
+	return signTokenWithClaims(t, key, jwt.MapClaims{"iss": issuer})
+}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"iss": issuer,
+// signTokenWithClaims mints an unexpired RS256 token signed with key, merging claims over the
+// baseline sub/iat/exp. Pass "aud" as a string or as a []string to exercise both JSON shapes.
+func signTokenWithClaims(t *testing.T, key *rsa.PrivateKey, claims jwt.MapClaims) string {
+	t.Helper()
+
+	all := jwt.MapClaims{
 		"sub": "user",
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(time.Hour).Unix(),
-	})
+	}
+	for k, v := range claims {
+		all[k] = v
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, all)
 	token.Header["kid"] = signingKeyId
 
 	raw, err := token.SignedString(key)
@@ -334,12 +344,17 @@ func newIdPMock(advertisedIssuer, jwks string) *gohttptest.Server {
 
 func callWithToken(t *testing.T, verifier JWTVerifier, rawToken string) (any, error) {
 	t.Helper()
+	return callWithTokenAndAudiences(t, verifier, rawToken, nil)
+}
+
+func callWithTokenAndAudiences(t *testing.T, verifier JWTVerifier, rawToken string, audiences []string) (any, error) {
+	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	evaluator := NewJWTAuthentication(verifier, authCredMock)
+	evaluator := NewJWTAuthentication(verifier, authCredMock, audiences)
 
 	pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
 	pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
@@ -444,4 +459,130 @@ func TestJWKSVerifier_IssuerUnset_IgnoresIssuer(t *testing.T) {
 
 	assert.NilError(t, err)
 	assert.Equal(t, obj.(map[string]any)["iss"].(string), foreignIssuer)
+}
+
+const (
+	expectedAudience = "my-api.example.com"
+	otherAudience    = "other-api.example.com"
+)
+
+// verifiedToken turns a raw token into the *oidc.IDToken a verifier would return, without any
+// signature, issuer or expiry check, so the audience check can be exercised on its own.
+func verifiedToken(t *testing.T, rawToken string) *oidc.IDToken {
+	t.Helper()
+
+	v := oidc.NewVerifier("", nil, &oidc.Config{SkipClientIDCheck: true, SkipIssuerCheck: true, SkipExpiryCheck: true, InsecureSkipSignatureCheck: true})
+	token, err := v.Verify(context.TODO(), rawToken)
+	assert.NilError(t, err)
+	return token
+}
+
+// The audience check runs after verification and is independent of the verifier flavor, so the
+// matrix is exercised through the mocked verifier: configured audiences against the shapes go-oidc
+// produces for the aud claim (string, array, absent, empty, null).
+func TestJWTAuthenticationCall_Audiences(t *testing.T) {
+	key, _ := newSharedSigningKey(t)
+	const issuer = "http://keycloak:8080/auth/realms/kuadrant"
+	mint := func(claims jwt.MapClaims) string {
+		claims["iss"] = issuer
+		return signTokenWithClaims(t, key, claims)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		audiences []string
+		rawToken  string
+		wantErr   string
+	}{
+		{name: "unset, array aud", rawToken: mint(jwt.MapClaims{"aud": []string{"realm-management", "account"}})},
+		{name: "unset, no aud", rawToken: mint(jwt.MapClaims{})},
+		{name: "one of the token's audiences", audiences: []string{"account"}, rawToken: mint(jwt.MapClaims{"aud": []string{"realm-management", "account"}})},
+		{name: "any match", audiences: []string{"unrelated", "realm-management"}, rawToken: mint(jwt.MapClaims{"aud": []string{"realm-management", "account"}})},
+		{name: "string aud", audiences: []string{expectedAudience}, rawToken: mint(jwt.MapClaims{"aud": expectedAudience})},
+		{name: "no overlap", audiences: []string{"unrelated"}, rawToken: mint(jwt.MapClaims{"aud": []string{"realm-management", "account"}}), wantErr: msg_jwtAudienceNotAccepted},
+		{name: "foreign string aud", audiences: []string{expectedAudience}, rawToken: mint(jwt.MapClaims{"aud": otherAudience}), wantErr: msg_jwtAudienceNotAccepted},
+		{name: "no aud", audiences: []string{expectedAudience}, rawToken: mint(jwt.MapClaims{}), wantErr: msg_jwtAudienceMissing},
+		// go-oidc reads "aud": "" and "aud": null as [""]; an empty audience never matches, even when configured
+		{name: "empty string aud", audiences: []string{"", expectedAudience}, rawToken: mint(jwt.MapClaims{"aud": ""}), wantErr: msg_jwtAudienceMissing},
+		{name: "null aud", audiences: []string{"", expectedAudience}, rawToken: mint(jwt.MapClaims{"aud": nil}), wantErr: msg_jwtAudienceMissing},
+		{name: "empty string in array aud", audiences: []string{"", expectedAudience}, rawToken: mint(jwt.MapClaims{"aud": []string{""}}), wantErr: msg_jwtAudienceMissing},
+		{name: "empty configured entry does not block a real match", audiences: []string{"", expectedAudience}, rawToken: mint(jwt.MapClaims{"aud": expectedAudience})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			jwtVerifier := mock_identity.NewMockJWTVerifier(ctrl)
+			authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
+			evaluator := NewJWTAuthentication(jwtVerifier, authCredMock, tc.audiences)
+
+			pipelineMock := mock_auth.NewMockAuthPipeline(ctrl)
+			pipelineMock.EXPECT().GetRequest().Return(jwtAuthenticationRequestMock)
+			authCredMock.EXPECT().GetCredentialsFromAuthReq(jwtAuthenticationRequestMock.GetAttributes().GetRequest().GetHttp()).Return(tc.rawToken, nil)
+			jwtVerifier.EXPECT().Verify(gomock.Any(), tc.rawToken).Return(verifiedToken(t, tc.rawToken), nil)
+			obj, err := evaluator.Call(pipelineMock, context.TODO())
+
+			if tc.wantErr == "" {
+				assert.NilError(t, err)
+				assert.Equal(t, obj.(map[string]any)["iss"].(string), issuer)
+			} else {
+				assert.Check(t, obj == nil)
+				assert.Error(t, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// issuerUrl path: the audience check is wired after real discovery, JWKS fetch and verification.
+// Unset keeps the legacy behavior (a foreign-audience token still authenticates), set enforces it.
+func TestOIDCProviderVerifier_Audiences(t *testing.T) {
+	key, jwks := newSharedSigningKey(t)
+	authServer := newIdPMock("", jwks)
+	defer authServer.Close()
+
+	verifier := NewOIDCProviderVerifier(context.TODO(), authServer.URL, authServer.URL, 0, nil)
+
+	for _, tc := range []struct {
+		name      string
+		audiences []string
+		aud       any
+		wantErr   string
+	}{
+		{name: "unset accepts a foreign audience", aud: otherAudience},
+		{name: "set accepts a matching audience", audiences: []string{expectedAudience}, aud: []string{otherAudience, expectedAudience}},
+		{name: "set rejects a foreign audience", audiences: []string{expectedAudience}, aud: otherAudience, wantErr: msg_jwtAudienceNotAccepted},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			claims := jwt.MapClaims{"iss": authServer.URL}
+			if tc.aud != nil {
+				claims["aud"] = tc.aud
+			}
+			obj, err := callWithTokenAndAudiences(t, verifier, signTokenWithClaims(t, key, claims), tc.audiences)
+
+			if tc.wantErr == "" {
+				assert.NilError(t, err)
+				assert.Equal(t, obj.(map[string]any)["iss"].(string), authServer.URL)
+			} else {
+				assert.Check(t, obj == nil, "token for a foreign audience was accepted as a valid identity")
+				assert.Error(t, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// jwksUrl path: same wiring through the remote key set verifier.
+func TestJWKSVerifier_Audiences(t *testing.T) {
+	key, jwks := newSharedSigningKey(t)
+	authServer := newIdPMock("", jwks)
+	defer authServer.Close()
+
+	verifier := NewJwksVerifier(context.TODO(), authServer.URL+"/certs", "", nil)
+
+	obj, err := callWithTokenAndAudiences(t, verifier, signTokenWithClaims(t, key, jwt.MapClaims{"iss": authServer.URL, "aud": expectedAudience}), []string{expectedAudience})
+	assert.NilError(t, err)
+	assert.Equal(t, obj.(map[string]any)["iss"].(string), authServer.URL)
+
+	obj, err = callWithTokenAndAudiences(t, verifier, signTokenWithClaims(t, key, jwt.MapClaims{"iss": authServer.URL, "aud": otherAudience}), []string{expectedAudience})
+	assert.Check(t, obj == nil, "foreign-audience token accepted on the jwksUrl path with audiences set")
+	assert.Error(t, err, msg_jwtAudienceNotAccepted)
 }

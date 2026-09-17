@@ -200,6 +200,24 @@ After veryfing and validating a JWT, the decoded payload of the JWT is appended 
 
 By default, Authorino does **not** verify the `iss` (issuer) claim of the JWT; the issuer can be enforced with an authorization rule (CEL, pattern-matching or OPA) using the resolved identity. Set `authentication.jwt.issuer` to the expected issuer to have Authorino reject, already at the authentication phase, any token whose `iss` claim does not equal that value. This is recommended whenever distinct issuers may share signing keys (e.g. multi-tenant identity providers, or Festival Wristbands issued by more than one `AuthConfig` backed by the same signing-key Secret). The `issuer` field applies to both `issuerUrl` and `jwksUrl`, and it usually matches `issuerUrl` — but it may differ when the OpenID Connect discovery endpoint is reached at a different URL than the issuer stamped into the tokens (e.g. cluster-internal discovery vs external issuer).
 
+Likewise, Authorino does **not** verify the `aud` (audience) claim by default. Set `authentication.jwt.audiences` to the audience identifiers the protected API is known by at the token issuer (they are not derived from `hosts`), and Authorino rejects, at the authentication phase, any token whose `aud` claim does not include at least one of them (the same any-match rule as Kubernetes TokenReview and Envoy's `jwt_authn`). The claim is read whether the token encodes it as a single string or as an array, and values are compared exactly (case-sensitive, no normalisation). This matters whenever several APIs share one token issuer: without it, a token minted for one API authenticates to all of them on signature alone ([RFC 7519, section 4.1.3](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3); [RFC 8725, section 3.9](https://datatracker.ietf.org/doc/html/rfc8725#section-3.9)). Rejections happen before authorization, so they return `401` and honour `response.unauthenticated`. The `audiences` field applies to both `issuerUrl` and `jwksUrl`. Set it on every `jwt` source that trusts the same issuer: identity sources are evaluated independently, and any one of them accepting the token authenticates the request. [Festival Wristbands](#festival-wristband-tokens-responsewristband) issued by Authorino carry no `aud` claim, so a `jwt` source that verifies wristbands rejects them all once `audiences` is set, unless the wristband's `customClaims` add an `aud`. For example:
+
+```yaml
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: my-api-protection
+spec:
+  hosts:
+  - my-api.io
+  authentication:
+    "keycloak-users":
+      jwt:
+        issuerUrl: https://sso.example.com/realms/prod
+        audiences:
+        - api://my-api
+```
+
 _Important!_ Authorino does **not** implement [OAuth2 grants](https://datatracker.ietf.org/doc/html/rfc6749#section-4) nor [OIDC authentication flows](https://openid.net/specs/openid-connect-core-1_0.html#Authentication). As a common recommendation of good practice, obtaining and refreshing access tokens is for clients to negotiate directly with the auth servers and token issuers. Authorino will only validate those tokens using the parameters provided by the trusted issuer authorities.
 
 For an excellent summary of the underlying concepts and standards that relate OpenID Connect and JSON Object Signing and Encryption (JOSE), see this [article](https://access.redhat.com/blogs/766093/posts/1976593) by Jan Rusnacko. For official specification and RFCs, see [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html), [JSON Web Token (JWT) (RFC7519)](https://datatracker.ietf.org/doc/html/rfc7519), and [JSON Object Signing and Encryption (JOSE)](http://www.iana.org/assignments/jose/jose.xhtml).

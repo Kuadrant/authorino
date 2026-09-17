@@ -19,6 +19,7 @@ package v1beta3_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -774,6 +775,57 @@ func TestJwtAuthenticationSpecCELValidation(t *testing.T) {
 			},
 			wantErrors: []string{"Use one of: jwksUrl, issuerUrl"},
 		},
+		{
+			desc: "valid - audiences set",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authentication["jwt"].Jwt.Audiences = []string{"my-api.io", "my-other-api.io"}
+			},
+		},
+		{
+			desc: "invalid - empty audience value",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Authentication["jwt"].Jwt.Audiences = []string{"my-api.io", ""}
+			},
+			wantErrors: []string{"spec.authentication.jwt.jwt.audiences[1]", "should be at least 1 chars long"},
+		},
+	})
+
+	// The typed client omits an empty slice (omitempty), so an explicit `audiences: []`, as a
+	// manifest would send it, is exercised through an unstructured object.
+	t.Run("invalid - empty audiences list via unstructured", func(t *testing.T) {
+		ctx := context.Background()
+
+		u := &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "authorino.kuadrant.io/v1beta3",
+				"kind":       "AuthConfig",
+				"metadata": map[string]interface{}{
+					"name":      fmt.Sprintf("test-jwt-%v", time.Now().UnixNano()),
+					"namespace": metav1.NamespaceDefault,
+				},
+				"spec": map[string]interface{}{
+					"hosts": []interface{}{"test-jwt.example.com"},
+					"authentication": map[string]interface{}{
+						"jwt": map[string]interface{}{
+							"jwt": map[string]interface{}{
+								"issuerUrl": "https://issuer.example.com",
+								"audiences": []interface{}{},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := k8sClient.Create(ctx, u)
+		if err == nil {
+			t.Fatalf("expected an error creating AuthConfig with an empty audiences list, got none")
+		}
+		for _, want := range []string{"spec.authentication.jwt.jwt.audiences", "should have at least 1 items"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("expected error to contain %q, got: %v", want, err)
+			}
+		}
 	})
 }
 
