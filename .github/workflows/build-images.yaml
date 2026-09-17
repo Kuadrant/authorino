@@ -6,6 +6,16 @@ on:
       - 'main'
       - 'master'
   workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.26.0)"
+        type: string
+        required: true
+      ref:
+        description: "Git ref to build from (e.g. v0.26.0)"
+        type: string
+        required: true
 
 env:
   IMG_TAGS: ${{ github.sha }}
@@ -29,7 +39,10 @@ jobs:
       - name: Set Authorino build info
         id: build-info
         run: |
-          if [[ ${GITHUB_REF_NAME/\//-} =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "version_tag=v${{ inputs.version }}" >> $GITHUB_OUTPUT
+          elif [[ ${GITHUB_REF_NAME/\//-} =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
             tag=${GITHUB_REF_NAME/\//-}
             echo "version=${tag#v}" >> $GITHUB_OUTPUT
             echo "version_tag=${tag}" >> $GITHUB_OUTPUT
@@ -62,6 +75,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # ratchet:docker/setup-buildx-action@v3
       - name: Login to registry
@@ -119,9 +134,9 @@ jobs:
         with:
           images: ${{ env.IMG_REGISTRY_HOST }}/${{ env.IMG_REGISTRY_ORG }}/authorino
           tags: |
-            type=raw,value=${{ github.ref_name }},enable={{is_not_default_branch}}
-            type=raw,value=${{ github.sha }},enable={{is_default_branch}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.prepare.outputs.version_tag }}
+            type=raw,value=${{ github.sha }},enable=${{ needs.prepare.outputs.version_tag == 'latest' }}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.version_tag == 'latest' }}
       - name: Login to registry
         if: ${{ !env.ACT }}
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # ratchet:docker/login-action@v3
