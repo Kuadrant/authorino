@@ -78,7 +78,7 @@ KUSTOMIZE_VERSION ?= v5.5.0
 CONTROLLER_GEN_VERSION ?= v0.19.0
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-K8S_VERSION ?= 1.28.3
+K8S_VERSION ?= 1.35.0
 ENVTEST_K8S_VERSION ?= $(K8S_VERSION)
 MOCKGEN_VERSION ?= v0.6.0
 BENCHSTAT_VERSION ?= latest
@@ -206,14 +206,14 @@ docker-build: ## Builds an image based on the current branch
 		-t $(AUTHORINO_IMAGE) .
 
 test: generate manifests envtest ## Runs the tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./api/... ./controllers/... ./pkg/... -coverprofile cover.out -race
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS)))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./api/... ./controllers/... ./pkg/... -coverprofile cover.out -race
 
 test-cel: generate manifests envtest ## Runs CEL validation tests
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./tests/cel/...
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS)))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./tests/cel/...
 
 BENCHMARKS_FILE=benchmarks.out
 benchmarks: generate manifests envtest benchstat ## Runs the test with benchmarks
-	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS) --use-deprecated-gcs=false))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./... -bench=. -run=^Benchmark -count=10 -cpu=1,4,10 -benchmem | tee $(BENCHMARKS_FILE)
+	KUBEBUILDER_ASSETS='$(strip $(shell $(ENVTEST) use -p path $(ENVTEST_K8S_VERSION) --os $(OS)))' GOTOOLCHAIN=go$(GO_VERSION)+auto go test ./... -bench=. -run=^Benchmark -count=10 -cpu=1,4,10 -benchmem | tee $(BENCHMARKS_FILE)
 	$(MAKE) report-benchmarks
 
 report-benchmarks:

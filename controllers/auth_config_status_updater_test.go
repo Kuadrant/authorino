@@ -111,7 +111,7 @@ func TestAuthConfigStatusUpdater_NotReady(t *testing.T) {
 	// try to reconcile once
 	result, err = reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
-	assert.Check(t, result.Requeue)
+	assert.Check(t, result.Requeue) //nolint:staticcheck // reconciler still returns Result{Requeue: true}; migrating to RequeueAfter would change backoff semantics
 	assert.NilError(t, err)
 
 	authConfigCheck = api.AuthConfig{}
@@ -121,7 +121,7 @@ func TestAuthConfigStatusUpdater_NotReady(t *testing.T) {
 	// try to reconcile again with no change in the status
 	result, err = reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
-	assert.Check(t, result.Requeue)
+	assert.Check(t, result.Requeue) //nolint:staticcheck // reconciler still returns Result{Requeue: true}; migrating to RequeueAfter would change backoff semantics
 	assert.NilError(t, err)
 
 	authConfigCheck = api.AuthConfig{}
@@ -141,7 +141,7 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 
 	result, err := reconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: resourceName})
 
-	assert.Check(t, result.Requeue)
+	assert.Check(t, result.Requeue) //nolint:staticcheck // reconciler still returns Result{Requeue: true}; migrating to RequeueAfter would change backoff semantics
 	assert.NilError(t, err)
 
 	authConfigCheck := api.AuthConfig{}
