@@ -17,8 +17,8 @@ There are exactly **two roles**:
 
 | Role | RBAC rule | What it gives you |
 | --- | --- | --- |
-| `authorino-trusted-hostnames` | `access` on `authconfigs/<hostname>` | Permission to reference that one hostname from an `AuthConfig`. Add one entry per allowed host. |
-| `authorino-unrestricted-hostnames` | `use` on `unrestricted-hostnames` | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames — a `urlExpression`, or a templated `{selector}` in the host — which resolve only at request time and so cannot be checked against an allowlist. |
+| `authorino-trusted-hostnames` | `set-hostname` on `authconfigs/<hostname>` | Permission to reference that one hostname from an `AuthConfig`. Add one entry per allowed host. |
+| `authorino-unrestricted-hostnames` | `set-untrusted-hostname` on `unrestricted-hostnames` | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames — a `urlExpression`, or a templated `{selector}` in the host — which resolve only at request time and so cannot be checked against an allowlist. |
 
 The policy runs four checks, in order. The first one that fails rejects the
 request:
@@ -28,7 +28,7 @@ request:
 | 1 | `!usesHttpSend` | Inline OPA/Rego (`spec.authorization.*.opa.rego`) that uses the `http.send` builtin. |
 | 2 | `!usesExternalOpa` | OPA policies loaded from an external source (`spec.authorization.*.opa.externalPolicy`). The Rego is fetched at runtime, so it cannot be scanned for `http.send` at admission time. |
 | 3 | `!hasUnverifiableEndpoint` | Endpoints whose host cannot be read statically: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname. |
-| 4 | `requestedHosts.all(...)` | Any hostname the subject has not been granted `access` to. Covers JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata and callback `http.url` + `http.oauth2.tokenUrl`, and SpiceDB `endpoint`. |
+| 4 | `requestedHosts.all(...)` | Any hostname the subject has not been granted `set-hostname` on. Covers JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata and callback `http.url` + `http.oauth2.tokenUrl`, and SpiceDB `endpoint`. |
 
 Checks 1, 2 and 3 have no per-feature role. If you need any of them, you need the
 `authorino-unrestricted-hostnames` role. That is deliberate: either you stay
@@ -62,7 +62,7 @@ rules:
     resources:
       - "authconfigs/keycloak.example.com"
       - "authconfigs/userinfo.example.com"
-    verbs: ["access"]
+    verbs: ["set-hostname"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -71,7 +71,7 @@ metadata:
 rules:
   - apiGroups: ["authorino.kuadrant.io"]
     resources: ["unrestricted-hostnames"]
-    verbs: ["use"]
+    verbs: ["set-untrusted-hostname"]
 EOF
 ```
 
@@ -155,7 +155,7 @@ spec:
         !authorizer.group("authorino.kuadrant.io")
         .resource("unrestricted-hostnames")
         .namespace(object.metadata.namespace)
-        .check("use")
+        .check("set-untrusted-hostname")
         .allowed()
   variables:
     - name: usesHttpSend
@@ -257,10 +257,10 @@ spec:
         .resource("authconfigs")
         .subresource(h)
         .namespace(object.metadata.namespace)
-        .check("access")
+        .check("set-hostname")
         .allowed())
       reason: Forbidden
-      message: "you do not have a role that allows Authorino to make requests to one or more of the configured hostnames. Ask an admin to grant 'access' on 'authconfigs/<hostname>' for every hostname this AuthConfig references (see the 'trusted-hostnames' ClusterRole), or for the 'unrestricted-hostnames' role."
+      message: "you do not have a role that allows Authorino to make requests to one or more of the configured hostnames. Ask an admin to grant 'set-hostname' on 'authconfigs/<hostname>' for every hostname this AuthConfig references (see the 'trusted-hostnames' ClusterRole), or for the 'unrestricted-hostnames' role."
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -277,7 +277,7 @@ EOF
 > The policy re-validates the **entire object** on every `CREATE` **and**
 > `UPDATE`. It does not compare against the previous version.
 >
-> - The requesting subject must hold `access` for **every** hostname currently in
+> - The requesting subject must hold `set-hostname` for **every** hostname currently in
 >   the `AuthConfig`, even on an update that does not touch the URLs. An
 >   `AuthConfig` that already points at a host becomes **uneditable by a subject
 >   that lacks that host's grant**. The same applies to configs that use
@@ -316,7 +316,8 @@ without the roles) and each should be rejected.
 >
 > Do not run these as a cluster administrator. Anything with wildcard access
 > (`verbs: ["*"]` on `resources: ["*"]`) — which cluster admins have — satisfies
-> the `access` and `use` checks, so the request would be allowed and a real
+> the `set-hostname` and `set-untrusted-hostname` checks, so the request would be
+> allowed and a real
 > outbound route enabled. Use an ordinary user (or `--as=<unauthorized-subject>`)
 > to see the policy block.
 
@@ -445,7 +446,7 @@ Replace `<authorized-subject>` with that subject (for example,
 hostname below.
 
 ```bash
-# JWT issuer at an allowlisted host, as a subject granted access to it — should be ALLOWED
+# JWT issuer at an allowlisted host, as a subject granted set-hostname on it — should be ALLOWED
 kubectl apply --as=<authorized-subject> -f - <<'EOF'
 apiVersion: authorino.kuadrant.io/v1beta3
 kind: AuthConfig
@@ -609,7 +610,8 @@ EOF
   subject granted that host.
 - **A wildcard RBAC rule grants both roles.** A subject with `resources: ["*"]`
   and `verbs: ["*"]` on the `authorino.kuadrant.io` API group satisfies both the
-  `access` and the `use` check, so it bypasses everything silently. This is how
+  `set-hostname` and the `set-untrusted-hostname` check, so it bypasses everything
+  silently. This is how
   cluster admins are exempt. Note that `resources: ["authconfigs"]` with
   `verbs: ["*"]` does **not** bypass the policy — the check is on the
   `authconfigs/<hostname>` subresource, which that rule does not cover.
