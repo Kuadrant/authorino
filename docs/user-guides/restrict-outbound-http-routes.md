@@ -150,7 +150,7 @@ spec:
         operations: ["CREATE", "UPDATE"]
         resources: ["authconfigs"]
   matchConditions:
-    - name: is-unrestricted-user
+    - name: is-restricted-user
       expression: >-
         !authorizer.group("authorino.kuadrant.io")
         .resource("unrestricted-hostnames")
