@@ -587,10 +587,12 @@ EOF
   `keycloak.example.com`. It is denied.
 - **Hostname only.** A grant does not restrict the port, path or scheme on that
   host.
-- **Dynamic URLs need the bypass role.** `urlExpression` and templated
-  `{selector}` hostnames are always denied by check 3, even in the safe shape
-  where the host is fixed and only the path varies. There is no separate role for
-  them, on purpose. If you need them, use `authorino-unrestricted-hostnames`.
+- **`urlExpression` always needs the bypass role.** Check 3 denies it in every
+  shape, including a fixed host with a varying path. There is no separate role for
+  it, on purpose.
+- **Only templated *hostnames* are denied.** A `{selector}` in the path is fine:
+  `https://keycloak.example.com/{context.request.http.path}` is admitted for a
+  subject granted that host.
 - **A wildcard RBAC rule grants both roles.** A subject with `resources: ["*"]`
   and `verbs: ["*"]` on the `authorino.kuadrant.io` API group satisfies both the
   `access` and the `use` check, so it bypasses everything silently. This is how
