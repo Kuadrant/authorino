@@ -293,6 +293,20 @@ EOF
 
 ## 4. Verifying the VAP
 
+Before running the tests below:
+
+- **`--as` needs impersonation rights.** It requires the `impersonate` verb on
+  `users` (or `serviceaccounts`) in the core API group. Cluster admins have it.
+- **The test subject needs ordinary `create`/`update` on `authconfigs`.** Without it
+  the `Forbidden` comes from RBAC, not from the policy. Tell them apart by the
+  message: RBAC says `cannot create resource "authconfigs"`, the policy says
+  `ValidatingAdmissionPolicy '...' denied request`. The
+  `authorino-authconfig-editor-role` ClusterRole in `install/rbac/` grants what is
+  needed.
+- **A new VAP takes a few seconds to become active.** A request that should be
+  denied can still be admitted right after you apply the policy. Delete the object,
+  wait, and retry.
+
 ### A normal user is blocked
 
 Try to create resources that break the rules. Run these as a regular user (one
