@@ -391,6 +391,16 @@ type JwtAuthenticationSpec struct {
 	// +optional
 	Issuer string `json:"issuer,omitempty"`
 
+	// The list of accepted values for the "aud" (audience) claim of the JWT.
+	// If set, Authorino rejects, at the authentication phase, any token whose "aud" claim does not include at least one of these values (any match).
+	// If omitted, the audience claim is not verified; it can still be checked via an authorization rule (CEL, pattern-matching or OPA).
+	// An empty list is not allowed: either omit the field or list at least one audience.
+	// Applies to both issuerUrl and jwksUrl.
+	// +optional
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:items:MinLength=1
+	Audiences []string `json:"audiences,omitempty"`
+
 	// Decides how long the OIDC configuration will be cached.
 	// If omitted or set to zero, Authorino will never refresh the OIDC configuration.
 	// This configuration does not affect the caching of JSON Web Keys (JWK), which is always updated whenever the kid of a JWT does not match any of the cached JWKs (https://openid.net/specs/openid-connect-core-1_0.html#RotateSigKeys)

@@ -4,6 +4,7 @@ import (
 	gocontext "context"
 	"errors"
 	"net/url"
+	"slices"
 	"sync"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -21,11 +22,14 @@ const (
 	msg_oidcProviderVerifierConfigRefreshError    = "failed to discovery openid connect configuration"
 	msg_oidcProviderVerifierConfigRefreshDisabled = "auto-refresh of openid connect configuration disabled"
 	msg_jwtVerifierDoesNotStoreOpenIdConfig       = "rule does not store openid configuration"
+	msg_jwtAudienceMissing                        = "jwt: token has no audience (aud) claim"
+	msg_jwtAudienceNotAccepted                    = "jwt: token audience not accepted"
 )
 
 // oidcConfig returns the go-oidc verifier config shared by both JWT verifier flavors.
-// SkipClientIDCheck is always on: Authorino is not an OAuth2 client and has no audience of
-// its own to match. The issuer check is enabled only when an expected issuer is configured —
+// SkipClientIDCheck is always on: go-oidc can only match the aud claim against a single client
+// ID, so the configured audiences are enforced by JWTAuthentication after verification instead.
+// The issuer check is enabled only when an expected issuer is configured —
 // an empty issuer means "do not verify the iss claim" (the default, backwards compatible),
 // a non-empty issuer means "reject any token whose iss does not equal it".
 func oidcConfig(issuer string) *oidc.Config {
@@ -35,13 +39,18 @@ func oidcConfig(issuer string) *oidc.Config {
 type JWTAuthentication struct {
 	auth.AuthCredentials
 
-	verifier JWTVerifier
+	verifier  JWTVerifier
+	audiences []string
 }
 
-func NewJWTAuthentication(verifier JWTVerifier, creds auth.AuthCredentials) *JWTAuthentication {
+// NewJWTAuthentication builds the evaluator around a verifier. When audiences is non-empty, a
+// verified token must also carry at least one of them in its aud claim; an empty list means
+// "do not verify the aud claim" (the default, backwards compatible).
+func NewJWTAuthentication(verifier JWTVerifier, creds auth.AuthCredentials, audiences []string) *JWTAuthentication {
 	return &JWTAuthentication{
 		AuthCredentials: creds,
 		verifier:        verifier,
+		audiences:       slices.Clone(audiences),
 	}
 }
 
@@ -63,12 +72,43 @@ func (j *JWTAuthentication) Call(pipeline auth.AuthPipeline, ctx gocontext.Conte
 		return nil, err
 	}
 
+	// verify audience
+	if err := j.checkAudience(idToken); err != nil {
+		return nil, err
+	}
+
 	// extract claims
 	var claims interface{}
 	if err := idToken.Claims(&claims); err != nil {
 		return nil, err
 	}
 	return claims, nil
+}
+
+// checkAudience rejects a verified token whose aud claim does not include any of the configured
+// audiences. go-oidc normalises the claim to a slice whether the token encodes it as a string or
+// as an array, so both JSON shapes are covered by the same intersection check; it also turns an
+// empty or null aud into [""], and an empty audience never matches. The errors are static: they
+// reach the client through the deny response reason, so they neither echo the token's audiences
+// (caller-controlled input) nor disclose the configured list.
+func (j *JWTAuthentication) checkAudience(idToken *oidc.IDToken) error {
+	if len(j.audiences) == 0 {
+		return nil
+	}
+	present := false
+	for _, aud := range idToken.Audience {
+		if aud == "" {
+			continue
+		}
+		if slices.Contains(j.audiences, aud) {
+			return nil
+		}
+		present = true
+	}
+	if !present {
+		return errors.New(msg_jwtAudienceMissing)
+	}
+	return errors.New(msg_jwtAudienceNotAccepted)
 }
 
 // impl:auth.AuthConfigCleaner

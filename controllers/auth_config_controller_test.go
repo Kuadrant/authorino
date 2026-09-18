@@ -384,7 +384,7 @@ func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	assert.Equal(t, len(config.IdentityConfigs), 1)
 }
 
-func translateJwtAuthConfig(t *testing.T, issuer string) []string {
+func translateJwtAuthConfig(t *testing.T, jwt api.JwtAuthenticationSpec) []string {
 	t.Helper()
 
 	var logs []string
@@ -399,10 +399,7 @@ func translateJwtAuthConfig(t *testing.T, issuer string) []string {
 			Authentication: map[string]api.AuthenticationSpec{
 				"keycloak": {
 					AuthenticationMethodSpec: api.AuthenticationMethodSpec{
-						Jwt: &api.JwtAuthenticationSpec{
-							IssuerUrl: "http://127.0.0.1:9001/auth/realms/demo",
-							Issuer:    issuer,
-						},
+						Jwt: &jwt,
 					},
 				},
 			},
@@ -421,16 +418,30 @@ func logsContain(logs []string, substr string) bool {
 	return false
 }
 
-const unsafeIssuerDefaultLogMsg = "does not verify the token issuer (iss) claim"
+const (
+	jwtTestIssuerUrl            = "http://127.0.0.1:9001/auth/realms/demo"
+	unsafeIssuerDefaultLogMsg   = "does not verify the token issuer (iss) claim"
+	unsafeAudienceDefaultLogMsg = "does not verify the token audience (aud) claim"
+)
 
 func TestJwtIssuerUnsetLogsWarning(t *testing.T) {
-	logs := translateJwtAuthConfig(t, "")
+	logs := translateJwtAuthConfig(t, api.JwtAuthenticationSpec{IssuerUrl: jwtTestIssuerUrl})
 	assert.Check(t, logsContain(logs, unsafeIssuerDefaultLogMsg), "expected an INFO log warning about the unverified issuer default")
 }
 
 func TestJwtIssuerSetDoesNotLogWarning(t *testing.T) {
-	logs := translateJwtAuthConfig(t, "http://127.0.0.1:9001/auth/realms/demo")
+	logs := translateJwtAuthConfig(t, api.JwtAuthenticationSpec{IssuerUrl: jwtTestIssuerUrl, Issuer: jwtTestIssuerUrl})
 	assert.Check(t, !logsContain(logs, unsafeIssuerDefaultLogMsg), "did not expect the issuer warning when issuer is set")
+}
+
+func TestJwtAudiencesUnsetLogsWarning(t *testing.T) {
+	logs := translateJwtAuthConfig(t, api.JwtAuthenticationSpec{IssuerUrl: jwtTestIssuerUrl})
+	assert.Check(t, logsContain(logs, unsafeAudienceDefaultLogMsg), "expected an INFO log warning about the unverified audience default")
+}
+
+func TestJwtAudiencesSetDoesNotLogWarning(t *testing.T) {
+	logs := translateJwtAuthConfig(t, api.JwtAuthenticationSpec{IssuerUrl: jwtTestIssuerUrl, Audiences: []string{"my-api.io"}})
+	assert.Check(t, !logsContain(logs, unsafeAudienceDefaultLogMsg), "did not expect the audience warning when audiences is set")
 }
 
 func TestBootstrapIndex(t *testing.T) {
