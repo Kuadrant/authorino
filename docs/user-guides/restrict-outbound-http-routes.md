@@ -30,7 +30,6 @@ request:
 | 3 | `!hasUnverifiableEndpoint` | Endpoints whose host cannot be read statically: a dynamic `urlExpression`, or a URL with a templated `{...}` hostname.                                                                                                                                           |
 | 4 | `requestedHosts.all(...)`  | Any hostname the subject has not been granted `set-hostname` on. Covers JWT `jwksUrl` / `issuerUrl`, OAuth2 introspection `endpoint`, UserInfo `userInfoUrl`, UMA `endpoint`, metadata and callback `http.url` + `http.oauth2.tokenUrl`, and SpiceDB `endpoint`. |
 
-
 ## Prerequisites
 
 > **Important**
@@ -275,12 +274,12 @@ EOF
 > `UPDATE`. It does not compare against the previous version.
 >
 > - The requesting subject must hold `set-hostname` for **every** hostname currently in
->   the `AuthConfig`, even on an update that does not touch the URLs. An
->   `AuthConfig` that already points at a host becomes **uneditable by a subject
->   that lacks that host's grant**. The same applies to configs that use
->   `http.send`, `opa.externalPolicy` or `urlExpression`.
+    > the `AuthConfig`, even on an update that does not touch the URLs. An
+    > `AuthConfig` that already points at a host becomes **uneditable by a subject
+    > that lacks that host's grant**. The same applies to configs that use
+    > `http.send`, `opa.externalPolicy` or `urlExpression`.
 > - Applying the policy does **not** retroactively delete existing
->   `AuthConfig`s, but the next update to one is re-checked in full.
+    > `AuthConfig`s, but the next update to one is re-checked in full.
 >
 > Before you apply the policy, **inventory the hostnames already in use** and the
 > controllers/ServiceAccounts that manage `AuthConfig`s (for example GitOps
