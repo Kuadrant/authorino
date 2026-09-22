@@ -146,8 +146,12 @@ spec:
     "keycloak-kuadrant-realm":
       jwt:
         issuerUrl: http://keycloak.keycloak.svc.cluster.local:8080/realms/kuadrant
+        audiences:
+        - account
 EOF
 ```
+
+`audiences` makes Authorino reject tokens whose `aud` claim does not name this API. The tokens issued by the demo realm carry `account` in `aud`; in your own setup, list the audience the token issuer stamps into tokens meant for this API. Omit the field to accept any audience (see [JWT verification](../features.md#jwt-verification-authenticationjwt)).
 
 ## ❻ Obtain an access token with the Keycloak server
 

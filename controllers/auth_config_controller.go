@@ -397,7 +397,10 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			if identity.Jwt.Issuer == "" {
 				log.FromContext(ctxWithLogger).Info("JWT authentication does not verify the token issuer (iss) claim; set issuer to enforce it, or verify it via an authorization rule", "authentication", identityCfgName)
 			}
-			translatedIdentity.JWTAuthentication = identity_evaluators.NewJWTAuthentication(jwtVerifier, authCred)
+			if len(identity.Jwt.Audiences) == 0 {
+				log.FromContext(ctxWithLogger).Info("JWT authentication does not verify the token audience (aud) claim; set audiences to enforce it, or verify it via an authorization rule", "authentication", identityCfgName)
+			}
+			translatedIdentity.JWTAuthentication = identity_evaluators.NewJWTAuthentication(jwtVerifier, authCred, identity.Jwt.Audiences)
 
 		// apiKey
 		case api.ApiKeyAuthentication:

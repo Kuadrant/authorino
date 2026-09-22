@@ -33,6 +33,8 @@ spec:
       jwt:
         issuerUrl: http://keycloak.authorino.svc.cluster.local:8080/realms/kuadrant
         ttl: 60
+        audiences:
+        - account
       defaults:
         jwt-rbac:
           value: true

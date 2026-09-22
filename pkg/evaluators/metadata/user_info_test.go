@@ -38,7 +38,7 @@ type userInfoTestData struct {
 
 func newUserInfoTestData(ctrl *gomock.Controller) userInfoTestData {
 	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
-	newOIDC := identity.NewJWTAuthentication(identity.NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%s", authServerHost), "", 0, nil), authCredMock)
+	newOIDC := identity.NewJWTAuthentication(identity.NewOIDCProviderVerifier(context.TODO(), fmt.Sprintf("http://%s", authServerHost), "", 0, nil), authCredMock, nil)
 	ctx, cancel := context.WithCancel(context.TODO())
 	return userInfoTestData{
 		ctx,
@@ -111,7 +111,7 @@ func TestUserInfoMissingOIDCConfig(t *testing.T) {
 	defer ctrl.Finish()
 	ta := newUserInfoTestData(ctrl)
 
-	otherOidcEvaluator := identity.NewJWTAuthentication(identity.NewOIDCProviderVerifier(context.TODO(), "http://wrongServer", "", 0, nil), ta.authCredMock)
+	otherOidcEvaluator := identity.NewJWTAuthentication(identity.NewOIDCProviderVerifier(context.TODO(), "http://wrongServer", "", 0, nil), ta.authCredMock, nil)
 	ta.pipelineMock.EXPECT().GetResolvedIdentity().Return(ta.idConfEvalMock, nil)
 	ta.idConfEvalMock.EXPECT().GetOpenIdConfig().Return(otherOidcEvaluator)
 

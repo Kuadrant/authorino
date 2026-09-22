@@ -280,6 +280,18 @@ spec:
                     jwt:
                       description: Authentication based on JWT tokens.
                       properties:
+                        audiences:
+                          description: |-
+                            The list of accepted values for the "aud" (audience) claim of the JWT.
+                            If set, Authorino rejects, at the authentication phase, any token whose "aud" claim does not include at least one of these values (any match).
+                            If omitted, the audience claim is not verified; it can still be checked via an authorization rule (CEL, pattern-matching or OPA).
+                            An empty list is not allowed: either omit the field or list at least one audience.
+                            Applies to both issuerUrl and jwksUrl.
+                          items:
+                            minLength: 1
+                            type: string
+                          minItems: 1
+                          type: array
                         issuer:
                           description: |-
                             The expected value of the "iss" (issuer) claim of the JWT.
