@@ -148,11 +148,7 @@ spec:
   matchConditions:
     - name: is-restricted-user
       expression: >-
-        !authorizer.group("authorino.kuadrant.io")
-        .resource("authconfigs")
-        .namespace(object.metadata.namespace)
-        .check("set-untrusted-hostname")
-        .allowed()
+        !authorizer.requestResource.check("set-untrusted-hostname").allowed()
   variables:
     - name: usesHttpSend
       expression: >-
