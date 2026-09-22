@@ -18,7 +18,7 @@ There are exactly **two roles**:
 | Role                               | RBAC rule                                            | What it gives you                                                                                                                                                                                                                                     |
 |------------------------------------|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `authorino-trusted-hostnames`      | `set-hostname` on `authconfigs/<hostname>`           | Permission to reference that one hostname from an `AuthConfig`. Add one entry per allowed host.                                                                                                                                                       |
-| `authorino-unrestricted-hostnames` | `set-untrusted-hostname` on `unrestricted-hostnames` | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames, such as `urlExpression`, or a templated `{selector}` in the host, which resolve only at request time and so cannot be checked against an allowlist. |
+| `authorino-unrestricted-hostnames` | `set-untrusted-hostname` on `authconfigs`            | A full bypass. The policy is skipped entirely for this subject. It also covers dynamic hostnames, such as `urlExpression`, or a templated `{selector}` in the host, which resolve only at request time and so cannot be checked against an allowlist. |
 
 The policy runs four checks, in order. The first one that fails rejects the
 request:
@@ -66,7 +66,7 @@ metadata:
   name: authorino-unrestricted-hostnames
 rules:
   - apiGroups: ["authorino.kuadrant.io"]
-    resources: ["unrestricted-hostnames"]
+    resources: ["authconfigs"]
     verbs: ["set-untrusted-hostname"]
 EOF
 ```
@@ -148,11 +148,7 @@ spec:
   matchConditions:
     - name: is-restricted-user
       expression: >-
-        !authorizer.group("authorino.kuadrant.io")
-        .resource("unrestricted-hostnames")
-        .namespace(object.metadata.namespace)
-        .check("set-untrusted-hostname")
-        .allowed()
+        !authorizer.requestResource.check("set-untrusted-hostname").allowed()
   variables:
     - name: usesHttpSend
       expression: >-
