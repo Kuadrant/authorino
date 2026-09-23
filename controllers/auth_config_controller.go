@@ -62,6 +62,7 @@ import (
 
 const (
 	failedToCleanConfig = "failed to clean up all asynchronous workers"
+	failedToStartConfig = "failed to start all asynchronous workers"
 
 	AuthConfigsReadyzSubpath = "authconfigs"
 )
@@ -187,18 +188,23 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		)
 		span.AddEvent("authconfig.found")
 
-		// clean all async workers of the config, i.e. shuts down channels and goroutines
-		if err := r.cleanConfigs(ctx, resourceId); err != nil {
-			logger.Error(err, failedToCleanConfig)
-			span.RecordError(err)
-		}
-
+		// translate first and only then swap: evaluators are built without starting any of their
+		// background workers, so a translation that fails leaves the config currently in the index
+		// untouched and still refreshing, instead of tearing it down before we know the new one is
+		// even valid
 		translatedAuthConfig, err := r.translateAuthConfig(log.IntoContext(ctx, logger), &authConfig)
 		if err != nil {
 			r.StatusReport.Set(resourceId, api.StatusReasonInvalidResource, err.Error(), []string{})
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "failed to translate authconfig")
 			return ctrl.Result{}, err
+		}
+
+		// the new config is good, so the one it replaces can be cleaned up, i.e. shuts down
+		// channels and goroutines
+		if err := r.cleanConfigs(ctx, resourceId); err != nil {
+			logger.Error(err, failedToCleanConfig)
+			span.RecordError(err)
 		}
 
 		// delete unused hosts from the index
@@ -227,6 +233,17 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
+		// only now, and only for a config that actually made it into the index. an authconfig whose
+		// hosts are all taken by another one translates just fine and is never indexed, so anything
+		// started before this point would run for a config that no request can ever reach and that
+		// cleanConfigs() would never find again
+		if len(linkedHosts) > 0 {
+			if err := r.startConfigs(ctx, translatedAuthConfig); err != nil {
+				logger.Error(err, failedToStartConfig)
+				span.RecordError(err)
+			}
+		}
+
 		span.SetAttributes(
 			attribute.Int("authconfig.linked_hosts_count", len(linkedHosts)),
 			attribute.Int("authconfig.loose_hosts_count", len(looseHosts)),
@@ -243,6 +260,22 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// startConfigs kicks off the asynchronous workers of a config that has been successfully
+// translated and indexed, e.g. the openid connect configuration and external policy refreshers
+func (r *AuthConfigReconciler) startConfigs(ctx context.Context, authConfig *evaluators.AuthConfig) error {
+	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.start_configs")
+	defer span.End()
+
+	if err := authConfig.Start(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to start authconfig")
+		return err
+	}
+
+	span.AddEvent("authconfig.started")
+	return nil
 }
 
 func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId string) error {

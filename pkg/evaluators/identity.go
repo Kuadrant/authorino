@@ -149,6 +149,24 @@ func (config *IdentityConfig) GetConditions() jsonexp.Expression {
 	return config.Conditions
 }
 
+// impl:AuthConfigStarter
+
+func (config *IdentityConfig) Start(ctx context.Context) error {
+	if starter := config.getStarter(); starter != nil {
+		return starter.Start(log.IntoContext(ctx, log.FromContext(ctx).WithName("identity")))
+	}
+	return nil
+}
+
+func (config *IdentityConfig) getStarter() auth.AuthConfigStarter {
+	switch {
+	case config.JWTAuthentication != nil:
+		return config.JWTAuthentication
+	default:
+		return nil
+	}
+}
+
 // impl:AuthConfigCleaner
 
 func (config *IdentityConfig) Clean(ctx context.Context) error {
