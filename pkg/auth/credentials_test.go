@@ -230,3 +230,70 @@ func TestBuildRequestWithCredentialsEmpty(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, len(req.Header.Values("Authorization")), 0)
 }
+
+func TestGetCredentialsFromQueryWithSpecialCharactersInIdentifier(t *testing.T) {
+	testCases := []struct {
+		name        string
+		keySelector string
+		path        string
+		wantValue   string
+		wantErr     bool
+	}{
+		{
+			name:        "identifier with brackets",
+			keySelector: "token[0]",
+			path:        "/api?token[0]=secret123",
+			wantValue:   "secret123",
+			wantErr:     false,
+		},
+		{
+			name:        "identifier with plus (URL encoded)",
+			keySelector: "a+b",
+			path:        "/api?a%2Bb=value",
+			wantValue:   "value",
+			wantErr:     false,
+		},
+		{
+			name:        "identifier with asterisk",
+			keySelector: "key*",
+			path:        "/api?key*=data",
+			wantValue:   "data",
+			wantErr:     false,
+		},
+		{
+			name:        "identifier with dot",
+			keySelector: "api.key",
+			path:        "/api?api.key=token",
+			wantValue:   "token",
+			wantErr:     false,
+		},
+		{
+			name:        "url encoded value",
+			keySelector: "redirect_uri",
+			path:        "/auth?redirect_uri=https%3A%2F%2Fexample.com%2Fcallback",
+			wantValue:   "https://example.com/callback",
+			wantErr:     false,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			httpReq := envoyServiceAuthV3.AttributeContext_HttpRequest{
+				Path: tt.path,
+			}
+			authCredentials := AuthCredential{
+				KeySelector: tt.keySelector,
+				In:          inQuery,
+			}
+
+			cred, err := authCredentials.GetCredentialsFromReq(&httpReq)
+
+			if tt.wantErr {
+				assert.ErrorContains(t, err, "credential not found")
+			} else {
+				assert.NilError(t, err)
+				assert.Check(t, cred == tt.wantValue, "got %q, want %q", cred, tt.wantValue)
+			}
+		})
+	}
+}
