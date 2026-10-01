@@ -942,6 +942,43 @@ type DenyWithSpec struct {
 
 	// HTTP response body to override the default denial body.
 	Body *ValueOrSelector `json:"body,omitempty"`
+
+	// Conditional customizations of the denial response.
+	// Overrides are evaluated by priority group; within a group, the first override whose conditions match wins.
+	// The fields set in the winning override replace the corresponding fields of this denial response; fields omitted fall through.
+	// Headers are merged by name instead: the ones set in the override replace the headers with the same name (case-insensitive) and the others are kept.
+	// If no override matches, the denial response is the one defined by the other fields of this config.
+	// +optional
+	Overrides map[string]DenyWithOverrideSpec `json:"overrides,omitempty"`
+}
+
+// Conditional customization of the denial response.
+type DenyWithOverrideSpec struct {
+	// Priority group of the override.
+	// All overrides in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+	// +optional
+	// +kubebuilder:default:=0
+	Priority int `json:"priority,omitempty"`
+
+	// Conditions for Authorino to apply this override.
+	// If omitted, the override always matches.
+	// If present, all conditions must match for the override to be applied; otherwise, the override will be skipped.
+	// Conditions that fail to evaluate (e.g. a missing key) cause the override to be skipped.
+	// +optional
+	Conditions []PatternExpressionOrRef `json:"when,omitempty"`
+
+	// HTTP status code to override the denial status code.
+	Code DenyWithCode `json:"code,omitempty"`
+
+	// HTTP message to override the denial message.
+	Message *ValueOrSelector `json:"message,omitempty"`
+
+	// HTTP response headers to merge into the denial headers, replacing the ones with the same name (case-insensitive).
+	// Headers cannot be removed; set a header to an empty value to blank it.
+	Headers NamedValuesOrSelectors `json:"headers,omitempty"`
+
+	// HTTP response body to override the denial body.
+	Body *ValueOrSelector `json:"body,omitempty"`
 }
 
 // Settings of the custom success response.

@@ -1348,3 +1348,58 @@ func TestAuthorizationSpecCELValidation(t *testing.T) {
 		},
 	})
 }
+
+// TestDenyWithOverridesValidation tests the schema validation of the conditional overrides of the denial responses.
+func TestDenyWithOverridesValidation(t *testing.T) {
+	baseAuthConfig := v1beta3.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1beta3.AuthConfigSpec{
+			Hosts: []string{"test.example.com"},
+			Response: &v1beta3.ResponseSpec{
+				Unauthenticated: &v1beta3.DenyWithSpec{
+					Code: 401,
+					Overrides: map[string]v1beta3.DenyWithOverrideSpec{
+						"redirect": {
+							Priority:   1,
+							Conditions: []v1beta3.PatternExpressionOrRef{{CelPredicate: v1beta3.CelPredicate{Predicate: `request.method == "GET"`}}},
+							Code:       302,
+							Headers: v1beta3.NamedValuesOrSelectors{
+								"Location": {Expression: `"https://example.com/login?redirect_to=" + request.path`},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	runTests(t, "test-denywith-overrides", baseAuthConfig, []validationTestCase{
+		{
+			desc: "valid - override with conditions, priority, code and headers",
+		},
+		{
+			desc: "valid - override without code",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Response.Unauthenticated.Overrides["message-only"] = v1beta3.DenyWithOverrideSpec{
+					Message: &v1beta3.ValueOrSelector{Value: runtime.RawExtension{Raw: []byte(`"Credentials required"`)}},
+				}
+			},
+		},
+		{
+			desc: "invalid - override code below 300",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Response.Unauthenticated.Overrides["redirect"] = v1beta3.DenyWithOverrideSpec{Code: 200}
+			},
+			wantErrors: []string{"should be greater than or equal to 300"},
+		},
+		{
+			desc: "invalid - override code above 599",
+			mutate: func(ac *v1beta3.AuthConfig) {
+				ac.Spec.Response.Unauthenticated.Overrides["redirect"] = v1beta3.DenyWithOverrideSpec{Code: 600}
+			},
+			wantErrors: []string{"should be less than or equal to 599"},
+		},
+	})
+}

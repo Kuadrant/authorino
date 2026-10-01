@@ -200,6 +200,41 @@ curl -u john:p http://matrix-quotes.127.0.0.1.nip.io:8000/neo.html
 # HTTP/1.1 200 OK
 ```
 
+### (Optional) Redirect only browsers to the login page
+
+With the `AuthConfig` above, every unauthenticated request is redirected to the login page, including requests from clients that are not browsers, which would be better served with a `401 Unauthorized` and a `WWW-Authenticate` challenge. Use a conditional override of the denial response to redirect only the requests that accept HTML:
+
+```sh
+kubectl patch authconfig matrix-quotes-protection --type=merge -p '{
+  "spec": {
+    "response": {
+      "unauthenticated": {
+        "code": null,
+        "headers": null,
+        "overrides": {
+          "browsers": {
+            "when": [{ "predicate": "\"accept\" in request.headers && request.headers[\"accept\"].contains(\"text/html\")" }],
+            "code": 302,
+            "headers": {
+              "Location": { "expression": "\"http://matrix-quotes.127.0.0.1.nip.io:8000/login.html?redirect_to=\" + request.path" }
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+Browsers are still redirected to the login page, whereas other clients now get the default denial:
+
+```sh
+curl -i http://matrix-quotes.127.0.0.1.nip.io:8000/neo.html
+# HTTP/1.1 401 Unauthorized
+# www-authenticate: Basic realm="http-basic-auth"
+# ...
+```
+
 ## ❽ (Optional) Modify the `AuthConfig` to authenticate with OIDC
 
 ### Setup a Keycloak server
