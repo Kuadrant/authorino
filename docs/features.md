@@ -713,6 +713,26 @@ rate_limits:
 
 By default, Authorino will inform Envoy to respond with `401 Unauthorized` or `403 Forbidden` respectively when the identity verification (phase i of the [Auth Pipeline](./architecture.md#the-auth-pipeline-aka-enforcing-protection-in-request-time)) or authorization (phase ii) fail. These can be customized respectively by specifying `spec.response.unauthanticated` and `spec.response.unauthorized` in the `AuthConfig`.
 
+The denial response can also vary per request with `overrides`: a map of named customizations, each with optional `when` conditions and `priority`, that are applied over the denial response only when their conditions match. Overrides are evaluated by priority group, lowest first; within a group, they are evaluated concurrently and the first one to match wins. If more than one override in the same group can match the same request, which one wins is not guaranteed – use `priority` or non-overlapping `when` conditions when that matters. The fields set in the winning override (`code`, `message`, `body`) replace the corresponding fields of the denial response, and the fields it omits fall through to it. Headers are merged by name instead: a header set in the override replaces the header with the same name (case-insensitive) in the denial response, including the default `WWW-Authenticate` challenge headers of `unauthenticated`, and the other headers are kept. Headers cannot be removed by an override; set them to an empty value to blank them. When no override matches, the denial response is the same as without `overrides`. An override whose conditions fail to evaluate (e.g. a CEL predicate accessing a header that is not present in the request) is skipped.
+
+```yaml
+spec:
+  response:
+    unauthenticated:
+      message:
+        value: Authentication required
+      overrides:
+        browser:
+          when:
+          - predicate: '"accept" in request.headers && request.headers["accept"].contains("text/html")'
+          code: 302
+          headers:
+            Location:
+              expression: '"https://my-app.io/login?redirect_to=" + request.path'
+```
+
+In the example above, requests from browsers that fail authentication are redirected to a login page, while any other unauthenticated request gets the default `401 Unauthorized` with the custom message.
+
 ### Custom response methods
 
 #### Plain text ([`response.success.<headers|dynamicMetadata>.plain`](https://pkg.go.dev/github.com/kuadrant/authorino/api/v1beta3?utm_source=gopls#PlainAuthResponseSpec))
