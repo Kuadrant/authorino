@@ -18,7 +18,65 @@ jobs:
     name: Full Documentation Link Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #ratchet: actions/checkout@v7
-      - uses: JustinBeckwith/linkinator-action@12f7a61a56e5e75d659f0dfd6357e2d852ede281 #ratchet: JustinBeckwith/linkinator-action@v2
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #ratchet: actions/checkout@v7
+
+      - name: Run Linkinator
+        id: linkinator
+        uses: JustinBeckwith/linkinator-action@12f7a61a56e5e75d659f0dfd6357e2d852ede281 #ratchet: JustinBeckwith/linkinator-action@v2
         with:
           paths: "**/*.md"
+
+        continue-on-error: true
+      
+      - name: Extract summary stats
+        if: steps.linkinator.outcome == 'failure'
+        id: stats
+        env: 
+          LINKINATOR_RESULTS: ${{ steps.linkinator.outputs.results }}
+        run: |
+          echo "$LINKINATOR_RESULTS" | node -e "
+            const r = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+            const p = r.links.filter(l => l.state === 'OK').length;
+            const b = r.links.filter(l => l.state === 'BROKEN').length;
+            const s = r.links.filter(l => l.state === 'SKIPPED').length;
+            console.log('summary=Total: ' + r.links.length + ' | ✅ ' + p + ' | ❌ ' + b + ' | ⏭️ ' + s);
+          " >> "$GITHUB_OUTPUT"
+      - name: Check for existing open issue
+        if: steps.linkinator.outcome == 'failure'
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh issue list --label "linkinator-failure" --state open --json number --limit 1 -q '.[0].number // empty')
+          echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
+      - name: Ensure labels exist
+        if: steps.linkinator.outcome == 'failure' && steps.existing.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for label in linkinator-failure documentation; do
+            gh label create "$label" --force 2>/dev/null || true
+          done
+      - name: Create or update issue
+        if: steps.linkinator.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "${{ steps.existing.outputs.number }}" ]; then
+            # No existing issue - create new one
+            gh issue create \
+              --title "Weekly Documentation Link Check Failed — $(date -u +%Y-%m-%d)" \
+              --label "linkinator-failure" \
+              --label "documentation" \
+              --body "**${{ steps.stats.outputs.summary }}**
+          See full broken link details in the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+          else
+            # Existing issue - add comment with updated stats
+            gh issue comment "${{ steps.existing.outputs.number }}" \
+              --body "**Updated $(date -u +%Y-%m-%d):** ${{ steps.stats.outputs.summary }}
+          See latest details in the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+          fi
+      - name: Fail workflow if links broken
+        if: steps.linkinator.outcome == 'failure'
+        run: exit 1
