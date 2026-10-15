@@ -1,0 +1,47 @@
+name: Documentation Link Check (PR)
+
+on:
+  pull_request:
+    branches: ['main']
+    paths:
+      - '**.md'
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  documentation-links:
+    name: Documentation Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed markdown files
+        id: changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            files=$(git diff --name-only --diff-filter=d "origin/${BASE_REF}...HEAD" -- '*.md')
+          else
+            files="**/*.md"
+          fi
+
+          if [ -z "$files" ]; then
+            echo "paths=" >> "$GITHUB_OUTPUT"
+            echo "No markdown files changed"
+          else
+            paths=$(echo "$files" | tr '\n' ' ')
+            echo "paths=$paths" >> "$GITHUB_OUTPUT"
+            echo "Scanning: $paths"
+          fi
+
+      - uses: JustinBeckwith/linkinator-action@v2
+        if: steps.changed.outputs.paths != ''
+        with:
+          paths: ${{ steps.changed.outputs.paths }}
