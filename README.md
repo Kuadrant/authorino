@@ -230,8 +230,8 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   The only attribute of the authorization request that is strictly required is the host name. (See [Host lookup](./docs/architecture.md#host-lookup) for more information.) The other attributes, such as method, path, headers, etc, might as well be required, depending on each `AuthConfig`. In the case of the gRPC [`CheckRequest`](https://pkg.go.dev/github.com/envoyproxy/go-control-plane/envoy/service/auth/v3?utm_source=gopls#CheckRequest) method, the host is supplied in `Attributes.Request.Http.Host` and alternatively in `Attributes.ContextExtensions["host"]`. For raw HTTP authorization requests, the host must be supplied in `Host` HTTP header.
 
-  Check out [Kuadrant](https://docs.kuadrant.io/latest/kuadrant-operator) for easy-to-use Envoy and Authorino deployment & configuration for API management use-cases, using Kubernetes Custom Resources.
-</details>
+  Check out [Mixing Envoy built-in filter for auth and Authorino](https://docs.kuadrant.io/1.5.x/authorino/docs/user-guides/envoy-jwt-authn-and-authorino/) for easy-to-use Envoy and Authorino deployment & configuration for API management use-cases, using Kubernetes Custom Resources.
+</details>›
 
 <details markdown="1">
   <summary><strong>Is Authorino an Identity Provider (IdP)?</strong></summary>
@@ -293,7 +293,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 
   There are lots of similarities, but also complementarity between Authorino and Istio and [Istio Authorization](https://istio.io/latest/docs/concepts/security/#authorization) in special.
 
-  Istio provides a simple way to enable features that are, in many cases, features of Envoy, such as authorization based on JWTs, authorization based on attributes of the request, and activation of external authorization services, without having to deal with complex Envoy config files. See [Kuadrant](https://doc.kuadrant.io/kuadrant-operator) for a similar approach, nonetheless leveraging features of Istio as well.
+  Istio provides a simple way to enable features that are, in many cases, features of Envoy, such as authorization based on JWTs, authorization based on attributes of the request, and activation of external authorization services, without having to deal with complex Envoy config files. See [Secure, protect, and connect APIs with Kuadrant](https://docs.kuadrant.io/1.5.x/kuadrant-operator/doc/user-guides/full-walkthrough/secure-protect-connect/) for a similar approach, nonetheless leveraging features of Istio as well.
 
   Authorino is an Envoy-compatible external authorization service. One can use Authorino with or without Istio.
 
@@ -353,7 +353,7 @@ For a detailed description of the features above, refer to the [Features](./docs
 <details markdown="1">
   <summary><strong>Do I have to be admin of the cluster to install Authorino?</strong></summary>
 
-  To install the Authorino Custom Resource Definition (CRD) and to define cluster roles required by the Authorino service, admin privilege to the Kubernetes cluster is required. This step happens only once per cluster and is usually equivalent to installing the [Authorino Operator](https://docs.kuadrant.io/latest/authorino-operator).
+  To install the Authorino Custom Resource Definition (CRD) and to define cluster roles required by the Authorino service, admin privilege to the Kubernetes cluster is required. This step happens only once per cluster and is usually equivalent to installing the [Authorino Operator](https://github.com/Kuadrant/authorino-operator).
 
   Thereafter, deploying instances of the Authorino service and applying `AuthConfig` custom resources to a namespace depend on the permissions set by the cluster administrator – either directly by editing the bindings in the cluster's RBAC, or via options of the operator. In most cases, developers will be granted permissions to create and manage `AuthConfig`s, and sometimes to deploy their own instances of Authorino.
 </details>

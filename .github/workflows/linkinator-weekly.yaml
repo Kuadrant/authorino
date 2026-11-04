@@ -28,11 +28,11 @@ jobs:
           paths: "**/*.md"
 
         continue-on-error: true
-      
+
       - name: Extract summary stats
         if: steps.linkinator.outcome == 'failure'
         id: stats
-        env: 
+        env:
           LINKINATOR_RESULTS: ${{ steps.linkinator.outputs.results }}
         run: |
           echo "$LINKINATOR_RESULTS" | node -e "
@@ -55,7 +55,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for label in linkinator-failure documentation; do
+          for label in linkinator-failure area/doc; do
             gh label create "$label" --force 2>/dev/null || true
           done
       - name: Create or update issue
@@ -68,7 +68,7 @@ jobs:
             gh issue create \
               --title "Weekly Documentation Link Check Failed — $(date -u +%Y-%m-%d)" \
               --label "linkinator-failure" \
-              --label "documentation" \
+              --label "area/doc" \
               --body "**${{ steps.stats.outputs.summary }}**
           See full broken link details in the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
           else
@@ -80,3 +80,4 @@ jobs:
       - name: Fail workflow if links broken
         if: steps.linkinator.outcome == 'failure'
         run: exit 1
+
