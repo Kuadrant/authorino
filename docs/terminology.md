@@ -154,7 +154,7 @@ Auth server; downstream product created from the Keycloak Open Source project.
 Special type of security token, often provided together with an access token in an OAuth2 flow, used to renew the duration of an access token before it expires; it requires client authentication.
 
 
-**[Request Party Token (RPT)](https://www.keycloak.org/docs/5.0/authorization_services/#_service_rpt_overview)**<br/>
+**[Requesting Party Token (RPT)](https://www.keycloak.org/docs/latest/authorization_services/index.html#_service_rpt_overview)**<br/>
 JSON Web Token (JWT) digitally signed using JSON Web Signature (JWS), issued by the Keycloak auth server.
 
 
