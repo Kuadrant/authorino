@@ -22,7 +22,7 @@ The following tools can be installed as part of the development workflow:
 
 - _Other recommended tools to have installed:_
     - [jq](https://stedolan.github.io/jq/)
-    - [yq](https://mikefarah.github.io/yq/)
+    - [yq](https://mikefarah.gitbook.io/yq)
     - [gnu-sed](https://www.gnu.org/software/sed/)
 
 ## Workflow

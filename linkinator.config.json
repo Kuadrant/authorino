@@ -1,0 +1,13 @@
+{
+	"skip": [
+		"https://kubernetes.slack.com/archives/C05J0D0V525",
+		"^https?://a12n-server:8531",
+		"^https?://localhost:8080",
+		"^https?://authorino-oidc\\.default\\.svc:8083",
+		"https://www.gnu.org/software/sed/",
+		"^https?://.*\\.127\\.0\\.0\\.1\\.nip\\.io"
+	],
+	"recurse": true,
+	"directoryListing": true,
+	"markdown": true
+}
