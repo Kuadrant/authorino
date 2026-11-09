@@ -251,7 +251,7 @@ static_resources:
               filename: /etc/ssl/certs/authorino-ca-cert.crt
 ```
 
-For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Limitador](https://docs.kuadrant.io/latest/limitador/), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
+For a complete Envoy `ConfigMap` containing an upstream API protected with Authorino, with TLS enabled and option for rate limiting with [Kuadrant Rate Limiting](https://docs.kuadrant.io/1.5.x/kuadrant-operator/doc/overviews/rate-limiting/), plus a webapp served with under the same domain of the protected API, check out this [example](https://github.com/Kuadrant/authorino-examples/blob/main/envoy/envoy-tls-deploy.yaml).
 
 After creating the `ConfigMap` with the Envoy configuration, create an Envoy `Deployment` and `Service`. E.g.:
 

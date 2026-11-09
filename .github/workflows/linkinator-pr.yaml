@@ -1,0 +1,50 @@
+name: Documentation Link Check (PR)
+
+# Pull request broken link scan.
+# Referencing: https://github.com/Kuadrant/mcp-gateway/pull/952 & mcp-gateway/.github/workflows/linkinator-weekly.yaml
+
+on:
+  pull_request:
+    branches: ['main']
+    paths:
+      - '**.md'
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  documentation-links:
+    name: Documentation Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #ratchet: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Get changed markdown files
+        id: changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            files=$(git diff --name-only --diff-filter=d "origin/${BASE_REF}...HEAD" -- '*.md')
+          else
+            files="**/*.md"
+          fi
+
+          if [ -z "$files" ]; then
+            echo "paths=" >> "$GITHUB_OUTPUT"
+            echo "No markdown files changed"
+          else
+            paths=$(echo "$files" | tr '\n' ' ')
+            echo "paths=$paths" >> "$GITHUB_OUTPUT"
+            echo "Scanning: $paths"
+          fi
+
+      - uses: JustinBeckwith/linkinator-action@12f7a61a56e5e75d659f0dfd6357e2d852ede281 #ratchet: JustinBeckwith/linkinator-action@v2
+        if: steps.changed.outputs.paths != ''
+        with:
+          paths: ${{ steps.changed.outputs.paths }}
