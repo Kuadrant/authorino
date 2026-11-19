@@ -1220,7 +1220,7 @@ _TTL_ - A `ttl` of 0 means the default of 60 seconds. A negative `ttl` disables 
 
 _Troubleshooting_ - When an evaluator runs without its cache, Authorino logs it at the default log level, once per evaluator each time the AuthConfig is reconciled, on every replica. Each line names the `authconfig` and the `evaluator`, and none includes the cache key:
 
-- "evaluator cache key did not resolve, not cached", with `keySource` (`selector` or `expression`) and `reason`. The resolve error itself can quote request data, so it is logged at debug level only, resolved over the redacted Authorization JSON.
+- "evaluator cache key did not resolve, not cached", with `keySource` (`selector` or `expression`) and `reason`. The resolve error itself can quote request data, so it is logged at debug level only, resolved over the Authorization JSON with every string replaced.
 - "evaluator cache entry too large, not cached", with `entrySize`, `limit` and `evaluatorCacheSize`.
 - "evaluator cache failed to store entry, not cached", with `reason`.
 - "evaluator cache ttl is not positive, not cached", with `ttl`.

@@ -5,6 +5,7 @@ import (
 	gojson "encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -116,7 +117,7 @@ func (c *evaluatorCache) Call(ctx context.Context, pipeline auth.AuthPipeline, c
 		}
 		if err != nil && logger.V(1).Enabled() {
 			// CEL runtime errors can quote values from the request (e.g. "no such key: <header value>"), so the error
-			// logged is the one of resolving the key over the redacted Authorization JSON
+			// logged is the one of resolving the key over the Authorization JSON with every string replaced
 			logger.V(1).Info("evaluator cache key did not resolve", "err", c.redactedResolveError(authJSON))
 		}
 		return evaluator.Call(pipeline, ctx)
@@ -176,8 +177,17 @@ func (c *evaluatorCache) keyUnresolvedDetails(config metrics.Object, err error) 
 	return details
 }
 
+// redactedResolveError resolves the key again over the Authorization JSON with every string replaced, at any depth,
+// so that the error can quote the expression and field names but no value from the request. log.RedactedAuthorizationJSON
+// would not do: it only redacts fields and headers known to be sensitive, and not inside arrays.
 func (c *evaluatorCache) redactedResolveError(authJSON string) string {
-	redacted, err := gojson.Marshal(log.RedactedAuthorizationJSON(authJSON))
+	decoder := gojson.NewDecoder(strings.NewReader(authJSON))
+	decoder.UseNumber()
+	var data any
+	if err := decoder.Decode(&data); err != nil {
+		return "unavailable"
+	}
+	redacted, err := gojson.Marshal(redactStrings(data))
 	if err != nil {
 		return "unavailable"
 	}
@@ -185,6 +195,23 @@ func (c *evaluatorCache) redactedResolveError(authJSON string) string {
 		return err.Error()
 	}
 	return "unavailable"
+}
+
+// redactStrings replaces, in place, every string in a decoded JSON value, including object members and array items.
+func redactStrings(value any) any {
+	switch v := value.(type) {
+	case string:
+		return "***REDACTED***"
+	case []any:
+		for i := range v {
+			v[i] = redactStrings(v[i])
+		}
+	case map[string]any:
+		for k := range v {
+			v[k] = redactStrings(v[k])
+		}
+	}
+	return value
 }
 
 // get returns nil for a missing entry, which gocache's freecache store reports as an error. It returns no other error
