@@ -1,10 +1,8 @@
 package evaluators
 
 import (
-	"crypto/sha256"
 	gojson "encoding/json"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/expressions"
@@ -67,29 +65,14 @@ func (c *evaluatorCache) Set(key, value interface{}) error {
 	return nil
 }
 
-// ResolveKeyFor returns a long string key as its digest (see stringCacheKey). Other values are returned as they are,
-// and gocache hashes them.
+// ResolveKeyFor returns the cache key for the Authorization JSON, encoded by resolveCacheKey, or nil when the key does
+// not resolve, which callers take as no caching.
 func (c *evaluatorCache) ResolveKeyFor(authJSON string) (interface{}, error) {
-	key, err := c.keyTemplate.ResolveFor(authJSON)
-	if s, ok := key.(string); ok {
-		return stringCacheKey(s), err
+	key, err := resolveCacheKey(c.keyTemplate, authJSON)
+	if err != nil {
+		return nil, err
 	}
-	return key, err
-}
-
-// stringCacheKey replaces a string key of sha256.Size bytes or more with its raw SHA-256, which gocache stores as it
-// is. A long key then takes 32 bytes of the freecache entry size limit, and a long credential such as a token is
-// neither stored nor quoted in store errors. A shorter key is kept, so that no key grows and every entry that fit
-// before still fits. It cannot equal a digest, which is always sha256.Size bytes. The 's' tag keeps string digests
-// apart from hashes of keys of other types.
-func stringCacheKey(s string) string {
-	if len(s) < sha256.Size {
-		return s
-	}
-	digester := sha256.New()
-	digester.Write([]byte{'s'})
-	_, _ = io.WriteString(digester, s)
-	return string(digester.Sum(nil))
+	return key, nil
 }
 
 func (c *evaluatorCache) Shutdown() error {

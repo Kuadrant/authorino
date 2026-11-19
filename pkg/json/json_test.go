@@ -346,3 +346,35 @@ func TestStringifyJSON(t *testing.T) {
 	assert.Equal(t, str, `{"prop_str":"str","prop_num":123,"prop_bool":false,"prop_null":null,"prop_arr":["a","b","c"],"prop_obj":{"a_prop":"a_value"}}`)
 	assert.NilError(t, err)
 }
+
+func TestJSONValueLookupFor(t *testing.T) {
+	const jsonData = `{"auth":{"identity":{"sub":"alice","org":null,"nickname":""}}}`
+
+	for name, tc := range map[string]struct {
+		value        JSONValue
+		wantValue    interface{}
+		wantComplete bool
+	}{
+		"path":                            {JSONValue{Pattern: "auth.identity.sub"}, "alice", true},
+		"path to null":                    {JSONValue{Pattern: "auth.identity.org"}, nil, true},
+		"missing path":                    {JSONValue{Pattern: "auth.identity.email"}, nil, false},
+		"template":                        {JSONValue{Pattern: "user-{auth.identity.sub}"}, "user-alice", true},
+		"template, missing":               {JSONValue{Pattern: "user-{auth.identity.email}"}, "user-", false},
+		"template, one of two missing":    {JSONValue{Pattern: "{auth.identity.sub}-{auth.identity.email}"}, "alice-", false},
+		"template, first of two missing":  {JSONValue{Pattern: "{auth.identity.email}-{auth.identity.sub}"}, "-alice", false},
+		"template, null placeholder":      {JSONValue{Pattern: "user-{auth.identity.org}"}, "user-", false},
+		"template, empty placeholder":     {JSONValue{Pattern: "user-{auth.identity.nickname}"}, "user-", false},
+		"template, unterminated":          {JSONValue{Pattern: "user-{auth.identity.sub"}, "user-", false},
+		"template, no path in braces":     {JSONValue{Pattern: "user-{}"}, "user-", false},
+		"template, escaped braces":        {JSONValue{Pattern: `user-\{x\}-{auth.identity.sub}`}, "user-{x}-alice", true},
+		"template, modifier over missing": {JSONValue{Pattern: `user-{auth.identity.email.@extract:{"sep":"@","pos":1}}`}, "user-", false},
+		"static":                          {JSONValue{Static: "x"}, "x", true},
+		"static null":                     {JSONValue{}, nil, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			value, complete := tc.value.LookupFor(jsonData)
+			assert.Equal(t, value, tc.wantValue)
+			assert.Equal(t, complete, tc.wantComplete)
+		})
+	}
+}

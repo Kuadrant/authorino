@@ -44,18 +44,26 @@ func (v *JSONValue) ResolveFor(jsonData string) (interface{}, error) {
 	return v.resolveForSafe(jsonData), nil
 }
 
-func (v *JSONValue) resolveForSafe(jsonData string) interface{} {
-	if v.Pattern != "" {
-		// If all curly braces in the pattern are for passing arguments to modifiers, then it's likely NOT a template.
-		// To be a template, the pattern must contain at least one curly brace delimiting a variable placeholder.
-		if v.IsTemplate() {
-			return ReplaceJSONPlaceholders(v.Pattern, jsonData)
-		} else {
-			return gjson.Get(jsonData, v.Pattern).Value()
-		}
-	} else {
-		return v.Static
+// LookupFor resolves the value as ResolveFor does, and reports whether it is complete: false for a path that selects
+// nothing, for a template with a placeholder that renders empty (selects nothing, null or an empty string) or is left
+// open, and for a nil static value. A template still renders, with empty strings in place of such placeholders.
+// Multipaths and modifiers that make up a value from nothing still count as complete.
+func (v *JSONValue) LookupFor(jsonData string) (any, bool) {
+	if v.Pattern == "" {
+		return v.Static, v.Static != nil
 	}
+	// If all curly braces in the pattern are for passing arguments to modifiers, then it's likely NOT a template.
+	// To be a template, the pattern must contain at least one curly brace delimiting a variable placeholder.
+	if v.IsTemplate() {
+		return replaceJSONPlaceholders(v.Pattern, jsonData)
+	}
+	result := gjson.Get(jsonData, v.Pattern)
+	return result.Value(), result.Exists()
+}
+
+func (v *JSONValue) resolveForSafe(jsonData string) interface{} {
+	value, _ := v.LookupFor(jsonData)
+	return value
 }
 
 // IsTemplate tells whether a pattern is as a simple pattern or a template that mixes static value with variable
@@ -107,6 +115,13 @@ func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte, maxResp
 }
 
 func ReplaceJSONPlaceholders(source string, jsonData string) string {
+	replaced, _ := replaceJSONPlaceholders(source, jsonData)
+	return replaced
+}
+
+// replaceJSONPlaceholders also tells whether every placeholder is closed and renders a non-empty string.
+func replaceJSONPlaceholders(source string, jsonData string) (string, bool) {
+	complete := true
 	var replaced, buffer []byte
 	var escaping, insidePlaceholder bool
 	var nestedCurlyBraces int
@@ -132,8 +147,13 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 					nestedCurlyBraces = nestedCurlyBraces - 1
 				} else {
 					if len(buffer) > 0 {
-						replaced = append(replaced, []byte(gjson.Get(jsonData, string(buffer)).String())...)
+						rendered := gjson.Get(jsonData, string(buffer)).String()
+						complete = complete && rendered != ""
+						replaced = append(replaced, []byte(rendered)...)
 						buffer = []byte{}
+					} else {
+						// {} names no path, so it renders empty like a placeholder that selects nothing
+						complete = false
 					}
 					insidePlaceholder = false
 				}
@@ -160,7 +180,7 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 		}
 	}
 
-	return string(replaced)
+	return string(replaced), complete && !insidePlaceholder
 }
 
 func StringifyJSON(data interface{}) (string, error) {
