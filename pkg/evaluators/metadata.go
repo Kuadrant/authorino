@@ -49,29 +49,13 @@ func (config *MetadataConfig) Call(pipeline auth.AuthPipeline, ctx context.Conte
 	} else {
 		logger := log.FromContext(ctx).WithName("metadata").WithValues("config", config.Name)
 
-		cache := config.Cache
-		var cacheKey interface{}
+		ctx = log.IntoContext(ctx, logger)
 
-		if cache != nil {
-			cacheKey, _ = cache.ResolveKeyFor(pipeline.GetAuthorizationJSON())
-			if cacheKey != nil {
-				if cachedObj, err := cache.Get(cacheKey); err != nil {
-					logger.V(1).Error(err, "failed to retrieve data from the cache")
-				} else if cachedObj != nil {
-					return cachedObj, nil
-				}
-			}
+		if config.Cache != nil {
+			return config.Cache.Call(ctx, pipeline, config, evaluator)
 		}
 
-		obj, err := evaluator.Call(pipeline, log.IntoContext(ctx, logger))
-
-		if err == nil && cacheKey != nil {
-			if err := cache.Set(cacheKey, obj); err != nil {
-				logger.V(1).Info("unable to store data in the cache", "err", err)
-			}
-		}
-
-		return obj, err
+		return evaluator.Call(pipeline, ctx)
 	}
 }
 

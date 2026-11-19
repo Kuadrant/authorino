@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr/funcr"
 	api "github.com/kuadrant/authorino/api/v1beta3"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
@@ -508,3 +509,71 @@ func BenchmarkReconcileAuthConfig(b *testing.B) {
 	b.StopTimer()
 	assert.NilError(b, err)
 }
+
+func TestTranslateAuthConfigCacheOwner(t *testing.T) {
+	cache := &api.EvaluatorCaching{Key: api.ValueOrSelector{Selector: "auth.identity.missing"}, TTL: 60}
+	common := api.CommonEvaluatorSpec{Cache: cache}
+	plain := api.AuthResponseMethodSpec{Plain: &api.PlainAuthResponseSpec{Value: runtime.RawExtension{Raw: []byte(`"v"`)}}}
+
+	r := &AuthConfigReconciler{}
+	translated, err := r.translateAuthConfig(t.Context(), &api.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "talker-api", Namespace: "default"},
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"talker-api.io"},
+			Authentication: map[string]api.AuthenticationSpec{
+				"anonymous": {CommonEvaluatorSpec: common, AuthenticationMethodSpec: api.AuthenticationMethodSpec{AnonymousAccess: &api.AnonymousAccessSpec{}}},
+			},
+			Metadata: map[string]api.MetadataSpec{
+				"user-info": {CommonEvaluatorSpec: common, MetadataMethodSpec: api.MetadataMethodSpec{Http: &api.HttpEndpointSpec{Url: "http://user-info.local"}}},
+			},
+			Authorization: map[string]api.AuthorizationSpec{
+				"allow": {CommonEvaluatorSpec: common, AuthorizationMethodSpec: api.AuthorizationMethodSpec{PatternMatching: &api.PatternMatchingAuthorizationSpec{}}},
+			},
+			Response: &api.ResponseSpec{
+				Success: api.WrappedSuccessResponseSpec{
+					Headers:         map[string]api.HeaderSuccessResponseSpec{"x-header": {SuccessResponseSpec: api.SuccessResponseSpec{CommonEvaluatorSpec: common, AuthResponseMethodSpec: plain}}},
+					DynamicMetadata: map[string]api.SuccessResponseSpec{"x-metadata": {CommonEvaluatorSpec: common, AuthResponseMethodSpec: plain}},
+				},
+			},
+		},
+	})
+	assert.NilError(t, err)
+
+	caches := map[string]evaluators.EvaluatorCache{}
+	for _, c := range translated.IdentityConfigs {
+		caches["identity "+c.(*evaluators.IdentityConfig).Name] = c.(*evaluators.IdentityConfig).Cache
+	}
+	for _, c := range translated.MetadataConfigs {
+		caches["metadata "+c.(*evaluators.MetadataConfig).Name] = c.(*evaluators.MetadataConfig).Cache
+	}
+	for _, c := range translated.AuthorizationConfigs {
+		caches["authorization "+c.(*evaluators.AuthorizationConfig).Name] = c.(*evaluators.AuthorizationConfig).Cache
+	}
+	for _, c := range translated.ResponseConfigs {
+		caches["response "+c.(*evaluators.ResponseConfig).Name] = c.(*evaluators.ResponseConfig).Cache
+	}
+	assert.Equal(t, len(caches), 5)
+
+	mockctrl := gomock.NewController(t)
+	pipeline := mock_auth.NewMockAuthPipeline(mockctrl)
+	pipeline.EXPECT().GetAuthorizationJSON().Return(`{}`).AnyTimes()
+	evaluator := mock_auth.NewMockAuthConfigEvaluator(mockctrl)
+	evaluator.EXPECT().Call(pipeline, gomock.Any()).Return(nil, nil).AnyTimes()
+
+	for name, cache := range caches {
+		t.Run(name, func(t *testing.T) {
+			assert.Assert(t, cache != nil)
+			var logs []string
+			ctx := log.IntoContext(t.Context(), funcr.New(func(_, args string) { logs = append(logs, args) }, funcr.Options{}))
+			_, err := cache.Call(ctx, pipeline, namedEvaluator(name), evaluator)
+			assert.NilError(t, err)
+			assert.Assert(t, logsContain(logs, `"authconfig"="default/talker-api"`), logs)
+		})
+	}
+}
+
+type namedEvaluator string
+
+func (n namedEvaluator) GetType() string      { return "TEST" }
+func (n namedEvaluator) GetName() string      { return string(n) }
+func (n namedEvaluator) MetricsEnabled() bool { return false }

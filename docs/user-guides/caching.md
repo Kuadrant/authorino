@@ -229,6 +229,8 @@ curl http://talker-api.127.0.0.1.nip.io:8000/hello
 # […]
 ```
 
+If an evaluator does not seem to cache, see the troubleshooting notes on [evaluator caching](../features.md#common-feature-caching-cache): unresolved keys and entries too large to cache are logged at the default log level.
+
 ## Cleanup
 
 If you have started a Kubernetes cluster locally with Kind to try this user guide, delete it by running:

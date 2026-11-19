@@ -14,6 +14,7 @@ import (
 
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const testMetadataServerHost string = "127.0.0.1:9008"
@@ -59,7 +60,7 @@ func TestMetadataCaching(t *testing.T) {
 	assert.NilError(t, err)
 
 	// With caching of metadata
-	cache := NewEvaluatorCache(&json.JSONValue{Static: "x"}, 2) // 2 seconds ttl
+	cache := NewEvaluatorCache(&json.JSONValue{Static: "x"}, 2, types.NamespacedName{Namespace: "default", Name: "test"}) // 2 seconds ttl
 	metadataConfig.Cache = cache
 	defer func(metadataConfig *MetadataConfig) {
 		_ = metadataConfig.Clean(context.Background())

@@ -142,6 +142,30 @@ The [Authorino Operator](https://github.com/kuadrant/authorino-operator) creates
       <td>counter</td>
     </tr>
     <tr>
+      <td>auth_server_evaluator_cache_hit<sup>2</sup></td>
+      <td>Number of evaluations of individual authconfig rule served from the evaluator cache.</td>
+      <td><code>namespace</code>, <code>authconfig</code>, <code>evaluator_type</code>, <code>evaluator_name</code></td>
+      <td>counter</td>
+    </tr>
+    <tr>
+      <td>auth_server_evaluator_cache_miss<sup>2</sup></td>
+      <td>Number of evaluations of individual authconfig rule not found in the evaluator cache.</td>
+      <td><code>namespace</code>, <code>authconfig</code>, <code>evaluator_type</code>, <code>evaluator_name</code></td>
+      <td>counter</td>
+    </tr>
+    <tr>
+      <td>auth_server_evaluator_cache_key_unresolved<sup>2</sup></td>
+      <td>Number of evaluations of individual authconfig rule whose cache key did not resolve, so the evaluator cache was skipped.</td>
+      <td><code>namespace</code>, <code>authconfig</code>, <code>evaluator_type</code>, <code>evaluator_name</code></td>
+      <td>counter</td>
+    </tr>
+    <tr>
+      <td>auth_server_evaluator_cache_store_failed<sup>2</sup></td>
+      <td>Number of evaluated objects of individual authconfig rule the evaluator cache failed to store.</td>
+      <td><code>namespace</code>, <code>authconfig</code>, <code>evaluator_type</code>, <code>evaluator_name</code></td>
+      <td>counter</td>
+    </tr>
+    <tr>
       <td>auth_server_evaluator_duration_seconds<sup>2</sup></td>
       <td>Response latency of individual authconfig rule evaluated by the auth server (in seconds).</td>
       <td><code>namespace</code>, <code>authconfig</code>, <code>evaluator_type</code>, <code>evaluator_name</code></td>
@@ -1285,6 +1309,12 @@ Some log messages printed by Authorino and corresponding extra values included:
 | `authorino.service.auth.authpipeline.authorization.kubernetesauthz`        | `debug` | "calling kubernetes subject access review api"                                             | `request id`, `subjectaccessreview`                                                                                                                                                                                                                                                                                                                                                       |
 | `authorino.service.auth.authpipeline.response`                             | `debug` | "dynamic response built"                                                                   | `request id`, `config`, `object`                                                                                                                                                                                                                                                                                                                                                          |
 | `authorino.service.auth.authpipeline.response`                             | `debug` | "cannot build dynamic response"                                                            | `request id`, `config`, `reason`                                                                                                                                                                                                                                                                                                                                                          |
+| `authorino.service.auth.authpipeline.(identity\|metadata\|authorization\|response)`| `info`  | "evaluator cache key did not resolve, not cached"                                          | `request id`, `authconfig`, `evaluator`, `keySource`, `reason`, `hint`                                                                                                                                                                                                                                                                                                                    |
+| `authorino.service.auth.authpipeline.(identity\|metadata\|authorization\|response)`| `debug` | "evaluator cache key did not resolve"                                                      | `request id`, `err`                                                                                                                                                                                                                                                                                                                                                                       |
+| `authorino.service.auth.authpipeline.(identity\|metadata\|authorization\|response)`| `info`  | "evaluator cache entry too large, not cached"                                              | `request id`, `authconfig`, `evaluator`, `entrySize`, `limit`, `evaluatorCacheSize`                                                                                                                                                                                                                                                                                                       |
+| `authorino.service.auth.authpipeline.(identity\|metadata\|authorization\|response)`| `info`  | "evaluator cache failed to store entry, not cached"                                        | `request id`, `authconfig`, `evaluator`, `reason`                                                                                                                                                                                                                                                                                                                                         |
+| `authorino.service.auth.authpipeline.(identity\|metadata\|authorization\|response)`| `info`  | "evaluator cache ttl is not positive, not cached"                                          | `request id`, `authconfig`, `evaluator`, `ttl`                                                                                                                                                                                                                                                                                                                                            |
+| `authorino.service.auth.authpipeline.(identity\|metadata\|authorization\|response)`| `debug` | "unable to store data in the cache"                                                        | `request id`, `err`                                                                                                                                                                                                                                                                                                                                                                       |
 | `authorino.service.auth.http`                                              | `debug` | "bad request"                                                                              | `request id`                                                                                                                                                                                                                                                                                                                                                                              |
 | `authorino.service.auth.http`                                              | `debug` | "not found"                                                                                | `request id`                                                                                                                                                                                                                                                                                                                                                                              |
 | `authorino.service.auth.http`                                              | `debug` | "request body too large"                                                                   | `request id`                                                                                                                                                                                                                                                                                                                                                                              |
