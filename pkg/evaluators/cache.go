@@ -1,7 +1,10 @@
 package evaluators
 
 import (
+	"crypto/sha256"
 	gojson "encoding/json"
+	"fmt"
+	"io"
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/expressions"
@@ -50,16 +53,43 @@ func (c *evaluatorCache) Get(key interface{}) (interface{}, error) {
 	return nil, nil
 }
 
+// Set returns errors that never include the key, which may hold a credential.
 func (c *evaluatorCache) Set(key, value interface{}) error {
-	if valueAsBytes, err := gojson.Marshal(value); err != nil {
+	valueAsBytes, err := gojson.Marshal(value)
+	if err != nil {
 		return err
-	} else {
-		return c.store.Set(key, valueAsBytes, nil)
 	}
+	// The freecache store of gocache quotes the key in its errors. Keys are at most 32 bytes here, so the store can only
+	// reject an entry for its size.
+	if err := c.store.Set(key, valueAsBytes, nil); err != nil {
+		return fmt.Errorf("cache entry with a value of %d bytes not stored, larger than the entry size limit", len(valueAsBytes))
+	}
+	return nil
 }
 
+// ResolveKeyFor returns a long string key as its digest (see stringCacheKey). Other values are returned as they are,
+// and gocache hashes them.
 func (c *evaluatorCache) ResolveKeyFor(authJSON string) (interface{}, error) {
-	return c.keyTemplate.ResolveFor(authJSON)
+	key, err := c.keyTemplate.ResolveFor(authJSON)
+	if s, ok := key.(string); ok {
+		return stringCacheKey(s), err
+	}
+	return key, err
+}
+
+// stringCacheKey replaces a string key of sha256.Size bytes or more with its raw SHA-256, which gocache stores as it
+// is. A long key then takes 32 bytes of the freecache entry size limit, and a long credential such as a token is
+// neither stored nor quoted in store errors. A shorter key is kept, so that no key grows and every entry that fit
+// before still fits. It cannot equal a digest, which is always sha256.Size bytes. The 's' tag keeps string digests
+// apart from hashes of keys of other types.
+func stringCacheKey(s string) string {
+	if len(s) < sha256.Size {
+		return s
+	}
+	digester := sha256.New()
+	digester.Write([]byte{'s'})
+	_, _ = io.WriteString(digester, s)
+	return string(digester.Sum(nil))
 }
 
 func (c *evaluatorCache) Shutdown() error {

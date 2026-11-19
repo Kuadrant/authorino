@@ -1206,6 +1206,8 @@ As for the 'complex-policy' authorization policy, the cache key is a string comp
 
 _Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `--evaluator-cache-size` command-line flag or `spec.evaluatorCacheSize` field of the `Authorino` CR).
 
+_Cache key_ - A cache key takes at most 32 bytes of an entry. Authorino stores a string key of 32 bytes or more, and any key that is not a string, as a 32-byte hash. A long key, such as one built from a list of groups, takes no more room than a short one, and long credentials such as tokens are not kept in memory.
+
 _Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
 
 ## Common feature: Metrics (`metrics`)
