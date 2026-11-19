@@ -326,27 +326,60 @@ func TestEvaluatorCacheNonPositiveTTL(t *testing.T) {
 }
 
 func TestEvaluatorCacheRedactsResolveError(t *testing.T) {
-	freshCacheMetrics(t)
-	withEvaluatorCacheSize(t, 1)
+	// the CEL runtime error quotes the looked-up value: "no such key: <value>"
+	for name, tc := range map[string]struct{ authJSON, expression, secret string }{
+		"sensitive header": {
+			`{"request":{"headers":{"authorization":"Bearer s3cr3t-token"}}}`,
+			`{"k": "v"}[request.headers.authorization]`,
+			"s3cr3t",
+		},
+		"token inside an array": {
+			`{"auth":{"identity":{"credentials":[{"token":"s3cr3t-token"}]}}}`,
+			`{"k": "v"}[auth.identity.credentials[0].token]`,
+			"s3cr3t",
+		},
+		"field not known as sensitive": {
+			`{"auth":{"identity":{"nickname":"s3cr3t-nick"}}}`,
+			`{"k": "v"}[auth.identity.nickname]`,
+			"s3cr3t",
+		},
+		"number": {
+			`{"auth":{"identity":{"pin":482913}}}`,
+			`{"k": "v"}[string(auth.identity.pin)]`,
+			"482913",
+		},
+		"number used as a key": {
+			`{"auth":{"identity":{"pin":482913}}}`,
+			`{1: "v"}[auth.identity.pin]`,
+			"482913",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			freshCacheMetrics(t)
+			withEvaluatorCacheSize(t, 1)
+			mockctrl := gomock.NewController(t)
+			pipeline := mockPipelineFor(mockctrl, tc.authJSON)
+			evaluator := mock_auth.NewMockAuthConfigEvaluator(mockctrl)
+			evaluator.EXPECT().Call(pipeline, gomock.Any()).Return("ok", nil).Times(1)
+			expression := mustCELExpression(t, tc.expression)
+			_, rawErr := expression.ResolveFor(tc.authJSON)
+			assert.ErrorContains(t, rawErr, tc.secret)
+			cache := NewEvaluatorCache(expression, 60, testCacheOwner)
+			logs := captureLogs(t, 1)
 
-	mockctrl := gomock.NewController(t)
-	const token = "Bearer s3cr3t-token"
-	pipeline := mockPipelineFor(mockctrl, `{"context":{"request":{"http":{"headers":{"authorization":"`+token+`"}}}}}`)
-	evaluator := mock_auth.NewMockAuthConfigEvaluator(mockctrl)
-	evaluator.EXPECT().Call(pipeline, gomock.Any()).Return("ok", nil).Times(1)
+			// when
+			_, err := cache.Call(logs.ctx, pipeline, testCacheEvaluatorConfig{}, evaluator)
+			assert.NilError(t, err)
 
-	// the CEL runtime error quotes the looked-up value: "no such key: <header>"
-	cache := NewEvaluatorCache(mustCELExpression(t, `{"k": "v"}[request.headers.authorization]`), 60, testCacheOwner)
-	logs := captureLogs(t, 1)
-
-	_, err := cache.Call(logs.ctx, pipeline, testCacheEvaluatorConfig{}, evaluator)
-	assert.NilError(t, err)
-
-	debugLines := logs.matching("evaluator cache key did not resolve")
-	assert.Equal(t, len(debugLines), 1, logs.lines)
-	assert.Assert(t, strings.Contains(debugLines[0], "no such key"), debugLines[0])
-	for _, line := range logs.lines {
-		assert.Assert(t, !strings.Contains(line, "s3cr3t"), line)
+			// then
+			debugLines := logs.matching("evaluator cache key did not resolve")
+			assert.Equal(t, len(debugLines), 1, logs.lines)
+			assert.Assert(t, strings.Contains(debugLines[0], "no such key"), debugLines[0])
+			for _, line := range logs.lines {
+				assert.Assert(t, !strings.Contains(line, tc.secret), line)
+			}
+		})
 	}
 }
 
