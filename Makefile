@@ -81,7 +81,7 @@ K8S_VERSION ?= 1.28.3
 ENVTEST_K8S_VERSION ?= $(K8S_VERSION)
 MOCKGEN_VERSION ?= v0.6.0
 BENCHSTAT_VERSION ?= latest
-GOLANGCI_LINT_VERSION ?= v2.1.6
+GOLANGCI_LINT_VERSION ?= v2.15.0
 GO_VERSION ?= $(shell awk '/^go / {print $$2}' go.mod)
 
 ## Versioned Binaries (the actual files that 'make' will check for)
