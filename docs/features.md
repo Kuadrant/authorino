@@ -1208,6 +1208,10 @@ _Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will b
 
 _Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
 
+_Key encoding_ - A cache key takes at most 32 bytes of an entry. Authorino stores a string key of 32 bytes or more as its SHA-256, and any key that is not a string as the SHA-256 of its JSON. A long key, such as one built from a list of groups, takes no more room than a short one, and long credentials such as tokens are not kept in memory. Keys of different types, such as `"1"` and `1`, never share an entry.
+
+_Unresolved keys_ - The evaluator runs without the cache when the key does not resolve: a path that selects nothing, a template with a placeholder that renders empty, names no path (`{}`) or is left open, an empty string, array or object, null, or a CEL runtime error. Authorino cannot tell a key is incomplete for gjson array multipaths (`[a,b]`), which drop missing members, or for modifiers that make up a value. A template key is its rendered string, so `{a}-{b}` gives the same key for `x-y`/`z` and `x`/`y-z`. A CEL list such as `[auth.identity.sub, auth.identity.org]` keeps the parts apart.
+
 ## Common feature: Metrics (`metrics`)
 
 By default, Authorino will only export metrics down to the level of the AuthConfig. Deeper metrics at the level of each evaluator within an AuthConfig can be activated by setting the common field `metrics: true` of the evaluator config.

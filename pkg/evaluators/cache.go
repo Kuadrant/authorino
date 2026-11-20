@@ -2,6 +2,7 @@ package evaluators
 
 import (
 	gojson "encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/kuadrant/authorino/pkg/expressions"
@@ -50,16 +51,28 @@ func (c *evaluatorCache) Get(key interface{}) (interface{}, error) {
 	return nil, nil
 }
 
+// Set returns errors that never include the key, which may hold a credential.
 func (c *evaluatorCache) Set(key, value interface{}) error {
-	if valueAsBytes, err := gojson.Marshal(value); err != nil {
+	valueAsBytes, err := gojson.Marshal(value)
+	if err != nil {
 		return err
-	} else {
-		return c.store.Set(key, valueAsBytes, nil)
 	}
+	// The freecache store of gocache quotes the key in its errors. Keys are at most 32 bytes here, so the store can only
+	// reject an entry for its size.
+	if err := c.store.Set(key, valueAsBytes, nil); err != nil {
+		return fmt.Errorf("cache entry with a value of %d bytes not stored, larger than the entry size limit", len(valueAsBytes))
+	}
+	return nil
 }
 
+// ResolveKeyFor returns the cache key for the Authorization JSON, encoded by resolveCacheKey, or nil when the key does
+// not resolve, which callers take as no caching.
 func (c *evaluatorCache) ResolveKeyFor(authJSON string) (interface{}, error) {
-	return c.keyTemplate.ResolveFor(authJSON)
+	key, err := resolveCacheKey(c.keyTemplate, authJSON)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
 }
 
 func (c *evaluatorCache) Shutdown() error {
