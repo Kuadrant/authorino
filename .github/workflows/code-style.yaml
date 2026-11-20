@@ -33,7 +33,7 @@ jobs:
     name: Auto-format and Check
     runs-on: ubuntu-latest
     env:
-      GOTOOLCHAIN: go1.27.3
+      GOTOOLCHAIN: go1.27.3+auto
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
@@ -98,7 +98,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     env:
-      GOTOOLCHAIN: go1.27.3
+      GOTOOLCHAIN: go1.27.3+auto
 
     steps:
       - name: Check out code
