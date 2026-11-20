@@ -19,6 +19,8 @@ jobs:
         platform: [ ubuntu-latest ]
         authconfig_version: [ v1beta3 ]
     runs-on: ${{ matrix.platform }}
+    env:
+      GOTOOLCHAIN: go1.27.3
     defaults:
       run:
         shell: bash

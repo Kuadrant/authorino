@@ -32,6 +32,8 @@ jobs:
   autoformat:
     name: Auto-format and Check
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: go1.27.3
     strategy:
       fail-fast: false # Keep running if one leg fails.
       matrix:
@@ -95,6 +97,8 @@ jobs:
       contents: read  # for actions/checkout to fetch code
     name: Lint
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: go1.27.3
 
     steps:
       - name: Check out code
