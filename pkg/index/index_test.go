@@ -139,6 +139,49 @@ func TestAuthConfigTree(t *testing.T) {
 	assert.DeepEqual(t, *config, authConfig4) // because `*.acme.com <- auth-4` is still in the tree
 }
 
+// TestDeleteKeyUpdatesFindKeys ensures that removing a single key from an id
+// also removes it from the id-to-keys bookkeeping, so FindKeys no longer reports it.
+func TestDeleteKeyUpdatesFindKeys(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	if err := c.Set("auth-1", "foo.com", authConfig, false); err != nil {
+		t.Error(err)
+	}
+	if err := c.Set("auth-1", "bar.com", authConfig, false); err != nil {
+		t.Error(err)
+	}
+
+	c.DeleteKey("auth-1", "foo.com")
+
+	keys := c.FindKeys("auth-1")
+	sort.Strings(keys)
+	assert.DeepEqual(t, keys, []string{"bar.com"})
+
+	// the removed host must no longer resolve, the remaining one still must
+	assert.Check(t, c.Get("foo.com") == nil)
+	assert.DeepEqual(t, *c.Get("bar.com"), authConfig)
+}
+
+// TestDeleteClearsKeysAndEmpties ensures that deleting an id drops its keys from
+// the bookkeeping so FindKeys returns nothing and the index reports itself empty.
+func TestDeleteClearsKeysAndEmpties(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	if err := c.Set("auth-1", "foo.com", authConfig, false); err != nil {
+		t.Error(err)
+	}
+	if err := c.Set("auth-1", "bar.com", authConfig, false); err != nil {
+		t.Error(err)
+	}
+
+	c.Delete("auth-1")
+
+	assert.Check(t, c.FindKeys("auth-1") == nil)
+	assert.Check(t, c.Empty())
+}
+
 type bogusIdentity struct{}
 
 func (f *bogusIdentity) Call(_ auth.AuthPipeline, _ context.Context) (interface{}, error) {

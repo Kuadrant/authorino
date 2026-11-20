@@ -87,6 +87,7 @@ func (c *authConfigTree) Delete(id string) {
 		for _, key := range keys {
 			c.deleteKey(id, key)
 		}
+		delete(c.keys, id)
 	}
 }
 
@@ -95,6 +96,7 @@ func (c *authConfigTree) DeleteKey(id, key string) {
 	defer c.mu.Unlock()
 
 	c.deleteKey(id, key)
+	c.forgetKey(id, key)
 }
 
 func (c *authConfigTree) List() []*evaluators.AuthConfig {
@@ -132,6 +134,27 @@ func (c *authConfigTree) FindKeys(id string) []string {
 func (c *authConfigTree) deleteKey(id, key string) {
 	if node, _ := c.root.longestCommonLabel(revertKey(key)); node != nil && node.entry != nil && node.entry.Id == id {
 		node.entry = nil
+	}
+}
+
+// forgetKey removes a single key from the id-to-keys bookkeeping, dropping the id
+// entirely once it has no keys left so that FindKeys and Empty stay consistent with
+// the tree.
+func (c *authConfigTree) forgetKey(id, key string) {
+	keys, ok := c.keys[id]
+	if !ok {
+		return
+	}
+	remaining := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if k != key {
+			remaining = append(remaining, k)
+		}
+	}
+	if len(remaining) == 0 {
+		delete(c.keys, id)
+	} else {
+		c.keys[id] = remaining
 	}
 }
 
