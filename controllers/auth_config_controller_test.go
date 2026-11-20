@@ -384,6 +384,73 @@ func TestEmptyAuthConfigIdentitiesDefaultsToAnonymousAccess(t *testing.T) {
 	assert.Equal(t, len(config.IdentityConfigs), 1)
 }
 
+func TestTranslateDenyWithOverrides(t *testing.T) {
+	r := &AuthConfigReconciler{}
+	config, err := r.translateAuthConfig(context.TODO(), &api.AuthConfig{
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"app.com"},
+			NamedPatterns: map[string]api.PatternExpressions{
+				"browser": {{Selector: "request.headers.accept", Operator: "matches", Value: "text/html"}},
+			},
+			Response: &api.ResponseSpec{
+				Unauthenticated: &api.DenyWithSpec{
+					Code:    401,
+					Message: &api.ValueOrSelector{Value: runtime.RawExtension{Raw: []byte(`"Authentication required"`)}},
+					Overrides: map[string]api.DenyWithOverrideSpec{
+						"redirect": {
+							Priority:   1,
+							Conditions: []api.PatternExpressionOrRef{{PatternRef: api.PatternRef{Name: "browser"}}},
+							Code:       302,
+							Headers:    api.NamedValuesOrSelectors{"Location": {Expression: `"https://example.com/login"`}},
+						},
+					},
+				},
+			},
+		},
+	})
+	assert.NilError(t, err)
+
+	denyWith := config.Unauthenticated
+	assert.Equal(t, denyWith.Code, int32(401))
+	assert.Equal(t, len(denyWith.Overrides), 1)
+
+	override, ok := denyWith.Overrides[0].(*evaluators.DenyWithOverride)
+	assert.Check(t, ok)
+	assert.Equal(t, override.Name, "redirect")
+	assert.Equal(t, override.Priority, 1)
+	assert.Equal(t, override.Code, int32(302))
+	assert.Equal(t, len(override.Headers), 1)
+	assert.Check(t, override.Message == nil)
+
+	// the patternRef resolves to the named pattern
+	match, err := override.Conditions.Matches(`{"request":{"headers":{"accept":"text/html,application/xhtml+xml"}}}`)
+	assert.NilError(t, err)
+	assert.Check(t, match)
+	match, err = override.Conditions.Matches(`{"request":{"headers":{"accept":"application/json"}}}`)
+	assert.NilError(t, err)
+	assert.Check(t, !match)
+}
+
+func TestTranslateDenyWithOverrideWithInvalidPredicate(t *testing.T) {
+	r := &AuthConfigReconciler{}
+	_, err := r.translateAuthConfig(context.TODO(), &api.AuthConfig{
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"app.com"},
+			Response: &api.ResponseSpec{
+				Unauthorized: &api.DenyWithSpec{
+					Overrides: map[string]api.DenyWithOverrideSpec{
+						"broken": {
+							Conditions: []api.PatternExpressionOrRef{{CelPredicate: api.CelPredicate{Predicate: `request.path.startsWith(`}}},
+							Code:       404,
+						},
+					},
+				},
+			},
+		},
+	})
+	assert.ErrorContains(t, err, `invalid conditions for denial override "broken"`)
+}
+
 func translateJwtAuthConfig(t *testing.T, jwt api.JwtAuthenticationSpec) []string {
 	t.Helper()
 

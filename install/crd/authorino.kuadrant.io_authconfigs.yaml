@@ -2765,6 +2765,145 @@ spec:
                             description: Static value
                             x-kubernetes-preserve-unknown-fields: true
                         type: object
+                      overrides:
+                        additionalProperties:
+                          description: Conditional customization of the denial response.
+                          properties:
+                            body:
+                              description: HTTP response body to override the denial
+                                body.
+                              properties:
+                                expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                  type: string
+                                selector:
+                                  description: |-
+                                    Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                    The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                                  type: string
+                                value:
+                                  description: Static value
+                                  x-kubernetes-preserve-unknown-fields: true
+                              type: object
+                            code:
+                              description: HTTP status code to override the denial
+                                status code.
+                              format: int64
+                              maximum: 599
+                              minimum: 300
+                              type: integer
+                            headers:
+                              additionalProperties:
+                                properties:
+                                  expression:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a value.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                    type: string
+                                  selector:
+                                    description: |-
+                                      Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                      The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                                    type: string
+                                  value:
+                                    description: Static value
+                                    x-kubernetes-preserve-unknown-fields: true
+                                type: object
+                              description: |-
+                                HTTP response headers to merge into the denial headers, replacing the ones with the same name (case-insensitive).
+                                Headers cannot be removed; set a header to an empty value to blank it.
+                              type: object
+                            message:
+                              description: HTTP message to override the denial message.
+                              properties:
+                                expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                  type: string
+                                selector:
+                                  description: |-
+                                    Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                    The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                                  type: string
+                                value:
+                                  description: Static value
+                                  x-kubernetes-preserve-unknown-fields: true
+                              type: object
+                            priority:
+                              default: 0
+                              description: |-
+                                Priority group of the override.
+                                All overrides in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+                              type: integer
+                            when:
+                              description: |-
+                                Conditions for Authorino to apply this override.
+                                If omitted, the override always matches.
+                                If present, all conditions must match for the override to be applied; otherwise, the override will be skipped.
+                                Conditions that fail to evaluate (e.g. a missing key) cause the override to be skipped.
+                              items:
+                                properties:
+                                  all:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical AND.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                  any:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical OR.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                  operator:
+                                    description: |-
+                                      The binary operator to be applied to the content fetched from the authorization JSON, for comparison with "value".
+                                      Possible values are: "eq" (equal to), "neq" (not equal to), "incl" (includes; for arrays), "excl" (excludes; for arrays), "matches" (regex)
+                                    enum:
+                                    - eq
+                                    - neq
+                                    - incl
+                                    - excl
+                                    - matches
+                                    type: string
+                                  patternRef:
+                                    description: Reference to a named set of pattern
+                                      expressions
+                                    type: string
+                                  predicate:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a boolean.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                    type: string
+                                  selector:
+                                    description: |-
+                                      Path selector to fetch content from the authorization JSON (e.g. 'request.method').
+                                      Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                      Authorino custom JSON path modifiers are also supported.
+                                    type: string
+                                  value:
+                                    description: |-
+                                      The value of reference for the comparison with the content fetched from the authorization JSON.
+                                      If used with the "matches" operator, the value must compile to a valid Golang regex.
+                                    type: string
+                                type: object
+                              type: array
+                          type: object
+                        description: |-
+                          Conditional customizations of the denial response.
+                          Overrides are evaluated by priority group; within a group, the first override whose conditions match wins.
+                          The fields set in the winning override replace the corresponding fields of this denial response; fields omitted fall through.
+                          Headers are merged by name instead: the ones set in the override replace the headers with the same name (case-insensitive) and the others are kept.
+                          If no override matches, the denial response is the one defined by the other fields of this config.
+                        type: object
                     type: object
                   unauthorized:
                     description: |-
@@ -2836,6 +2975,145 @@ spec:
                           value:
                             description: Static value
                             x-kubernetes-preserve-unknown-fields: true
+                        type: object
+                      overrides:
+                        additionalProperties:
+                          description: Conditional customization of the denial response.
+                          properties:
+                            body:
+                              description: HTTP response body to override the denial
+                                body.
+                              properties:
+                                expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                  type: string
+                                selector:
+                                  description: |-
+                                    Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                    The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                                  type: string
+                                value:
+                                  description: Static value
+                                  x-kubernetes-preserve-unknown-fields: true
+                              type: object
+                            code:
+                              description: HTTP status code to override the denial
+                                status code.
+                              format: int64
+                              maximum: 599
+                              minimum: 300
+                              type: integer
+                            headers:
+                              additionalProperties:
+                                properties:
+                                  expression:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a value.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                    type: string
+                                  selector:
+                                    description: |-
+                                      Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                      Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                      The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                                    type: string
+                                  value:
+                                    description: Static value
+                                    x-kubernetes-preserve-unknown-fields: true
+                                type: object
+                              description: |-
+                                HTTP response headers to merge into the denial headers, replacing the ones with the same name (case-insensitive).
+                                Headers cannot be removed; set a header to an empty value to blank it.
+                              type: object
+                            message:
+                              description: HTTP message to override the denial message.
+                              properties:
+                                expression:
+                                  description: |-
+                                    A Common Expression Language (CEL) expression that evaluates to a value.
+                                    String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                  type: string
+                                selector:
+                                  description: |-
+                                    Simple path selector to fetch content from the authorization JSON (e.g. 'request.method') or a string template with variables that resolve to patterns (e.g. "Hello, {auth.identity.name}!").
+                                    Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                    The following Authorino custom modifiers are supported: @extract:{sep:" ",pos:0}, @replace{old:"",new:""}, @case:upper|lower, @base64:encode|decode and @strip.
+                                  type: string
+                                value:
+                                  description: Static value
+                                  x-kubernetes-preserve-unknown-fields: true
+                              type: object
+                            priority:
+                              default: 0
+                              description: |-
+                                Priority group of the override.
+                                All overrides in the same priority group are evaluated concurrently; consecutive priority groups are evaluated sequentially.
+                              type: integer
+                            when:
+                              description: |-
+                                Conditions for Authorino to apply this override.
+                                If omitted, the override always matches.
+                                If present, all conditions must match for the override to be applied; otherwise, the override will be skipped.
+                                Conditions that fail to evaluate (e.g. a missing key) cause the override to be skipped.
+                              items:
+                                properties:
+                                  all:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical AND.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                  any:
+                                    description: A list of pattern expressions to
+                                      be evaluated as a logical OR.
+                                    items:
+                                      type: object
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                  operator:
+                                    description: |-
+                                      The binary operator to be applied to the content fetched from the authorization JSON, for comparison with "value".
+                                      Possible values are: "eq" (equal to), "neq" (not equal to), "incl" (includes; for arrays), "excl" (excludes; for arrays), "matches" (regex)
+                                    enum:
+                                    - eq
+                                    - neq
+                                    - incl
+                                    - excl
+                                    - matches
+                                    type: string
+                                  patternRef:
+                                    description: Reference to a named set of pattern
+                                      expressions
+                                    type: string
+                                  predicate:
+                                    description: |-
+                                      A Common Expression Language (CEL) expression that evaluates to a boolean.
+                                      String expressions are supported (https://pkg.go.dev/github.com/google/cel-go/ext#Strings).
+                                    type: string
+                                  selector:
+                                    description: |-
+                                      Path selector to fetch content from the authorization JSON (e.g. 'request.method').
+                                      Any pattern supported by https://pkg.go.dev/github.com/tidwall/gjson can be used.
+                                      Authorino custom JSON path modifiers are also supported.
+                                    type: string
+                                  value:
+                                    description: |-
+                                      The value of reference for the comparison with the content fetched from the authorization JSON.
+                                      If used with the "matches" operator, the value must compile to a valid Golang regex.
+                                    type: string
+                                type: object
+                              type: array
+                          type: object
+                        description: |-
+                          Conditional customizations of the denial response.
+                          Overrides are evaluated by priority group; within a group, the first override whose conditions match wins.
+                          The fields set in the winning override replace the corresponding fields of this denial response; fields omitted fall through.
+                          Headers are merged by name instead: the ones set in the override replace the headers with the same name (case-insensitive) and the others are kept.
+                          If no override matches, the denial response is the one defined by the other fields of this config.
                         type: object
                     type: object
                 type: object

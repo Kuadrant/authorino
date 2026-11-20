@@ -74,8 +74,35 @@ type DenyWith struct {
 }
 
 type DenyWithValues struct {
-	Code    int32
-	Message expressions.Value
-	Headers []json.JSONProperty
-	Body    expressions.Value
+	Code      int32
+	Message   expressions.Value
+	Headers   []json.JSONProperty
+	Body      expressions.Value
+	Overrides []auth.AuthConfigEvaluator
+}
+
+// DenyWithOverride is a conditional customization of a denial response.
+// It is evaluated as an auth config so it follows the same priority and condition semantics as the phases of the auth pipeline.
+type DenyWithOverride struct {
+	Name       string
+	Priority   int
+	Conditions jsonexp.Expression
+	DenyWithValues
+}
+
+// Call resolves to the override itself; an override is selected when its conditions match.
+func (o *DenyWithOverride) Call(_ auth.AuthPipeline, _ context.Context) (interface{}, error) {
+	return o, nil
+}
+
+func (o *DenyWithOverride) GetName() string {
+	return o.Name
+}
+
+func (o *DenyWithOverride) GetPriority() int {
+	return o.Priority
+}
+
+func (o *DenyWithOverride) GetConditions() jsonexp.Expression {
+	return o.Conditions
 }

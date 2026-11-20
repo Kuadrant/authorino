@@ -871,7 +871,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 	// denyWith
 	if responseConfig := authConfig.Spec.Response; responseConfig != nil {
 		if denyWith := responseConfig.Unauthenticated; denyWith != nil {
-			value, err := buildAuthorinoDenyWithValues(denyWith)
+			value, err := buildAuthorinoDenyWithValues(authConfig, denyWith)
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to build unauthenticated deny values")
@@ -880,7 +880,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			translatedAuthConfig.Unauthenticated = value
 		}
 		if denyWith := responseConfig.Unauthorized; denyWith != nil {
-			value, err := buildAuthorinoDenyWithValues(denyWith)
+			value, err := buildAuthorinoDenyWithValues(authConfig, denyWith)
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to build unauthorized deny values")
@@ -1369,13 +1369,39 @@ func buildJSONExpressionPattern(expression api.PatternExpression) jsonexp.Expres
 	}
 }
 
-func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) (*evaluators.DenyWithValues, error) {
+func buildAuthorinoDenyWithValues(authConfig *api.AuthConfig, denyWithSpec *api.DenyWithSpec) (*evaluators.DenyWithValues, error) {
 	if denyWithSpec == nil {
 		return nil, nil
 	}
 
-	headers := make([]json.JSONProperty, 0, len(denyWithSpec.Headers))
-	for name, header := range denyWithSpec.Headers {
+	denyWith, err := buildDenyWithValues(denyWithSpec.Code, denyWithSpec.Message, denyWithSpec.Headers, denyWithSpec.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	for name, overrideSpec := range denyWithSpec.Overrides {
+		predicates, err := buildPredicates(authConfig, overrideSpec.Conditions, jsonexp.All)
+		if err != nil {
+			return nil, fmt.Errorf("invalid conditions for denial override %q: %w", name, err)
+		}
+		values, err := buildDenyWithValues(overrideSpec.Code, overrideSpec.Message, overrideSpec.Headers, overrideSpec.Body)
+		if err != nil {
+			return nil, fmt.Errorf("invalid denial override %q: %w", name, err)
+		}
+		denyWith.Overrides = append(denyWith.Overrides, &evaluators.DenyWithOverride{
+			Name:           name,
+			Priority:       overrideSpec.Priority,
+			Conditions:     predicates,
+			DenyWithValues: *values,
+		})
+	}
+
+	return denyWith, nil
+}
+
+func buildDenyWithValues(code api.DenyWithCode, messageSpec *api.ValueOrSelector, headersSpec api.NamedValuesOrSelectors, bodySpec *api.ValueOrSelector) (*evaluators.DenyWithValues, error) {
+	headers := make([]json.JSONProperty, 0, len(headersSpec))
+	for name, header := range headersSpec {
 		if value, err := valueFrom(&header); err != nil {
 			return nil, err
 		} else {
@@ -1383,16 +1409,16 @@ func buildAuthorinoDenyWithValues(denyWithSpec *api.DenyWithSpec) (*evaluators.D
 		}
 	}
 
-	message, err := getJsonFromStaticDynamic(denyWithSpec.Message)
+	message, err := getJsonFromStaticDynamic(messageSpec)
 	if err != nil {
 		return nil, err
 	}
-	body, err := getJsonFromStaticDynamic(denyWithSpec.Body)
+	body, err := getJsonFromStaticDynamic(bodySpec)
 	if err != nil {
 		return nil, err
 	}
 	return &evaluators.DenyWithValues{
-		Code:    int32(denyWithSpec.Code),
+		Code:    int32(code),
 		Message: message,
 		Headers: headers,
 		Body:    body,

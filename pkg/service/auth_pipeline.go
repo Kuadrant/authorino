@@ -709,35 +709,103 @@ func (pipeline *AuthPipeline) GetAuthorizationJSON() string {
 }
 
 func (pipeline *AuthPipeline) customizeDenyWith(authResult auth.AuthResult, denyWith *evaluators.DenyWithValues) auth.AuthResult {
-	if denyWith != nil {
-		if denyWith.Code != 0 {
-			authResult.Status = envoy_type.StatusCode(denyWith.Code)
-		}
+	if denyWith == nil {
+		return authResult
+	}
 
-		authJSON := pipeline.GetAuthorizationJSON()
+	authJSON := pipeline.GetAuthorizationJSON()
+	authResult = applyDenyWith(authResult, denyWith, authJSON, false)
 
-		if denyWith.Message != nil {
-			resolved, _ := denyWith.Message.ResolveFor(authJSON)
-			authResult.Message, _ = json.StringifyJSON(resolved)
-		}
-
-		if denyWith.Body != nil {
-			resolved, _ := denyWith.Body.ResolveFor(authJSON)
-			authResult.Body, _ = json.StringifyJSON(resolved)
-		}
-
-		if len(denyWith.Headers) > 0 {
-			headers := make([]map[string]string, 0)
-			for _, header := range denyWith.Headers {
-				resolved, _ := header.Value.ResolveFor(authJSON)
-				value, _ := json.StringifyJSON(resolved)
-				headers = append(headers, map[string]string{header.Name: value})
-			}
-			authResult.Headers = headers
-		}
+	if override := pipeline.selectDenyWithOverride(denyWith.Overrides); override != nil {
+		authResult = applyDenyWith(authResult, &override.DenyWithValues, authJSON, true)
 	}
 
 	return authResult
+}
+
+// selectDenyWithOverride returns the first denial override whose conditions match, evaluating one priority group
+// at a time, or nil if none matches
+func (pipeline *AuthPipeline) selectDenyWithOverride(overrides []auth.AuthConfigEvaluator) *evaluators.DenyWithOverride {
+	if len(overrides) == 0 {
+		return nil
+	}
+
+	logger := pipeline.Logger.WithName("denywith").V(1)
+	overridesByPriority, priorities := groupAuthConfigsByPriority(overrides)
+
+	for _, priority := range priorities {
+		configs := overridesByPriority[priority]
+		respChannel := make(chan EvaluationResponse, len(configs))
+
+		go func() {
+			defer close(respChannel)
+			pipeline.evaluateOneAuthConfig(configs, &respChannel)
+		}()
+
+		for resp := range respChannel {
+			if override, ok := resp.Object.(*evaluators.DenyWithOverride); ok && resp.Success() {
+				logger.Info("denial override selected", "override", override.Name)
+				return override
+			}
+		}
+	}
+
+	return nil
+}
+
+// applyDenyWith sets the denial attributes defined in denyWith over the auth result.
+// Headers either replace the ones in the auth result as a whole or, if mergeHeaders is true, are merged into them by name.
+func applyDenyWith(authResult auth.AuthResult, denyWith *evaluators.DenyWithValues, authJSON string, mergeHeaders bool) auth.AuthResult {
+	if denyWith.Code != 0 {
+		authResult.Status = envoy_type.StatusCode(denyWith.Code)
+	}
+
+	if denyWith.Message != nil {
+		resolved, _ := denyWith.Message.ResolveFor(authJSON)
+		authResult.Message, _ = json.StringifyJSON(resolved)
+	}
+
+	if denyWith.Body != nil {
+		resolved, _ := denyWith.Body.ResolveFor(authJSON)
+		authResult.Body, _ = json.StringifyJSON(resolved)
+	}
+
+	if len(denyWith.Headers) > 0 {
+		headers := make([]map[string]string, 0)
+		if mergeHeaders {
+			headers = withoutHeaders(authResult.Headers, denyWith.Headers)
+		}
+		for _, header := range denyWith.Headers {
+			resolved, _ := header.Value.ResolveFor(authJSON)
+			value, _ := json.StringifyJSON(resolved)
+			headers = append(headers, map[string]string{header.Name: value})
+		}
+		authResult.Headers = headers
+	}
+
+	return authResult
+}
+
+// withoutHeaders returns a copy of headers without the ones named in props (case-insensitive)
+func withoutHeaders(headers []map[string]string, props []json.JSONProperty) []map[string]string {
+	names := make(map[string]struct{}, len(props))
+	for _, prop := range props {
+		names[strings.ToLower(prop.Name)] = struct{}{}
+	}
+
+	kept := make([]map[string]string, 0, len(headers))
+	for _, headerMap := range headers {
+		filtered := make(map[string]string, len(headerMap))
+		for name, value := range headerMap {
+			if _, found := names[strings.ToLower(name)]; !found {
+				filtered[name] = value
+			}
+		}
+		if len(filtered) > 0 {
+			kept = append(kept, filtered)
+		}
+	}
+	return kept
 }
 
 func NewAuthorizationJSON(request *envoy_auth.CheckRequest, authPipeline map[string]any) string {

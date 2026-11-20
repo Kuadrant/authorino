@@ -11,6 +11,7 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
@@ -359,6 +360,189 @@ func TestEvaluateWithCustomDenyOptions(t *testing.T) {
 	assert.Equal(t, len(authResult.Headers), 2)
 	headers, _ := gojson.Marshal(authResult.Headers)
 	assert.Equal(t, string(headers), `[{"X-Static-Header":"some-value"},{"Location":"https://my-app.io/login?redirect_to=https://my-api/operation"}]`)
+}
+
+func TestEvaluateWithDenyWithOverrideForUnauthenticated(t *testing.T) {
+	request := envoy_auth.CheckRequest{}
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(request.GetAttributes().GetRequest().Http).Return("xxx", nil)
+	authCredMock.EXPECT().GetIdentifier().Return("APIKEY")
+
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
+		IdentityConfigs: []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Name: "faulty-api-key", APIKey: &identity.APIKey{AuthCredentials: authCredMock}}},
+		DenyWith: evaluators.DenyWith{
+			Unauthenticated: &evaluators.DenyWithValues{
+				Overrides: []auth.AuthConfigEvaluator{
+					&evaluators.DenyWithOverride{
+						Name:       "redirect",
+						Conditions: mustPredicate(t, `request.method == "GET"`),
+						DenyWithValues: evaluators.DenyWithValues{
+							Code: 302,
+							Headers: []json.JSONProperty{
+								{Name: "Location", Value: &json.JSONValue{Pattern: "https://my-app.io/login?redirect_to={request.path}"}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, &request)
+
+	authResult := pipeline.Evaluate()
+	assert.Equal(t, authResult.Code, rpc.UNAUTHENTICATED)
+	assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_Found)
+	assert.Equal(t, authResult.Message, "the API Key provided is invalid")
+	headers, _ := gojson.Marshal(authResult.Headers)
+	assert.Equal(t, string(headers), `[{"WWW-Authenticate":"APIKEY realm=\"faulty-api-key\""},{"Location":"https://my-app.io/login?redirect_to=/operation"}]`) // merged into the challenge headers
+}
+
+func TestEvaluateWithDenyWithOverridesUnmatched(t *testing.T) {
+	base := func(overrides ...auth.AuthConfigEvaluator) *evaluators.DenyWithValues {
+		return &evaluators.DenyWithValues{
+			Message:   &json.JSONValue{Static: "base message"},
+			Headers:   []json.JSONProperty{{Name: "X-Base", Value: &json.JSONValue{Static: "1"}}},
+			Overrides: overrides,
+		}
+	}
+
+	withoutOverrides := evaluateUnauthorizedWithDenyWith(base())
+	withUnmatchedOverride := evaluateUnauthorizedWithDenyWith(base(&evaluators.DenyWithOverride{
+		Name:           "other-path",
+		Conditions:     mustPredicate(t, `request.path == "/other"`),
+		DenyWithValues: evaluators.DenyWithValues{Code: 404},
+	}))
+
+	assert.DeepEqual(t, withUnmatchedOverride, withoutOverrides)
+	assert.Equal(t, withUnmatchedOverride.Status, envoy_type_v3.StatusCode(0))
+	assert.Equal(t, withUnmatchedOverride.Message, "base message")
+}
+
+func TestEvaluateWithDenyWithOverrideMergedOverBase(t *testing.T) {
+	authResult := evaluateUnauthorizedWithDenyWith(&evaluators.DenyWithValues{
+		Code:    401,
+		Message: &json.JSONValue{Static: "base message"},
+		Body:    &json.JSONValue{Static: "base body"},
+		Headers: []json.JSONProperty{{Name: "X-Base", Value: &json.JSONValue{Static: "1"}}},
+		Overrides: []auth.AuthConfigEvaluator{
+			&evaluators.DenyWithOverride{
+				Name:       "operation",
+				Conditions: mustPredicate(t, `request.path == "/operation"`),
+				DenyWithValues: evaluators.DenyWithValues{
+					Code:    302,
+					Headers: []json.JSONProperty{{Name: "Location", Value: &json.JSONValue{Static: "/login"}}},
+				},
+			},
+		},
+	})
+
+	assert.Equal(t, authResult.Code, rpc.PERMISSION_DENIED)
+	assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_Found)
+	assert.Equal(t, authResult.Message, "base message") // falls through
+	assert.Equal(t, authResult.Body, "base body")       // falls through
+	headers, _ := gojson.Marshal(authResult.Headers)
+	assert.Equal(t, string(headers), `[{"X-Base":"1"},{"Location":"/login"}]`) // merged by name
+}
+
+func TestEvaluateWithDenyWithOverrideHeadersMergedByName(t *testing.T) {
+	authResult := evaluateUnauthorizedWithDenyWith(&evaluators.DenyWithValues{
+		Headers: []json.JSONProperty{
+			{Name: "X-Keep", Value: &json.JSONValue{Static: "k"}},
+			{Name: "X-Base", Value: &json.JSONValue{Static: "1"}},
+			{Name: "Location", Value: &json.JSONValue{Static: "/base"}},
+		},
+		Overrides: []auth.AuthConfigEvaluator{
+			&evaluators.DenyWithOverride{
+				Name: "always",
+				DenyWithValues: evaluators.DenyWithValues{
+					Headers: []json.JSONProperty{
+						{Name: "x-base", Value: &json.JSONValue{Static: ""}},         // names match case-insensitively; empty is as close to removal as it gets
+						{Name: "Location", Value: &json.JSONValue{Static: "/login"}}, // replaced
+					},
+				},
+			},
+		},
+	})
+
+	headers, _ := gojson.Marshal(authResult.Headers)
+	assert.Equal(t, string(headers), `[{"X-Keep":"k"},{"x-base":""},{"Location":"/login"}]`)
+}
+
+func TestEvaluateWithDenyWithOverridesByPriority(t *testing.T) {
+	override := func(name string, priority int, predicate string, code int32) *evaluators.DenyWithOverride {
+		return &evaluators.DenyWithOverride{
+			Name:           name,
+			Priority:       priority,
+			Conditions:     mustPredicate(t, predicate),
+			DenyWithValues: evaluators.DenyWithValues{Code: code},
+		}
+	}
+
+	for range 20 {
+		// the lower priority group wins, even when a higher one also matches
+		authResult := evaluateUnauthorizedWithDenyWith(&evaluators.DenyWithValues{
+			Overrides: []auth.AuthConfigEvaluator{
+				override("second", 1, `request.method == "GET"`, 404),
+				override("first", 0, `request.method == "GET"`, 302),
+			},
+		})
+		assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_Found)
+
+		// unmatched groups are skipped
+		authResult = evaluateUnauthorizedWithDenyWith(&evaluators.DenyWithValues{
+			Overrides: []auth.AuthConfigEvaluator{
+				override("second", 1, `request.method == "GET"`, 404),
+				override("first", 0, `request.method == "POST"`, 302),
+			},
+		})
+		assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_NotFound)
+	}
+}
+
+func TestEvaluateWithDenyWithOverrideConditionError(t *testing.T) {
+	// `no such key` at request time: the override is skipped, as any other config whose conditions fail to evaluate
+	erroring := &evaluators.DenyWithOverride{
+		Name:           "erroring",
+		Conditions:     mustPredicate(t, `request.headers["x-example"] == "a"`),
+		DenyWithValues: evaluators.DenyWithValues{Code: 302},
+	}
+
+	authResult := evaluateUnauthorizedWithDenyWith(&evaluators.DenyWithValues{
+		Overrides: []auth.AuthConfigEvaluator{
+			erroring,
+			&evaluators.DenyWithOverride{Name: "fallback", Priority: 1, DenyWithValues: evaluators.DenyWithValues{Code: 404}},
+		},
+	})
+	assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode_NotFound)
+
+	authResult = evaluateUnauthorizedWithDenyWith(&evaluators.DenyWithValues{
+		Code:      418,
+		Overrides: []auth.AuthConfigEvaluator{erroring},
+	})
+	assert.Equal(t, authResult.Status, envoy_type_v3.StatusCode(418))
+}
+
+func evaluateUnauthorizedWithDenyWith(denyWith *evaluators.DenyWithValues) auth.AuthResult {
+	request := envoy_auth.CheckRequest{}
+	_ = gojson.Unmarshal([]byte(rawRequest), &request)
+
+	pipeline := newTestAuthPipeline(evaluators.AuthConfig{
+		IdentityConfigs:      []auth.AuthConfigEvaluator{&evaluators.IdentityConfig{Name: "noop", Noop: &identity.Noop{}}},
+		AuthorizationConfigs: []auth.AuthConfigEvaluator{&failConfig{}},
+		DenyWith:             evaluators.DenyWith{Unauthorized: denyWith},
+	}, &request)
+
+	return pipeline.Evaluate()
+}
+
+func mustPredicate(t *testing.T, predicate string) jsonexp.Expression {
+	t.Helper()
+	p, err := cel.NewPredicate(predicate)
+	assert.NilError(t, err)
+	return p
 }
 
 func TestEvaluatePriorities(t *testing.T) {
