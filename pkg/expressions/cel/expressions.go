@@ -3,6 +3,7 @@ package cel
 import (
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
@@ -86,19 +87,27 @@ func (e *Expression) Evaluate(json string) (ref.Val, *cel.EvalDetails, error) {
 	return e.program.Eval(input)
 }
 
-func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (cel.Program, error) {
+// baseEnv is the environment all expressions compile in. Programs keep their environment alive, so
+// sharing it keeps each compiled expression from holding a copy of its own.
+var baseEnv = sync.OnceValues(newEnv)
+
+func newEnv() (*cel.Env, error) {
 	structType := cel.ObjectType("google.protobuf.Struct")
-	envOpts := append([]cel.EnvOption{
+	return cel.NewEnv(
 		cel.Variable(RootMetadataBinding, structType),
 		cel.Variable(RootRequestBinding, structType),
 		cel.Variable(RootSourceBinding, structType),
 		cel.Variable(RootDestinationBinding, structType),
 		cel.Variable(RootAuthBinding, structType),
-	}, opts...)
-	envOpts = append(envOpts, ext.Strings(), cel.OptionalTypes())
-	env, env_err := cel.NewEnv(envOpts...)
-	if env_err != nil {
-		return nil, env_err
+		ext.Strings(),
+		cel.OptionalTypes(),
+	)
+}
+
+func Compile(expression string, expectedType *cel.Type) (cel.Program, error) {
+	env, err := baseEnv()
+	if err != nil {
+		return nil, fmt.Errorf("building CEL environment: %w", err)
 	}
 
 	ast, issues := env.Parse(expression)
