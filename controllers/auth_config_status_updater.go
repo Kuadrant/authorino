@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	api "github.com/kuadrant/authorino/api/v1beta3"
 	"github.com/kuadrant/authorino/pkg/log"
@@ -82,7 +81,8 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := u.updateAuthConfigStatus(log.IntoContext(ctx, logger), req.String(), &authConfig); err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "failed to update status")
-			return ctrl.Result{RequeueAfter: time.Second}, nil
+			//nolint:staticcheck // Requeue preserves exponential backoff; RequeueAfter would force fixed 1s delay
+			return ctrl.Result{Requeue: true}, nil
 		} else {
 			return ctrl.Result{}, nil
 		}
