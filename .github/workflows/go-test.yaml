@@ -20,6 +20,8 @@ jobs:
       matrix:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
+    env:
+      GOTOOLCHAIN: go1.27.3
     defaults:
       run:
         shell: bash
