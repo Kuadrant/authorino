@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -151,4 +152,109 @@ func buildTestAuthConfig() evaluators.AuthConfig {
 		MetadataConfigs:      nil,
 		AuthorizationConfigs: nil,
 	}
+}
+
+func TestDeleteKeyPrunesTheKeysOfTheId(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, false))
+	assert.NilError(t, c.Set("auth-1", "echo-api.nip.io", authConfig, false))
+	assert.Equal(t, len(c.FindKeys("auth-1")), 2)
+
+	c.DeleteKey("auth-1", "talker-api.nip.io")
+
+	// FindKeys() must not keep reporting a host the resource no longer owns: cleanConfigs()
+	// resolves the config to clean from FindKeys()[0] and would otherwise pick up whichever
+	// AuthConfig owns that host now
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+	assert.Check(t, c.Get("talker-api.nip.io") == nil)
+	assert.Check(t, c.Get("echo-api.nip.io") != nil)
+}
+
+func TestDeleteRemovesTheIdFromTheKeys(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, false))
+	c.Delete("auth-1")
+
+	assert.Equal(t, len(c.FindKeys("auth-1")), 0)
+	assert.Check(t, c.Empty())
+}
+
+func TestSetDoesNotDuplicateKeys(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	// every reconcile of an unchanged AuthConfig re-indexes the same hosts
+	for i := 0; i < 5; i++ {
+		assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, true))
+	}
+
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"talker-api.nip.io"})
+}
+
+func TestDeleteKeyDoesNotStealTheHostOfAnotherId(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	// auth-1 owns both hosts, then gets narrowed down to one of them
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, false))
+	assert.NilError(t, c.Set("auth-1", "echo-api.nip.io", authConfig, false))
+	c.DeleteKey("auth-1", "talker-api.nip.io")
+
+	// auth-2 legitimately takes over the released host (addToIndex() always sets with override)
+	assert.NilError(t, c.Set("auth-2", "talker-api.nip.io", authConfig, true))
+
+	id, found := c.FindId("talker-api.nip.io")
+	assert.Check(t, found)
+	assert.Equal(t, id, "auth-2")
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+}
+
+func TestFindKeysReturnsACopy(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	assert.NilError(t, c.Set("auth-1", "talker-api.nip.io", authConfig, true))
+	assert.NilError(t, c.Set("auth-1", "echo-api.nip.io", authConfig, true))
+
+	keys := c.FindKeys("auth-1")
+	c.DeleteKey("auth-1", "talker-api.nip.io")
+
+	// deleting a key shifts the stored slice in place, which must not rewrite what an earlier
+	// caller is still holding
+	assert.DeepEqual(t, keys, []string{"talker-api.nip.io", "echo-api.nip.io"})
+	assert.DeepEqual(t, c.FindKeys("auth-1"), []string{"echo-api.nip.io"})
+}
+
+func TestFindKeysIsSafeWhileKeysAreBeingDeleted(t *testing.T) {
+	c := newAuthConfigTree()
+	authConfig := buildTestAuthConfig()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// a reader, e.g. the oidc server resolving a wristband issuer while serving a request
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			for _, key := range c.FindKeys("auth-1") {
+				_ = key
+			}
+		}
+	}()
+
+	// and the reconciler, re-indexing the same resource
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			_ = c.Set("auth-1", "talker-api.nip.io", authConfig, true)
+			_ = c.Set("auth-1", "echo-api.nip.io", authConfig, true)
+			c.DeleteKey("auth-1", "talker-api.nip.io")
+		}
+	}()
+
+	wg.Wait()
 }
