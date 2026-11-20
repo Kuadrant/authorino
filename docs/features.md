@@ -1204,7 +1204,34 @@ As for the 'complex-policy' authorization policy, the cache key is a string comp
 
 **Notes on evaluator caching**
 
-_Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `--evaluator-cache-size` command-line flag or `spec.evaluatorCacheSize` field of the `Authorino` CR).
+_Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will be evicted following First-In-First-Out (FIFO) policy to release space. The individual capacity of cache namespaces is set at the level of the Authorino instance (via `--evaluator-cache-size` command-line flag or `spec.evaluatorCacheSize` field of the `Authorino` CR). Each cached evaluator of each AuthConfig allocates its full capacity on every replica, so raising it multiplies memory by the number of cached evaluators.
+
+_Entry size_ - A single entry (cache key plus the cached object serialized as JSON) must fit in 1/1024 of the capacity of the cache namespace, minus 24 bytes. Larger entries are not cached, and the evaluator runs on every request.
+
+| `--evaluator-cache-size` | Largest entry |
+|--------------------------|---------------|
+| 1 (default)              | 1000 bytes    |
+| 2                        | 2024 bytes    |
+| 4                        | 4072 bytes    |
+
+_Cache key_ - `cache.key.expression` is a [CEL](#common-feature-common-expression-language-cel) expression. `cache.key.selector` is a JSON path or template and is not parsed as CEL. An expression set under `selector` is accepted, but it resolves to null, and nothing is cached. When the cache key does not resolve (null, or a CEL runtime error), the evaluator runs without the cache.
+
+_TTL_ - A `ttl` of 0 means the default of 60 seconds. A negative `ttl` disables the cache.
+
+_Troubleshooting_ - When an evaluator runs without its cache, Authorino logs it at the default log level, once per evaluator each time the AuthConfig is reconciled, on every replica. Each line names the `authconfig` and the `evaluator`, and none includes the cache key:
+
+- "evaluator cache key did not resolve, not cached", with `keySource` (`selector` or `expression`) and `reason`. The resolve error itself can quote request data, so it is logged at debug level only, resolved over the Authorization JSON with every string replaced.
+- "evaluator cache entry too large, not cached", with `entrySize`, `limit` and `evaluatorCacheSize`.
+- "evaluator cache failed to store entry, not cached", with `reason`.
+- "evaluator cache ttl is not positive, not cached", with `ttl`.
+
+The counters `auth_server_evaluator_cache_hit`, `auth_server_evaluator_cache_miss`, `auth_server_evaluator_cache_key_unresolved` and `auth_server_evaluator_cache_store_failed` are exported on the `/server-metrics` endpoint when [metrics](#common-feature-metrics-metrics) are enabled for the evaluator (`metrics: true`) or for the whole instance (`--deep-metrics-enabled`). Series appear only once counted, so alert on the failure counters rather than on a hit ratio:
+
+```
+sum by (namespace, authconfig, evaluator_name) (rate(auth_server_evaluator_cache_key_unresolved[5m])) > 0
+  or
+sum by (namespace, authconfig, evaluator_name) (rate(auth_server_evaluator_cache_store_failed[5m])) > 0
+```
 
 _Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
 
