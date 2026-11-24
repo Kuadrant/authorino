@@ -37,6 +37,21 @@ func TestExpressionCacheCachesCompilationErrors(t *testing.T) {
 	gotestassert.Assert(t, firstErr == cachedErr, "expected the compilation error to be cached")
 }
 
+func TestExpressionCacheReportsHits(t *testing.T) {
+	cache := NewExpressionCache(1)
+
+	_, cached, err := cache.GetOrCompileWithHit("request.")
+	gotestassert.ErrorContains(t, err, "Syntax error")
+	gotestassert.Assert(t, !cached, "expected the first lookup to miss")
+
+	_, cached, _ = cache.GetOrCompileWithHit("request.")
+	gotestassert.Assert(t, cached, "expected the second lookup to hit the cache")
+
+	_, _ = cache.GetOrCompile("request.method")
+	_, cached, _ = cache.GetOrCompileWithHit("request.")
+	gotestassert.Assert(t, !cached, "expected an evicted expression to miss again")
+}
+
 func TestExpressionCacheConcurrentAccess(t *testing.T) {
 	cache := NewExpressionCache(2)
 	expected, err := cache.GetOrCompile("request.method")
