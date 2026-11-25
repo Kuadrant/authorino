@@ -28,6 +28,15 @@ type AuthConfigEvaluator interface {
 	Call(AuthPipeline, context.Context) (interface{}, error)
 }
 
+type AuthConfigStarter interface {
+	// Start is used to give the different auth configs a chance to kick off anything that should
+	// only be running once the config is known to be valid and reachable, e.g. background workers
+	// that refresh remote state. Evaluators must not start those from their constructors: a config
+	// can fail to translate or lose every one of its hosts to another AuthConfig, and in neither
+	// case does it ever reach the index for anything to clean it up again.
+	Start(context.Context) error
+}
+
 type AuthConfigCleaner interface {
 	// Clean is used to give the different auth configs chance to clean up anything internal to that config
 	Clean(context.Context) error
