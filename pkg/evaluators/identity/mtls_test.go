@@ -171,6 +171,21 @@ func TestMTLSAddK8sSecretBasedIdentity(t *testing.T) {
 	assert.Check(t, !exists)
 }
 
+func TestMTLSAddK8sSecretBasedIdentityRemovesRootCAWithoutCertificate(t *testing.T) {
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", nil, testMTLSK8sClient, t.Context())
+	_, exists := mtls.rootCerts["ns1/pets"]
+	assert.Assert(t, exists)
+
+	// the Secret is updated and no longer holds a certificate
+	updated := testMTLSK8sSecret1.DeepCopy()
+	updated.Data = map[string][]byte{}
+	mtls.AddK8sSecretBasedIdentity(t.Context(), *updated)
+
+	_, exists = mtls.rootCerts["ns1/pets"]
+	assert.Check(t, !exists, "expected the root CA to stop being trusted")
+}
+
 func TestMTLSRevokeK8sSecretBasedIdentity(t *testing.T) {
 	var exists bool
 

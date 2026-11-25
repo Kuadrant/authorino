@@ -221,6 +221,12 @@ func (m *MTLS) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
 	logger := log.FromContext(ctx).WithName("mtls")
 
 	if newCert == nil {
+		// an update that removes or breaks the certificate stops trusting the CA it held
+		if _, found := m.rootCerts[secretName]; found {
+			delete(m.rootCerts, secretName)
+			logger.V(1).Info("trusted root ca deleted, the secret holds no valid certificate")
+			return
+		}
 		logger.V(1).Info("invalid root ca cert")
 		return
 	}
