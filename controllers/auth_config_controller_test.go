@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr/funcr"
 	api "github.com/kuadrant/authorino/api/v1beta3"
@@ -25,6 +26,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -227,6 +229,30 @@ func TestRemoveHostFromAuthConfig(t *testing.T) {
 
 	config = authConfigIndex.Get("other.io")
 	assert.Check(t, config == nil)
+}
+
+func TestReconcileDeindexesTerminatingAuthConfig(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Finalizers = []string{"example.com/hold"}
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, authConfigIndex)
+
+	_, err := reconciler.Reconcile(t.Context(), reconcile.Request{NamespacedName: authConfigName})
+	assert.NilError(t, err)
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
+
+	// the finalizer holds the object, so this only sets the deletion timestamp
+	assert.NilError(t, client.Delete(t.Context(), &authConfig))
+
+	result, err := reconciler.Reconcile(t.Context(), reconcile.Request{NamespacedName: authConfigName})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.Check(t, authConfigIndex.Get("echo-api") == nil)
+	_, reported := reconciler.StatusReport.Get(authConfigName.String())
+	assert.Check(t, !reported)
 }
 
 func TestTranslateAuthConfig(t *testing.T) {
@@ -494,6 +520,28 @@ func TestBootstrapIndex(t *testing.T) {
 	assert.NilError(t, err)
 }
 
+func TestBootstrapIndexSkipsTerminatingAuthConfigs(t *testing.T) {
+	withHostsReady := func(name, host string) api.AuthConfig {
+		authConfig := newTestAuthConfig(map[string]string{})
+		authConfig.Name = name
+		authConfig.Spec.Hosts = []string{host}
+		authConfig.Status.Summary.HostsReady = []string{host}
+		return authConfig
+	}
+	serving := withHostsReady("serving", "serving.io")
+	// the status updater skips a terminating AuthConfig, so its last status still lists its hosts
+	terminating := withHostsReady("terminating", "terminating.io")
+	terminating.Finalizers = []string{"example.com/hold"}
+	terminating.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+
+	authConfigIndex := index.NewIndex()
+	reconciler := newTestAuthConfigReconciler(newTestK8sClient(&serving, &terminating), authConfigIndex)
+
+	assert.NilError(t, reconciler.bootstrapIndex(t.Context()))
+	assert.Check(t, authConfigIndex.Get("serving.io") != nil)
+	assert.Check(t, authConfigIndex.Get("terminating.io") == nil)
+}
+
 func BenchmarkReconcileAuthConfig(b *testing.B) {
 	authConfig := newTestAuthConfig(map[string]string{})
 	secret := newTestOAuthClientSecret()
@@ -507,4 +555,114 @@ func BenchmarkReconcileAuthConfig(b *testing.B) {
 	}
 	b.StopTimer()
 	assert.NilError(b, err)
+}
+
+func TestAuthConfigPredicate(t *testing.T) {
+	stored := api.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "talker-api",
+			Namespace:       "default",
+			UID:             "uid-1",
+			Generation:      1,
+			ResourceVersion: "100",
+			Labels:          map[string]string{"group": "a"},
+			Annotations:     map[string]string{"note": "a"},
+		},
+		Status: api.AuthConfigStatus{Summary: api.AuthConfigStatusSummary{Ready: false}},
+	}
+
+	updated := func(from api.AuthConfig, change func(*api.AuthConfig)) *api.AuthConfig {
+		authConfig := from.DeepCopy()
+		authConfig.ResourceVersion = "101"
+		change(authConfig)
+		return authConfig
+	}
+
+	unwatched := *stored.DeepCopy()
+	unwatched.Labels = map[string]string{"group": "z"}
+
+	testCases := map[string]struct {
+		old, new *api.AuthConfig
+		want     bool
+	}{
+		"status only": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Status.Summary.Ready = true }),
+			want: false,
+		},
+		"finalizers only": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Finalizers = []string{"example.com/hold"} }),
+			want: false,
+		},
+		"spec": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Generation = 2 }),
+			want: true,
+		},
+		// the API server bumps the generation when it sets the deletion timestamp of an object held by a finalizer
+		"deletion requested": {
+			new: updated(stored, func(a *api.AuthConfig) {
+				a.Finalizers = []string{"example.com/hold"}
+				a.DeletionTimestamp = &metav1.Time{}
+				a.Generation = 2
+			}),
+			want: true,
+		},
+		"already terminating, status only": {
+			old: updated(stored, func(a *api.AuthConfig) {
+				a.Finalizers = []string{"example.com/hold"}
+				a.DeletionTimestamp = &metav1.Time{}
+			}),
+			new: updated(stored, func(a *api.AuthConfig) {
+				a.ResourceVersion = "102"
+				a.Finalizers = []string{"example.com/hold"}
+				a.DeletionTimestamp = &metav1.Time{}
+				a.Status.Summary.Ready = true
+			}),
+			want: false,
+		},
+		// client-go reports an AuthConfig deleted and recreated during a relist as an update.
+		"replaced": {
+			new: updated(stored, func(a *api.AuthConfig) {
+				a.UID = "uid-2"
+				a.Spec.Hosts = []string{"other.io"}
+			}),
+			want: true,
+		},
+		"labels, moved out of the selector": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Labels["group"] = "b" }),
+			want: true,
+		},
+		"annotations": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Annotations["note"] = "b" }),
+			want: true,
+		},
+		"periodic resync": {
+			new:  stored.DeepCopy(),
+			want: true,
+		},
+		"status only, not watched": {
+			old:  unwatched.DeepCopy(),
+			new:  updated(unwatched, func(a *api.AuthConfig) { a.Status.Summary.Ready = true }),
+			want: false,
+		},
+		"spec, not watched": {
+			old:  unwatched.DeepCopy(),
+			new:  updated(unwatched, func(a *api.AuthConfig) { a.Generation = 2 }),
+			want: false,
+		},
+	}
+
+	filter := authConfigPredicate(ToLabelSelector("group=a"))
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			old := tc.old
+			if old == nil {
+				old = stored.DeepCopy()
+			}
+			assert.Equal(t, filter.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: tc.new}), tc.want)
+		})
+	}
+
+	assert.Check(t, filter.Create(event.CreateEvent{Object: stored.DeepCopy()}))
+	assert.Check(t, filter.Delete(event.DeleteEvent{Object: stored.DeepCopy()}))
+	assert.Check(t, !filter.Create(event.CreateEvent{Object: unwatched.DeepCopy()}))
 }
