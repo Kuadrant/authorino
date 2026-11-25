@@ -4,6 +4,7 @@ import (
 	"context"
 	gojson "encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/kuadrant/authorino/pkg/auth"
@@ -11,12 +12,16 @@ import (
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/evaluators/authorization"
 	"github.com/kuadrant/authorino/pkg/evaluators/identity"
+	"github.com/kuadrant/authorino/pkg/expressions/cel"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/json"
 	"github.com/kuadrant/authorino/pkg/jsonexp"
+	"github.com/kuadrant/authorino/pkg/metrics"
 
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	envoy_type_v3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/gogo/googleapis/google/rpc"
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
@@ -79,9 +84,13 @@ func (c *failConfig) GetPriority() int {
 	return c.priority
 }
 
+// newTestAuthPipeline gives each pipeline its own expression caches, so no test sees what
+// another one compiled.
 func newTestAuthPipeline(authConfig evaluators.AuthConfig, req *envoy_auth.CheckRequest) *AuthPipeline {
 	p := NewAuthPipeline(context.TODO(), req, authConfig)
 	pipeline, _ := p.(*AuthPipeline)
+	pipeline.metricLabelExpressions = cel.NewExpressionCache(metricLabelExpressionCacheCapacity)
+	pipeline.loggingFieldExpressions = cel.NewExpressionCache(loggingFieldExpressionCacheCapacity)
 	return pipeline
 }
 
@@ -702,6 +711,198 @@ func TestPipelineMetricLabels(t *testing.T) {
 	// Unsupported labels
 	assert.Equal(t, "", labels["unResolvableLabel"])
 	assert.Equal(t, "", labels["nullLabel"])
+}
+
+// newMetricLabelsPipeline builds a pipeline for a GET request to my-api whose filter
+// metadata carries the given io.kuadrant.metrics.labels.
+func newMetricLabelsPipeline(tb testing.TB, metricLabelsJSON string) *AuthPipeline {
+	tb.Helper()
+	reqJSON := fmt.Sprintf(`{
+		"attributes": {
+			"metadata_context": {
+				"filter_metadata": {
+					"io.kuadrant.metrics.labels": %s
+				}
+			},
+			"request": {
+				"http": {
+					"host": "my-api",
+					"path": "/operation",
+					"method": "GET"
+				}
+			}
+		}
+	}`, metricLabelsJSON)
+
+	var request envoy_auth.CheckRequest
+	assert.NilError(tb, gojson.Unmarshal([]byte(reqJSON), &request))
+	return newTestAuthPipeline(evaluators.AuthConfig{}, &request)
+}
+
+// BenchmarkPipelineMetricLabels measures one metric call site. Logging is discarded, so
+// only the CEL work counts.
+func BenchmarkPipelineMetricLabels(b *testing.B) {
+	pipeline := newMetricLabelsPipeline(b, `{
+		"method": { "cel_expr": "request.method" },
+		"host": { "cel_expr": "request.host" },
+		"organization_id": { "cel_expr": "has(auth.identity.subscription_info.organizationId) ? auth.identity.subscription_info.organizationId : \"\"" }
+	}`)
+	pipeline.Logger = logr.Discard()
+
+	for b.Loop() {
+		_ = pipeline.metricLabels()
+	}
+}
+
+// recordLogs replaces the pipeline logger with one that records each entry, V(1) included.
+func recordLogs(pipeline *AuthPipeline) *[]string {
+	var logs []string
+	pipeline.Logger = funcr.New(func(_, args string) {
+		logs = append(logs, args)
+	}, funcr.Options{Verbosity: 1})
+	return &logs
+}
+
+func countLogs(logs []string, substrings ...string) int {
+	count := 0
+	for _, entry := range logs {
+		matches := true
+		for _, s := range substrings {
+			matches = matches && strings.Contains(entry, s)
+		}
+		if matches {
+			count++
+		}
+	}
+	return count
+}
+
+func setDeepMetrics(t *testing.T, enabled bool) {
+	t.Helper()
+	previous := metrics.DeepMetricsEnabled
+	metrics.DeepMetricsEnabled = enabled
+	t.Cleanup(func() { metrics.DeepMetricsEnabled = previous })
+}
+
+// labelUnresolvedBeforeIdentity is the shape of a TelemetryPolicy label: it can't resolve
+// until the identity phase has run.
+const labelUnresolvedBeforeIdentity = `{ "organization_id": { "cel_expr": "has(auth.identity.subscription_info.organizationId) ? auth.identity.subscription_info.organizationId : \"\"" } }`
+
+func TestPipelineMetricLabelsLogsUnresolvedLabelsAtV1(t *testing.T) {
+	pipeline := newMetricLabelsPipeline(t, labelUnresolvedBeforeIdentity)
+	logs := recordLogs(pipeline)
+
+	for range 3 {
+		_, ok := pipeline.metricLabels()["organization_id"]
+		assert.Check(t, !ok, "expected the unresolved label to be left out")
+	}
+
+	assert.Equal(t, countLogs(*logs, `"level"=1`, `"msg"="failed to evaluate CEL expression"`), 3)
+	assert.Equal(t, countLogs(*logs, `"error"=`), 0)
+}
+
+func TestPipelineMetricLabelsLogsParseErrorOnce(t *testing.T) {
+	pipeline := newMetricLabelsPipeline(t, `{ "broken": { "cel_expr": "request." } }`)
+	logs := recordLogs(pipeline)
+
+	for range 3 {
+		_, ok := pipeline.metricLabels()["broken"]
+		assert.Check(t, !ok, "expected the label that doesn't compile to be left out")
+	}
+
+	assert.Equal(t, countLogs(*logs, `"msg"="failed to parse CEL expression"`, `"error"=`), 1)
+	assert.Equal(t, countLogs(*logs, `"level"=1`, `"msg"="failed to parse CEL expression"`), 2)
+}
+
+func TestPipelineMetricLabelsLogsBrokenLabelsAtError(t *testing.T) {
+	testCases := []struct {
+		name     string
+		expr     string
+		identity any
+		atError  bool
+	}{
+		{name: "auth.* before the identity phase", expr: "auth.identity.subscription_info.organizationId"},
+		{name: "field of an API key identity", expr: "auth.identity.subscription_info.organizationId", identity: "APIKEY n3ex87bye9238ry8"},
+		{name: "type error", expr: "request.method + 1", atError: true},
+		{name: "failed conversion", expr: "int(request.method)", atError: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pipeline := newMetricLabelsPipeline(t, fmt.Sprintf(`{ "label": { "cel_expr": %q } }`, tc.expr))
+			if tc.identity != nil {
+				pipeline.Identity[&evaluators.IdentityConfig{Name: "api-key"}] = tc.identity
+			}
+			logs := recordLogs(pipeline)
+
+			_, ok := pipeline.metricLabels()["label"]
+			assert.Check(t, !ok, "expected the label to be left out")
+
+			atError := countLogs(*logs, `"msg"="failed to evaluate CEL expression"`, `"error"=`)
+			atV1 := countLogs(*logs, `"level"=1`, `"msg"="failed to evaluate CEL expression"`)
+			if tc.atError {
+				assert.Equal(t, atError, 1)
+				assert.Equal(t, atV1, 0)
+			} else {
+				assert.Equal(t, atError, 0)
+				assert.Equal(t, atV1, 1)
+			}
+		})
+	}
+}
+
+type monitorableConfig struct {
+	successConfig
+	metricsEnabled bool
+}
+
+func (c *monitorableConfig) GetType() string      { return "TEST" }
+func (c *monitorableConfig) GetName() string      { return "monitorable" }
+func (c *monitorableConfig) MetricsEnabled() bool { return c.metricsEnabled }
+
+func TestEvaluatorMetricLabels(t *testing.T) {
+	testCases := []struct {
+		name        string
+		evaluator   metrics.Object
+		deepMetrics bool
+		expected    map[string]string
+	}{
+		{name: "evaluator metrics off", evaluator: &monitorableConfig{}},
+		{name: "evaluator metrics on", evaluator: &monitorableConfig{metricsEnabled: true}, expected: map[string]string{"method": "GET"}},
+		{name: "deep metrics on", evaluator: &monitorableConfig{}, deepMetrics: true, expected: map[string]string{"method": "GET"}},
+		{name: "evaluator without metrics", evaluator: nil, deepMetrics: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setDeepMetrics(t, tc.deepMetrics)
+			pipeline := newMetricLabelsPipeline(t, `{ "method": { "cel_expr": "request.method" } }`)
+
+			assert.DeepEqual(t, pipeline.evaluatorMetricLabels(tc.evaluator), tc.expected)
+		})
+	}
+}
+
+func TestEvaluateAuthConfigEvaluatesMetricLabelsOnlyWhenReported(t *testing.T) {
+	testCases := []struct {
+		name           string
+		metricsEnabled bool
+		evaluations    int
+	}{
+		{name: "evaluator metrics off", metricsEnabled: false, evaluations: 0},
+		// auth_server_evaluator_total and auth_server_evaluator_duration_seconds
+		{name: "evaluator metrics on", metricsEnabled: true, evaluations: 2},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setDeepMetrics(t, false)
+			pipeline := newMetricLabelsPipeline(t, labelUnresolvedBeforeIdentity)
+			logs := recordLogs(pipeline)
+			respChannel := make(chan EvaluationResponse, 1)
+
+			pipeline.evaluateAuthConfig(&monitorableConfig{metricsEnabled: tc.metricsEnabled}, t.Context(), &respChannel, nil, nil)
+
+			assert.Equal(t, countLogs(*logs, `"msg"="failed to evaluate CEL expression"`), tc.evaluations)
+		})
+	}
 }
 
 func TestPipelineLoggingFields(t *testing.T) {

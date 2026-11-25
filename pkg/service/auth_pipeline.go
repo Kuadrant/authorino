@@ -89,6 +89,9 @@ func NewAuthPipeline(parentCtx gocontext.Context, req *envoy_auth.CheckRequest, 
 		Callbacks:     make(map[*evaluators.CallbackConfig]interface{}),
 		Logger:        logger,
 		mu:            sync.RWMutex{},
+
+		metricLabelExpressions:  sharedMetricLabelExpressions,
+		loggingFieldExpressions: sharedLoggingFieldExpressions,
 	}
 }
 
@@ -109,22 +112,25 @@ type AuthPipeline struct {
 	Logger log.Logger
 
 	mu sync.RWMutex
+
+	metricLabelExpressions  *cel.ExpressionCache
+	loggingFieldExpressions *cel.ExpressionCache
 }
 
 func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, successCallback func(), failureCallback func()) {
 	monitorable, _ := config.(metrics.Object)
 
-	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.metricLabels())
+	metrics.ReportMetricWithObject(authServerEvaluatorTotalMetric, monitorable, pipeline.evaluatorMetricLabels(monitorable))
 
 	if err := context.CheckContext(ctx); err != nil {
 		pipeline.Logger.V(1).Info("skipping config", "config", config, "reason", err)
-		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.metricLabels())
+		metrics.ReportMetricWithObject(authServerEvaluatorCancelledMetric, monitorable, pipeline.evaluatorMetricLabels(monitorable))
 		return
 	}
 
 	if conditionalEv, ok := config.(auth.ConditionalEvaluator); ok {
 		if err := pipeline.evaluateConditions(conditionalEv.GetConditions()); err != nil {
-			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.metricLabels())
+			metrics.ReportMetricWithObject(authServerEvaluatorIgnoredMetric, monitorable, pipeline.evaluatorMetricLabels(monitorable))
 			return
 		}
 	}
@@ -133,7 +139,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		if authObj, err := config.Call(pipeline, ctx); err != nil {
 			*respChannel <- newEvaluationResponse(config, nil, err)
 
-			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.metricLabels())
+			metrics.ReportMetricWithObject(authServerEvaluatorDeniedMetric, monitorable, pipeline.evaluatorMetricLabels(monitorable))
 
 			if failureCallback != nil {
 				failureCallback()
@@ -147,7 +153,7 @@ func (pipeline *AuthPipeline) evaluateAuthConfig(config auth.AuthConfigEvaluator
 		}
 	}
 
-	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.metricLabels())
+	metrics.ReportTimedMetricWithObject(authServerEvaluatorDurationMetric, evaluateFunc, monitorable, pipeline.evaluatorMetricLabels(monitorable))
 }
 
 type authConfigEvaluationStrategy func(conf auth.AuthConfigEvaluator, ctx gocontext.Context, respChannel *chan EvaluationResponse, cancel func())
@@ -510,11 +516,21 @@ func (pipeline *AuthPipeline) reportStatusMetric(rpcStatusCode rpc.Code) {
 	metrics.ReportMetricWithStatus(authServerAuthConfigResponseStatusMetric, rpc.Code_name[int32(rpcStatusCode)], pipeline.metricLabels())
 }
 
+// evaluatorMetricLabels returns the labels for an evaluator's metrics, or nil when the
+// evaluator doesn't report metrics, so custom labels aren't evaluated only to be dropped.
+func (pipeline *AuthPipeline) evaluatorMetricLabels(evaluator metrics.Object) map[string]string {
+	if !metrics.ObjectMetricsEnabled(evaluator) {
+		return nil
+	}
+	return pipeline.metricLabels()
+}
+
 func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	labels := maps.Clone(pipeline.AuthConfig.Labels)
 	if labels == nil {
 		labels = make(map[string]string)
 	}
+	var authJSON string
 
 	// Check for custom labels via the heuristic path
 	filteredMetadata := pipeline.GetRequest().GetAttributes().GetMetadataContext().GetFilterMetadata()
@@ -535,14 +551,30 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 				// Could be a CEL expression wrapper { "cel_expr": "<expr>" }
 				if celExprField, ok := kind.StructValue.Fields["cel_expr"]; ok {
 					if exprStr := celExprField.GetStringValue(); exprStr != "" {
-						expr, err := cel.NewExpression(exprStr)
+						expr, cached, err := pipeline.metricLabelExpressions.GetOrCompileWithHit(exprStr)
 						if err != nil {
-							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
+							// A parse error doesn't change between requests, so it's reported once per
+							// cache entry. The cache is process-wide, so later requests, whatever their
+							// AuthConfig, only show it in debug mode.
+							if cached {
+								pipeline.Logger.V(1).Info("failed to parse CEL expression", "expression", exprStr, "reason", err)
+							} else {
+								pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
+							}
 							continue
 						}
-						value, err := expr.ResolveFor(pipeline.GetAuthorizationJSON())
+						if authJSON == "" {
+							authJSON = pipeline.GetAuthorizationJSON()
+						}
+						value, err := expr.ResolveFor(authJSON)
 						if err != nil {
-							pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
+							if isMissingDataError(err) {
+								// Expected where the data doesn't exist yet, such as auth.* at call sites
+								// before the identity phase. The label is left out.
+								pipeline.Logger.V(1).Info("failed to evaluate CEL expression", "expression", exprStr, "reason", err)
+							} else {
+								pipeline.Logger.Error(err, "failed to evaluate CEL expression", "expression", exprStr)
+							}
 							continue
 						}
 						labels[k] = fmt.Sprintf("%v", value)
@@ -556,6 +588,14 @@ func (pipeline *AuthPipeline) metricLabels() map[string]string {
 	}
 
 	return labels
+}
+
+// isMissingDataError reports whether err is cel-go failing to resolve a key, which happens
+// when the data an expression refers to isn't in the authorization JSON yet. cel-go doesn't
+// export its resolution error type, so the message is all there is to check. Every binding
+// is a google.protobuf.Struct, so a misspelt field name fails the same way.
+func isMissingDataError(err error) bool {
+	return strings.HasPrefix(err.Error(), "no such key:")
 }
 
 const loggingFieldPrefix = "custom."
@@ -617,7 +657,7 @@ func (pipeline *AuthPipeline) loggingFields(maxValueBytes int) map[string]string
 							}
 							redactedAuthJSON = string(redacted)
 						}
-						expr, err := loggingFieldExpressions.GetOrCompile(exprStr)
+						expr, err := pipeline.loggingFieldExpressions.GetOrCompile(exprStr)
 						if err != nil {
 							pipeline.Logger.Error(err, "failed to parse CEL expression", "expression", exprStr)
 							continue

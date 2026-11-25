@@ -218,12 +218,19 @@ func ReportTimedMetricWithObject(metric *DynamicHistogram, f func(), obj Object,
 	}
 }
 
+// ObjectMetricsEnabled reports whether metrics are reported for obj, because obj enables
+// them or because deep metrics are on.
+func ObjectMetricsEnabled(obj Object) bool {
+	return obj != nil && (obj.MetricsEnabled() || DeepMetricsEnabled)
+}
+
 func extendLabelValuesWithObject(obj Object, baseLabels map[string]string) (map[string]string, error) {
-	if obj == nil || (!obj.MetricsEnabled() && !DeepMetricsEnabled) {
+	if !ObjectMetricsEnabled(obj) {
 		return nil, fmt.Errorf("metrics are disabled")
 	}
 
-	labels := maps.Clone(baseLabels)
+	labels := make(map[string]string, len(baseLabels)+2)
+	maps.Copy(labels, baseLabels)
 	labels["evaluator_type"] = obj.GetType()
 	labels["evaluator_name"] = obj.GetName()
 
