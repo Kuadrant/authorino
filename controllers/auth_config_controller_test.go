@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/go-logr/logr/funcr"
 	api "github.com/kuadrant/authorino/api/v1beta3"
+	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
 	"github.com/kuadrant/authorino/pkg/index"
@@ -26,6 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -253,6 +256,115 @@ func TestReconcileDeindexesTerminatingAuthConfig(t *testing.T) {
 	assert.Check(t, authConfigIndex.Get("echo-api") == nil)
 	_, reported := reconciler.StatusReport.Get(authConfigName.String())
 	assert.Check(t, !reported)
+}
+
+// The Secret reconciler only updates AuthConfigs that are indexed, so a Secret created or deleted
+// while an AuthConfig is translated reaches it only if it lists its Secrets again once indexed.
+func TestReconcileListsAPIKeySecretsAgainOnceIndexed(t *testing.T) {
+	authConfig := api.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "talker-api-protection", Namespace: "authorino"},
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"talker-api"},
+			Authentication: map[string]api.AuthenticationSpec{
+				"api-key": {
+					AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+						ApiKey: &api.ApiKeyAuthenticationSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"group": "friends"}}},
+					},
+				},
+			},
+		},
+	}
+	apiKeySecret := func(name, key string) v1.Secret {
+		return v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "authorino", Labels: map[string]string{"group": "friends"}},
+			Data:       map[string][]byte{"api_key": []byte(key)},
+		}
+	}
+	created := apiKeySecret("created", "created-during-translation")
+	deleted := apiKeySecret("deleted", "deleted-during-translation")
+
+	// the first list, made during translation, sees the Secrets as they were before
+	firstSecretList := true
+	authConfigIndex := index.NewIndex()
+	scheme := runtime.NewScheme()
+	_ = api.AddToScheme(scheme)
+	_ = v1.AddToScheme(scheme)
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&authConfig, &created).WithStatusSubresource(&api.AuthConfig{}).
+		WithInterceptorFuncs(interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if secrets, ok := list.(*v1.SecretList); ok && firstSecretList {
+					firstSecretList = false
+					secrets.Items = []v1.Secret{deleted}
+					return nil
+				}
+				if _, ok := list.(*v1.SecretList); ok && authConfigIndex.Get("talker-api") == nil {
+					t.Error("listed the Secrets again before the AuthConfig was indexed")
+				}
+				return c.List(ctx, list, opts...)
+			},
+		}).Build()
+	reconciler := newTestAuthConfigReconciler(k8sClient, authConfigIndex)
+
+	_, err := reconciler.Reconcile(t.Context(), reconcile.Request{NamespacedName: types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}})
+	assert.NilError(t, err)
+
+	indexed := authConfigIndex.Get("talker-api")
+	assert.Assert(t, indexed != nil)
+	identity, ok := indexed.IdentityConfigs[0].(*evaluators.IdentityConfig)
+	assert.Assert(t, ok)
+	assert.Check(t, acceptsAPIKey(t, identity, "created-during-translation"), "expected the Secret created during translation to be loaded")
+	assert.Check(t, !acceptsAPIKey(t, identity, "deleted-during-translation"), "expected the Secret deleted during translation to be dropped")
+}
+
+func TestReconcileFailsWhenListingIdentitySecretsAgainFails(t *testing.T) {
+	authConfig := api.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "talker-api-protection", Namespace: "authorino"},
+		Spec: api.AuthConfigSpec{
+			Hosts: []string{"talker-api"},
+			Authentication: map[string]api.AuthenticationSpec{
+				"api-key": {
+					AuthenticationMethodSpec: api.AuthenticationMethodSpec{
+						ApiKey: &api.ApiKeyAuthenticationSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"group": "friends"}}},
+					},
+				},
+			},
+		},
+	}
+	secretLists := 0
+	scheme := runtime.NewScheme()
+	_ = api.AddToScheme(scheme)
+	_ = v1.AddToScheme(scheme)
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&authConfig).WithStatusSubresource(&api.AuthConfig{}).
+		WithInterceptorFuncs(interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if _, ok := list.(*v1.SecretList); ok {
+					if secretLists++; secretLists > 1 {
+						return fmt.Errorf("cache not synced")
+					}
+				}
+				return c.List(ctx, list, opts...)
+			},
+		}).Build()
+	reconciler := newTestAuthConfigReconciler(k8sClient, index.NewIndex())
+	resourceName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+
+	// returning the error requeues the AuthConfig, so the Secrets are listed again
+	_, err := reconciler.Reconcile(t.Context(), reconcile.Request{NamespacedName: resourceName})
+	assert.ErrorContains(t, err, "cache not synced")
+
+	// the hosts are indexed and served by now, so the report lists them with the error
+	report, _ := reconciler.StatusReport.Get(resourceName.String())
+	assert.Equal(t, report.Reason, api.StatusReasonCachingError)
+	assert.Check(t, strings.Contains(report.Message, "cache not synced"))
+	assert.DeepEqual(t, report.LinkedHosts, []string{"talker-api"})
+}
+
+func acceptsAPIKey(t *testing.T, identity *evaluators.IdentityConfig, key string) bool {
+	t.Helper()
+	pipeline := mock_auth.NewMockAuthPipeline(gomock.NewController(t))
+	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{Headers: map[string]string{"authorization": "Bearer " + key}}).AnyTimes()
+	_, err := identity.APIKey.Call(pipeline, t.Context())
+	return err == nil
 }
 
 func TestTranslateAuthConfig(t *testing.T) {

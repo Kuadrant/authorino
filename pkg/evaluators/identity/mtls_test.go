@@ -880,3 +880,39 @@ func decodePrivateKey(encodedCert []byte) (key *rsa.PrivateKey) {
 	}
 	return key
 }
+
+func TestLoadK8sSecretBasedIdentitiesReplacesRootCAs(t *testing.T) {
+	client := mockK8sClient(testMTLSK8sSecret1.DeepCopy())
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "", "", "", nil, client, t.Context())
+
+	// one Secret deleted and one created since the identity was built
+	assert.NilError(t, client.Delete(t.Context(), testMTLSK8sSecret1.DeepCopy()))
+	created := testMTLSK8sSecret2.DeepCopy()
+	created.ResourceVersion = ""
+	assert.NilError(t, client.Create(t.Context(), created))
+
+	assert.NilError(t, mtls.LoadK8sSecretBasedIdentities(t.Context()))
+	_, exists := mtls.rootCerts["ns1/pets"]
+	assert.Check(t, !exists, "expected the root CA of the deleted Secret to be dropped")
+	_, exists = mtls.rootCerts["ns1/cars"]
+	assert.Check(t, exists, "expected the root CA of the created Secret to be loaded")
+}
+
+func TestLoadK8sSecretBasedIdentitiesListsRootCAsUnderTheWriteLock(t *testing.T) {
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "", "", "", nil, testMTLSK8sClient, t.Context())
+	mtls.k8sClient = lockCheckingReader{Reader: testMTLSK8sClient, t: t, mutex: &mtls.mutex}
+
+	assert.NilError(t, mtls.LoadK8sSecretBasedIdentities(t.Context()))
+}
+
+func TestLoadK8sSecretBasedIdentitiesKeepsRootCAsWhenTheListFails(t *testing.T) {
+	selector, _ := k8s_labels.Parse("app=all")
+	mtls := NewMTLSIdentity("mtls", selector, "ns1", "", "", nil, testMTLSK8sClient, t.Context())
+	mtls.k8sClient = &flawedAPIkeyK8sClient{}
+
+	assert.Check(t, mtls.LoadK8sSecretBasedIdentities(t.Context()) != nil)
+	_, exists := mtls.rootCerts["ns1/pets"]
+	assert.Check(t, exists, "expected the root CAs to be kept")
+}

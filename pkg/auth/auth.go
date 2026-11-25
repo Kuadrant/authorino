@@ -61,6 +61,8 @@ type IdentityConfigEvaluator interface {
 
 type K8sSecretBasedIdentityConfigEvaluator interface {
 	GetK8sSecretLabelSelectors() labels.Selector
+	// LoadK8sSecretBasedIdentities replaces the identities with the Secrets that match now.
+	LoadK8sSecretBasedIdentities(context.Context) error
 	AddK8sSecretBasedIdentity(context.Context, v1.Secret)
 	RevokeK8sSecretBasedIdentity(context.Context, types.NamespacedName)
 }

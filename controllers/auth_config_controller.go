@@ -230,6 +230,13 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
+		if err := r.reloadK8sSecretBasedIdentities(log.IntoContext(ctx, logger), translatedAuthConfig); err != nil {
+			r.StatusReport.Set(resourceId, api.StatusReasonCachingError, err.Error(), linkedHosts)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to reload identity secrets")
+			return ctrl.Result{}, err
+		}
+
 		span.SetAttributes(
 			attribute.Int("authconfig.linked_hosts_count", len(linkedHosts)),
 			attribute.Int("authconfig.loose_hosts_count", len(looseHosts)),
@@ -246,6 +253,29 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// reloadK8sSecretBasedIdentities lists the Secrets of the API key and mTLS identities again once the
+// AuthConfig is indexed. They were first listed during translation, and the Secret reconciler only
+// updates indexed AuthConfigs, so a Secret created or deleted in between would otherwise be missed
+// until the next translation. A change after this list reaches the indexed identities through the
+// Secret reconciler. That holds because both read the manager's informer cache, which is updated
+// before the Secret event is handled; listing from the API server instead would reopen the gap.
+func (r *AuthConfigReconciler) reloadK8sSecretBasedIdentities(ctx context.Context, authConfig *evaluators.AuthConfig) error {
+	for _, identity := range authConfig.IdentityConfigs {
+		ev, ok := identity.(auth.K8sSecretBasedIdentityConfigEvaluator)
+		if !ok {
+			continue
+		}
+		if err := ev.LoadK8sSecretBasedIdentities(ctx); err != nil {
+			name := ""
+			if named, ok := identity.(auth.NamedEvaluator); ok {
+				name = named.GetName()
+			}
+			return fmt.Errorf("failed to list the Secrets of identity %q again: %w", name, err)
+		}
+	}
+	return nil
 }
 
 func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId string) error {

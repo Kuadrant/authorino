@@ -517,6 +517,20 @@ func (mr *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder) GetK8sSecretLab
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetK8sSecretLabelSelectors", reflect.TypeOf((*MockK8sSecretBasedIdentityConfigEvaluator)(nil).GetK8sSecretLabelSelectors))
 }
 
+// LoadK8sSecretBasedIdentities mocks base method.
+func (m *MockK8sSecretBasedIdentityConfigEvaluator) LoadK8sSecretBasedIdentities(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadK8sSecretBasedIdentities", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LoadK8sSecretBasedIdentities indicates an expected call of LoadK8sSecretBasedIdentities.
+func (mr *MockK8sSecretBasedIdentityConfigEvaluatorMockRecorder) LoadK8sSecretBasedIdentities(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadK8sSecretBasedIdentities", reflect.TypeOf((*MockK8sSecretBasedIdentityConfigEvaluator)(nil).LoadK8sSecretBasedIdentities), arg0)
+}
+
 // RevokeK8sSecretBasedIdentity mocks base method.
 func (m *MockK8sSecretBasedIdentityConfigEvaluator) RevokeK8sSecretBasedIdentity(arg0 context.Context, arg1 types.NamespacedName) {
 	m.ctrl.T.Helper()

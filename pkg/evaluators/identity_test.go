@@ -1,6 +1,7 @@
 package evaluators
 
 import (
+	"context"
 	gojson "encoding/json"
 	"testing"
 
@@ -10,6 +11,10 @@ import (
 
 	"go.uber.org/mock/gomock"
 	"gotest.tools/assert"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
@@ -53,4 +58,31 @@ func TestIdentityConfig_ResolveExtendedProperties(t *testing.T) {
 	assert.NilError(t, err)
 	extendedIdentityObjectJSON, _ := gojson.Marshal(extendedIdentityObject)
 	assert.Equal(t, string(extendedIdentityObjectJSON), `{"exp":1629884250,"prop1":"value1","prop2":"foo","sub":"foo"}`)
+}
+
+func TestIdentityConfigLoadsK8sSecretBasedIdentities(t *testing.T) {
+	lists := 0
+	k8sClient := fake.NewClientBuilder().WithInterceptorFuncs(interceptor.Funcs{
+		List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			lists++
+			return c.List(ctx, list, opts...)
+		},
+	}).Build()
+
+	testCases := map[string]*IdentityConfig{
+		"api key": {Name: "api-key", APIKey: identity.NewApiKeyIdentity("api-key", labels.Everything(), "", nil, k8sClient, t.Context())},
+		"mtls":    {Name: "mtls", MTLS: identity.NewMTLSIdentity("mtls", labels.Everything(), "", "", "", nil, k8sClient, t.Context())},
+	}
+	for name, config := range testCases {
+		t.Run(name, func(t *testing.T) {
+			before := lists
+			assert.NilError(t, config.LoadK8sSecretBasedIdentities(t.Context()))
+			assert.Equal(t, lists, before+1)
+		})
+	}
+
+	// other identities have no Secrets to list
+	before := lists
+	assert.NilError(t, (&IdentityConfig{Name: "k8s", KubernetesAuth: &identity.KubernetesAuth{}}).LoadK8sSecretBasedIdentities(t.Context()))
+	assert.Equal(t, lists, before)
 }
