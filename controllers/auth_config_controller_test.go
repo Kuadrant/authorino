@@ -230,6 +230,30 @@ func TestRemoveHostFromAuthConfig(t *testing.T) {
 	assert.Check(t, config == nil)
 }
 
+func TestReconcileDeindexesTerminatingAuthConfig(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+	authConfig := newTestAuthConfig(map[string]string{})
+	authConfig.Finalizers = []string{"example.com/hold"}
+	authConfigName := types.NamespacedName{Name: authConfig.Name, Namespace: authConfig.Namespace}
+	secret := newTestOAuthClientSecret()
+	client := newTestK8sClient(&authConfig, &secret)
+	reconciler := newTestAuthConfigReconciler(client, authConfigIndex)
+
+	_, err := reconciler.Reconcile(t.Context(), reconcile.Request{NamespacedName: authConfigName})
+	assert.NilError(t, err)
+	assert.Check(t, authConfigIndex.Get("echo-api") != nil)
+
+	// the finalizer holds the object, so this only sets the deletion timestamp
+	assert.NilError(t, client.Delete(t.Context(), &authConfig))
+
+	result, err := reconciler.Reconcile(t.Context(), reconcile.Request{NamespacedName: authConfigName})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, result, ctrl.Result{})
+	assert.Check(t, authConfigIndex.Get("echo-api") == nil)
+	_, reported := reconciler.StatusReport.Get(authConfigName.String())
+	assert.Check(t, !reported)
+}
+
 func TestTranslateAuthConfig(t *testing.T) {
 	// TODO
 }
@@ -515,6 +539,7 @@ func TestAuthConfigPredicate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "talker-api",
 			Namespace:       "default",
+			UID:             "uid-1",
 			Generation:      1,
 			ResourceVersion: "100",
 			Labels:          map[string]string{"group": "a"},
@@ -549,10 +574,32 @@ func TestAuthConfigPredicate(t *testing.T) {
 			new:  updated(stored, func(a *api.AuthConfig) { a.Generation = 2 }),
 			want: true,
 		},
+		// A deletion request on an object held by a finalizer sets only the deletion timestamp.
 		"deletion requested": {
 			new: updated(stored, func(a *api.AuthConfig) {
+				a.Finalizers = []string{"example.com/hold"}
 				a.DeletionTimestamp = &metav1.Time{}
-				a.Generation = 2
+			}),
+			want: true,
+		},
+		"already terminating, status only": {
+			old: updated(stored, func(a *api.AuthConfig) {
+				a.Finalizers = []string{"example.com/hold"}
+				a.DeletionTimestamp = &metav1.Time{}
+			}),
+			new: updated(stored, func(a *api.AuthConfig) {
+				a.ResourceVersion = "102"
+				a.Finalizers = []string{"example.com/hold"}
+				a.DeletionTimestamp = &metav1.Time{}
+				a.Status.Summary.Ready = true
+			}),
+			want: false,
+		},
+		// client-go reports an AuthConfig deleted and recreated during a relist as an update.
+		"replaced": {
+			new: updated(stored, func(a *api.AuthConfig) {
+				a.UID = "uid-2"
+				a.Spec.Hosts = []string{"other.io"}
 			}),
 			want: true,
 		},

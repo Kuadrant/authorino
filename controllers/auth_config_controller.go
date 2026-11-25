@@ -149,8 +149,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to get authconfig")
 		return ctrl.Result{}, err
-	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
-		// could not find the resource: 404 Not found (resource must have been deleted)
+	} else if errors.IsNotFound(err) || authConfig.DeletionTimestamp != nil || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
+		// could not find the resource: 404 Not found (resource must have been deleted),
+		// the resource is being deleted (held by a finalizer)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		span.AddEvent("authconfig.deleted_or_unwatched")
 
@@ -1168,8 +1169,12 @@ func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // status-only update. Every reconciliation re-translates the AuthConfig and replaces its evaluators, caches
 // included, and the status updater writes the status in response to the same events, so without this filter
 // each status write would trigger another round.
-// Secrets referenced by the spec are read only at translation time, so periodic resyncs (same resource version)
-// still pass, and an annotation change remains the way to re-read them on demand.
+// Besides spec, label and annotation changes, an update passes when:
+//   - the UID changed: client-go reports an AuthConfig deleted and recreated during a relist as an update;
+//   - the resource version didn't change: a periodic resync. Secrets referenced by the spec are read only at
+//     translation time, so resyncs, and an annotation change on demand, are the way to re-read them;
+//   - deletion was just requested: an object held by a finalizer only gets a deletion timestamp, and it is
+//     de-indexed then rather than when it is gone.
 func authConfigPredicate(selector labels.Selector) predicate.Predicate {
 	return predicate.And(LabelSelectorPredicate(selector), authConfigChangedPredicate())
 }
@@ -1181,7 +1186,10 @@ func authConfigChangedPredicate() predicate.Predicate {
 		predicate.AnnotationChangedPredicate{},
 		predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				return e.ObjectOld.GetResourceVersion() == e.ObjectNew.GetResourceVersion()
+				oldObj, newObj := e.ObjectOld, e.ObjectNew
+				return oldObj.GetUID() != newObj.GetUID() ||
+					oldObj.GetResourceVersion() == newObj.GetResourceVersion() ||
+					(oldObj.GetDeletionTimestamp() == nil && newObj.GetDeletionTimestamp() != nil)
 			},
 		},
 	)

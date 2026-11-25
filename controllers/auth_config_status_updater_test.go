@@ -160,6 +160,26 @@ func TestAuthConfigStatusUpdater_HostNotLinked(t *testing.T) {
 	assert.Equal(t, status.Summary.HostsReady[0], "my-api.com")
 }
 
+func TestAuthConfigStatusUpdater_Terminating(t *testing.T) {
+	authConfig := mockStatusUpdateAuthConfig()
+	authConfig.Finalizers = []string{"example.com/hold"}
+	resourceName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
+	client := newTestK8sClient(&authConfig)
+	reconciler := mockStatusUpdaterReconciler(client)
+	// the finalizer holds the object, so this only sets the deletion timestamp
+	assert.NilError(t, client.Delete(t.Context(), &authConfig))
+
+	result, err := reconciler.Reconcile(t.Context(), ctrl.Request{NamespacedName: resourceName})
+
+	assert.Equal(t, result, ctrl.Result{})
+	assert.NilError(t, err)
+
+	authConfigCheck := api.AuthConfig{}
+	assert.NilError(t, client.Get(t.Context(), resourceName, &authConfigCheck))
+	assert.Check(t, authConfigCheck.DeletionTimestamp != nil)
+	assert.Equal(t, len(authConfigCheck.Status.Conditions), 0)
+}
+
 func mockStatusUpdateAuthConfig() api.AuthConfig {
 	return mockStatusUpdateAuthConfigWithLabelsAndHosts(map[string]string{"authorino.kuadrant.io/managed-by": "authorino"}, []string{"echo-api"})
 }

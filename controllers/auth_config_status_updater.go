@@ -55,8 +55,9 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to get authconfig")
 		return ctrl.Result{}, err
-	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, u.LabelSelector) {
-		// could not find the resource: 404 Not found (resource must have been deleted)
+	} else if errors.IsNotFound(err) || authConfig.DeletionTimestamp != nil || !Watched(&authConfig.ObjectMeta, u.LabelSelector) {
+		// could not find the resource: 404 Not found (resource must have been deleted),
+		// the resource is being deleted (held by a finalizer, the reconciler de-indexes it)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		// skip status update
 		span.AddEvent("authconfig.deleted_or_unwatched")
