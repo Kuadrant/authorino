@@ -81,6 +81,7 @@ func (u *AuthConfigStatusUpdater) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := u.updateAuthConfigStatus(log.IntoContext(ctx, logger), req.String(), &authConfig); err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "failed to update status")
+			//nolint:staticcheck // Requeue preserves exponential backoff; RequeueAfter would force fixed 1s delay
 			return ctrl.Result{Requeue: true}, nil
 		} else {
 			return ctrl.Result{}, nil

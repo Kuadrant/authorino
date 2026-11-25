@@ -18,6 +18,8 @@ jobs:
         platform: [ ubuntu-latest ]
     runs-on: ${{ matrix.platform }}
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    env:
+      GOTOOLCHAIN: go1.27.3
     defaults:
       run:
         shell: bash
