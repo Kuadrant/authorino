@@ -117,7 +117,11 @@ func Compile(expression string, expectedType *cel.Type, opts ...cel.EnvOption) (
 		}
 	}
 
-	program, err := env.Program(checked)
+	// Small constant `matches()` patterns are compiled here, once, instead of on every evaluation.
+	//
+	// Don't enable cel.OptOptimize: it appends cel-go's own MatchesRegexOptimization, which replaces
+	// this one (see matchesRegexOptimization).
+	program, err := env.Program(checked, cel.OptimizeRegex(matchesRegexOptimization))
 	if err != nil {
 		return nil, err
 	}
