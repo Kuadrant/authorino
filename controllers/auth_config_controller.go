@@ -58,6 +58,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const (
@@ -1158,8 +1160,31 @@ func (r *AuthConfigReconciler) ClusterWide() bool {
 
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&api.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
+		For(&api.AuthConfig{}, builder.WithPredicates(authConfigPredicate(r.LabelSelector))).
 		Complete(r)
+}
+
+// authConfigPredicate selects the AuthConfig events to reconcile: watched by the label selector, and not a
+// status-only update. Every reconciliation re-translates the AuthConfig and replaces its evaluators, caches
+// included, and the status updater writes the status in response to the same events, so without this filter
+// each status write would trigger another round.
+// Secrets referenced by the spec are read only at translation time, so periodic resyncs (same resource version)
+// still pass, and an annotation change remains the way to re-read them on demand.
+func authConfigPredicate(selector labels.Selector) predicate.Predicate {
+	return predicate.And(LabelSelectorPredicate(selector), authConfigChangedPredicate())
+}
+
+func authConfigChangedPredicate() predicate.Predicate {
+	return predicate.Or(
+		predicate.GenerationChangedPredicate{},
+		predicate.LabelChangedPredicate{},
+		predicate.AnnotationChangedPredicate{},
+		predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				return e.ObjectOld.GetResourceVersion() == e.ObjectNew.GetResourceVersion()
+			},
+		},
+	)
 }
 
 func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {

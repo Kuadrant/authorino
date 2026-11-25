@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -507,4 +508,90 @@ func BenchmarkReconcileAuthConfig(b *testing.B) {
 	}
 	b.StopTimer()
 	assert.NilError(b, err)
+}
+
+func TestAuthConfigPredicate(t *testing.T) {
+	stored := api.AuthConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "talker-api",
+			Namespace:       "default",
+			Generation:      1,
+			ResourceVersion: "100",
+			Labels:          map[string]string{"group": "a"},
+			Annotations:     map[string]string{"note": "a"},
+		},
+		Status: api.AuthConfigStatus{Summary: api.AuthConfigStatusSummary{Ready: false}},
+	}
+
+	updated := func(from api.AuthConfig, change func(*api.AuthConfig)) *api.AuthConfig {
+		authConfig := from.DeepCopy()
+		authConfig.ResourceVersion = "101"
+		change(authConfig)
+		return authConfig
+	}
+
+	unwatched := *stored.DeepCopy()
+	unwatched.Labels = map[string]string{"group": "z"}
+
+	testCases := map[string]struct {
+		old, new *api.AuthConfig
+		want     bool
+	}{
+		"status only": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Status.Summary.Ready = true }),
+			want: false,
+		},
+		"finalizers only": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Finalizers = []string{"example.com/hold"} }),
+			want: false,
+		},
+		"spec": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Generation = 2 }),
+			want: true,
+		},
+		"deletion requested": {
+			new: updated(stored, func(a *api.AuthConfig) {
+				a.DeletionTimestamp = &metav1.Time{}
+				a.Generation = 2
+			}),
+			want: true,
+		},
+		"labels, moved out of the selector": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Labels["group"] = "b" }),
+			want: true,
+		},
+		"annotations": {
+			new:  updated(stored, func(a *api.AuthConfig) { a.Annotations["note"] = "b" }),
+			want: true,
+		},
+		"periodic resync": {
+			new:  stored.DeepCopy(),
+			want: true,
+		},
+		"status only, not watched": {
+			old:  unwatched.DeepCopy(),
+			new:  updated(unwatched, func(a *api.AuthConfig) { a.Status.Summary.Ready = true }),
+			want: false,
+		},
+		"spec, not watched": {
+			old:  unwatched.DeepCopy(),
+			new:  updated(unwatched, func(a *api.AuthConfig) { a.Generation = 2 }),
+			want: false,
+		},
+	}
+
+	filter := authConfigPredicate(ToLabelSelector("group=a"))
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			old := tc.old
+			if old == nil {
+				old = stored.DeepCopy()
+			}
+			assert.Equal(t, filter.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: tc.new}), tc.want)
+		})
+	}
+
+	assert.Check(t, filter.Create(event.CreateEvent{Object: stored.DeepCopy()}))
+	assert.Check(t, filter.Delete(event.DeleteEvent{Object: stored.DeepCopy()}))
+	assert.Check(t, !filter.Create(event.CreateEvent{Object: unwatched.DeepCopy()}))
 }
