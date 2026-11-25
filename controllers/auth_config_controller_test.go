@@ -11,6 +11,7 @@ import (
 	envoy_auth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"github.com/go-logr/logr/funcr"
 	api "github.com/kuadrant/authorino/api/v1beta3"
+	"github.com/kuadrant/authorino/pkg/auth"
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
 	"github.com/kuadrant/authorino/pkg/evaluators"
 	"github.com/kuadrant/authorino/pkg/httptest"
@@ -365,6 +366,51 @@ func acceptsAPIKey(t *testing.T, identity *evaluators.IdentityConfig, key string
 	pipeline.EXPECT().GetHttp().Return(&envoy_auth.AttributeContext_HttpRequest{Headers: map[string]string{"authorization": "Bearer " + key}}).AnyTimes()
 	_, err := identity.APIKey.Call(pipeline, t.Context())
 	return err == nil
+}
+
+type cleanRecordingEvaluator struct{ cleaned bool }
+
+func (e *cleanRecordingEvaluator) Call(auth.AuthPipeline, context.Context) (interface{}, error) {
+	return nil, nil
+}
+
+func (e *cleanRecordingEvaluator) Clean(context.Context) error {
+	e.cleaned = true
+	return nil
+}
+
+func TestCleanConfigsCleansTheConfigItServes(t *testing.T) {
+	authConfigIndex := index.NewIndex()
+	own := &cleanRecordingEvaluator{}
+	assert.NilError(t, authConfigIndex.Set("authorino/a", "api.example.com", evaluators.AuthConfig{IdentityConfigs: []auth.AuthConfigEvaluator{own}}, true))
+	reconciler := newTestAuthConfigReconciler(newTestK8sClient(), authConfigIndex)
+
+	assert.NilError(t, reconciler.cleanConfigs(t.Context(), "authorino/a"))
+	assert.Check(t, own.cleaned)
+}
+
+// A deletion request de-indexes an AuthConfig held by a finalizer, and its host can go to another
+// AuthConfig before it is gone. The index still lists the released host for it, so the reconcile
+// after the finalizer is removed must not clean whoever serves that host now.
+func TestCleanConfigsSkipsHostsServedByAnotherAuthConfig(t *testing.T) {
+	testCases := map[string]struct{ otherId, otherHost string }{
+		"same host":     {otherId: "other/same-host", otherHost: "api.example.com"},
+		"wildcard host": {otherId: "other/wildcard", otherHost: "*.example.com"},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			authConfigIndex := index.NewIndex()
+			released := &cleanRecordingEvaluator{}
+			assert.NilError(t, authConfigIndex.Set("authorino/released", "api.example.com", evaluators.AuthConfig{IdentityConfigs: []auth.AuthConfigEvaluator{released}}, true))
+			authConfigIndex.Delete("authorino/released")
+			other := &cleanRecordingEvaluator{}
+			assert.NilError(t, authConfigIndex.Set(tc.otherId, tc.otherHost, evaluators.AuthConfig{IdentityConfigs: []auth.AuthConfigEvaluator{other}}, true))
+			reconciler := newTestAuthConfigReconciler(newTestK8sClient(), authConfigIndex)
+
+			assert.NilError(t, reconciler.cleanConfigs(t.Context(), "authorino/released"))
+			assert.Check(t, !other.cleaned, "expected the evaluators of %s to be left running", tc.otherId)
+		})
+	}
 }
 
 func TestTranslateAuthConfig(t *testing.T) {

@@ -284,10 +284,14 @@ func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId stri
 
 	span.SetAttributes(attribute.String("authconfig.resource_id", resourceId))
 
-	if hosts := r.Index.FindKeys(resourceId); len(hosts) > 0 {
-		span.SetAttributes(attribute.Int("authconfig.hosts_to_clean", len(hosts)))
-		// no need to clean for all the hosts as the config should be the same
-		if authConfig := r.Index.Get(hosts[0]); authConfig != nil {
+	// The index keeps listing the hosts an AuthConfig released, by removing a host from its spec or
+	// when deletion was requested, and another AuthConfig may serve them by now. Clean only a config
+	// this one still serves; the config is the same for all its hosts.
+	for _, host := range r.Index.FindKeys(resourceId) {
+		if id, found := r.Index.FindId(host); !found || id != resourceId {
+			continue
+		}
+		if authConfig := r.Index.Get(host); authConfig != nil {
 			if err := authConfig.Clean(ctx); err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to clean authconfig")
@@ -295,9 +299,9 @@ func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId stri
 			}
 			span.AddEvent("authconfig.cleaned")
 		}
-	} else {
-		span.AddEvent("authconfig.no_hosts_to_clean")
+		return nil
 	}
+	span.AddEvent("authconfig.no_hosts_to_clean")
 	return nil
 }
 
