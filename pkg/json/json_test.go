@@ -346,3 +346,38 @@ func TestStringifyJSON(t *testing.T) {
 	assert.Equal(t, str, `{"prop_str":"str","prop_num":123,"prop_bool":false,"prop_null":null,"prop_arr":["a","b","c"],"prop_obj":{"a_prop":"a_value"}}`)
 	assert.NilError(t, err)
 }
+
+func TestJSONValueLookupFor(t *testing.T) {
+	const jsonData = `{"auth":{"identity":{"sub":"alice","org":null,"nickname":"","age":42}}}`
+
+	for name, tc := range map[string]struct {
+		value     JSONValue
+		wantValue interface{}
+		wantFound bool
+	}{
+		"path":                           {JSONValue{Pattern: "auth.identity.sub"}, "alice", true},
+		"path to null":                   {JSONValue{Pattern: "auth.identity.org"}, nil, true},
+		"path to an empty string":        {JSONValue{Pattern: "auth.identity.nickname"}, "", true},
+		"missing path":                   {JSONValue{Pattern: "auth.identity.email"}, nil, false},
+		"template":                       {JSONValue{Pattern: "user-{auth.identity.sub}"}, []any{"alice"}, true},
+		"template, two placeholders":     {JSONValue{Pattern: "{auth.identity.sub}-{auth.identity.age}"}, []any{"alice", float64(42)}, true},
+		"template, missing":              {JSONValue{Pattern: "user-{auth.identity.email}"}, []any{nil}, false},
+		"template, one of two missing":   {JSONValue{Pattern: "{auth.identity.sub}-{auth.identity.email}"}, []any{"alice", nil}, false},
+		"template, first of two missing": {JSONValue{Pattern: "{auth.identity.email}-{auth.identity.sub}"}, []any{nil, "alice"}, false},
+		"template, null placeholder":     {JSONValue{Pattern: "user-{auth.identity.org}"}, []any{nil}, true},
+		"template, empty placeholder":    {JSONValue{Pattern: "user-{auth.identity.nickname}"}, []any{""}, true},
+		"template, unterminated":         {JSONValue{Pattern: "user-{auth.identity.sub"}, []any{}, false},
+		"template, no path in braces":    {JSONValue{Pattern: "user-{}"}, []any{}, false},
+		"template, escaped braces":       {JSONValue{Pattern: `user-\{x\}-{auth.identity.sub}`}, []any{"alice"}, true},
+		// a modifier makes up a null from nothing, so the placeholder counts as found
+		"template, modifier over missing": {JSONValue{Pattern: `user-{auth.identity.email.@extract:{"sep":"@","pos":1}}`}, []any{nil}, true},
+		"static":                          {JSONValue{Static: "x"}, "x", true},
+		"static null":                     {JSONValue{}, nil, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			value, found := tc.value.LookupFor(jsonData)
+			assert.DeepEqual(t, value, tc.wantValue)
+			assert.Equal(t, found, tc.wantFound)
+		})
+	}
+}

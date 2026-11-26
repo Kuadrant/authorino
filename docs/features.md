@@ -1208,6 +1208,10 @@ _Capacity_ - By default, each cache namespace is limited to 1 mb. Entries will b
 
 _Usage_ - Avoid caching objects whose evaluation is considered to be relatively cheap. Examples of operations associated to Authorino auth features that are usually NOT worth caching: validation of JSON Web Tokens (JWT), Kubernetes TokenReviews and SubjectAccessReviews, API key validation, simple JSON pattern-matching authorization rules, simple OPA policies. Examples of operations where caching may be desired: OAuth2 token introspection, fetching of metadata from external sources (via HTTP request), complex OPA policies.
 
+_Key encoding_ - Authorino stores a cache key as its JSON encoding, so keys of different types, such as `"1"` and `1`, never share an entry. A template key is stored as the list of what its placeholders select, without its static text, so a separator in a value cannot make two keys alike: with `{a}-{b}`, `acme-eu`/`bob` and `acme`/`eu-bob` get different entries. The key counts towards the size of an entry, which is limited to 1/1024 of the cache size less 24 bytes (1000 bytes at the default 1 mb). An entry over the limit is not cached, so raise `--evaluator-cache-size` for large keys, such as one built from a list of groups.
+
+_Unresolved keys_ - The evaluator runs without the cache when its key does not resolve: a path that selects nothing, a template with a placeholder that selects nothing, names no path (`{}`) or is left open, a CEL runtime error such as `no such key`, or a string that is not valid UTF-8. A key that resolves to null or to an empty string, array or object is a key like any other, and requests that resolve to the same one share an entry. Authorino cannot tell a key source selects nothing for gjson array multipaths (`[a,b]`), which drop missing members, or for modifiers that make up a value.
+
 ## Common feature: Metrics (`metrics`)
 
 By default, Authorino will only export metrics down to the level of the AuthConfig. Deeper metrics at the level of each evaluator within an AuthConfig can be activated by setting the common field `metrics: true` of the evaluator config.
