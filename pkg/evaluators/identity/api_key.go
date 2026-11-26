@@ -47,20 +47,24 @@ func NewApiKeyIdentity(name string, labelSelectors k8s_labels.Selector, namespac
 	return apiKey
 }
 
-// loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted API keys
+// loadSecrets replaces the trusted API keys with the matching k8s secrets. It lists under the
+// write lock, so an add or revoke handled meanwhile can't be undone by a list read before it.
+// A failed list keeps the current keys.
 func (a *APIKey) loadSecrets(ctx context.Context) error {
 	opts := []k8s_client.ListOption{k8s_client.MatchingLabelsSelector{Selector: a.LabelSelectors}}
 	if namespace := a.Namespace; namespace != "" {
 		opts = append(opts, k8s_client.InNamespace(namespace))
 	}
+
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
 	var secretList = &k8s.SecretList{}
 	if err := a.k8sClient.List(ctx, secretList, opts...); err != nil {
 		return err
 	}
 
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
+	clear(a.secrets)
 	for _, secret := range secretList.Items {
 		a.appendK8sSecretBasedIdentity(secret)
 	}
@@ -87,8 +91,14 @@ func (a *APIKey) Call(pipeline auth.AuthPipeline, _ context.Context) (interface{
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
+var _ auth.K8sSecretBasedIdentityConfigEvaluator = &APIKey{}
+
 func (a *APIKey) GetK8sSecretLabelSelectors() k8s_labels.Selector {
 	return a.LabelSelectors
+}
+
+func (a *APIKey) LoadK8sSecretBasedIdentities(ctx context.Context) error {
+	return a.loadSecrets(ctx)
 }
 
 func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
@@ -110,6 +120,7 @@ func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) 
 				delete(a.secrets, oldAPIKeyValue)
 				logger.V(1).Info("api key updated")
 			} else {
+				a.secrets[oldAPIKeyValue] = new
 				logger.V(1).Info("api key unchanged")
 			}
 			return

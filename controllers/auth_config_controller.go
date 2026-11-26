@@ -58,6 +58,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const (
@@ -147,8 +149,9 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to get authconfig")
 		return ctrl.Result{}, err
-	} else if errors.IsNotFound(err) || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
-		// could not find the resource: 404 Not found (resource must have been deleted)
+	} else if errors.IsNotFound(err) || authConfig.DeletionTimestamp != nil || !Watched(&authConfig.ObjectMeta, r.LabelSelector) {
+		// could not find the resource: 404 Not found (resource must have been deleted),
+		// the resource is being deleted (held by a finalizer)
 		// or the resource misses required labels (i.e. not to be watched by this controller)
 		span.AddEvent("authconfig.deleted_or_unwatched")
 
@@ -227,6 +230,13 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
+		if err := r.reloadK8sSecretBasedIdentities(log.IntoContext(ctx, logger), translatedAuthConfig); err != nil {
+			r.StatusReport.Set(resourceId, api.StatusReasonCachingError, err.Error(), linkedHosts)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to reload identity secrets")
+			return ctrl.Result{}, err
+		}
+
 		span.SetAttributes(
 			attribute.Int("authconfig.linked_hosts_count", len(linkedHosts)),
 			attribute.Int("authconfig.loose_hosts_count", len(looseHosts)),
@@ -245,16 +255,43 @@ func (r *AuthConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
+// reloadK8sSecretBasedIdentities lists the Secrets of the API key and mTLS identities again once the
+// AuthConfig is indexed. They were first listed during translation, and the Secret reconciler only
+// updates indexed AuthConfigs, so a Secret created or deleted in between would otherwise be missed
+// until the next translation. A change after this list reaches the indexed identities through the
+// Secret reconciler. That holds because both read the manager's informer cache, which is updated
+// before the Secret event is handled; listing from the API server instead would reopen the gap.
+func (r *AuthConfigReconciler) reloadK8sSecretBasedIdentities(ctx context.Context, authConfig *evaluators.AuthConfig) error {
+	for _, identity := range authConfig.IdentityConfigs {
+		ev, ok := identity.(auth.K8sSecretBasedIdentityConfigEvaluator)
+		if !ok {
+			continue
+		}
+		if err := ev.LoadK8sSecretBasedIdentities(ctx); err != nil {
+			name := ""
+			if named, ok := identity.(auth.NamedEvaluator); ok {
+				name = named.GetName()
+			}
+			return fmt.Errorf("failed to list the Secrets of identity %q again: %w", name, err)
+		}
+	}
+	return nil
+}
+
 func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId string) error {
 	ctx, span := trace.NewSpan(ctx, "authconfig", "authconfig.clean_configs")
 	defer span.End()
 
 	span.SetAttributes(attribute.String("authconfig.resource_id", resourceId))
 
-	if hosts := r.Index.FindKeys(resourceId); len(hosts) > 0 {
-		span.SetAttributes(attribute.Int("authconfig.hosts_to_clean", len(hosts)))
-		// no need to clean for all the hosts as the config should be the same
-		if authConfig := r.Index.Get(hosts[0]); authConfig != nil {
+	// The index keeps listing the hosts an AuthConfig released, by removing a host from its spec or
+	// when deletion was requested, and another AuthConfig may serve them by now. Clean only a config
+	// this one still serves; the config is the same for all its hosts.
+	for _, host := range r.Index.FindKeys(resourceId) {
+		if id, found := r.Index.FindId(host); !found || id != resourceId {
+			continue
+		}
+		if authConfig := r.Index.Get(host); authConfig != nil {
 			if err := authConfig.Clean(ctx); err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "failed to clean authconfig")
@@ -262,9 +299,9 @@ func (r *AuthConfigReconciler) cleanConfigs(ctx context.Context, resourceId stri
 			}
 			span.AddEvent("authconfig.cleaned")
 		}
-	} else {
-		span.AddEvent("authconfig.no_hosts_to_clean")
+		return nil
 	}
+	span.AddEvent("authconfig.no_hosts_to_clean")
 	return nil
 }
 
@@ -1126,6 +1163,10 @@ func (r *AuthConfigReconciler) bootstrapIndex(ctx context.Context) error {
 		if len(authConfig.Status.Summary.HostsReady) == 0 { // unfortunately we cannot use arbitrary field selectors for custom resources yet - https://github.com/kubernetes/kubernetes/issues/51046
 			continue
 		}
+		// a terminating AuthConfig keeps its last status, since the status updater skips it, but it isn't indexed
+		if authConfig.DeletionTimestamp != nil {
+			continue
+		}
 
 		authConfigName := types.NamespacedName{Namespace: authConfig.Namespace, Name: authConfig.Name}
 		logger.V(1).Info("building index", "authconfig", authConfigName.String())
@@ -1158,8 +1199,37 @@ func (r *AuthConfigReconciler) ClusterWide() bool {
 
 func (r *AuthConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&api.AuthConfig{}, builder.WithPredicates(LabelSelectorPredicate(r.LabelSelector))).
+		For(&api.AuthConfig{}, builder.WithPredicates(authConfigPredicate(r.LabelSelector))).
 		Complete(r)
+}
+
+// authConfigPredicate selects the AuthConfig events to reconcile: watched by the label selector, and not a
+// status-only update. Every reconciliation re-translates the AuthConfig and replaces its evaluators, caches
+// included, and the status updater writes the status in response to the same events, so without this filter
+// each status write would trigger another round.
+// Besides spec, label and annotation changes, an update passes when:
+//   - the UID changed: client-go reports an AuthConfig deleted and recreated during a relist as an update;
+//   - the resource version didn't change: a periodic resync. Secrets referenced by the spec are read only at
+//     translation time, so resyncs, and an annotation change on demand, are the way to re-read them.
+//
+// A deletion request passes as a spec change, because the API server bumps the generation when it sets the
+// deletion timestamp, so an AuthConfig held by a finalizer is de-indexed then rather than when it is gone.
+func authConfigPredicate(selector labels.Selector) predicate.Predicate {
+	return predicate.And(LabelSelectorPredicate(selector), authConfigChangedPredicate())
+}
+
+func authConfigChangedPredicate() predicate.Predicate {
+	return predicate.Or(
+		predicate.GenerationChangedPredicate{},
+		predicate.LabelChangedPredicate{},
+		predicate.AnnotationChangedPredicate{},
+		predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				oldObj, newObj := e.ObjectOld, e.ObjectNew
+				return oldObj.GetUID() != newObj.GetUID() || oldObj.GetResourceVersion() == newObj.GetResourceVersion()
+			},
+		},
+	)
 }
 
 func (r *AuthConfigReconciler) Ready(includes, _ []string, _ bool) error {

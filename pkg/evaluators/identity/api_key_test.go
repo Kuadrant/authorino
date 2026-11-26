@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	mock_auth "github.com/kuadrant/authorino/pkg/auth/mocks"
@@ -13,6 +14,7 @@ import (
 
 	gomock "go.uber.org/mock/gomock"
 	"gotest.tools/assert"
+	k8s_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -154,4 +156,77 @@ func BenchmarkAPIKeyAuthn(b *testing.B) {
 	}
 	b.StopTimer()
 	assert.NilError(b, err)
+}
+
+func TestLoadK8sSecretBasedIdentitiesReplacesAPIKeys(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := mockK8sClient(testAPIKeyK8sSecret1.DeepCopy())
+	selector, _ := k8s_labels.Parse("planet=coruscant")
+	apiKey := NewApiKeyIdentity("jedi", selector, "", mock_auth.NewMockAuthCredentials(ctrl), client, t.Context())
+
+	// one Secret deleted and one created since the identity was built
+	assert.NilError(t, client.Delete(t.Context(), testAPIKeyK8sSecret1.DeepCopy()))
+	created := testAPIKeyK8sSecret2.DeepCopy()
+	created.ResourceVersion = ""
+	assert.NilError(t, client.Create(t.Context(), created))
+
+	assert.NilError(t, apiKey.LoadK8sSecretBasedIdentities(t.Context()))
+	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
+	assert.Check(t, !exists, "expected the API key of the deleted Secret to be dropped")
+	_, exists = apiKey.secrets["MasterYodaLightSaber"]
+	assert.Check(t, exists, "expected the API key of the created Secret to be loaded")
+}
+
+func TestLoadK8sSecretBasedIdentitiesKeepsAPIKeysWhenTheListFails(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	selector, _ := k8s_labels.Parse("planet=coruscant")
+	apiKey := NewApiKeyIdentity("jedi", selector, "ns1", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, t.Context())
+	apiKey.k8sClient = &flawedAPIkeyK8sClient{}
+
+	assert.Check(t, apiKey.LoadK8sSecretBasedIdentities(t.Context()) != nil)
+	_, exists := apiKey.secrets["ObiWanKenobiLightSaber"]
+	assert.Check(t, exists, "expected the API keys to be kept")
+}
+
+// lockCheckingReader fails the test when the Secrets are listed without the identity's write lock.
+// A list read before an add or revoke that is applied first would undo it when the list replaces
+// the identities.
+type lockCheckingReader struct {
+	k8s_client.Reader
+	t     *testing.T
+	mutex *sync.RWMutex
+}
+
+func (r lockCheckingReader) List(ctx context.Context, list k8s_client.ObjectList, opts ...k8s_client.ListOption) error {
+	if r.mutex.TryRLock() {
+		r.mutex.RUnlock()
+		r.t.Error("listed the Secrets without holding the write lock")
+	}
+	return r.Reader.List(ctx, list, opts...)
+}
+
+func TestLoadK8sSecretBasedIdentitiesListsAPIKeysUnderTheWriteLock(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	selector, _ := k8s_labels.Parse("planet=coruscant")
+	apiKey := NewApiKeyIdentity("jedi", selector, "", mock_auth.NewMockAuthCredentials(ctrl), testAPIKeyK8sClient, t.Context())
+	apiKey.k8sClient = lockCheckingReader{Reader: testAPIKeyK8sClient, t: t, mutex: &apiKey.mutex}
+
+	assert.NilError(t, apiKey.LoadK8sSecretBasedIdentities(t.Context()))
+}
+
+func TestAPIKeyAddK8sSecretBasedIdentityUpdatesMetadata(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil)
+	selector, _ := k8s_labels.Parse("planet=coruscant")
+	apiKey := NewApiKeyIdentity("jedi", selector, "", authCredMock, mockK8sClient(testAPIKeyK8sSecret1.DeepCopy()), t.Context())
+
+	// same key, new labels: the identity is the Secret, so authorization rules read them
+	updated := testAPIKeyK8sSecret1.DeepCopy()
+	updated.Labels = map[string]string{"planet": "coruscant", "rank": "master"}
+	apiKey.AddK8sSecretBasedIdentity(t.Context(), *updated)
+
+	identity, err := apiKey.Call(mockAuthPipeline(ctrl), t.Context())
+	assert.NilError(t, err)
+	assert.DeepEqual(t, identity.(k8s.Secret).Labels, updated.Labels)
 }

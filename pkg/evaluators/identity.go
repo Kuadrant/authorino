@@ -214,6 +214,25 @@ func (config *IdentityConfig) GetOpenIdConfig() auth.OpenIdConfigStore {
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
+// The Secret reconciler finds identities by type assertion, so a missing method would drop them
+// silently.
+var _ auth.K8sSecretBasedIdentityConfigEvaluator = &IdentityConfig{}
+
+func (config *IdentityConfig) LoadK8sSecretBasedIdentities(ctx context.Context) error {
+	var ev auth.K8sSecretBasedIdentityConfigEvaluator
+
+	switch config.GetType() {
+	case identityMTLS:
+		ev = config.MTLS
+	case identityAPIKey:
+		ev = config.APIKey
+	default:
+		return nil
+	}
+
+	return ev.LoadK8sSecretBasedIdentities(ctx)
+}
+
 func (config *IdentityConfig) AddK8sSecretBasedIdentity(ctx context.Context, new v1.Secret) {
 	var ev auth.K8sSecretBasedIdentityConfigEvaluator
 

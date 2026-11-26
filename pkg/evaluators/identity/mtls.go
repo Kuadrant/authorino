@@ -53,20 +53,24 @@ func NewMTLSIdentity(name string, labelSelectors k8s_labels.Selector, namespace 
 	return mtls
 }
 
-// loadSecrets will load the matching k8s secrets from the cluster to the cache of trusted root CAs
+// loadSecrets replaces the trusted root CAs with the matching k8s secrets. It lists under the
+// write lock, so an add or revoke handled meanwhile can't be undone by a list read before it.
+// A failed list keeps the current root CAs.
 func (m *MTLS) loadSecrets(ctx context.Context) error {
 	opts := []k8s_client.ListOption{k8s_client.MatchingLabelsSelector{Selector: m.LabelSelectors}}
 	if namespace := m.Namespace; namespace != "" {
 		opts = append(opts, k8s_client.InNamespace(namespace))
 	}
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	var secretList = &k8s.SecretList{}
 	if err := m.k8sClient.List(ctx, secretList, opts...); err != nil {
 		return err
 	}
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
+	clear(m.rootCerts)
 	for _, secret := range secretList.Items {
 		secretName := k8s_types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
 		if cert := certificateFromSecret(secret); cert != nil {
@@ -194,8 +198,14 @@ func (m *MTLS) extractFromSourceCertificate(pipeline auth.AuthPipeline) (string,
 
 // impl:K8sSecretBasedIdentityConfigEvaluator
 
+var _ auth.K8sSecretBasedIdentityConfigEvaluator = &MTLS{}
+
 func (m *MTLS) GetK8sSecretLabelSelectors() k8s_labels.Selector {
 	return m.LabelSelectors
+}
+
+func (m *MTLS) LoadK8sSecretBasedIdentities(ctx context.Context) error {
+	return m.loadSecrets(ctx)
 }
 
 func (m *MTLS) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
@@ -211,6 +221,12 @@ func (m *MTLS) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) {
 	logger := log.FromContext(ctx).WithName("mtls")
 
 	if newCert == nil {
+		// an update that removes or breaks the certificate stops trusting the CA it held
+		if _, found := m.rootCerts[secretName]; found {
+			delete(m.rootCerts, secretName)
+			logger.V(1).Info("trusted root ca deleted, the secret holds no valid certificate")
+			return
+		}
 		logger.V(1).Info("invalid root ca cert")
 		return
 	}

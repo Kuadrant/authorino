@@ -62,6 +62,14 @@ func (i *fakeAPIKeyIdentityConfig) GetK8sSecretLabelSelectors() labels.Selector 
 	return i.evaluator.GetK8sSecretLabelSelectors()
 }
 
+func (i *fakeAPIKeyIdentityConfig) LoadK8sSecretBasedIdentities(ctx context.Context) error {
+	return i.evaluator.LoadK8sSecretBasedIdentities(ctx)
+}
+
+// The Secret reconciler finds identities by type assertion, so a missing method would drop this
+// fake silently.
+var _ auth.K8sSecretBasedIdentityConfigEvaluator = &fakeAPIKeyIdentityConfig{}
+
 type secretReconcilerTest struct {
 	SecretReconciler *SecretReconciler
 	Secret           v1.Secret
