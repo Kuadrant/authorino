@@ -347,6 +347,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			translatedIdentity.Cache = evaluators.NewEvaluatorCache(
 				key,
 				ttl,
+				client.ObjectKeyFromObject(authConfig),
 			)
 		}
 
@@ -496,6 +497,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			translatedMetadata.Cache = evaluators.NewEvaluatorCache(
 				key,
 				ttl,
+				client.ObjectKeyFromObject(authConfig),
 			)
 		}
 
@@ -594,6 +596,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 			translatedAuthorization.Cache = evaluators.NewEvaluatorCache(
 				key,
 				ttl,
+				client.ObjectKeyFromObject(authConfig),
 			)
 		}
 
@@ -789,7 +792,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				headerSuccessResponse.Metrics,
 			)
 
-			if err := injectCache(headerSuccessResponse.Cache, translatedResponse); err != nil {
+			if err := injectCache(headerSuccessResponse.Cache, client.ObjectKeyFromObject(authConfig), translatedResponse); err != nil {
 				return nil, err
 			}
 			if err := injectResponseConfig(ctx, authConfig, headerSuccessResponse.SuccessResponseSpec, r, translatedResponse); err != nil {
@@ -813,7 +816,7 @@ func (r *AuthConfigReconciler) translateAuthConfig(ctx context.Context, authConf
 				successResponse.Metrics,
 			)
 
-			if err := injectCache(successResponse.Cache, translatedResponse); err != nil {
+			if err := injectCache(successResponse.Cache, client.ObjectKeyFromObject(authConfig), translatedResponse); err != nil {
 				return nil, err
 			}
 			if err := injectResponseConfig(ctx, authConfig, successResponse, r, translatedResponse); err != nil {
@@ -1000,7 +1003,7 @@ func injectResponseConfig(ctx context.Context, authConfig *api.AuthConfig, succe
 	return nil
 }
 
-func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.ResponseConfig) error {
+func injectCache(cache *api.EvaluatorCaching, owner types.NamespacedName, translatedResponse *evaluators.ResponseConfig) error {
 	if cache != nil {
 		ttl := cache.TTL
 		if ttl == 0 {
@@ -1012,6 +1015,7 @@ func injectCache(cache *api.EvaluatorCaching, translatedResponse *evaluators.Res
 			translatedResponse.Cache = evaluators.NewEvaluatorCache(
 				key,
 				ttl,
+				owner,
 			)
 		}
 	}
