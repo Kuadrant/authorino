@@ -213,3 +213,20 @@ func TestLoadK8sSecretBasedIdentitiesListsAPIKeysUnderTheWriteLock(t *testing.T)
 
 	assert.NilError(t, apiKey.LoadK8sSecretBasedIdentities(t.Context()))
 }
+
+func TestAPIKeyAddK8sSecretBasedIdentityUpdatesMetadata(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	authCredMock := mock_auth.NewMockAuthCredentials(ctrl)
+	authCredMock.EXPECT().GetCredentialsFromAuthReq(gomock.Any()).Return("ObiWanKenobiLightSaber", nil)
+	selector, _ := k8s_labels.Parse("planet=coruscant")
+	apiKey := NewApiKeyIdentity("jedi", selector, "", authCredMock, mockK8sClient(testAPIKeyK8sSecret1.DeepCopy()), t.Context())
+
+	// same key, new labels: the identity is the Secret, so authorization rules read them
+	updated := testAPIKeyK8sSecret1.DeepCopy()
+	updated.Labels = map[string]string{"planet": "coruscant", "rank": "master"}
+	apiKey.AddK8sSecretBasedIdentity(t.Context(), *updated)
+
+	identity, err := apiKey.Call(mockAuthPipeline(ctrl), t.Context())
+	assert.NilError(t, err)
+	assert.DeepEqual(t, identity.(k8s.Secret).Labels, updated.Labels)
+}

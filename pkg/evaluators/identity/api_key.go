@@ -120,6 +120,7 @@ func (a *APIKey) AddK8sSecretBasedIdentity(ctx context.Context, new k8s.Secret) 
 				delete(a.secrets, oldAPIKeyValue)
 				logger.V(1).Info("api key updated")
 			} else {
+				a.secrets[oldAPIKeyValue] = new
 				logger.V(1).Info("api key unchanged")
 			}
 			return
