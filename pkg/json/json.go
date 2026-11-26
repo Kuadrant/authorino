@@ -58,6 +58,25 @@ func (v *JSONValue) resolveForSafe(jsonData string) interface{} {
 	}
 }
 
+// LookupFor implements expressions.Lookup. A static value is found unless it is nil. Multipaths, which drop the members
+// that select nothing, and modifiers that make up a value from nothing count as found.
+func (v *JSONValue) LookupFor(jsonData string) (any, bool) {
+	if v.Pattern == "" {
+		return v.Static, v.Static != nil
+	}
+	if !v.IsTemplate() {
+		result := gjson.Get(jsonData, v.Pattern)
+		return result.Value(), result.Exists()
+	}
+	_, placeholders, found := replaceJSONPlaceholders(v.Pattern, jsonData)
+	values := make([]any, len(placeholders))
+	for i, placeholder := range placeholders {
+		values[i] = placeholder.Value()
+		found = found && placeholder.Exists()
+	}
+	return values, found
+}
+
 // IsTemplate tells whether a pattern is as a simple pattern or a template that mixes static value with variable
 // placeholders that resolve to patterns.
 // In case of a template that mixes no variable placeholder, but it contains nothing but a static string value, users
@@ -107,6 +126,15 @@ func UnmashalJSONResponse(resp *http.Response, v interface{}, b *[]byte, maxResp
 }
 
 func ReplaceJSONPlaceholders(source string, jsonData string) string {
+	replaced, _, _ := replaceJSONPlaceholders(source, jsonData)
+	return replaced
+}
+
+// replaceJSONPlaceholders also returns what each placeholder selects, in order, and whether every placeholder names a
+// path and is closed.
+func replaceJSONPlaceholders(source string, jsonData string) (string, []gjson.Result, bool) {
+	var placeholders []gjson.Result
+	wellFormed := true
 	var replaced, buffer []byte
 	var escaping, insidePlaceholder bool
 	var nestedCurlyBraces int
@@ -132,8 +160,12 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 					nestedCurlyBraces = nestedCurlyBraces - 1
 				} else {
 					if len(buffer) > 0 {
-						replaced = append(replaced, []byte(gjson.Get(jsonData, string(buffer)).String())...)
+						placeholder := gjson.Get(jsonData, string(buffer))
+						placeholders = append(placeholders, placeholder)
+						replaced = append(replaced, []byte(placeholder.String())...)
 						buffer = []byte{}
+					} else {
+						wellFormed = false
 					}
 					insidePlaceholder = false
 				}
@@ -160,7 +192,7 @@ func ReplaceJSONPlaceholders(source string, jsonData string) string {
 		}
 	}
 
-	return string(replaced)
+	return string(replaced), placeholders, wellFormed && !insidePlaceholder
 }
 
 func StringifyJSON(data interface{}) (string, error) {
