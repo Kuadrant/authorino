@@ -1,6 +1,7 @@
 package evaluators
 
 import (
+	"crypto/sha256"
 	gojson "encoding/json"
 	"errors"
 	"fmt"
@@ -107,8 +108,8 @@ func (c *evaluatorCache) Set(key, value interface{}) error {
 	return nil
 }
 
-// ResolveKeyFor returns the cache key for the Authorization JSON, the JSON encoding of what the key resolves to, or nil
-// and the error when the key does not resolve, which callers take as no caching.
+// ResolveKeyFor returns the cache key for the Authorization JSON, encoded by cacheKey, or nil and the error when the key
+// does not resolve, which callers take as no caching.
 func (c *evaluatorCache) ResolveKeyFor(authJSON string) (interface{}, error) {
 	resolved, err := c.resolveKey(authJSON)
 	if err != nil {
@@ -125,9 +126,16 @@ func (c *evaluatorCache) Shutdown() error {
 	return c.store.Clear()
 }
 
-// cacheKey encodes a resolved key as JSON, which sorts object keys, so that keys of different types, such as "1" and 1,
-// or with different parts never share an entry, and the store compares keys in full. gocache keeps a string key as it
-// is, and would replace any other key with the MD5 of its fmt text, which prints ["bob x","y"] and ["bob","x y"] alike.
+// hashedCacheKeyTag starts every cache key that is not a string. A string key is its JSON encoding, which starts with a
+// quote, so the two kinds of key never meet.
+const hashedCacheKeyTag = "#"
+
+// cacheKey encodes a resolved key so that keys of different types, such as "1" and 1, or with different parts never
+// share an entry. A string key is its JSON encoding, which the store compares in full. Any other key, a template's
+// placeholder values included, is hashedCacheKeyTag and the SHA-256 of its JSON encoding, which sorts object keys, so
+// that it takes 33 bytes of an entry however long it is, and is not kept in memory. Making a long key a list keeps it
+// under the entry size limit. gocache keeps a string key as it is, and would replace any other key with the MD5 of its
+// fmt text, which prints ["bob x","y"] and ["bob","x y"] alike.
 func cacheKey(resolved any) (string, error) {
 	if !validUTF8(resolved) {
 		return "", errInvalidUTF8CacheKey
@@ -136,7 +144,11 @@ func cacheKey(resolved any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(encoded), nil
+	if _, isString := resolved.(string); isString {
+		return string(encoded), nil
+	}
+	digest := sha256.Sum256(encoded)
+	return hashedCacheKeyTag + string(digest[:]), nil
 }
 
 // validUTF8 reports whether every string and object key in a JSON-like value is valid UTF-8.

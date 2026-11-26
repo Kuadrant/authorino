@@ -1,6 +1,8 @@
 package evaluators
 
 import (
+	"crypto/sha256"
+	gojson "encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -21,6 +23,9 @@ func TestEvaluatorCacheLongKey(t *testing.T) {
 	}
 	longKey := strings.Join(groups, ",")
 	value := map[string]any{"subscription": "premium"}
+	groupsJSON, err := gojson.Marshal(groups)
+	assert.NilError(t, err)
+	authJSON := `{"auth":{"identity":{"groups":` + string(groupsJSON) + `}}}`
 
 	t.Run("default cache size", func(t *testing.T) {
 		cache := newTestEvaluatorCache(t, &json.JSONValue{Static: longKey}, 1)
@@ -37,19 +42,29 @@ func TestEvaluatorCacheLongKey(t *testing.T) {
 		assert.Assert(t, cached == nil, cached)
 	})
 
-	t.Run("larger cache", func(t *testing.T) {
-		cache := newTestEvaluatorCache(t, &json.JSONValue{Static: longKey}, 4)
-		key, err := cache.ResolveKeyFor(`{}`)
-		assert.NilError(t, err)
+	for name, tc := range map[string]struct {
+		keyTemplate expressions.Value
+		sizeMB      int
+	}{
+		"larger cache":        {&json.JSONValue{Static: longKey}, 4},
+		"key made a list":     {&json.JSONValue{Static: []any{longKey}}, 1},
+		"key made a CEL list": {celKeyTemplate(t, `[auth.identity.groups.join(",")]`), 1},
+		"template":            {&json.JSONValue{Pattern: "groups-{auth.identity.groups}"}, 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cache := newTestEvaluatorCache(t, tc.keyTemplate, tc.sizeMB)
+			key, err := cache.ResolveKeyFor(authJSON)
+			assert.NilError(t, err)
 
-		// when
-		assert.NilError(t, cache.Set(key, value))
+			// when
+			assert.NilError(t, cache.Set(key, value))
 
-		// then
-		cached, err := cache.Get(key)
-		assert.NilError(t, err)
-		assert.DeepEqual(t, cached, value)
-	})
+			// then
+			cached, err := cache.Get(key)
+			assert.NilError(t, err)
+			assert.DeepEqual(t, cached, value)
+		})
+	}
 }
 
 func TestEvaluatorCacheSkipsUnresolvedKey(t *testing.T) {
@@ -142,15 +157,15 @@ func TestEvaluatorCacheResolveKeyFor(t *testing.T) {
 		wantKey     string
 	}{
 		"path":                         {&json.JSONValue{Pattern: "auth.identity.sub"}, `"alice"`},
-		"path to null":                 {&json.JSONValue{Pattern: "auth.identity.org"}, `null`},
+		"path to null":                 {&json.JSONValue{Pattern: "auth.identity.org"}, hashedKey(`null`)},
 		"path to an empty string":      {&json.JSONValue{Pattern: "auth.identity.nickname"}, `""`},
-		"path to a list":               {&json.JSONValue{Pattern: "auth.identity.groups"}, `["a","b"]`},
+		"path to a list":               {&json.JSONValue{Pattern: "auth.identity.groups"}, hashedKey(`["a","b"]`)},
 		"static value":                 {&json.JSONValue{Static: "x"}, `"x"`},
-		"template":                     {&json.JSONValue{Pattern: "user-{auth.identity.sub}"}, `["alice"]`},
-		"template, empty placeholder":  {&json.JSONValue{Pattern: "{auth.identity.sub}-{auth.identity.nickname}"}, `["alice",""]`},
-		"template, null placeholder":   {&json.JSONValue{Pattern: "user-{auth.identity.org}"}, `[null]`},
-		"CEL list":                     {celKeyTemplate(t, `[auth.identity.sub, "x"]`), `["alice","x"]`},
-		"CEL null":                     {celKeyTemplate(t, `auth.identity.org`), `null`},
+		"template":                     {&json.JSONValue{Pattern: "user-{auth.identity.sub}"}, hashedKey(`["alice"]`)},
+		"template, empty placeholder":  {&json.JSONValue{Pattern: "{auth.identity.sub}-{auth.identity.nickname}"}, hashedKey(`["alice",""]`)},
+		"template, null placeholder":   {&json.JSONValue{Pattern: "user-{auth.identity.org}"}, hashedKey(`[null]`)},
+		"CEL list":                     {celKeyTemplate(t, `[auth.identity.sub, "x"]`), hashedKey(`["alice","x"]`)},
+		"CEL null":                     {celKeyTemplate(t, `auth.identity.org`), hashedKey(`null`)},
 		"CEL empty string":             {celKeyTemplate(t, `auth.identity.nickname`), `""`},
 		"CEL string that reads a list": {celKeyTemplate(t, `'["alice","x"]'`), `"[\"alice\",\"x\"]"`},
 	} {
@@ -218,6 +233,30 @@ func TestCacheKeyRejectsInvalidUTF8(t *testing.T) {
 			_, err := cacheKey(key)
 			assert.Assert(t, errors.Is(err, errInvalidUTF8CacheKey), err)
 		})
+	}
+}
+
+// hashedKey is the cache key of a value that is not a string, given its JSON encoding.
+func hashedKey(encoded string) string {
+	digest := sha256.Sum256([]byte(encoded))
+	return hashedCacheKeyTag + string(digest[:])
+}
+
+func TestCacheKeyKinds(t *testing.T) {
+	long := strings.Repeat("g", 1500)
+	// a string key is its JSON encoding, which starts with a quote
+	for _, key := range []string{"", "1", hashedCacheKeyTag, long} {
+		encoded, err := cacheKey(key)
+		assert.NilError(t, err)
+		assert.Assert(t, strings.HasPrefix(encoded, `"`), encoded)
+	}
+	// any other key takes 33 bytes however long it is, and doesn't keep the value
+	for _, key := range []any{nil, float64(1), true, []any{}, []any{long}, map[string]any{"token": long}} {
+		encoded, err := cacheKey(key)
+		assert.NilError(t, err)
+		assert.Equal(t, len(encoded), 1+sha256.Size)
+		assert.Assert(t, strings.HasPrefix(encoded, hashedCacheKeyTag))
+		assert.Assert(t, !strings.Contains(encoded, long))
 	}
 }
 
